@@ -1,0 +1,1806 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum EmploymentType {
+  FULL_TIME
+  INTERN
+  FREELANCE
+  CONTRACT
+}
+
+enum TrustLevel {
+  BEGINNER
+  EMERGING
+  VERIFIED
+  ADVANCED
+  ELITE
+}
+
+enum PostType {
+  GENERAL
+  PROJECT_UPDATE
+  EVENT
+  HACKATHON
+  ACHIEVEMENT
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  PROJECT_INVITE
+  TEAM_INVITE
+  REFERRAL
+  HACKATHON_JUDGING
+  HACKATHON_WINNER
+  SYSTEM
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ProjectStatus {
+  OPEN
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+  DELETED
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TeamStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum HackathonStatus {
+  DRAFT
+  OPEN
+  LIVE
+  ARCHIVED
+  DELETED
+  COMPLETED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum HackathonMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum OrganizerType {
+  COMPANY
+  COLLEGE
+  COMMUNITY
+  STARTUP
+  INDIVIDUAL
+}
+
+enum SubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  SCORED
+  WINNER
+  REJECTED
+}
+
+enum ConversationType {
+  DIRECT
+  TEAM
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ReferralStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  REFERRED
+}
+
+enum MentorshipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  COMPLETED
+}
+
+enum ProjectInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum CompanyType {
+  STARTUP
+  PRODUCT_BASED
+  SERVICE_BASED
+  ENTERPRISE
+  MNC
+  OTHER
+}
+
+enum CompanySize {
+  SOLO
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum JobType {
+  FULL_TIME
+  INTERNSHIP
+  PART_TIME
+  CONTRACT
+  FREELANCE
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  DRAFT
+  ARCHIVED
+  DELETED
+}
+
+enum JobApplicationStatus {
+  APPLIED
+  VIEWED
+  SHORTLISTED
+  INTERVIEW
+  REJECTED
+  HIRED
+}
+
+enum ActivityType {
+  PROJECT_CREATED
+  PROJECT_JOINED
+  PROJECT_COMPLETED
+  PROJECT_ARCHIVED
+
+  TEAM_CREATED
+  TEAM_JOINED
+
+  HACKATHON_CREATED
+  HACKATHON_REGISTERED
+  HACKATHON_APPROVED
+  HACKATHON_REJECTED
+  HACKATHON_SUBMITTED
+  HACKATHON_WON
+
+  JOB_POSTED
+  JOB_APPLIED
+  JOB_SHORTLISTED
+  JOB_INTERVIEW
+  JOB_HIRED
+
+  HACKATHON_JUDGE_ASSIGNED
+  HACKATHON_SUBMISSION_REVIEWED
+  HACKATHON_WINNER_DECLARED
+
+  REFERRAL_RECEIVED
+  REFERRAL_GIVEN
+
+  MENTORSHIP_STARTED
+
+  REPUTATION_MILESTONE
+}
+
+enum BadgeCategory {
+  PROJECT
+  TEAM
+  HACKATHON
+  JOB
+  REFERRAL
+  RECRUITER
+  MENTORSHIP
+  JUDGING
+  SOCIAL
+  REPUTATION
+  SPECIAL
+}
+
+enum BadgeRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum RepoVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum DeploymentStatus {
+  LIVE
+  DEVELOPMENT
+  ARCHIVED
+}
+
+enum FeedItemType {
+  POST
+  PROJECT
+  HACKATHON
+  JOB
+  COMPANY
+  PROFILE
+}
+
+enum FeedInteractionType {
+  VIEW
+  CLICK
+  LIKE
+  SAVE
+  SHARE
+  APPLY
+  OPEN_PROJECT
+  OPEN_PROFILE
+}
+
+model User {
+  id       String     @id @default(uuid())
+  email    String     @unique
+  username String     @unique
+  password String
+  status   UserStatus @default(ACTIVE)
+
+  followers Follow[] @relation("following")
+
+  following Follow[] @relation("follower")
+
+  sentConnections Connection[] @relation("connectionSender")
+
+  receivedConnections Connection[] @relation("connectionReceiver")
+
+  sentReferralRequests ReferralRequest[] @relation("referralRequester")
+
+  receivedReferralRequests ReferralRequest[] @relation("referralReceiver")
+
+  sentMentorshipRequests MentorshipRequest[] @relation("mentorshipRequester")
+
+  receivedMentorshipRequests MentorshipRequest[] @relation("mentor")
+
+  receivedProjectInvites ProjectInvite[] @relation("projectInvitedUser")
+
+  sentProjectInvites ProjectInvite[] @relation("projectInvitedBy")
+
+  affinities UserAffinity[] @relation("userAffinitySource")
+
+  targetAffinities UserAffinity[] @relation("userAffinityTarget")
+
+  feedInteractions FeedInteraction[]
+
+  interestProfile UserInterestProfile?
+
+  profileViewsGiven ProfileView[] @relation("profileViewer")
+
+  profileViewsReceived ProfileView[] @relation("profileViewed")
+
+  projectViews ProjectView[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile        Profile?
+  roles          UserRole[]
+  skills         UserSkill[]
+  experiences    Experience[]
+  educations     Education[]
+  codingProfiles CodingProfile[]
+
+  posts    Post[]
+  comments Comment[]
+  likes    Like[]
+
+  activities EngineeringActivity[]
+
+  notifications Notification[]
+
+  createdHackathons   Hackathon[]
+  judgeAssignments    HackathonJudge[]
+  ownedProjects       Project[]
+  projectMemberships  ProjectMember[]
+  projectJoinRequests ProjectJoinRequest[]
+
+  ownedTeams      Team[]
+  teamMemberships TeamMember[]
+
+  receivedInvites TeamInvite[] @relation("invitedUser")
+  sentInvites     TeamInvite[] @relation("invitedBy")
+
+  postedJobs      Job[]
+  jobApplications JobApplication[]
+  savedJobs       SavedJob[]
+
+  reputationScore   Int        @default(0)
+  engineeringScore  Float      @default(0)
+  trustLevel        TrustLevel @default(BEGINNER)
+  featuredProjectId String?
+
+  searchScore Float @default(0)
+
+  searchVisibility Boolean @default(true)
+
+  acceptingCollaborators Boolean @default(true)
+
+  acceptingReferrals Boolean @default(false)
+
+  acceptingMentorship Boolean @default(false)
+
+  primaryRole String?
+
+  openToWork Boolean @default(false)
+
+  openToInternship Boolean @default(false)
+
+  badges UserBadge[]
+
+  reputationEvents ReputationEvent[]
+
+  conversationParticipants ConversationParticipant[]
+
+  sentMessages Message[]
+}
+
+model Role {
+  id   String @id @default(uuid())
+  name String @unique
+
+  users UserRole[]
+
+  createdAt DateTime @default(now())
+}
+
+model UserRole {
+  id String @id @default(uuid())
+
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+}
+
+model Profile {
+  id String @id @default(uuid())
+
+  userId   String  @unique
+  fullName String
+  bio      String?
+
+  avatarUrl String?
+
+  githubUrl    String?
+  linkedinUrl  String?
+  portfolioUrl String?
+
+  collegeId    String?
+  departmentId String?
+
+  graduationYear Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  college College? @relation(fields: [collegeId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CodingProfile {
+  id String @id @default(uuid())
+
+  userId String
+
+  platform String
+  url      String
+  username String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model College {
+  id String @id @default(uuid())
+
+  name  String
+  state String?
+  city  String?
+
+  website String?
+  logoUrl String?
+
+  departments Department[]
+  profiles    Profile[]
+  educations  Education[]
+
+  createdAt DateTime @default(now())
+}
+
+model Department {
+  id String @id @default(uuid())
+
+  name String
+
+  collegeId String
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  profiles   Profile[]
+  educations Education[]
+
+  createdAt DateTime @default(now())
+}
+
+model Skill {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  users UserSkill[]
+
+  createdAt DateTime @default(now())
+}
+
+model UserSkill {
+  id String @id @default(uuid())
+
+  userId  String
+  skillId String
+
+  level SkillLevel @default(BEGINNER)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, skillId])
+}
+
+model Experience {
+  id String @id @default(uuid())
+
+  userId String
+
+  companyId String
+
+  companyName String?
+
+  title String
+
+  employmentType EmploymentType
+
+  startDate DateTime
+
+  endDate DateTime?
+
+  isCurrent Boolean @default(false)
+
+  description String?
+
+  //
+  // AUTHENTICITY
+  //
+  verified Boolean @default(false)
+
+  verificationScore Float @default(0)
+
+  verifiedAt DateTime?
+
+  workEmail String?
+
+  workEmailVerified Boolean @default(false)
+
+  managerName String?
+
+  managerLinkedinUrl String?
+
+  managerEmail String?
+
+  documents Json?
+
+  verificationNotes String?
+
+  verificationMethod String?
+
+  //
+  // EXPERIENCE SIGNALS
+  //
+  skillsUsed Json?
+
+  achievements Json?
+
+  techStack Json?
+
+  teamSize Int?
+
+  //
+  // ANTI FRAUD
+  //
+  suspicious Boolean @default(false)
+
+  flaggedReason String?
+
+  //
+  // RELATIONS
+  //
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Education {
+  id String @id @default(uuid())
+
+  userId String
+
+  collegeId    String
+  departmentId String?
+
+  degree       String?
+  fieldOfStudy String?
+
+  startYear Int?
+  endYear   Int?
+
+  current Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  college College @relation(fields: [collegeId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id String @id @default(uuid())
+
+  authorId String
+
+  content String
+
+  type PostType @default(GENERAL)
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  comments Comment[]
+  likes    Like[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id String @id @default(uuid())
+
+  postId   String
+  authorId String
+
+  content String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id String @id @default(uuid())
+
+  postId String
+  userId String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  userId String
+
+  type NotificationType
+
+  title   String
+  message String
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id String @id @default(uuid())
+
+  ownerId String
+
+  teamId String?
+
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  title String
+
+  slug String? @unique
+
+  description String
+
+  shortDescription String?
+
+  //
+  // AUTHENTICITY
+  //
+  githubUrl String?
+
+  liveUrl String?
+
+  videoDemoUrl String?
+
+  screenshots Json?
+
+  techStack Json?
+
+  repoVisibility RepoVisibility?
+
+  deploymentStatus DeploymentStatus? @default(DEVELOPMENT)
+
+  featured Boolean @default(false)
+
+  verified Boolean @default(false)
+
+  engineeringScore Float @default(0)
+
+  //
+  // GITHUB METADATA
+  //
+  starsCount Int @default(0)
+
+  forksCount Int @default(0)
+
+  commitCount Int @default(0)
+
+  contributorsCount Int @default(0)
+
+  openIssuesCount Int @default(0)
+
+  pullRequestsCount Int @default(0)
+
+  primaryLanguage String?
+
+  languages Json?
+
+  repoCreatedAt DateTime?
+
+  repoUpdatedAt DateTime?
+
+  lastGithubSyncAt DateTime?
+
+  //
+  // EXISTING FIELDS
+  //
+  visibility ProjectVisibility @default(PUBLIC)
+
+  status ProjectStatus @default(OPEN)
+
+  lookingFor String?
+
+  searchScore Float @default(0)
+
+  collaborationScore Float @default(0)
+
+  searchTags String[]
+
+  difficultyLevel String?
+
+  domain String?
+
+  //
+  // RELATIONS
+  //
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  invites ProjectInvite[]
+
+  requiredRoles ProjectRoleRequirement[]
+
+  members ProjectMember[]
+
+  joinRequests ProjectJoinRequest[]
+
+  hackathonSubmissions HackathonSubmission[]
+
+  //
+  // TIMESTAMPS
+  //
+  createdAt DateTime @default(now())
+
+  completedAt DateTime?
+
+  archivedAt DateTime?
+
+  deletedAt DateTime?
+
+  updatedAt    DateTime      @updatedAt
+  projectViews ProjectView[]
+}
+
+model ProjectRoleRequirement {
+  id String @id @default(uuid())
+
+  projectId String
+
+  title       String
+  description String?
+
+  slots Int @default(1)
+
+  filledSlots Int @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model ProjectMember {
+  id String @id @default(uuid())
+
+  projectId String
+  userId    String
+
+  role TeamRole @default(MEMBER)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+}
+
+model ProjectJoinRequest {
+  id String @id @default(uuid())
+
+  projectId String
+  userId    String
+
+  message String?
+
+  status InviteStatus @default(PENDING)
+
+  reviewedAt  DateTime?
+  withdrawnAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model ProjectInvite {
+  id String @id @default(uuid())
+
+  projectId String
+
+  invitedUserId String
+
+  invitedById String
+
+  message String?
+
+  status ProjectInviteStatus @default(PENDING)
+
+  reviewedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  invitedUser User @relation("projectInvitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+
+  invitedBy User @relation("projectInvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, invitedUserId])
+}
+
+model Team {
+  id String @id @default(uuid())
+
+  name        String
+  description String?
+
+  ownerId String
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  members TeamMember[]
+
+  conversations Conversation[]
+
+  invites TeamInvite[]
+
+  projects Project[]
+
+  hackathonRegistrations HackathonRegistration[]
+
+  hackathonSubmissions HackathonSubmission[]
+
+  hackathonWins HackathonWinner[]
+
+  reputationScore Int @default(0)
+
+  completedProjectsCount Int @default(0)
+
+  hackathonWinsCount Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  status     TeamStatus @default(ACTIVE)
+  archivedAt DateTime?
+  deletedAt  DateTime?
+}
+
+model TeamMember {
+  id String @id @default(uuid())
+
+  teamId String
+  userId String
+
+  role TeamRole @default(MEMBER)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model TeamInvite {
+  id String @id @default(uuid())
+
+  teamId        String
+  invitedUserId String
+
+  invitedById String
+
+  status  InviteStatus @default(PENDING)
+  message String?
+
+  reviewedAt  DateTime?
+  withdrawnAt DateTime?
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  invitedUser User @relation("invitedUser", fields: [invitedUserId], references: [id], onDelete: Cascade)
+
+  invitedBy User @relation("invitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, invitedUserId])
+}
+
+model Hackathon {
+  id String @id @default(uuid())
+
+  title String
+
+  slug String? @unique
+
+  description String
+
+  shortDescription String?
+
+  bannerUrl String?
+
+  logoUrl String?
+
+  startDate DateTime
+
+  endDate DateTime
+
+  registrationDeadline DateTime
+
+  maxTeamSize Int
+
+  tracks Json?
+
+  rules Json?
+
+  prizes Json?
+
+  judgingCriteria Json?
+
+  organizerName String?
+
+  organizerWebsite String?
+
+  organizerType OrganizerType?
+
+  sponsorName String?
+
+  sponsorWebsite String?
+
+  mode HackathonMode?
+
+  location String?
+
+  verified Boolean @default(false)
+
+  featured Boolean @default(false)
+
+  isExternal Boolean @default(false)
+
+  sourcePlatform String?
+
+  externalUrl String?
+
+  registrationCount Int @default(0)
+
+  submissionCount Int @default(0)
+
+  judgeCount Int @default(0)
+
+  winnerCount Int @default(0)
+
+  viewCount Int @default(0)
+
+  status HackathonStatus @default(DRAFT)
+
+  createdById String
+
+  searchScore Float @default(0)
+
+  tags String[]
+
+  difficultyLevel String?
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  registrations HackathonRegistration[]
+
+  submissions HackathonSubmission[]
+
+  judges HackathonJudge[]
+
+  evaluations HackathonEvaluation[]
+
+  winners HackathonWinner[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  completedAt DateTime?
+
+  archivedAt DateTime?
+
+  deletedAt DateTime?
+}
+
+model HackathonRegistration {
+  id String @id @default(uuid())
+
+  hackathonId String
+
+  teamId String
+
+  status RegistrationStatus @default(PENDING)
+
+  reviewedAt DateTime?
+
+  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([hackathonId, teamId])
+}
+
+model HackathonSubmission {
+  id String @id @default(uuid())
+
+  hackathonId String
+
+  teamId String
+
+  projectId String
+
+  //
+  // SUBMISSION LINKS
+  //
+  githubUrl String?
+
+  demoUrl String?
+
+  presentationUrl String?
+
+  videoUrl String?
+
+  description String?
+
+  techStack Json?
+
+  //
+  // REVIEW
+  //
+  status SubmissionStatus @default(PENDING)
+
+  score Float?
+
+  feedback String?
+
+  reviewedAt DateTime?
+
+  finalScore      Float?
+  rankingPosition Int?
+
+  //
+  // AUTHENTICITY
+  //
+  verifiedProject Boolean @default(false)
+
+  engineeringScore Float?
+
+  //
+  // TIMESTAMPS
+  //
+  submittedAt DateTime @default(now())
+
+  //
+  // RELATIONS
+  //
+
+  winners HackathonWinner[]
+
+  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  evaluations HackathonEvaluation[]
+
+  @@unique([hackathonId, teamId])
+}
+
+model HackathonJudge {
+  id String @id @default(uuid())
+
+  hackathonId String
+
+  userId String
+
+  expertise Json?
+
+  bio String?
+
+  canEvaluateOwnTeam Boolean @default(false)
+
+  active Boolean @default(true)
+
+  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  evaluations HackathonEvaluation[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([hackathonId, userId])
+}
+
+model HackathonEvaluation {
+  id String @id @default(uuid())
+
+  hackathonId String
+
+  submissionId String
+
+  judgeId String
+
+  //
+  // SCORING
+  //
+  innovationScore Float?
+
+  technicalScore Float?
+
+  designScore Float?
+
+  scalabilityScore Float?
+
+  businessScore Float?
+
+  presentationScore Float?
+
+  totalScore Float?
+
+  feedback String?
+
+  //
+  // RELATIONS
+  //
+  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  submission HackathonSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  judge HackathonJudge @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([submissionId, judgeId])
+}
+
+model HackathonWinner {
+  id String @id @default(uuid())
+
+  hackathonId String
+
+  submissionId String
+
+  teamId String
+
+  position Int
+
+  score Float
+
+  prize String?
+
+  createdAt DateTime @default(now())
+
+  hackathon Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+
+  submission HackathonSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([hackathonId, position])
+  @@unique([submissionId])
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  type ConversationType
+
+  teamId String?
+
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  participants ConversationParticipant[]
+
+  messages Message[]
+
+  lastMessageAt DateTime?
+  messageCount  Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model ConversationParticipant {
+  id String @id @default(uuid())
+
+  conversationId String
+
+  userId     String
+  lastReadAt DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  conversationId String
+
+  senderId String
+
+  content String
+
+  readByUsers String[]
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  reactionCount Int @default(0)
+
+  editedAt DateTime?
+
+  attachments Json?
+
+  createdAt DateTime @default(now())
+}
+
+model Follow {
+  id String @id @default(uuid())
+
+  followerId String
+
+  followingId String
+
+  follower User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Connection {
+  id String @id @default(uuid())
+
+  senderId String
+
+  receiverId String
+
+  status ConnectionStatus @default(PENDING)
+
+  sender User @relation("connectionSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  receiver User @relation("connectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  interactionScore Float @default(0)
+
+  lastInteractionAt DateTime?
+
+  reviewedAt DateTime?
+
+  @@unique([senderId, receiverId])
+}
+
+model ReferralRequest {
+  id String @id @default(uuid())
+
+  requesterId String
+
+  receiverId String
+
+  companyId String
+
+  jobRole String
+
+  externalJobId String?
+  internalJobId String?
+
+  jobUrl String?
+
+  message String?
+
+  githubUrl String?
+
+  codingProfileUrl String?
+
+  resumeUrl String?
+
+  linkedinUrl String?
+
+  portfolioUrl String?
+
+  status ReferralStatus @default(PENDING)
+
+  reviewedAt DateTime?
+
+  referredAt DateTime?
+
+  requester User @relation("referralRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  receiver User @relation("referralReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  job Job? @relation(fields: [internalJobId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model MentorshipRequest {
+  id String @id @default(uuid())
+
+  requesterId String
+
+  mentorId String
+
+  message String?
+
+  goals String?
+
+  status MentorshipStatus @default(PENDING)
+
+  startedAt DateTime?
+
+  completedAt DateTime?
+
+  requester User @relation("mentorshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  mentor User @relation("mentor", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  slug String @unique
+
+  logoUrl String?
+
+  coverImageUrl String?
+
+  websiteUrl String?
+
+  linkedinUrl String?
+
+  twitterUrl String?
+
+  githubUrl String?
+
+  description String?
+
+  tagline String?
+
+  foundedYear Int?
+
+  headquarters String?
+
+  industry String?
+
+  type CompanyType?
+
+  size CompanySize?
+
+  totalEmployees Int?
+
+  verified Boolean @default(false)
+
+  careersPageUrl String?
+
+  hiringEnabled Boolean @default(true)
+
+  referralEnabled Boolean @default(true)
+
+  rating Float?
+
+  totalRatings Int @default(0)
+
+  experiences Experience[]
+
+  jobs Job[]
+
+  referralRequests ReferralRequest[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model Job {
+  id String @id @default(uuid())
+
+  companyId String
+
+  postedById String?
+
+  title String
+
+  slug String @unique
+
+  description String
+
+  requirements String?
+
+  responsibilities String?
+
+  perks String?
+
+  location String?
+
+  workMode WorkMode?
+
+  type JobType
+
+  status JobStatus @default(OPEN)
+
+  experienceLevel String?
+
+  salaryMin Int?
+
+  salaryMax Int?
+
+  currency String? @default("INR")
+
+  openings Int?
+
+  skillsRequired String[]
+
+  applicationDeadline DateTime?
+
+  applyUrl String?
+
+  externalJobId String?
+
+  featured Boolean @default(false)
+
+  views Int @default(0)
+
+  applications JobApplication[]
+
+  applicationsCount Int @default(0)
+
+  savedBy SavedJob[]
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  postedBy User? @relation(fields: [postedById], references: [id], onDelete: SetNull)
+
+  referralRequests ReferralRequest[]
+  createdAt        DateTime          @default(now())
+
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+  deletedAt  DateTime?
+}
+
+model JobApplication {
+  id String @id @default(uuid())
+
+  jobId String
+
+  applicantId String
+
+  resumeUrl String?
+
+  coverLetter String?
+
+  githubUrl String?
+
+  portfolioUrl String?
+
+  linkedinUrl String?
+
+  status JobApplicationStatus @default(APPLIED)
+
+  recruiterNotes String?
+
+  shortlistedAt DateTime?
+
+  interviewScheduledAt DateTime?
+
+  rejectedAt DateTime?
+
+  hiredAt DateTime?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobId, applicantId])
+}
+
+model SavedJob {
+  id String @id @default(uuid())
+
+  userId String
+
+  jobId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+}
+
+model Badge {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  slug String @unique
+
+  description String?
+
+  iconUrl String?
+
+  category BadgeCategory @default(SPECIAL)
+
+  rarity BadgeRarity @default(COMMON)
+
+  reputationPoints Int @default(0)
+
+  hidden Boolean @default(false)
+
+  active Boolean @default(true)
+
+  users UserBadge[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @default(now())
+}
+
+model UserBadge {
+  id String @id @default(uuid())
+
+  userId String
+
+  badgeId String
+
+  awardedAt DateTime @default(now())
+
+  metadata Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+model ReputationEvent {
+  id String @id @default(uuid())
+
+  userId String
+
+  type String
+
+  points Int
+
+  description String?
+
+  metadata Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model EngineeringActivity {
+  id String @id @default(uuid())
+
+  userId String
+
+  type ActivityType
+
+  title String
+
+  description String?
+
+  metadata Json?
+
+  visibility ProjectVisibility @default(PUBLIC)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model FeedInteraction {
+  id String @id @default(uuid())
+
+  userId String
+
+  targetId String
+
+  targetType FeedItemType
+
+  interactionType FeedInteractionType
+
+  duration Int?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([interactionType])
+  @@index([createdAt])
+}
+
+model UserAffinity {
+  id String @id @default(uuid())
+
+  userId String
+
+  targetUserId String
+
+  score Float @default(0)
+
+  interactionCount Int @default(0)
+
+  messageScore Float @default(0)
+
+  collaborationScore Float @default(0)
+
+  skillSimilarityScore Float @default(0)
+
+  socialScore Float @default(0)
+
+  recruiterScore Float @default(0)
+
+  lastInteractionAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation("userAffinitySource", fields: [userId], references: [id], onDelete: Cascade)
+
+  targetUser User @relation("userAffinityTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetUserId])
+  @@index([userId])
+  @@index([targetUserId])
+}
+
+model ProfileView {
+  id String @id @default(uuid())
+
+  viewerId String
+
+  viewedUserId String
+
+  duration Int?
+
+  createdAt DateTime @default(now())
+
+  viewer User @relation("profileViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  viewedUser User @relation("profileViewed", fields: [viewedUserId], references: [id], onDelete: Cascade)
+
+  @@index([viewerId])
+  @@index([viewedUserId])
+  @@index([createdAt])
+}
+
+model ProjectView {
+  id String @id @default(uuid())
+
+  viewerId String?
+
+  projectId String
+
+  duration Int?
+
+  createdAt DateTime @default(now())
+
+  viewer User? @relation(fields: [viewerId], references: [id], onDelete: SetNull)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([viewerId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model UserInterestProfile {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  interestedSkills Json?
+
+  interestedDomains Json?
+
+  preferredJobTypes Json?
+
+  preferredContentTypes Json?
+
+  recruiterInterestScore Float @default(0)
+
+  openSourceAffinity Float @default(0)
+
+  collaborationAffinity Float @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

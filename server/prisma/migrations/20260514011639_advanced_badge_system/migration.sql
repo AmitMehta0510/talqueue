@@ -1,0 +1,15 @@
+-- CreateEnum
+CREATE TYPE "BadgeCategory" AS ENUM ('PROJECT', 'TEAM', 'HACKATHON', 'JOB', 'REFERRAL', 'RECRUITER', 'MENTORSHIP', 'SOCIAL', 'REPUTATION', 'SPECIAL');
+
+-- CreateEnum
+CREATE TYPE "BadgeRarity" AS ENUM ('COMMON', 'RARE', 'EPIC', 'LEGENDARY');
+
+-- AlterTable
+ALTER TABLE "Badge" ADD COLUMN     "active" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "category" "BadgeCategory" NOT NULL DEFAULT 'SPECIAL',
+ADD COLUMN     "hidden" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "rarity" "BadgeRarity" NOT NULL DEFAULT 'COMMON',
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "UserBadge" ADD COLUMN     "metadata" JSONB;
