@@ -41,6 +41,41 @@ enum PostType {
   EVENT
   HACKATHON
   ACHIEVEMENT
+
+  COLLEGE
+  DEPARTMENT
+  PROJECT
+  ANNOUNCEMENT
+  JOB
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  SYSTEM
+}
+
+enum CompanyCommunityRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+  VERIFIED_EMPLOYEE
+}
+
+enum CollegeMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+  ALUMNI
+}
+
+enum PostVisibility {
+  PUBLIC
+  CONNECTIONS
+  COLLEGE_ONLY
+  TEAM_ONLY
 }
 
 enum NotificationType {
@@ -53,6 +88,16 @@ enum NotificationType {
   HACKATHON_JUDGING
   HACKATHON_WINNER
   SYSTEM
+  POST_SHARED
+  POST_MENTION
+  COMMENT_MENTION
+  COMMENT_REPLY
+  POST_SAVED
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  MENTORSHIP
+  MESSAGE
+  COMMUNITY_JOINED
 }
 
 enum ProjectVisibility {
@@ -127,6 +172,12 @@ enum SubmissionStatus {
 enum ConversationType {
   DIRECT
   TEAM
+
+  COLLEGE
+  DEPARTMENT
+
+  PROJECT
+  HACKATHON
 }
 
 enum ConnectionStatus {
@@ -234,6 +285,15 @@ enum ActivityType {
 
   MENTORSHIP_STARTED
 
+  POST_CREATED
+  POST_SHARED
+  COMMENT_CREATED
+
+  COLLEGE_JOINED
+  COMMUNITY_JOINED
+
+  MESSAGE_SENT
+
   REPUTATION_MILESTONE
 }
 
@@ -300,6 +360,21 @@ model User {
 
   following Follow[] @relation("follower")
 
+  followersCount Int @default(0)
+  followingCount Int @default(0)
+
+  connectionCount Int @default(0)
+
+  postCount Int @default(0)
+
+  profileCompleteness Float @default(0)
+
+  lastActiveAt DateTime?
+
+  verifiedEngineer Boolean @default(false)
+
+  availabilityStatus String?
+
   sentConnections Connection[] @relation("connectionSender")
 
   receivedConnections Connection[] @relation("connectionReceiver")
@@ -333,12 +408,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile        Profile?
-  roles          UserRole[]
-  skills         UserSkill[]
-  experiences    Experience[]
-  educations     Education[]
-  codingProfiles CodingProfile[]
+  profile            Profile?
+  roles              UserRole[]
+  skills             UserSkill[]
+  experiences        Experience[]
+  educations         Education[]
+  codingProfiles     CodingProfile[]
+  collegeMemberships CollegeMembership[]
+  companyCommunities CompanyCommunityMembership[]
 
   posts    Post[]
   comments Comment[]
@@ -391,7 +468,10 @@ model User {
 
   conversationParticipants ConversationParticipant[]
 
-  sentMessages Message[]
+  sentMessages     Message[]
+  postShares       PostShare[]
+  savedPosts       SavedPost[]
+  messageReactions MessageReaction[]
 }
 
 model Role {
@@ -425,6 +505,16 @@ model Profile {
   bio      String?
 
   avatarUrl String?
+
+  headline String?
+
+  location String?
+
+  resumeUrl String?
+
+  bannerUrl String?
+
+  availabilityText String?
 
   githubUrl    String?
   linkedinUrl  String?
@@ -472,8 +562,11 @@ model College {
   departments Department[]
   profiles    Profile[]
   educations  Education[]
+  memberships CollegeMembership[]
 
-  createdAt DateTime @default(now())
+  createdAt     DateTime       @default(now())
+  posts         Post[]
+  conversations Conversation[]
 }
 
 model Department {
@@ -487,13 +580,45 @@ model Department {
   profiles   Profile[]
   educations Education[]
 
-  createdAt DateTime @default(now())
+  createdAt     DateTime       @default(now())
+  posts         Post[]
+  conversations Conversation[]
+}
+
+model CollegeMembership {
+  id String @id @default(uuid())
+
+  userId String
+
+  collegeId String
+
+  active Boolean @default(true)
+
+  manuallyLeft Boolean @default(false)
+
+  role CollegeMemberRole @default(MEMBER)
+
+  contributionScore Float @default(0)
+
+  joinedAt DateTime @default(now())
+
+  leftAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, collegeId])
 }
 
 model Skill {
   id String @id @default(uuid())
 
   name String @unique
+
+  category    String?
+  searchScore Float   @default(0)
+  verified    Boolean @default(false)
 
   users UserSkill[]
 
@@ -625,30 +750,165 @@ model Post {
 
   content String
 
-  type PostType @default(GENERAL)
+  type PostType
 
+  //
+  // MEDIA
+  //
+
+  media       Json?
+  attachments Json?
+
+  thumbnailUrl String?
+
+  tags PostTag[]
+
+  mentions String[]
+
+  //
+  // CONTEXT
+  //
+  collegeId          String?
+  departmentId       String?
+  companyCommunityId String?
+
+  projectId   String?
+  hackathonId String?
+
+  //
+  // VISIBILITY
+  //
+  visibility PostVisibility @default(PUBLIC)
+
+  featured Boolean @default(false)
+
+  pinned Boolean @default(false)
+
+  archivedAt DateTime?
+  deletedAt  DateTime?
+
+  //
+  // ANALYTICS
+  //
+  shareCount Int @default(0)
+
+  saveCount Int @default(0)
+
+  commentsCount Int @default(0)
+  likesCount    Int @default(0)
+
+  impressionCount Int @default(0)
+
+  engagementScore Float @default(0)
+
+  trendingScore Float @default(0)
+
+  //
+  // RELATIONS
+  //
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  college College? @relation(fields: [collegeId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  hackathon Hackathon? @relation(fields: [hackathonId], references: [id])
 
   comments Comment[]
   likes    Like[]
+  shares   PostShare[]
+  savedBy  SavedPost[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  companyCommunity CompanyCommunity? @relation(fields: [companyCommunityId], references: [id])
+
+  @@index([authorId])
+  @@index([collegeId])
+  @@index([departmentId])
+  @@index([createdAt])
+  @@index([trendingScore])
+}
+
+model PostShare {
+  id String @id @default(uuid())
+
+  postId String
+  userId String
+
+  caption String?
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@unique([postId, userId])
+}
+
+model SavedPost {
+  id String @id @default(uuid())
+
+  userId String
+  postId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model PostTag {
+  id String @id @default(uuid())
+
+  postId String
+
+  tag String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([tag])
 }
 
 model Comment {
   id String @id @default(uuid())
 
-  postId   String
+  postId String
+
   authorId String
 
   content String
+
+  media Json?
+
+  attachments Json?
+
+  mentions String[]
+
+  parentCommentId String?
+
+  editedAt  DateTime?
+  deletedAt DateTime?
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  parentComment Comment? @relation("CommentReplies", fields: [parentCommentId], references: [id])
+
+  replies Comment[] @relation("CommentReplies")
+
   createdAt DateTime @default(now())
+
+  @@index([postId])
 }
 
 model Like {
@@ -793,8 +1053,10 @@ model Project {
 
   deletedAt DateTime?
 
-  updatedAt    DateTime      @updatedAt
-  projectViews ProjectView[]
+  updatedAt     DateTime       @updatedAt
+  projectViews  ProjectView[]
+  posts         Post[]
+  conversations Conversation[]
 }
 
 model ProjectRoleRequirement {
@@ -1051,7 +1313,9 @@ model Hackathon {
 
   archivedAt DateTime?
 
-  deletedAt DateTime?
+  deletedAt     DateTime?
+  posts         Post[]
+  conversations Conversation[]
 }
 
 model HackathonRegistration {
@@ -1241,16 +1505,48 @@ model Conversation {
 
   type ConversationType
 
-  teamId String?
+  title String?
 
+  description String?
+
+  avatarUrl String?
+
+  public Boolean @default(false)
+
+  archived Boolean @default(false)
+
+  muted Boolean @default(false)
+
+  //
+  // CONTEXT
+  //
+  teamId             String?
+  collegeId          String?
+  departmentId       String?
+  projectId          String?
+  hackathonId        String?
+  companyCommunityId String?
+
+  //
+  // RELATIONS
+  //
   team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  college College? @relation(fields: [collegeId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  hackathon Hackathon? @relation(fields: [hackathonId], references: [id])
 
   participants ConversationParticipant[]
 
   messages Message[]
 
   lastMessageAt DateTime?
-  messageCount  Int       @default(0)
+
+  messageCount Int @default(0)
 
   createdAt DateTime @default(now())
 
@@ -1281,21 +1577,55 @@ model Message {
 
   senderId String
 
-  content String
+  content String?
+
+  type MessageType @default(TEXT)
+
+  attachments Json?
+
+  replyToMessageId String?
+
+  forwardedFromMessageId String?
 
   readByUsers String[]
+
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  reactionCount Int @default(0)
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
-  reactionCount Int @default(0)
+  replyToMessage Message? @relation("MessageReplies", fields: [replyToMessageId], references: [id])
 
-  editedAt DateTime?
+  replies Message[] @relation("MessageReplies")
 
-  attachments Json?
+  reactions MessageReaction[]
 
   createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MessageReaction {
+  id String @id @default(uuid())
+
+  messageId String
+
+  userId String
+
+  emoji String
+
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
 }
 
 model Follow {
@@ -1466,7 +1796,59 @@ model Company {
 
   createdAt DateTime @default(now())
 
-  updatedAt DateTime @updatedAt
+  updatedAt          DateTime           @updatedAt
+  companyCommunities CompanyCommunity[]
+}
+
+model CompanyCommunity {
+  id String @id @default(uuid())
+
+  companyId String
+
+  city String
+
+  state   String?
+  country String?
+
+  slug String @unique
+
+  verified Boolean @default(false)
+
+  memberCount Int @default(0)
+
+  public Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  memberships CompanyCommunityMembership[]
+
+  posts Post[]
+
+  @@unique([companyId, city])
+}
+
+model CompanyCommunityMembership {
+  id String @id @default(uuid())
+
+  communityId String
+
+  userId String
+
+  verifiedEmployee Boolean @default(false)
+
+  active Boolean @default(true)
+
+  role CompanyCommunityRole @default(MEMBER)
+
+  joinedAt DateTime @default(now())
+
+  community CompanyCommunity @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
 }
 
 model Job {
@@ -1664,6 +2046,9 @@ model EngineeringActivity {
   type ActivityType
 
   title String
+
+  entityType String?
+  entityId   String?
 
   description String?
 

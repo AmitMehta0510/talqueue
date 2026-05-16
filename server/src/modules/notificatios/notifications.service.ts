@@ -12,7 +12,17 @@ export const createNotification =  async (data: {
       | "REFERRAL"
       | "SYSTEM"
       | "HACKATHON_JUDGING"
-      | "HACKATHON_WINNER";
+      | "HACKATHON_WINNER"
+      | "POST_SHARED"
+      | "POST_MENTION"
+      | "COMMENT_MENTION"
+      | "COMMENT_REPLY"
+      | "POST_SAVED"
+      | "CONNECTION_REQUEST"
+      | "CONNECTION_ACCEPTED"
+      | "MENTORSHIP"
+      | "MESSAGE"
+      | "COMMUNITY_JOINED";
 
     title: string;
 

@@ -3,8 +3,7 @@ import prisma from "shared/database/prisma";
 import { createNotification,} from "modules/notificatios/notifications.service";
 import { createActivity } from "modules/activities/activity.service";
 
-export const addReputation =  async (
-    userId: string,
+export const addReputation =  async (    userId: string,
     type: string,
     points: number,
     description?: string,

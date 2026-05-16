@@ -1,8 +1,7 @@
 import prisma
 from "shared/database/prisma";
 
-export const calculateUserAffinity =
-  async (
+export const calculateUserAffinity =  async (
     userId: string,
 
     targetUserId: string

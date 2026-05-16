@@ -91,13 +91,3 @@ docker-data/
 # LOCAL CONFIG
 # =========================
 *.local
-
-# =========================
-# KEEP THESE IN GITHUB
-# =========================
-# prisma/schema.prisma
-# prisma/migrations/
-# package.json
-# package-lock.json
-# tsconfig.json
-# src/
