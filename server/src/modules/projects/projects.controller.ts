@@ -78,6 +78,7 @@ export const getProjectHandler = asyncHandler(
 
       const project =
         await getProjectById(
+          req.user?.id,
           req.params.id as string
         );
 

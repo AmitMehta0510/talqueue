@@ -8,6 +8,8 @@ import { addReputation, addTeamReputation, rewardTeamMembers, awardBadge } from 
 import { createActivity,} from "modules/activities/activity.service";
 import { calculateEngineeringScore } from "modules/reputation/engineering-score.service";
 import { calculateTrustLevel } from "modules/engineering/engineering-trust.service";
+import { calculateUserAffinity } from "modules/affinity/affinity.service";
+import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 
 export const createHackathon =  async (
@@ -26,8 +28,7 @@ export const createHackathon =  async (
     //
     // Create hackathon
     //
-    const hackathon =
-      await prisma.hackathon.create({
+    const hackathon =  await prisma.hackathon.create({
         data: {
           //
           // BASIC
@@ -338,10 +339,12 @@ export const getHackathons =  async () => {
         )
         .slice(0, 50);
 
+
     return rankedHackathons;
   };
 
 export const getHackathonById =  async (
+    userId: string | undefined,
     hackathonId: string
   ) => {
 
@@ -849,6 +852,20 @@ export const registerTeamForHackathon =  async (
     //
     // Notify organizer
     //
+
+    const requester =
+  await prisma.user.findUnique({
+
+    where: {
+      id: userId,
+    },
+
+    include: {
+      profile: true,
+    },
+  });
+
+
     createNotification({
       userId:
         hackathon.createdById,
@@ -859,8 +876,29 @@ export const registerTeamForHackathon =  async (
         "New Hackathon Registration",
 
       message:
-        `${team.name} registered for your hackathon`,
+`${requester?.profile?.fullName || requester?.username} registered team "${team.name}" for your hackathon`,
     }).catch(console.error);
+
+
+    //
+// Team collaboration affinity
+//
+await Promise.all(
+  team.members.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        member.userId,
+        hackathon.createdById
+      );
+
+      await calculateUserAffinity(
+        hackathon.createdById,
+        member.userId
+      );
+    }
+  )
+);
 
     return registration;
   };
@@ -1262,7 +1300,20 @@ if (
 
     //
     // Notify organizer
-    //
+    
+    const submitter =
+  await prisma.user.findUnique({
+
+    where: {
+      id: userId,
+    },
+
+    include: {
+      profile: true,
+    },
+  });
+
+
     createNotification({
       userId:
         registration.hackathon
@@ -1274,7 +1325,7 @@ if (
         "New Hackathon Submission",
 
       message:
-        `${registration.team.name} submitted a project`,
+`${submitter?.profile?.fullName || submitter?.username} submitted project for team "${registration.team.name}"`,
     }).catch(console.error);
 
     //
@@ -1305,9 +1356,44 @@ if (
           "Hackathon Submission Updated",
 
         message:
-          "Your team submitted a project to hackathon!",
+`${submitter?.profile?.fullName || submitter?.username} submitted your team's project to hackathon`,
       }).catch(console.error);
     }
+
+    //
+// Team collaboration affinity
+//
+await Promise.all(
+  teamMembers.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        member.userId,
+        registration.hackathon.createdById
+      );
+
+      await calculateUserAffinity(
+        registration.hackathon.createdById,
+        member.userId
+      );
+    }
+  )
+);
+
+//
+// Project collaboration affinity
+//
+await Promise.all(
+  projectMembers.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        userId,
+        member.userId
+      );
+    }
+  )
+);
 
     return submission;
   }; 
@@ -1478,6 +1564,17 @@ export const reviewRegistration =  async (
           role: "OWNER",
         },
       });
+const organizer =
+  await prisma.user.findUnique({
+
+    where: {
+      id: organizerId,
+    },
+
+    include: {
+      profile: true,
+    },
+  });
 
     if (owner) {
 
@@ -1493,11 +1590,32 @@ export const reviewRegistration =  async (
             : "Hackathon Registration Rejected",
 
         message:
-          status === "APPROVED"
-            ? `Your team was approved for "${registration.hackathon.title}"`
-            : `Your team was rejected from "${registration.hackathon.title}"`,
+status === "APPROVED"
+? `${organizer?.profile?.fullName || organizer?.username} approved your team for "${registration.hackathon.title}"`
+: `${organizer?.profile?.fullName || organizer?.username} rejected your team from "${registration.hackathon.title}"`,
       }).catch(console.error);
     }
+
+
+    //
+// Affinity updates
+//
+await Promise.all(
+  registration.team.members.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        organizerId,
+        member.userId
+      );
+
+      await calculateUserAffinity(
+        member.userId,
+        organizerId
+      );
+    }
+  )
+);
 
     return updatedRegistration;
   };
@@ -1835,8 +1953,7 @@ export const deleteHackathon =  async (
     //
     // Create judge assignment
     //
-    const assignment =
-      await prisma.hackathonJudge.create({
+    const assignment =  await prisma.hackathonJudge.create({
         data: {
           hackathonId,
 
@@ -1899,19 +2016,45 @@ export const deleteHackathon =  async (
     //
     // Notification
     //
-    createNotification({
-      userId:
-        data.userId,
+   const organizer =
+  await prisma.user.findUnique({
 
-      type:
-        "HACKATHON_JUDGING",
+    where: {
+      id: organizerId,
+    },
 
-      title:
-        "Assigned As Judge",
+    include: {
+      profile: true,
+    },
+  });
 
-      message:
-        `You were assigned as judge for "${hackathon.title}"`,
-    }).catch(console.error);
+createNotification({
+
+  userId:
+    data.userId,
+
+  type:
+    "HACKATHON_JUDGING",
+
+  title:
+    "Assigned As Judge",
+
+  message:
+`${organizer?.profile?.fullName || organizer?.username} assigned you as judge for "${hackathon.title}"`,
+}).catch(console.error);
+
+//
+// Affinity
+//
+await calculateUserAffinity(
+  organizerId,
+  data.userId
+);
+
+await calculateUserAffinity(
+  data.userId,
+  organizerId
+);
 
     return assignment;
   };
@@ -2232,6 +2375,18 @@ await prisma.hackathonSubmission.update({
           "OWNER"
       );
 
+      const judgeUser =
+  await prisma.user.findUnique({
+
+    where: {
+      id: judgeUserId,
+    },
+
+    include: {
+      profile: true,
+    },
+  });
+
     if (owner) {
 
       createNotification({
@@ -2245,7 +2400,7 @@ await prisma.hackathonSubmission.update({
           "Submission Evaluated",
 
         message:
-          `Your submission was reviewed for "${submission.hackathon.title}"`,
+`${judgeUser?.profile?.fullName || judgeUser?.username} reviewed your submission for "${submission.hackathon.title}"`,
       }).catch(console.error);
     }
 
@@ -2258,6 +2413,26 @@ await Promise.all(
 
       await calculateEngineeringScore(
         member.userId
+      );
+    }
+  )
+);
+
+//
+// Judge affinity with team
+//
+await Promise.all(
+  submission.team.members.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        judgeUserId,
+        member.userId
+      );
+
+      await calculateUserAffinity(
+        member.userId,
+        judgeUserId
       );
     }
   )
@@ -2618,6 +2793,19 @@ export const declareHackathonWinners =  async (
       //
       // Reward members
       //
+      const organizer =
+  await prisma.user.findUnique({
+
+    where: {
+      id: organizerId,
+    },
+
+    include: {
+      profile: true,
+    },
+  });
+
+
       await Promise.all(
         submission.team.members.map(
           async (member) => {
@@ -2672,7 +2860,7 @@ export const declareHackathonWinners =  async (
                 "Hackathon Winner",
 
               message:
-                `Your team secured ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"} place in "${hackathon.title}"`,
+`${organizer?.profile?.fullName || organizer?.username} declared your team ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"} place winner in "${hackathon.title}"`,
             }).catch(console.error);
 
             //
@@ -2691,7 +2879,39 @@ export const declareHackathonWinners =  async (
 await calculateEngineeringScore(
   member.userId
 );
+//
+// Organizer affinity
+//
+await calculateUserAffinity(
+  organizerId,
+  member.userId
+);
 
+await calculateUserAffinity(
+  member.userId,
+  organizerId
+);
+
+//
+// Team affinity
+//
+await Promise.all(
+  submission.team.members.map(
+    async (otherMember) => {
+
+      if (
+        otherMember.userId !==
+        member.userId
+      ) {
+
+        await calculateUserAffinity(
+          member.userId,
+          otherMember.userId
+        );
+      }
+    }
+  )
+);
           }
         )
       );

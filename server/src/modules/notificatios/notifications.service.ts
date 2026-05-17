@@ -3,63 +3,165 @@ import prisma from "shared/database/prisma";
 export const createNotification =  async (data: {
     userId: string;
 
-    type:
-      | "LIKE"
-      | "COMMENT"
-      | "FOLLOW"
-      | "PROJECT_INVITE"
-      | "TEAM_INVITE"
-      | "REFERRAL"
-      | "SYSTEM"
-      | "HACKATHON_JUDGING"
-      | "HACKATHON_WINNER"
-      | "POST_SHARED"
-      | "POST_MENTION"
-      | "COMMENT_MENTION"
-      | "COMMENT_REPLY"
-      | "POST_SAVED"
-      | "CONNECTION_REQUEST"
-      | "CONNECTION_ACCEPTED"
-      | "MENTORSHIP"
-      | "MESSAGE"
-      | "COMMUNITY_JOINED";
+    actorId?: string;
+
+    type: any;
 
     title: string;
 
     message: string;
+
+    entityType?: string;
+
+    entityId?: string;
+
+    actionUrl?: string;
+
+    metadata?: any;
+
+    groupKey?: string;
   }) => {
+
     return prisma.notification.create({
-      data,
+      data: {
+        ...data,
+      },
+
+      include: {
+        actor: {
+          include: {
+            profile: true,
+          },
+        },
+      },
     });
   };
 
-export const getMyNotifications =
-  async (userId: string) => {
-    return prisma.notification.findMany({
+export const getMyNotifications =  async (
+    userId: string,
+    page = 1,
+    limit = 20
+  ) => {
+
+    const skip =
+      (page - 1) * limit;
+
+    const notifications =
+      await prisma.notification.findMany({
+
+        where: {
+          userId,
+
+          archived: false,
+        },
+
+        include: {
+
+          actor: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        skip,
+        take: limit,
+      });
+
+    const unreadCount =
+      await prisma.notification.count({
+
+        where: {
+          userId,
+
+          isRead: false,
+        },
+      });
+
+    return {
+      notifications,
+      unreadCount,
+      page,
+      limit,
+    };
+  };
+
+export const markAsRead =  async (
+    notificationId: string,
+    userId: string
+  ) => {
+
+    return prisma.notification.updateMany({
+
       where: {
+        id: notificationId,
         userId,
       },
 
-      orderBy: {
-        createdAt: "desc",
-      },
+      data: {
 
-      take: 50,
+        isRead: true,
+
+        readAt:
+          new Date(),
+      },
     });
   };
 
-export const markAsRead = async (
-  notificationId: string,
-  userId: string
-) => {
-  return prisma.notification.updateMany({
-  where: {
-    id: notificationId,
-    userId,
-  },
+export const markAllAsRead =  async (
+    userId: string
+  ) => {
 
-  data: {
-    isRead: true,
-  },
-});
-};
+    return prisma.notification.updateMany({
+
+      where: {
+        userId,
+
+        isRead: false,
+      },
+
+      data: {
+
+        isRead: true,
+
+        readAt:
+          new Date(),
+      },
+    });
+  };
+
+export const archiveNotification =  async (
+    notificationId: string,
+    userId: string
+  ) => {
+
+    return prisma.notification.updateMany({
+
+      where: {
+        id: notificationId,
+        userId,
+      },
+
+      data: {
+        archived: true,
+      },
+    });
+  };
+
+export const deleteNotification =  async (
+    notificationId: string,
+    userId: string
+  ) => {
+
+    return prisma.notification.deleteMany({
+
+      where: {
+        id: notificationId,
+        userId,
+      },
+    });
+  };

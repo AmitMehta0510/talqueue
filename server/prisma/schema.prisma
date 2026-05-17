@@ -85,6 +85,9 @@ enum NotificationType {
   PROJECT_INVITE
   TEAM_INVITE
   REFERRAL
+  JOB_APPLIED
+  JOB_APPLICATION_UPDATE
+  JOB_HIRED
   HACKATHON_JUDGING
   HACKATHON_WINNER
   SYSTEM
@@ -98,6 +101,9 @@ enum NotificationType {
   MENTORSHIP
   MESSAGE
   COMMUNITY_JOINED
+  PROJECT_JOIN_REQUEST
+  PROJECT_JOIN_ACCEPTED
+  PROJECT_JOIN_REJECTED
 }
 
 enum ProjectVisibility {
@@ -172,12 +178,12 @@ enum SubmissionStatus {
 enum ConversationType {
   DIRECT
   TEAM
-
   COLLEGE
   DEPARTMENT
-
   PROJECT
   HACKATHON
+  COMMUNITY
+  GROUP
 }
 
 enum ConnectionStatus {
@@ -259,6 +265,7 @@ enum ActivityType {
   PROJECT_JOINED
   PROJECT_COMPLETED
   PROJECT_ARCHIVED
+  
 
   TEAM_CREATED
   TEAM_JOINED
@@ -336,12 +343,15 @@ enum FeedItemType {
   JOB
   COMPANY
   PROFILE
+  COLLEGE
+  TEAM
 }
 
 enum FeedInteractionType {
   VIEW
   CLICK
   LIKE
+  COMMENT
   SAVE
   SHARE
   APPLY
@@ -436,6 +446,7 @@ model User {
 
   receivedInvites TeamInvite[] @relation("invitedUser")
   sentInvites     TeamInvite[] @relation("invitedBy")
+  presence UserPresence?
 
   postedJobs      Job[]
   jobApplications JobApplication[]
@@ -467,6 +478,8 @@ model User {
   reputationEvents ReputationEvent[]
 
   conversationParticipants ConversationParticipant[]
+  createdConversations Conversation[] @relation("ConversationCreator")
+  sentNotifications Notification[] @relation("notificationActor")
 
   sentMessages     Message[]
   postShares       PostShare[]
@@ -929,18 +942,71 @@ model Like {
 model Notification {
   id String @id @default(uuid())
 
+  //
+  // RECEIVER
+  //
   userId String
 
+  //
+  // ACTOR
+  //
+  actorId String?
+
+  //
+  // TYPE
+  //
   type NotificationType
 
+  //
+  // CONTENT
+  //
   title   String
   message String
 
+  //
+  // ENTITY CONTEXT
+  //
+  entityType String?
+  entityId   String?
+
+  //
+  // DEEP LINK
+  //
+  actionUrl String?
+
+  //
+  // EXTRA DATA
+  //
+  metadata Json?
+
+  //
+  // STATE
+  //
   isRead Boolean @default(false)
+
+  readAt DateTime?
+
+  archived Boolean @default(false)
+
+  //
+  // GROUPING
+  //
+  groupKey String?
+
+  //
+  // RELATIONS
+  //
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  actor User? @relation("notificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([actorId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([isRead])
 }
 
 model Project {
@@ -1500,6 +1566,19 @@ model HackathonWinner {
   @@unique([submissionId])
 }
 
+model UserPresence {
+
+  userId String @id
+
+  online Boolean @default(false)
+
+  lastSeenAt DateTime?
+
+  socketId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Conversation {
   id String @id @default(uuid())
 
@@ -1511,11 +1590,11 @@ model Conversation {
 
   avatarUrl String?
 
-  public Boolean @default(false)
+  public Boolean @default(false) 
 
-  archived Boolean @default(false)
+  createdById String?
 
-  muted Boolean @default(false)
+  createdBy User? @relation("ConversationCreator", fields: [createdById], references: [id])
 
   //
   // CONTEXT
@@ -1526,6 +1605,7 @@ model Conversation {
   projectId          String?
   hackathonId        String?
   companyCommunityId String?
+  collegeCommunityId String?
 
   //
   // RELATIONS
@@ -1551,6 +1631,7 @@ model Conversation {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+  @@index([type])
 }
 
 model ConversationParticipant {
@@ -1559,6 +1640,15 @@ model ConversationParticipant {
   conversationId String
 
   userId     String
+
+  pinned Boolean @default(false)
+
+  muted Boolean @default(false)
+
+  archived Boolean @default(false)
+  unreadCount Int @default(0)
+
+  lastDeliveredAt DateTime?
   lastReadAt DateTime?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -1568,6 +1658,8 @@ model ConversationParticipant {
   joinedAt DateTime @default(now())
 
   @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
 }
 
 model Message {
@@ -1602,12 +1694,19 @@ model Message {
 
   replies Message[] @relation("MessageReplies")
 
+  forwardedMessages Message[] @relation("ForwardedMessages")
+
+  forwardedFromMessage Message?@relation("ForwardedMessages",fields: [forwardedFromMessageId],references: [id])
+
   reactions MessageReaction[]
 
   createdAt DateTime @default(now())
 
   @@index([conversationId])
   @@index([senderId])
+  @@index([conversationId, createdAt])
+  @@index([replyToMessageId])
+  @@index([forwardedFromMessageId])
 }
 
 model MessageReaction {
@@ -2178,6 +2277,8 @@ model UserInterestProfile {
   preferredJobTypes Json?
 
   preferredContentTypes Json?
+
+  preferredInteractionTypes Json?
 
   recruiterInterestScore Float @default(0)
 

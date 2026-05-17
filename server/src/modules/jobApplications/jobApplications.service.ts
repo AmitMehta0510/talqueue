@@ -5,9 +5,10 @@ import AppError from "shared/errors/AppError";
 import {createNotification,} from "modules/notificatios/notifications.service";
 
 import { addReputation,} from "modules/reputation/reputation.service";
-import {
-  createActivity,
-} from "modules/activities/activity.service";
+import { createActivity,} from "modules/activities/activity.service";
+import { trackInteraction,} from "modules/interaction/interaction-tracking.service";
+import { calculateUserAffinity,} from "modules/affinity/affinity.service";
+import { calculateEngineeringScore } from "modules/reputation/engineering-score.service";
 
 export const applyToJob =  async (
     userId: string,
@@ -125,18 +126,83 @@ export const applyToJob =  async (
     if (job.postedById) {
 
       createNotification({
-        userId:
-          job.postedById,
 
-        type: "SYSTEM",
+  userId:
+    job.postedById,
 
-        title:
-          "New Job Application",
+  actorId:
+    userId,
 
-        message:
-          `${application.applicant.profile?.fullName || "Someone"} applied for ${job.title}`,
-      }).catch(console.error);
+  type:
+    "JOB",
+
+  title:
+    "New Job Application",
+
+  message:
+    `${application.applicant.profile?.fullName || application.applicant.username} applied for ${job.title}`,
+
+  entityType:
+    "JOB",
+
+  entityId:
+    jobId,
+
+  actionUrl:
+    `/jobs/${jobId}/applications`,
+
+  metadata: {
+    applicationId:
+      application.id,
+  },
+
+  groupKey:
+    `job-application-${jobId}`,
+}).catch(console.error);
+      
     }
+
+//
+// Affinity
+//
+if (
+  job.postedById &&
+  job.postedById !== userId
+) {
+
+  await calculateUserAffinity(
+    userId,
+    job.postedById
+  );
+
+  await calculateUserAffinity(
+    job.postedById,
+    userId
+  );
+}
+
+//
+// Track interaction
+//
+trackInteraction(userId, {
+
+  targetId:
+    jobId,
+
+  targetType:
+    "JOB",
+
+  interactionType:
+    "APPLY",
+
+  metadata: {
+    companyId:
+      job.companyId,
+
+    recruiterId:
+      job.postedById,
+  },
+}).catch(console.error);
 
     // Applicant reputation
 addReputation(
@@ -351,17 +417,53 @@ export const updateApplicationStatus =  async (
 
     // Notify applicant
     createNotification({
-      userId:
-        application.applicantId,
 
-      type: "SYSTEM",
+  userId:
+    application.applicantId,
 
-      title:
-        "Application Status Updated",
+  actorId:
+    recruiterId,
 
-      message:
-        `Your application for ${application.job.title} is now ${data.status}`,
-    }).catch(console.error);
+  type:
+    "JOB",
+
+  title:
+    "Application Status Updated",
+
+  message:
+    `Your application for ${application.job.title} is now ${data.status}`,
+
+  entityType:
+    "JOB",
+
+  entityId:
+    application.jobId,
+
+  actionUrl:
+    `/jobs/applications/${applicationId}`,
+
+  metadata: {
+    applicationId,
+    status:
+      data.status,
+  },
+
+  groupKey:
+    `job-status-${applicationId}`,
+}).catch(console.error);
+
+    //
+// Affinity
+//
+await calculateUserAffinity(
+  recruiterId,
+  application.applicantId
+);
+
+await calculateUserAffinity(
+  application.applicantId,
+  recruiterId
+);
 
 
 // Reputation rewards
@@ -434,10 +536,7 @@ if (
 ).catch(console.error);
 }
 
-if (
-  data.status ===
-  "HIRED"
-) {
+if ( data.status ==="HIRED") {
 
   // Candidate reward
   addReputation(
@@ -481,6 +580,17 @@ if (
   {
     applicationId,
   }
+).catch(console.error);
+
+//
+// Engineering score recalculation
+//
+calculateEngineeringScore(
+  application.applicantId
+).catch(console.error);
+
+calculateEngineeringScore(
+  recruiterId
 ).catch(console.error);
 }
 

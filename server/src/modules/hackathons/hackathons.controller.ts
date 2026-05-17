@@ -158,6 +158,7 @@ export const getHackathonHandler =  asyncHandler(
 
       const hackathon =
         await getHackathonById(
+          req.user?.id,
           req.params.id as string
         );
 

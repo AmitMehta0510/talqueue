@@ -27,11 +27,8 @@ import {
 
 } from "./posts.validation";
 
-//
 // CREATE POST
-//
-export const createPostHandler =
-  asyncHandler(
+export const createPostHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -57,11 +54,8 @@ export const createPostHandler =
     }
   );
 
-//
 // FEED
-//
-export const getFeedHandler =
-  asyncHandler(
+export const getFeedHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -78,11 +72,8 @@ export const getFeedHandler =
     }
   );
 
-//
 // GET POST
-//
-export const getPostHandler =
-  asyncHandler(
+export const getPostHandler =  asyncHandler(
     async (
       req: Request,
       res: Response
@@ -90,6 +81,7 @@ export const getPostHandler =
 
       const post =
         await getPostById(
+          req.user?.id,
           req.params.id as string
         );
 
@@ -99,11 +91,8 @@ export const getPostHandler =
     }
   );
 
-//
 // UPDATE POST
-//
-export const updatePostHandler =
-  asyncHandler(
+export const updatePostHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -130,11 +119,8 @@ export const updatePostHandler =
     }
   );
 
-//
 // DELETE POST
-//
-export const deletePostHandler =
-  asyncHandler(
+export const deletePostHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -155,11 +141,8 @@ export const deletePostHandler =
     }
   );
 
-//
 // COMMENT
-//
-export const createCommentHandler =
-  asyncHandler(
+export const createCommentHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -186,11 +169,8 @@ export const createCommentHandler =
     }
   );
 
-//
 // LIKE
-//
-export const toggleLikeHandler =
-  asyncHandler(
+export const toggleLikeHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -208,8 +188,7 @@ export const toggleLikeHandler =
     }
   );
 
-  export const toggleSavePostHandler =
-  asyncHandler(
+  export const toggleSavePostHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -227,8 +206,7 @@ export const toggleLikeHandler =
     }
   );
 
-export const repostPostHandler =
-  asyncHandler(
+export const repostPostHandler =  asyncHandler(
     async (
       req: any,
       res: Response
@@ -250,8 +228,7 @@ export const repostPostHandler =
     }
   );
 
-export const deleteCommentHandler =
-  asyncHandler(
+export const deleteCommentHandler =  asyncHandler(
     async (
       req: any,
       res: Response

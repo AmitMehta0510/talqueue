@@ -6,6 +6,9 @@ import { createNotification } from "modules/notificatios/notifications.service";
 
 import { addReputation, addTeamReputation, rewardTeamMembers} from "modules/reputation/reputation.service";
 import {  createActivity,} from "modules/activities/activity.service";
+import { calculateEngineeringScore } from "modules/reputation/engineering-score.service";
+import { calculateUserAffinity } from "modules/affinity/affinity.service";
+import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 export const createTeam =  async (
     ownerId: string,
@@ -136,6 +139,56 @@ export const createTeam =  async (
       }
     ).catch(console.error);
 
+    //
+// Team creation affinity
+//
+await Promise.all(
+  uniqueMembers.map(
+    async (memberId: string) => {
+
+      if (memberId === ownerId) {
+        return;
+      }
+
+      await calculateUserAffinity(
+        ownerId,
+        memberId
+      );
+
+      await calculateUserAffinity(
+        memberId,
+        ownerId
+      );
+
+      //
+      // Engineering score recalculation
+      //
+      await calculateEngineeringScore(
+        memberId
+      );
+
+      //
+      // Notify invited members
+      //
+      createNotification({
+
+        userId: memberId,
+
+        type: "TEAM_INVITE",
+
+        title: "Added To Team",
+
+        message:
+          `You were added to team "${team.name}"`,
+      }).catch(console.error);
+    }
+  )
+);
+
+await calculateEngineeringScore(
+  ownerId
+);
+
     return team;
   };
 
@@ -174,7 +227,9 @@ export const getMyTeams =  async (userId: string) => {
     });
   };
 
-export const getTeamById =  async (teamId: string) => {
+export const getTeamById =  async (
+  userId :  string | undefined,
+  teamId: string) => {
 
     const team =
       await prisma.team.findUnique({
@@ -208,6 +263,15 @@ export const getTeamById =  async (teamId: string) => {
         404
       );
     }
+
+    if (userId) {
+
+  trackInteraction(userId, {
+    targetId: teamId,
+    targetType: "TEAM",
+    interactionType: "VIEW",
+  }).catch(console.error);
+}
 
     return team;
   };
@@ -290,18 +354,73 @@ export const inviteMember =  async (
         },
       });
 
-    createNotification({
-      userId: data.invitedUserId,
+const inviter =
+  await prisma.user.findUnique({
+    where: {
+      id: invitedById,
+    },
 
-      type: "TEAM_INVITE",
+    include: {
+      profile: true,
+    },
+  });
 
-      title: "New Team Invite",
+const team =
+  await prisma.team.findUnique({
+    where: {
+      id: teamId,
+    },
+  });
 
-      message:
-        "You received a new team invitation",
-    }).catch(console.error);
 
-    return invite;
+// Affinity
+//
+await calculateUserAffinity(
+  invitedById,
+  data.invitedUserId
+);
+
+await calculateUserAffinity(
+  data.invitedUserId,
+  invitedById
+);
+
+//
+// Activity
+//
+createActivity(
+  invitedById,
+
+  "TEAM_INVITE_SENT",
+
+  "Invited user to team",
+
+  `Invited user to join "${team?.name}"`,
+
+  {
+    teamId,
+    invitedUserId:
+      data.invitedUserId,
+  }
+).catch(console.error);
+
+//
+// Notification
+//
+createNotification({
+
+  userId:
+    data.invitedUserId,
+
+  type:
+    "TEAM_INVITE",
+
+  title:
+    "New Team Invite",
+
+  message:
+`${inviter?.profile?.fullName || inviter?.username || "Someone"} invited you to join "${team?.name}"`,
+}).catch(console.error);
   };
 
 export const reviewInvite =  async (
@@ -362,8 +481,7 @@ export const reviewInvite =  async (
 
           if (status === "ACCEPTED") {
 
-            const existingMember =
-              await tx.teamMember.findFirst({
+            const existingMember =  await tx.teamMember.findFirst({
                 where: {
                   teamId: invite.teamId,
                   userId,
@@ -394,8 +512,56 @@ addReputation(
     teamId: invite.teamId,
   }
 ).catch(console.error);
-              const teamConversation =
-  await tx.conversation.findFirst({
+
+//
+// Team reputation
+//
+addTeamReputation(
+  invite.teamId,
+  10
+).catch(console.error);
+
+//
+// Engineering score
+//
+calculateEngineeringScore(
+  userId
+).catch(console.error);
+
+//
+// Affinity
+//
+await calculateUserAffinity(
+  invite.invitedById,
+  userId
+);
+
+await calculateUserAffinity(
+  userId,
+  invite.invitedById
+);
+
+//
+// Activity
+//
+createActivity(
+  userId,
+
+  "TEAM_JOINED",
+
+  "Joined a team",
+
+  `Joined team "${invite.team.name}"`,
+
+  {
+    teamId:
+      invite.teamId,
+  }
+).catch(console.error);
+
+
+
+    const teamConversation =  await tx.conversation.findFirst({
     where: {
       teamId: invite.teamId,
       type: "TEAM",
@@ -420,21 +586,35 @@ if (teamConversation) {
         }
       );
 
-    createNotification({
-      userId: invite.invitedById,
+   const receiver =
+  await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
 
-      type: "TEAM_INVITE",
+    include: {
+      profile: true,
+    },
+  });
 
-      title:
-        status === "ACCEPTED"
-          ? "Invite Accepted"
-          : "Invite Rejected",
+createNotification({
 
-      message:
-        status === "ACCEPTED"
-          ? "Your team invite was accepted"
-          : "Your team invite was rejected",
-    }).catch(console.error);
+  userId:
+    invite.invitedById,
+
+  type:
+    "TEAM_INVITE",
+
+  title:
+    status === "ACCEPTED"
+      ? "Invite Accepted"
+      : "Invite Rejected",
+
+  message:
+    status === "ACCEPTED"
+      ? `${receiver?.profile?.fullName || receiver?.username || "Someone"} accepted your team invite`
+      : `${receiver?.profile?.fullName || receiver?.username || "Someone"} rejected your team invite`,
+}).catch(console.error);
 
     return result;
   };
@@ -552,16 +732,23 @@ if (teamConversation) {
       },
     });
 
-    createNotification({
-      userId: memberUserId,
+const team =
+  await prisma.team.findUnique({
+    where: {
+      id: teamId,
+    },
+  });
 
-      type: "TEAM_INVITE",
+createNotification({
+  userId: memberUserId,
 
-      title: "Removed From Team",
+  type: "TEAM_INVITE",
 
-      message:
-        "You were removed from a team",
-    }).catch(console.error);
+  title: "Removed From Team",
+
+  message:
+    `You were removed from ${team?.name || "a team"}`,
+}).catch(console.error);
 
     // Reputation penalty
 addReputation(
@@ -575,6 +762,52 @@ addReputation(
 
   {
     teamId,
+  }
+).catch(console.error);
+
+//
+// Team reputation penalty
+//
+addTeamReputation(
+  teamId,
+  -5
+).catch(console.error);
+
+//
+// Engineering score recalculation
+//
+calculateEngineeringScore(
+  memberUserId
+).catch(console.error);
+
+//
+// Affinity recalculation
+//
+await calculateUserAffinity(
+  requesterId,
+  memberUserId
+);
+
+await calculateUserAffinity(
+  memberUserId,
+  requesterId
+);
+
+//
+// Activity
+//
+createActivity(
+  requesterId,
+
+  "TEAM_MEMBER_REMOVED",
+
+  "Removed team member",
+
+  "Removed a member from team",
+
+  {
+    teamId,
+    memberUserId,
   }
 ).catch(console.error);
 
@@ -634,6 +867,38 @@ addReputation(
   }
 ).catch(console.error);
 
+//
+// Team reputation penalty
+//
+addTeamReputation(
+  teamId,
+  -2
+).catch(console.error);
+
+//
+// Engineering score
+//
+calculateEngineeringScore(
+  userId
+).catch(console.error);
+
+//
+// Activity
+//
+createActivity(
+  userId,
+
+  "TEAM_LEFT",
+
+  "Left a team",
+
+  "Left a team",
+
+  {
+    teamId,
+  }
+).catch(console.error);
+
     return {
       success: true,
     };
@@ -667,7 +932,7 @@ export const archiveTeam =  async (
       );
     }
 
-    return prisma.team.update({
+    const updatedTeam =  prisma.team.update({
       where: {
         id: teamId,
       },
@@ -679,6 +944,33 @@ export const archiveTeam =  async (
           new Date(),
       },
     });
+
+    //
+// Team reputation reduction
+//
+await addTeamReputation(
+  teamId,
+  -10
+);
+
+//
+// Activity
+//
+createActivity(
+  ownerId,
+
+  "TEAM_ARCHIVED",
+
+  "Archived a team",
+
+  `Archived team "${team.name}"`,
+
+  {
+    teamId,
+  }
+).catch(console.error);
+
+return updatedTeam;
   };
 
   export const restoreTeam = async (
@@ -709,7 +1001,7 @@ export const archiveTeam =  async (
       );
     }
 
-    return prisma.team.update({
+    const updatedTeam =  prisma.team.update({
       where: {
         id: teamId,
       },
@@ -720,6 +1012,33 @@ export const archiveTeam =  async (
         archivedAt: null,
       },
     });
+
+    //
+// Team reputation recovery
+//
+await addTeamReputation(
+  teamId,
+  5
+);
+
+//
+// Activity
+//
+createActivity(
+  ownerId,
+
+  "TEAM_RESTORED",
+
+  "Restored a team",
+
+  `Restored team "${team.name}"`,
+
+  {
+    teamId,
+  }
+).catch(console.error);
+
+return updatedTeam;
   };
 
 export const deleteTeam =  async (
@@ -812,24 +1131,63 @@ export const deleteTeam =  async (
     //
     await Promise.all(
 
-      team.members.map(
-        (member) =>
+  team.members.map(
+    async (member) => {
 
-          addReputation(
+      await addReputation(
+        member.userId,
+
+        "TEAM_DELETED",
+
+        -10,
+
+        "Team deleted",
+
+        {
+          teamId,
+        }
+      );
+
+      await calculateEngineeringScore(
+        member.userId
+      );
+
+      await createActivity(
+        member.userId,
+
+        "TEAM_DELETED",
+
+        "Team deleted",
+
+        `Team "${team.name}" was deleted`,
+
+        {
+          teamId,
+        }
+      );
+
+      if (
+        member.userId !== ownerId
+      ) {
+
+        createNotification({
+
+          userId:
             member.userId,
 
-            "TEAM_DELETED",
+          type:
+            "TEAM_INVITE",
 
-            -10,
+          title:
+            "Team Deleted",
 
-            "Team deleted",
-
-            {
-              teamId,
-            }
-          )
-      )
-    );
+          message:
+            `Team "${team.name}" was deleted`,
+        }).catch(console.error);
+      }
+    }
+  )
+);
 
     return updatedTeam;
   };

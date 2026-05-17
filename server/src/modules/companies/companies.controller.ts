@@ -75,6 +75,7 @@ export const getCompanyBySlugHandler =
 
       const company =
         await getCompanyBySlug(
+          req.user?.id,
           slug
         );
 

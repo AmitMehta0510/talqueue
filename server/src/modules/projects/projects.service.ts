@@ -9,6 +9,8 @@ import { fetchGithubRepository } from "modules/github/github.service";
 import { calculateProjectVerificationScore, calculateProjectEngineeringScore } from "modules/projects/project-auth.service";
 import { calculateEngineeringScore } from "modules/reputation/engineering-score.service";
 import { calculateTrustLevel } from "modules/engineering/engineering-trust.service";
+import { calculateUserAffinity } from "modules/affinity/affinity.service";
+import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 
 export const createProject =  async (
@@ -19,8 +21,7 @@ export const createProject =  async (
     //
     // Create project
     //
-    const project =
-      await prisma.project.create({
+    const project =  await prisma.project.create({
         data: {
           ownerId: userId,
 
@@ -142,8 +143,7 @@ export const createProject =  async (
             githubData
           ) => {
 
-            const verificationScore =
-              calculateProjectVerificationScore({
+            const verificationScore =  calculateProjectVerificationScore({
                 ...project,
                 ...githubData,
               });
@@ -206,13 +206,48 @@ export const createProject =  async (
         .catch(console.error);
     }
 
+    //
+// Initial self-network affinity
+if (project.teamId) {
+
+  const members =
+    await prisma.projectMember.findMany({
+
+      where: {
+        projectId:
+          project.id,
+      },
+    });
+
+  await Promise.all(
+    members.map(
+      async (member) => {
+
+        if (
+          member.userId !== userId
+        ) {
+
+          await calculateUserAffinity(
+            userId,
+            member.userId
+          );
+
+          await calculateUserAffinity(
+            member.userId,
+            userId
+          );
+        }
+      }
+    )
+  );
+}
+
     return project;
   };
 
 export const getProjects =  async () => {
 
-    const projects =
-      await prisma.project.findMany({
+    const projects =  await prisma.project.findMany({
         where: {
           visibility: "PUBLIC",
 
@@ -241,9 +276,7 @@ export const getProjects =  async () => {
     //
     // Ranking engine
     //
-    const rankedProjects =
-      projects
-        .map((project) => {
+    const rankedProjects =  projects.map((project) => {
 
           let score = 0;
 
@@ -352,10 +385,12 @@ export const getProjects =  async () => {
         )
         .slice(0, 50);
 
+
     return rankedProjects;
   };
 
 export const getProjectById =  async (
+    userId: string | undefined,
     projectId: string
   ) => {
 
@@ -426,9 +461,7 @@ export const getProjectById =  async (
       );
     }
 
-    //
     // Engineering quality score
-    //
     let engineeringScore = 0;
 
     //
@@ -542,6 +575,15 @@ export const getProjectById =  async (
     ) {
       trustLevel = "MEDIUM";
     }
+
+    if (userId) {
+
+  trackInteraction(userId, {
+    targetId: projectId,
+    targetType: "PROJECT",
+    interactionType: "OPEN_PROJECT",
+  }).catch(console.error);
+}
 
     return {
       ...project,
@@ -674,20 +716,65 @@ export const requestToJoinProject =  async (
       });
 
     // Fire-and-forget notification
-    createNotification({
-      userId: project.ownerId,
+    const requester = await prisma.user.findUnique({
 
-      type: "PROJECT_INVITE",
+    where: {
+      id: userId,
+    },
 
-      title: "New Join Request",
+    include: {
+      profile: true,
+    },
+  });
 
-      message: `Someone requested to join your project: ${project.title}`,
-    }).catch((error) => {
-      console.error(
-        "Notification Error:",
-        error
-      );
-    });
+createNotification({
+
+  userId:
+    project.ownerId,
+
+  actorId:
+    userId,
+
+  type:
+    "PROJECT_INVITE",
+
+  title:
+    "New Project Join Request",
+
+  message:
+    `${requester?.profile?.fullName || requester?.username} requested to join "${project.title}"`,
+
+  entityType:
+    "PROJECT",
+
+  entityId:
+    project.id,
+
+  actionUrl:
+    `/projects/${project.id}`,
+
+  metadata: {
+
+    projectId:
+      project.id,
+
+    requestId:
+      request.id,
+  },
+
+  groupKey:
+    `project-request-${project.id}`,
+}).catch((error) => {
+  console.error(
+    "Notification Error:",
+    error
+  );
+});
+
+calculateUserAffinity(
+  userId,
+  project.ownerId
+).catch(console.error);
 
     return request;
   };
@@ -791,8 +878,7 @@ export const reviewJoinRequest =  async (
       );
     }
 
-    const result =
-      await prisma.$transaction(
+    const result =  await prisma.$transaction(
         async (tx) => {
 
           const updatedRequest =
@@ -866,26 +952,79 @@ addReputation(
         }
       );
 
-    createNotification({
-      userId: request.userId,
+    const owner =
+  await prisma.user.findUnique({
 
-      type: "PROJECT_INVITE",
+    where: {
+      id: ownerId,
+    },
 
-      title:
-        status === "ACCEPTED"
-          ? "Project Request Accepted"
-          : "Project Request Rejected",
+    include: {
+      profile: true,
+    },
+  });
 
-      message:
-        status === "ACCEPTED"
-          ? `Your request to join "${request.project.title}" was accepted`
-          : `Your request to join "${request.project.title}" was rejected`,
-    }).catch((error) => {
-      console.error(
-        "Notification Error:",
-        error
-      );
-    });
+createNotification({
+
+  userId:
+    request.userId,
+
+  actorId:
+    ownerId,
+
+  type:
+    "PROJECT_INVITE",
+
+  title:
+    status === "ACCEPTED"
+      ? "Project Request Accepted"
+      : "Project Request Rejected",
+
+  message:
+    status === "ACCEPTED"
+
+      ? `${owner?.profile?.fullName || owner?.username} accepted your request to join "${request.project.title}"`
+
+      : `${owner?.profile?.fullName || owner?.username} rejected your request to join "${request.project.title}"`,
+
+  entityType:
+    "PROJECT",
+
+  entityId:
+    request.projectId,
+
+  actionUrl:
+    `/projects/${request.projectId}`,
+
+  metadata: {
+
+    projectId:
+      request.projectId,
+
+    requestId,
+  },
+
+  groupKey:
+    `project-review-${request.projectId}`,
+}).catch((error) => {
+  console.error(
+    "Notification Error:",
+    error
+  );
+});
+
+if (status === "ACCEPTED") {
+
+  calculateUserAffinity(
+    ownerId,
+    request.userId
+  ).catch(console.error);
+
+  calculateUserAffinity(
+    request.userId,
+    ownerId
+  ).catch(console.error);
+}
 
     return result;
   };
@@ -1028,18 +1167,60 @@ export const inviteUserToProject =  async (
         },
       });
 
-    createNotification({
-      userId:
-        invitedUserId,
+    const owner =
+  await prisma.user.findUnique({
 
-      type: "SYSTEM",
+    where: {
+      id: ownerId,
+    },
 
-      title:
-        "Project Invitation",
+    include: {
+      profile: true,
+    },
+  });
 
-      message:
-        `You were invited to join ${invite.project.title}`,
-    }).catch(console.error);
+createNotification({
+
+  userId:
+    invitedUserId,
+
+  actorId:
+    ownerId,
+
+  type:
+    "PROJECT_INVITE",
+
+  title:
+    "Project Invitation",
+
+  message:
+    `${owner?.profile?.fullName || owner?.username} invited you to join "${invite.project.title}"`,
+
+  entityType:
+    "PROJECT",
+
+  entityId:
+    projectId,
+
+  actionUrl:
+    `/projects/${projectId}`,
+
+  metadata: {
+
+    projectId,
+
+    inviteId:
+      invite.id,
+  },
+
+  groupKey:
+    `project-invite-${projectId}`,
+}).catch(console.error);
+
+calculateUserAffinity(
+  ownerId,
+  invitedUserId
+).catch(console.error);
 
     return invite;
   };  
@@ -1155,26 +1336,79 @@ addReputation(
     }
   );
 
-  createNotification({
-    userId: invite.invitedById,
+const invitedUser =
+  await prisma.user.findUnique({
 
-    type: "PROJECT_INVITE",
+    where: {
+      id: userId,
+    },
 
-    title:
-      status === "ACCEPTED"
-        ? "Project Invite Accepted"
-        : "Project Invite Rejected",
-
-    message:
-      status === "ACCEPTED"
-        ? `${invite.project.title} invite was accepted`
-        : `${invite.project.title} invite was rejected`,
-  }).catch((error) => {
-    console.error(
-      "Notification Error:",
-      error
-    );
+    include: {
+      profile: true,
+    },
   });
+
+createNotification({
+
+  userId:
+    invite.invitedById,
+
+  actorId:
+    userId,
+
+  type:
+    "PROJECT_INVITE",
+
+  title:
+    status === "ACCEPTED"
+      ? "Project Invite Accepted"
+      : "Project Invite Rejected",
+
+  message:
+    status === "ACCEPTED"
+
+      ? `${invitedUser?.profile?.fullName || invitedUser?.username} accepted your invite to join "${invite.project.title}"`
+
+      : `${invitedUser?.profile?.fullName || invitedUser?.username} rejected your invite to join "${invite.project.title}"`,
+
+  entityType:
+    "PROJECT",
+
+  entityId:
+    invite.projectId,
+
+  actionUrl:
+    `/projects/${invite.projectId}`,
+
+  metadata: {
+
+    projectId:
+      invite.projectId,
+
+    inviteId,
+  },
+
+  groupKey:
+    `project-invite-review-${invite.projectId}`,
+}).catch((error) => {
+  console.error(
+    "Notification Error:",
+    error
+  );
+});
+
+if (status === "ACCEPTED") {
+
+  calculateUserAffinity(
+    userId,
+    invite.invitedById
+  ).catch(console.error);
+
+  calculateUserAffinity(
+    invite.invitedById,
+    userId
+  ).catch(console.error);
+}
 
   return result;
 }; 
@@ -1242,6 +1476,34 @@ addReputation(
     projectId,
   }
 ).catch(console.error);
+
+//
+// Recalculate affinities
+//
+const remainingMembers =
+  await prisma.projectMember.findMany({
+
+    where: {
+      projectId,
+    },
+  });
+
+await Promise.all(
+  remainingMembers.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        userId,
+        member.userId
+      );
+
+      await calculateUserAffinity(
+        member.userId,
+        userId
+      );
+    }
+  )
+);
 
     return {
       success: true,
@@ -1322,6 +1584,34 @@ addReputation(
   }
 ).catch(console.error);
 
+//
+// Recalculate affinities
+//
+const remainingMembers =
+  await prisma.projectMember.findMany({
+
+    where: {
+      projectId,
+    },
+  });
+
+await Promise.all(
+  remainingMembers.map(
+    async (member) => {
+
+      await calculateUserAffinity(
+        memberId,
+        member.userId
+      );
+
+      await calculateUserAffinity(
+        member.userId,
+        memberId
+      );
+    }
+  )
+);
+
     return {
       success: true,
     };
@@ -1363,8 +1653,7 @@ export const getSentProjectInvites =  async (
     projectId: string
   ) => {
 
-    const project =
-      await prisma.project.findUnique({
+    const project =  await prisma.project.findUnique({
         where: {
           id: projectId,
         },
@@ -1410,8 +1699,7 @@ export const completeProject =  async (
     projectId: string
   ) => {
 
-    const project =
-      await prisma.project.findUnique({
+    const project =  await prisma.project.findUnique({
         where: {
           id: projectId,
         },
@@ -1531,8 +1819,7 @@ export const completeProject =  async (
     //
     // Complete project
     //
-    const updatedProject =
-      await prisma.project.update({
+    const updatedProject =  await prisma.project.update({
         where: {
           id: projectId,
         },
@@ -1582,6 +1869,27 @@ export const completeProject =  async (
           await calculateEngineeringScore(
              member.userId
           );
+
+          //
+// Team collaboration affinity
+//
+await Promise.all(
+  project.members.map(
+    async (otherMember) => {
+
+      if (
+        otherMember.userId !==
+        member.userId
+      ) {
+
+        await calculateUserAffinity(
+          member.userId,
+          otherMember.userId
+        );
+      }
+    }
+  )
+);
         }
       )
     );
@@ -1660,8 +1968,7 @@ export const archiveProject =  async (
     //
     // Archive project
     //
-    const updatedProject =
-      await prisma.project.update({
+    const updatedProject =  await prisma.project.update({
         where: {
           id: projectId,
         },
@@ -1708,6 +2015,9 @@ export const archiveProject =  async (
               projectId,
             }
           );
+
+          await calculateUserAffinity(ownerId,
+  member.userId);
         }
       )
     );
@@ -1818,6 +2128,11 @@ export const restoreProject =  async (
               projectId,
             }
           );
+
+          await calculateUserAffinity(
+  ownerId,
+  member.userId
+);
         }
       )
     );
@@ -1918,8 +2233,7 @@ export const deleteProject =  async (
       );
 
     // Soft delete
-    const updatedProject =
-      await prisma.project.update({
+    const updatedProject =  await prisma.project.update({
         where: {
           id: projectId,
         },
@@ -1964,6 +2278,11 @@ export const deleteProject =  async (
               projectId,
             }
           );
+
+          await calculateUserAffinity(
+  ownerId,
+  member.userId
+);
         }
       )
     );
@@ -2092,6 +2411,39 @@ export const updateProject =  async (
         projectId,
       }
     ).catch(console.error);
+
+    //
+// Recalculate collaboration graph
+//
+const members =
+  await prisma.projectMember.findMany({
+
+    where: {
+      projectId,
+    },
+  });
+
+await Promise.all(
+  members.map(
+    async (member) => {
+
+      if (
+        member.userId !== ownerId
+      ) {
+
+        await calculateUserAffinity(
+          ownerId,
+          member.userId
+        );
+
+        await calculateUserAffinity(
+          member.userId,
+          ownerId
+        );
+      }
+    }
+  )
+);
     // Re-sync GitHub metadat
     if (githubChanged) {
 
@@ -2287,6 +2639,39 @@ export const syncGithubProject =  async (
     await calculateEngineeringScore(
   userId
   );
+
+  //
+// Collaboration affinity refresh
+//
+const members =
+  await prisma.projectMember.findMany({
+
+    where: {
+      projectId,
+    },
+  });
+
+await Promise.all(
+  members.map(
+    async (member) => {
+
+      if (
+        member.userId !== userId
+      ) {
+
+        await calculateUserAffinity(
+          userId,
+          member.userId
+        );
+
+        await calculateUserAffinity(
+          member.userId,
+          userId
+        );
+      }
+    }
+  )
+);
 
     return updatedProject;
   };

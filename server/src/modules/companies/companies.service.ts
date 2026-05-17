@@ -68,7 +68,10 @@ export const getCompanies =  async () => {
     });
   };
 
-export const getCompanyBySlug =  async (slug: string) => {
+export const getCompanyBySlug =  async (
+  userId: string | undefined,
+  slug: string
+) => {
 
     const company =
       await prisma.company.findUnique({

@@ -1,7 +1,22 @@
 import prisma from "shared/database/prisma";
 
+const INTERACTION_WEIGHTS = {
+  VIEW: 1,
+  CLICK: 2,
+  LIKE: 4,
+  COMMENT : 5,
+  SAVE: 6,
+  SHARE: 8,
+  APPLY: 10,
+  OPEN_PROJECT: 5,
+  OPEN_PROFILE: 3,
+};
 
-export const trackInteraction =  async (
+const DAY_MS =
+  1000 * 60 * 60 * 24;
+
+export const trackInteraction =
+  async (
     userId: string,
 
     data: {
@@ -13,12 +28,15 @@ export const trackInteraction =  async (
         | "HACKATHON"
         | "JOB"
         | "COMPANY"
-        | "PROFILE";
+        | "PROFILE"
+        | "COLLEGE"
+        | "TEAM";
 
       interactionType:
         | "VIEW"
         | "CLICK"
         | "LIKE"
+        | "COMMENT"
         | "SAVE"
         | "SHARE"
         | "APPLY"
@@ -32,7 +50,7 @@ export const trackInteraction =  async (
   ) => {
 
     //
-    // Create interaction
+    // Store interaction
     //
     const interaction =
       await prisma.feedInteraction.create({
@@ -57,17 +75,17 @@ export const trackInteraction =  async (
       });
 
     //
-    // Update interest profile
+    // Update profile
     //
-    await updateUserInterestProfile(
+    updateUserInterestProfile(
       userId
-    );
+    ).catch(console.error);
 
     return interaction;
   };
 
-
-  export const updateUserInterestProfile =  async (
+export const updateUserInterestProfile =
+  async (
     userId: string
   ) => {
 
@@ -90,15 +108,57 @@ export const trackInteraction =  async (
       });
 
     //
-    // Counters
+    // Interest maps
     //
     const contentTypes:
       Record<string, number> = {};
 
+    const interactionTypes:
+      Record<string, number> = {};
+
+    //
+    // Weighted scoring
+    //
     for (
       const interaction of interactions
     ) {
 
+      const weight =
+        INTERACTION_WEIGHTS[
+          interaction.interactionType
+        ] || 1;
+
+      //
+      // Freshness decay
+      //
+      const daysOld =
+        Math.floor(
+          (
+            Date.now() -
+            new Date(
+              interaction.createdAt
+            ).getTime()
+          ) / DAY_MS
+        );
+
+      //
+      // Recent interactions stronger
+      //
+      const freshness =
+        Math.max(
+          1,
+          30 - daysOld
+        );
+
+      //
+      // Final score
+      //
+      const score =
+        weight * freshness;
+
+      //
+      // Content type
+      //
       contentTypes[
         interaction.targetType
       ] =
@@ -106,11 +166,23 @@ export const trackInteraction =  async (
           contentTypes[
             interaction.targetType
           ] || 0
-        ) + 1;
+        ) + score;
+
+      //
+      // Interaction type
+      //
+      interactionTypes[
+        interaction.interactionType
+      ] =
+        (
+          interactionTypes[
+            interaction.interactionType
+          ] || 0
+        ) + score;
     }
 
     //
-    // Persist
+    // Persist profile
     //
     await prisma.userInterestProfile.upsert({
 
@@ -123,6 +195,9 @@ export const trackInteraction =  async (
         preferredContentTypes:
           contentTypes,
 
+        preferredInteractionTypes:
+          interactionTypes,
+
         updatedAt:
           new Date(),
       },
@@ -133,6 +208,9 @@ export const trackInteraction =  async (
 
         preferredContentTypes:
           contentTypes,
+
+        preferredInteractionTypes:
+          interactionTypes,
       },
     });
   };

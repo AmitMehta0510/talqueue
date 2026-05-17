@@ -73,6 +73,7 @@ export const getTeamHandler =  asyncHandler(
 
       const team =
         await getTeamById(
+          req.user?.id,
           req.params.id
         );
 

@@ -1,7 +1,6 @@
 import prisma from "shared/database/prisma";
 
-export const calculateTrustLevel =
-  async (
+export const calculateTrustLevel =  async (
     userId: string
   ) => {
 

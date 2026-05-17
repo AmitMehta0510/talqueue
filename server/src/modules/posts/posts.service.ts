@@ -8,6 +8,7 @@ import { createActivity } from "modules/activities/activity.service";
 import { calculateUserAffinity } from "modules/affinity/affinity.service";
 
 import { createNotification } from "modules/notificatios/notifications.service";
+import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 // CREATE POST
 export const createPost = async (
@@ -15,8 +16,7 @@ export const createPost = async (
   data: any
 ) => {
 
-  const post =
-    await prisma.post.create({
+  const post =  await prisma.post.create({
 
       data: {
 
@@ -100,18 +100,38 @@ export const createPost = async (
 
           return createNotification({
 
-            userId:
-              mentionedUserId,
+  userId:
+    mentionedUserId,
 
-            type:
-              "POST_MENTION",
+  actorId:
+    userId,
 
-            title:
-              "You were mentioned",
+  type:
+    "POST_MENTION",
 
-            message:
-  `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
-          });
+  title:
+    "Mentioned in a post",
+
+  message:
+    `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
+
+  entityType:
+    "POST",
+
+  entityId:
+    post.id,
+
+  actionUrl:
+    `/posts/${post.id}`,
+
+  metadata: {
+    postId:
+      post.id,
+  },
+
+  groupKey:
+    `post-mention-${post.id}`,
+});
         }
       )
     );
@@ -229,6 +249,7 @@ export const getFeed = async (
 
 // GET POST
 export const getPostById = async (
+  userId: string | undefined,
   postId: string
 ) => {
 
@@ -327,6 +348,17 @@ export const getPostById = async (
       },
     },
   });
+
+  if(userId){
+    if (userId) {
+
+  trackInteraction(userId, {
+    targetId: postId,
+    targetType: "POST",
+    interactionType: "VIEW",
+  }).catch(console.error);
+}
+  }
 
   return post;
 };
@@ -596,18 +628,37 @@ if (post.authorId !== userId) {
 
     createNotification({
 
-      userId:
-        post.authorId,
+  userId:
+    post.authorId,
 
-      type:
-        "COMMENT",
+  actorId:
+    userId,
 
-      title:
-        "New Comment",
+  type:
+    "COMMENT",
 
-      message:
-  `${comment.author.profile?.fullName || comment.author.username} mentioned you in a post`,
-    }).catch(console.error);
+  title:
+    "New Comment",
+
+  message:
+    `${comment.author.profile?.fullName || comment.author.username} commented on your post`,
+
+  entityType:
+    "POST",
+
+  entityId:
+    postId,
+
+  actionUrl:
+    `/posts/${postId}`,
+
+  metadata: {
+    postId,
+  },
+
+  groupKey:
+    `post-comment-${postId}`,
+}).catch(console.error);
   }
 
   //
@@ -615,8 +666,7 @@ if (post.authorId !== userId) {
 //
 if (data.parentCommentId) {
 
-  const parentComment =
-    await prisma.comment.findUnique({
+  const parentComment =  await prisma.comment.findUnique({
 
       where: {
         id: data.parentCommentId,
@@ -638,18 +688,41 @@ if (data.parentCommentId) {
 
     createNotification({
 
-      userId:
-        parentComment.authorId,
+  userId:
+    parentComment.authorId,
 
-      type:
-        "COMMENT_REPLY",
+  actorId:
+    userId,
 
-      title:
-        "New Reply",
+  type:
+    "COMMENT_REPLY",
 
-      message:
-        `${comment.author.profile?.fullName || comment.author.username} replied to your comment`,
-    }).catch(console.error);
+  title:
+    "New Reply",
+
+  message:
+    `${comment.author.profile?.fullName || comment.author.username} replied to your comment`,
+
+  entityType:
+    "COMMENT",
+
+  entityId:
+    parentComment.id,
+
+  actionUrl:
+    `/posts/${postId}`,
+
+  metadata: {
+
+    postId,
+
+    commentId:
+      parentComment.id,
+  },
+
+  groupKey:
+    `comment-reply-${parentComment.id}`,
+}).catch(console.error);
 
     //
     // Affinity
@@ -678,18 +751,41 @@ if (data.mentions?.length) {
 
         return createNotification({
 
-          userId:
-            mentionedUserId,
+  userId:
+    mentionedUserId,
 
-          type:
-            "COMMENT_MENTION",
+  actorId:
+    userId,
 
-          title:
-            "Mentioned In Comment",
+  type:
+    "COMMENT_MENTION",
 
-          message:
-            `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
-        });
+  title:
+    "Mentioned in a comment",
+
+  message:
+    `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
+
+  entityType:
+    "COMMENT",
+
+  entityId:
+    comment.id,
+
+  actionUrl:
+    `/posts/${postId}`,
+
+  metadata: {
+
+    postId,
+
+    commentId:
+      comment.id,
+  },
+
+  groupKey:
+    `comment-mention-${comment.id}`,
+});
       }
     )
   );
@@ -706,6 +802,15 @@ if (data.mentions?.length) {
         )
     )
   );
+}
+
+if (userId) {
+
+  trackInteraction(userId, {
+    targetId: postId,
+    targetType: "POST",
+    interactionType: "COMMENT",
+  }).catch(console.error);
 }
 
   return comment;
@@ -778,71 +883,124 @@ export const toggleLike = async (  userId: string, postId: string) => {
       liked: false,
     };
   }
+//
+// LIKE
+//
+await prisma.like.create({
+  data: {
+    postId,
+    userId,
+  },
+});
 
-  //
-  // LIKE
-  //
-  await prisma.like.create({
-    data: {
-      postId,
+await prisma.post.update({
+
+  where: {
+    id: postId,
+  },
+
+  data: {
+
+    likesCount: {
+      increment: 1,
+    },
+
+    engagementScore: {
+      increment: 1,
+    },
+  },
+});
+
+//
+// Affinity
+//
+if (
+  post.authorId !== userId
+) {
+
+  await calculateUserAffinity(
+    userId,
+    post.authorId
+  );
+
+  await calculateUserAffinity(
+    post.authorId,
+    userId
+  );
+}
+
+//
+// Notify
+//
+if (
+  post.authorId !== userId
+) {
+
+  const liker =
+    await prisma.user.findUnique({
+
+      where: {
+        id: userId,
+      },
+
+      include: {
+        profile: true,
+      },
+    });
+
+  createNotification({
+
+    userId:
+      post.authorId,
+
+    actorId:
       userId,
-    },
-  });
 
-  await prisma.post.update({
+    type:
+      "LIKE",
 
-    where: {
-      id: postId,
-    },
+    title:
+      "New Like",
 
-    data: {
+    message:
+      `${liker?.profile?.fullName || liker?.username} liked your post`,
 
-      likesCount: {
-        increment: 1,
-      },
+    entityType:
+      "POST",
 
-      engagementScore: {
-        increment: 1,
-      },
-    },
-  });
+    entityId:
+      postId,
 
-  //
-  // Notify
-  //
-  if (
-    post.authorId !== userId
-  ) {
+    actionUrl:
+      `/posts/${postId}`,
 
-    const liker = await prisma.user.findUnique({
-    where: {
-      id: userId,
+    metadata: {
+      postId,
     },
 
-    include: {
-      profile: true,
-    },
-  });
+    groupKey:
+      `post-like-${postId}`,
+  }).catch(console.error);
+}
 
-    createNotification({
+//
+// Track interaction
+//
+trackInteraction(userId, {
 
-      userId:
-        post.authorId,
+  targetId:
+    postId,
 
-      type:
-        "LIKE",
+  targetType:
+    "POST",
 
-      title:
-        "New Like",
+  interactionType:
+    "LIKE",
+}).catch(console.error);
 
-      message:
-  `${liker?.profile?.fullName || liker?.username} liked your post`,
-    }).catch(console.error);
-  }
-
-  return {
-    liked: true,
-  };
+return {
+  liked: true,
+};
 };
 
 // REPOST POST
@@ -894,8 +1052,7 @@ export const repostPost =  async (
       );
     }
 
-    const repost =
-      await prisma.postShare.create({
+    const repost =  await prisma.postShare.create({
 
         data: {
 
@@ -982,18 +1139,37 @@ export const repostPost =  async (
 
       createNotification({
 
-        userId:
-          post.authorId,
+  userId:
+    post.authorId,
 
-        type:
-          "POST_SHARED",
+  actorId:
+    userId,
 
-        title:
-          "Post Shared",
+  type:
+    "POST_SHARED",
 
-        message:
-          `${repost.user.profile?.fullName || repost.user.username} reposted your post`,
-      }).catch(console.error);
+  title:
+    "Post Reposted",
+
+  message:
+    `${repost.user.profile?.fullName || repost.user.username} reposted your post`,
+
+  entityType:
+    "POST",
+
+  entityId:
+    postId,
+
+  actionUrl:
+    `/posts/${postId}`,
+
+  metadata: {
+    postId,
+  },
+
+  groupKey:
+    `post-share-${postId}`,
+}).catch(console.error);
     }
 
     return repost;
@@ -1062,36 +1238,125 @@ export const toggleSavePost =  async (
     }
 
     //
-    // SAVE
-    //
-    await prisma.savedPost.create({
-      data: {
-        userId,
-        postId,
-      },
-    });
+// SAVE
+//
+await prisma.savedPost.create({
+  data: {
+    userId,
+    postId,
+  },
+});
 
-    await prisma.post.update({
+await prisma.post.update({
+
+  where: {
+    id: postId,
+  },
+
+  data: {
+
+    saveCount: {
+      increment: 1,
+    },
+
+    engagementScore: {
+      increment: 2,
+    },
+  },
+});
+
+//
+// Affinity
+//
+if (
+  post.authorId !== userId
+) {
+
+  await calculateUserAffinity(
+    userId,
+    post.authorId
+  );
+
+  await calculateUserAffinity(
+    post.authorId,
+    userId
+  );
+}
+
+//
+// Track interaction
+//
+trackInteraction(userId, {
+
+  targetId:
+    postId,
+
+  targetType:
+    "POST",
+
+  interactionType:
+    "SAVE",
+}).catch(console.error);
+
+//
+// Advanced notification
+//
+if (
+  post.authorId !== userId
+) {
+
+  const saver =
+    await prisma.user.findUnique({
 
       where: {
-        id: postId,
+        id: userId,
       },
 
-      data: {
-
-        saveCount: {
-          increment: 1,
-        },
-
-        engagementScore: {
-          increment: 2,
-        },
+      include: {
+        profile: true,
       },
     });
 
-    return {
-      saved: true,
-    };
+  createNotification({
+
+    userId:
+      post.authorId,
+
+    actorId:
+      userId,
+
+    type:
+      "SAVE",
+
+    title:
+      "Post Saved",
+
+    message:
+      `${saver?.profile?.fullName || saver?.username} saved your post`,
+
+    entityType:
+      "POST",
+
+    entityId:
+      postId,
+
+    actionUrl:
+      `/posts/${postId}`,
+
+    metadata: {
+      postId,
+    },
+
+    groupKey:
+      `post-save-${postId}`,
+  }).catch(console.error);
+}
+
+return {
+  saved: true,
+};
+
+
   };
 
 // DELETE COMMENT
