@@ -1,11 +1,6 @@
 import prisma from "shared/database/prisma";
 
-type FeedItemType =
-  | "POST"
-  | "PROJECT"
-  | "HACKATHON"
-  | "JOB"
-  | "COMPANY";
+type FeedItemType = "POST" | "PROJECT" | "HACKATHON" | "JOB" | "COMPANY";
 
 interface FeedItem {
   type: FeedItemType;
@@ -13,334 +8,119 @@ interface FeedItem {
   data: any;
 }
 
-export const applyAiFeedRanking =  async (
-    userId: string,
-    feed: FeedItem[]
-  ) => {
+export const applyAiFeedRanking = async (
+  feed: FeedItem[],
 
-    //
-    // USER INTEREST PROFILE
-    //
-    const interestProfile =
-      await prisma.userInterestProfile.findUnique({
-        where: {
-          userId,
-        },
-      });
+  context: {
+    affinityMap: Map<string, number>;
 
-    //
-    // USER AFFINITIES
-    //
-    const affinities =
-      await prisma.userAffinity.findMany({
-        where: {
-          userId,
-          score: {
-            gt: 20,
-          },
-        },
+    interactionMap: Map<string, number>;
 
-        take: 100,
-      });
+    skillNames: string[];
+  },
+) => {
+  // AI RE-RANKING
+  const rankedFeed = feed.map((item) => {
+    let score = item.score;
 
-    const affinityMap =
-      new Map(
-        affinities.map(
-          (a) => [
-            a.targetUserId,
-            a.score,
-          ]
-        )
-      );
+    // AUTHOR AFFINITY BOOST
 
-    //
-    // INTERACTION MEMORY
-    //
-    const interactions =
-      await prisma.feedInteraction.findMany({
-        where: {
-          userId,
-        },
+    const authorId =
+      item.data.authorId ||
+      item.data.ownerId ||
+      item.data.createdById ||
+      item.data.postedById;
 
-        orderBy: {
-          createdAt: "desc",
-        },
-
-        take: 300,
-      });
-
-    //
-    // BUILD INTERACTION PREFERENCES
-    //
-    const interactionPreferences =
-      new Map<string, number>();
-
-    for (
-      const interaction of interactions
-    ) {
-
-      const key =
-        `${interaction.targetType}:${interaction.targetId}`;
-
-      const current =
-        interactionPreferences.get(
-          key
-        ) || 0;
-
-      let boost = 1;
-
-      switch (
-        interaction.interactionType
-      ) {
-
-        case "LIKE":
-          boost = 6;
-          break;
-
-        case "SAVE":
-          boost = 8;
-          break;
-
-        case "CLICK":
-          boost = 3;
-          break;
-
-        case "APPLY":
-          boost = 10;
-          break;
-
-        case "OPEN_PROJECT":
-          boost = 5;
-          break;
-
-        case "OPEN_PROFILE":
-          boost = 4;
-          break;
-
-        case "SHARE":
-          boost = 9;
-          break;
-
-        default:
-          boost = 1;
-      }
-
-      interactionPreferences.set(
-        key,
-        current + boost
-      );
+    if (authorId && context.affinityMap.has(authorId)) {
+      score += (context.affinityMap.get(authorId) || 0) * 1.5;
     }
 
-    //
-    // AI RE-RANKING
-    //
-    const rankedFeed =
-      feed.map((item) => {
+    // INTERACTION MEMORY BOOST
+    const interactionKey = `${item.type}:${item.data.id}`;
 
-        let score =
-          item.score;
+    const interactionScore = context.interactionMap.get(interactionKey) || 0;
 
-        //
-        // AUTHOR AFFINITY BOOST
-        //
-        const authorId =
-          item.data.authorId ||
-          item.data.ownerId ||
-          item.data.createdById ||
-          item.data.postedById;
+    score += interactionScore * 4;
 
-        if (
-          authorId &&
-          affinityMap.has(
-            authorId
-          )
-        ) {
+    // SKILL VECTOR BOOST
+    if (context.skillNames.length) {
+      const preferredSkills = context.skillNames;
 
-          score +=
-            (
-              affinityMap.get(
-                authorId
-              ) || 0
-            ) * 1.5;
-        }
+      // POSTS
+      if (item.type === "POST") {
+        const content = item.data.content?.toLowerCase() || "";
 
-        //
-        // INTERACTION MEMORY BOOST
-        //
-        const interactionKey =
-          `${item.type}:${item.data.id}`;
-
-        const interactionScore =
-          interactionPreferences.get(
-            interactionKey
-          ) || 0;
-
-        score +=
-          interactionScore * 4;
-
-        //
-        // SKILL VECTOR BOOST
-        //
-        if (
-          interestProfile
-        ) {
-
-          const preferredSkills =
-            Array.isArray(
-              interestProfile.interestedSkills
-            )
-              ? interestProfile.interestedSkills
-              : [];
-
-          //
-          // POSTS
-          //
+        for (const skill of preferredSkills) {
           if (
-            item.type ===
-            "POST"
+            typeof skill === "string" &&
+            content.includes(skill.toLowerCase())
           ) {
-
-            const content =
-              item.data.content?.toLowerCase() ||
-              "";
-
-            for (
-              const skill of preferredSkills
-            ) {
-
-              if (
-                typeof skill ===
-                  "string" &&
-                content.includes(
-                  skill.toLowerCase()
-                )
-              ) {
-                score += 15;
-              }
-            }
-          }
-
-          //
-          // PROJECTS
-          //
-          if (
-            item.type ===
-            "PROJECT"
-          ) {
-
-            const techStack =
-              Array.isArray(
-                item.data.techStack
-              )
-                ? item.data.techStack
-                : [];
-
-            const overlap =
-              techStack.filter(
-                (
-                  tech: any
-                ) =>
-                  typeof tech ===
-                    "string" &&
-                  preferredSkills.includes(
-                    tech
-                      .toLowerCase()
-                  )
-              );
-
-            score +=
-              overlap.length * 18;
-          }
-
-          //
-          // JOBS
-          //
-          if (
-            item.type ===
-            "JOB"
-          ) {
-
-            const overlap =
-              item.data.skillsRequired.filter(
-                (
-                  skill: string
-                ) =>
-                  preferredSkills.includes(
-                    skill.toLowerCase()
-                  )
-              );
-
-            score +=
-              overlap.length * 20;
+            score += 15;
           }
         }
+      }
 
-        //
-        // HIGH QUALITY CREATOR BOOST
-        //
-        const creatorEngineeringScore =
-          item.data.author
-            ?.engineeringScore ||
-          item.data.owner
-            ?.engineeringScore ||
-          item.data.createdBy
-            ?.engineeringScore ||
-          0;
+      // PROJECTS
+      if (item.type === "PROJECT") {
+        const techStack = Array.isArray(item.data.techStack)
+          ? item.data.techStack
+          : [];
 
-        score +=
-          creatorEngineeringScore *
-          0.04;
+        const overlap = techStack.filter(
+          (tech: any) =>
+            typeof tech === "string" &&
+            preferredSkills.includes(tech.toLowerCase()),
+        );
 
-        //
-        // DIVERSITY PENALTY
-        //
-        if (
-          item.type ===
-          "COMPANY"
-        ) {
-          score -= 20;
-        }
+        score += overlap.length * 18;
+      }
 
-        //
-        // ELITE ENGINEERS BOOST
-        //
-        const creatorTrustLevel =
-          item.data.author
-            ?.trustLevel ||
-          item.data.owner
-            ?.trustLevel ||
-          item.data.createdBy
-            ?.trustLevel;
+      // JOBS
+      if (item.type === "JOB") {
+        const overlap = item.data.skillsRequired.filter((skill: string) =>
+          preferredSkills.includes(skill.toLowerCase()),
+        );
 
-        if (
-          creatorTrustLevel ===
-          "ELITE"
-        ) {
-          score += 120;
-        }
+        score += overlap.length * 20;
+      }
+    }
 
-        if (
-          creatorTrustLevel ===
-          "ADVANCED"
-        ) {
-          score += 70;
-        }
+    // HIGH QUALITY CREATOR BOOST
+    const creatorEngineeringScore =
+      item.data.author?.engineeringScore ||
+      item.data.owner?.engineeringScore ||
+      item.data.createdBy?.engineeringScore ||
+      0;
 
-        return {
-          ...item,
-          aiScore:
-            Math.round(score),
-        };
-      });
+    score += creatorEngineeringScore * 0.04;
 
-    //
-    // FINAL AI SORT
-    //
-    rankedFeed.sort(
-      (a, b) =>
-        b.aiScore -
-        a.aiScore
-    );
+    // DIVERSITY PENALTY
+    if (item.type === "COMPANY") {
+      score -= 20;
+    }
 
-    return rankedFeed;
-  };
+    // ELITE ENGINEERS BOOST
+    const creatorTrustLevel =
+      item.data.author?.trustLevel ||
+      item.data.owner?.trustLevel ||
+      item.data.createdBy?.trustLevel;
+
+    if (creatorTrustLevel === "ELITE") {
+      score += 120;
+    }
+
+    if (creatorTrustLevel === "ADVANCED") {
+      score += 70;
+    }
+
+    return {
+      ...item,
+      aiScore: Math.round(score),
+    };
+  });
+
+  // FINAL AI SORT
+  rankedFeed.sort((a, b) => b.aiScore - a.aiScore);
+
+  return rankedFeed;
+};

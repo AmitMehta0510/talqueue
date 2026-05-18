@@ -57,6 +57,17 @@ enum MessageType {
   SYSTEM
 }
 
+enum CommunityCategory {
+  GENERAL
+  PLACEMENTS
+  REFERRALS
+  INTERVIEWS
+  SALARIES
+  ANNOUNCEMENTS
+  RESOURCES
+  EVENTS
+}
+
 enum CompanyCommunityRole {
   MEMBER
   MODERATOR
@@ -427,6 +438,12 @@ model User {
   collegeMemberships CollegeMembership[]
   companyCommunities CompanyCommunityMembership[]
 
+  recommendationImpressions RecommendationImpression[]
+
+  feedAnalytics FeedAnalytics[]
+
+  recommendationSnapshots RecommendationSnapshot[]
+
   posts    Post[]
   comments Comment[]
   likes    Like[]
@@ -480,11 +497,41 @@ model User {
   conversationParticipants ConversationParticipant[]
   createdConversations Conversation[] @relation("ConversationCreator")
   sentNotifications Notification[] @relation("notificationActor")
+  recommendationsGiven UserRecommendation[] @relation("recommendationSource")
+
+  recommendationsReceived UserRecommendation[] @relation("recommendationTarget")
 
   sentMessages     Message[]
   postShares       PostShare[]
   savedPosts       SavedPost[]
   messageReactions MessageReaction[]
+}
+
+model UserRecommendation {
+
+  id String @id @default(uuid())
+
+  userId String
+
+  recommendedUserId String
+
+  recommendationType String
+
+  score Float
+
+  reason String?
+
+  clicked Boolean @default(false)
+
+  dismissed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User@relation(  "recommendationSource",  fields: [userId],  references: [id],  onDelete: Cascade)
+
+  recommendedUser User@relation(  "recommendationTarget",  fields: [recommendedUserId],  references: [id],  onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Role {
@@ -764,6 +811,14 @@ model Post {
   content String
 
   type PostType
+
+  announcement Boolean @default(false)
+  anonymous Boolean @default(false)
+
+  discoverable Boolean @default(true)
+
+  resourceUrl String?
+  resourceType String?
 
   //
   // MEDIA
@@ -1085,6 +1140,8 @@ model Project {
 
   searchScore Float @default(0)
 
+  trendingScore Float @default(0)
+
   collaborationScore Float @default(0)
 
   searchTags String[]
@@ -1355,6 +1412,8 @@ model Hackathon {
 
   searchScore Float @default(0)
 
+  trendingScore Float @default(0)
+
   tags String[]
 
   difficultyLevel String?
@@ -1584,6 +1643,8 @@ model Conversation {
 
   type ConversationType
 
+  category CommunityCategory?
+
   title String?
 
   description String?
@@ -1615,6 +1676,8 @@ model Conversation {
   college College? @relation(fields: [collegeId], references: [id])
 
   department Department? @relation(fields: [departmentId], references: [id])
+
+  companyCommunity CompanyCommunity? @relation(fields: [companyCommunityId], references: [id])
 
   project Project? @relation(fields: [projectId], references: [id])
 
@@ -1922,6 +1985,7 @@ model CompanyCommunity {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   memberships CompanyCommunityMembership[]
+  conversations Conversation[]
 
   posts Post[]
 
@@ -1932,6 +1996,8 @@ model CompanyCommunityMembership {
   id String @id @default(uuid())
 
   communityId String
+
+  communityScore Float @default(0)
 
   userId String
 
@@ -2289,4 +2355,129 @@ model UserInterestProfile {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecommendationImpression {
+
+  id String @id @default(uuid())
+
+  userId String
+
+  entityType FeedItemType
+
+  entityId String
+
+  shownCount Int @default(1)
+
+  clicked Boolean @default(false)
+
+  hidden Boolean @default(false)
+
+  dismissed Boolean @default(false)
+
+  position Int?
+
+  score Float?
+
+  source String?
+
+  lastShownAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityType, entityId])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+model FeedAnalytics {
+
+  id String @id @default(uuid())
+
+  userId String
+
+  entityType FeedItemType
+
+  entityId String
+
+  impression Boolean @default(false)
+
+  clicked Boolean @default(false)
+
+  liked Boolean @default(false)
+
+  saved Boolean @default(false)
+
+  shared Boolean @default(false)
+
+  applied Boolean @default(false)
+
+  watchTime Int?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+model RecommendationSnapshot {
+
+  id String @id @default(uuid())
+
+  userId String
+
+  topSkills Json?
+
+  topInterests Json?
+
+  topCommunities Json?
+
+  dominantRole String?
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TrendingSnapshot {
+
+  id String @id @default(uuid())
+
+  entityId String
+
+  entityType FeedItemType
+
+  score Float
+
+  velocityScore Float
+
+  engagementDelta Float
+
+  calculatedAt DateTime @default(now())
+
+  @@index([entityType])
+  @@index([score])
+  @@unique([entityId, entityType])
+}
+
+model RecommendationCache {
+
+  id String @id @default(uuid())
+
+  userId String
+
+  recommendationType String
+
+  data Json
+
+  generatedAt DateTime @default(now())
+
+  expiresAt DateTime
+
+  @@index([userId])
 }

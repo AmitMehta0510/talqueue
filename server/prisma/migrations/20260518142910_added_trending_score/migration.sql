@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Hackathon" ADD COLUMN     "trendingScore" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Project" ADD COLUMN     "trendingScore" DOUBLE PRECISION NOT NULL DEFAULT 0;

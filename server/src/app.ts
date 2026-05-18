@@ -26,7 +26,10 @@ import interactionTrackingRoutes from "modules/interaction/interaction-tracking.
 import affinityRoutes from "modules/affinity/affinity.routes";
 import candidateRankingRoutes from "modules/analytics/candidate-ranking.routes";
 import engineeringRoutes from "modules/engineering/engineering.routes";
-
+import collegeCommunityRoutes from "modules/college-community/college-community.route";
+import discoveryRoutes from "modules/discovery/discovery.routes";
+import trendingRoutes from "modules/trending/trending.routes";
+import {startTrendingCron,} from "modules/trending/trending.cron";
 
 const app = express();
 
@@ -57,6 +60,10 @@ app.use("/api/v1/interactions",interactionTrackingRoutes);
 app.use("/api/v1/affinity",affinityRoutes);
 app.use("/api/v1/analytics",candidateRankingRoutes);
 app.use("/api/v1/engineering", engineeringRoutes);
+app.use("/api/v1/college-community",collegeCommunityRoutes);
+app.use("/api/v1/discovery",discoveryRoutes);
+app.use("/trending",trendingRoutes);
+startTrendingCron();
 
 app.get("/", (req, res) => {
   res.send("API Running Perfect!");
