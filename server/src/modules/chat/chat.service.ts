@@ -234,7 +234,7 @@ export const sendMessage = async (
     type?: any;
     attachments?: any;
     replyToMessageId?: string;
-  }
+  },
 ) => {
   const participant = await prisma.conversationParticipant.findFirst({
     where: {
@@ -328,7 +328,7 @@ export const sendMessage = async (
     participants.map(async (p) => {
       await calculateUserAffinity(userId, p.userId);
       await calculateUserAffinity(p.userId, userId);
-    })
+    }),
   );
 
   createActivity(userId, "MESSAGE_SENT", "Sent a message", "Sent a message", {
@@ -370,7 +370,7 @@ export const sendMessage = async (
 
 export const markConversationAsRead = async (
   userId: string,
-  conversationId: string
+  conversationId: string,
 ) => {
   const participant = await prisma.conversationParticipant.findFirst({
     where: {
@@ -419,7 +419,7 @@ export const markConversationAsRead = async (
           },
         },
       });
-    })
+    }),
   );
 
   return {
@@ -854,5 +854,3 @@ export const toggleArchiveConversation = async (
     },
   });
 };
-
-

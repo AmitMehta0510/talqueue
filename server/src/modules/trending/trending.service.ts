@@ -10,9 +10,7 @@ const calculateHoursOld = (createdAt: Date) => {
   );
 };
 
-//
 // POSTS
-//
 export const calculateTrendingPosts = async () => {
   const posts = await prisma.post.findMany({
     where: {
@@ -38,9 +36,7 @@ export const calculateTrendingPosts = async () => {
 
       const trendingScore = velocityScore + (post.engagementScore || 0) * 0.3;
 
-      //
       // PARALLEL UPSERTS
-      //
       await Promise.all([
         prisma.post.update({
           where: {
@@ -88,9 +84,7 @@ export const calculateTrendingPosts = async () => {
   );
 };
 
-//
 // PROJECTS
-//
 export const calculateTrendingProjects = async () => {
   const projects = await prisma.project.findMany({
     where: {
@@ -176,10 +170,7 @@ export const calculateTrendingProjects = async () => {
     }),
   );
 };
-
-//
 // HACKATHONS
-//
 export const calculateTrendingHackathons = async () => {
   const hackathons = await prisma.hackathon.findMany({
     where: {
@@ -268,9 +259,113 @@ export const calculateTrendingHackathons = async () => {
   );
 };
 
-//
+// COMMUNITIES
+export const calculateTrendingCommunities = async () => {
+  const communities = await prisma.community.findMany({
+    where: {
+      archived: false,
+    },
+
+    include: {
+      _count: {
+        select: {
+          members: true,
+
+          posts: true,
+
+          conversations: true,
+        },
+      },
+    },
+
+    take: 100,
+  });
+
+  await Promise.all(
+    communities.map(async (community) => {
+      const hoursOld = calculateHoursOld(community.createdAt);
+
+      // ENGAGEMENT
+      let engagement = 0;
+
+      // Members
+      engagement += community._count.members * 4;
+
+      // Posts
+      engagement += community._count.posts * 6;
+
+      // Conversations
+      engagement += community._count.conversations * 8;
+
+      // Verified
+      if (community.verified) {
+        engagement += 100;
+      }
+
+      // Public boost
+      if (community.visibility === "PUBLIC") {
+        engagement += 30;
+      }
+
+      // Velocity
+      const velocityScore = engagement / (hoursOld + 2);
+
+      // Final trending
+      const trendingScore = velocityScore + engagement * 0.4;
+
+      // UPDATE + SNAPSHOT
+      await Promise.all([
+        prisma.community.update({
+          where: {
+            id: community.id,
+          },
+
+          data: {
+            trendingScore,
+
+            activityScore: engagement,
+
+            memberCount: community._count.members,
+          },
+        }),
+
+        prisma.trendingSnapshot.upsert({
+          where: {
+            entityId_entityType: {
+              entityId: community.id,
+
+              entityType: "COMMUNITY",
+            },
+          },
+
+          update: {
+            score: trendingScore,
+
+            velocityScore,
+
+            engagementDelta: engagement,
+
+            calculatedAt: new Date(),
+          },
+
+          create: {
+            entityId: community.id,
+
+            entityType: "COMMUNITY",
+
+            score: trendingScore,
+
+            velocityScore,
+
+            engagementDelta: engagement,
+          },
+        }),
+      ]);
+    }),
+  );
+};
+
 // REFRESH
-//
 export const refreshTrendingSnapshots = async () => {
   await Promise.all([
     calculateTrendingPosts(),
@@ -278,11 +373,11 @@ export const refreshTrendingSnapshots = async () => {
     calculateTrendingProjects(),
 
     calculateTrendingHackathons(),
+
+    calculateTrendingCommunities(),
   ]);
 
-  //
   // CACHE CLEANUP
-  //
   await prisma.recommendationCache.deleteMany({
     where: {
       expiresAt: {
@@ -296,9 +391,7 @@ export const refreshTrendingSnapshots = async () => {
   };
 };
 
-//
 // TRENDING FEED
-//
 export const getTrendingFeed = async () => {
   const snapshots = await prisma.trendingSnapshot.findMany({
     orderBy: {
@@ -308,14 +401,14 @@ export const getTrendingFeed = async () => {
     take: 100,
   });
 
-  //
   // GROUP IDS
-  //
   const postIds: string[] = [];
 
   const projectIds: string[] = [];
 
   const hackathonIds: string[] = [];
+
+  const communityIds: string[] = [];
 
   for (const snapshot of snapshots) {
     switch (snapshot.entityType) {
@@ -333,13 +426,16 @@ export const getTrendingFeed = async () => {
         hackathonIds.push(snapshot.entityId);
 
         break;
+
+      case "COMMUNITY":
+        communityIds.push(snapshot.entityId);
+
+        break;
     }
   }
 
-  //
   // PARALLEL FETCH
-  //
-  const [posts, projects, hackathons] = await Promise.all([
+  const [posts, projects, hackathons, communities] = await Promise.all([
     prisma.post.findMany({
       where: {
         id: {
@@ -393,11 +489,35 @@ export const getTrendingFeed = async () => {
         createdBy: true,
       },
     }),
+
+    prisma.community.findMany({
+      where: {
+        id: {
+          in: communityIds,
+        },
+      },
+
+      include: {
+        createdBy: {
+          include: {
+            profile: true,
+          },
+        },
+
+        _count: {
+          select: {
+            members: true,
+
+            posts: true,
+
+            conversations: true,
+          },
+        },
+      },
+    }),
   ]);
 
-  //
   // FAST LOOKUP MAPS
-  //
   const postMap = new Map(posts.map((post) => [post.id, post]));
 
   const projectMap = new Map(projects.map((project) => [project.id, project]));
@@ -406,9 +526,11 @@ export const getTrendingFeed = async () => {
     hackathons.map((hackathon) => [hackathon.id, hackathon]),
   );
 
-  //
+  const communityMap = new Map(
+    communities.map((community) => [community.id, community]),
+  );
+
   // BUILD FEED
-  //
   return snapshots
     .map((snapshot) => {
       let data = null;
@@ -426,6 +548,11 @@ export const getTrendingFeed = async () => {
 
         case "HACKATHON":
           data = hackathonMap.get(snapshot.entityId);
+
+          break;
+
+        case "COMMUNITY":
+          data = communityMap.get(snapshot.entityId);
 
           break;
       }

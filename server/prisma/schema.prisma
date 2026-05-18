@@ -57,24 +57,6 @@ enum MessageType {
   SYSTEM
 }
 
-enum CommunityCategory {
-  GENERAL
-  PLACEMENTS
-  REFERRALS
-  INTERVIEWS
-  SALARIES
-  ANNOUNCEMENTS
-  RESOURCES
-  EVENTS
-}
-
-enum CompanyCommunityRole {
-  MEMBER
-  MODERATOR
-  ADMIN
-  VERIFIED_EMPLOYEE
-}
-
 enum CollegeMemberRole {
   MEMBER
   MODERATOR
@@ -276,7 +258,6 @@ enum ActivityType {
   PROJECT_JOINED
   PROJECT_COMPLETED
   PROJECT_ARCHIVED
-  
 
   TEAM_CREATED
   TEAM_JOINED
@@ -356,6 +337,7 @@ enum FeedItemType {
   PROFILE
   COLLEGE
   TEAM
+  COMMUNITY
 }
 
 enum FeedInteractionType {
@@ -368,6 +350,55 @@ enum FeedInteractionType {
   APPLY
   OPEN_PROJECT
   OPEN_PROFILE
+}
+
+enum CommunityType {
+  COLLEGE
+  COMPANY
+  GENERAL
+}
+
+enum CommunityVisibility {
+  PUBLIC
+  PRIVATE
+  RESTRICTED
+}
+
+enum CommunityMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+  OWNER
+}
+
+enum CommunityCategory {
+  GENERAL
+
+  CODING
+
+  PLACEMENTS
+
+  INTERNSHIPS
+
+  REFERRALS
+
+  INTERVIEWS
+
+  SALARIES
+
+  ANNOUNCEMENTS
+
+  RESOURCES
+
+  EVENTS
+
+  STARTUPS
+
+  OPEN_SOURCE
+
+  AI
+
+  CAREER_GUIDANCE
 }
 
 model User {
@@ -429,14 +460,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile            Profile?
-  roles              UserRole[]
-  skills             UserSkill[]
-  experiences        Experience[]
-  educations         Education[]
-  codingProfiles     CodingProfile[]
-  collegeMemberships CollegeMembership[]
-  companyCommunities CompanyCommunityMembership[]
+  profile              Profile?
+  roles                UserRole[]
+  skills               UserSkill[]
+  experiences          Experience[]
+  educations           Education[]
+  codingProfiles       CodingProfile[]
+  communityMemberships CommunityMember[]
 
   recommendationImpressions RecommendationImpression[]
 
@@ -461,9 +491,9 @@ model User {
   ownedTeams      Team[]
   teamMemberships TeamMember[]
 
-  receivedInvites TeamInvite[] @relation("invitedUser")
-  sentInvites     TeamInvite[] @relation("invitedBy")
-  presence UserPresence?
+  receivedInvites TeamInvite[]  @relation("invitedUser")
+  sentInvites     TeamInvite[]  @relation("invitedBy")
+  presence        UserPresence?
 
   postedJobs      Job[]
   jobApplications JobApplication[]
@@ -495,9 +525,9 @@ model User {
   reputationEvents ReputationEvent[]
 
   conversationParticipants ConversationParticipant[]
-  createdConversations Conversation[] @relation("ConversationCreator")
-  sentNotifications Notification[] @relation("notificationActor")
-  recommendationsGiven UserRecommendation[] @relation("recommendationSource")
+  createdConversations     Conversation[]            @relation("ConversationCreator")
+  sentNotifications        Notification[]            @relation("notificationActor")
+  recommendationsGiven     UserRecommendation[]      @relation("recommendationSource")
 
   recommendationsReceived UserRecommendation[] @relation("recommendationTarget")
 
@@ -508,7 +538,6 @@ model User {
 }
 
 model UserRecommendation {
-
   id String @id @default(uuid())
 
   userId String
@@ -527,9 +556,9 @@ model UserRecommendation {
 
   createdAt DateTime @default(now())
 
-  user User@relation(  "recommendationSource",  fields: [userId],  references: [id],  onDelete: Cascade)
+  user User @relation("recommendationSource", fields: [userId], references: [id], onDelete: Cascade)
 
-  recommendedUser User@relation(  "recommendationTarget",  fields: [recommendedUserId],  references: [id],  onDelete: Cascade)
+  recommendedUser User @relation("recommendationTarget", fields: [recommendedUserId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -622,7 +651,10 @@ model College {
   departments Department[]
   profiles    Profile[]
   educations  Education[]
-  memberships CollegeMembership[]
+
+  normalizedKey String @unique
+
+  communities Community[]
 
   createdAt     DateTime       @default(now())
   posts         Post[]
@@ -643,46 +675,17 @@ model Department {
   createdAt     DateTime       @default(now())
   posts         Post[]
   conversations Conversation[]
-}
-
-model CollegeMembership {
-  id String @id @default(uuid())
-
-  userId String
-
-  collegeId String
-
-  active Boolean @default(true)
-
-  manuallyLeft Boolean @default(false)
-
-  role CollegeMemberRole @default(MEMBER)
-
-  contributionScore Float @default(0)
-
-  joinedAt DateTime @default(now())
-
-  leftAt DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, collegeId])
+  communities   Community[]
 }
 
 model Skill {
-  id String @id @default(uuid())
-
-  name String @unique
-
+  id          String      @id @default(uuid())
+  name        String      @unique
   category    String?
-  searchScore Float   @default(0)
-  verified    Boolean @default(false)
-
-  users UserSkill[]
-
-  createdAt DateTime @default(now())
+  searchScore Float       @default(0)
+  verified    Boolean     @default(false)
+  users       UserSkill[]
+  createdAt   DateTime    @default(now())
 }
 
 model UserSkill {
@@ -813,16 +816,14 @@ model Post {
   type PostType
 
   announcement Boolean @default(false)
-  anonymous Boolean @default(false)
+  anonymous    Boolean @default(false)
 
   discoverable Boolean @default(true)
 
-  resourceUrl String?
+  resourceUrl  String?
   resourceType String?
 
-  //
   // MEDIA
-  //
 
   media       Json?
   attachments Json?
@@ -833,19 +834,15 @@ model Post {
 
   mentions String[]
 
-  //
   // CONTEXT
-  //
-  collegeId          String?
-  departmentId       String?
-  companyCommunityId String?
+  collegeId    String?
+  departmentId String?
+  communityId  String?
 
   projectId   String?
   hackathonId String?
 
-  //
   // VISIBILITY
-  //
   visibility PostVisibility @default(PUBLIC)
 
   featured Boolean @default(false)
@@ -855,9 +852,7 @@ model Post {
   archivedAt DateTime?
   deletedAt  DateTime?
 
-  //
   // ANALYTICS
-  //
   shareCount Int @default(0)
 
   saveCount Int @default(0)
@@ -871,9 +866,8 @@ model Post {
 
   trendingScore Float @default(0)
 
-  //
   // RELATIONS
-  //
+
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   college College? @relation(fields: [collegeId], references: [id])
@@ -889,15 +883,16 @@ model Post {
   shares   PostShare[]
   savedBy  SavedPost[]
 
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  companyCommunity CompanyCommunity? @relation(fields: [companyCommunityId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  community Community? @relation(fields: [communityId], references: [id])
 
   @@index([authorId])
   @@index([collegeId])
   @@index([departmentId])
   @@index([createdAt])
   @@index([trendingScore])
+  @@index([communityId])
 }
 
 model PostShare {
@@ -1626,7 +1621,6 @@ model HackathonWinner {
 }
 
 model UserPresence {
-
   userId String @id
 
   online Boolean @default(false)
@@ -1651,33 +1645,30 @@ model Conversation {
 
   avatarUrl String?
 
-  public Boolean @default(false) 
+  public Boolean @default(false)
+
+  archived Boolean @default(false)
 
   createdById String?
 
   createdBy User? @relation("ConversationCreator", fields: [createdById], references: [id])
 
-  //
   // CONTEXT
-  //
-  teamId             String?
-  collegeId          String?
-  departmentId       String?
-  projectId          String?
-  hackathonId        String?
-  companyCommunityId String?
-  collegeCommunityId String?
+  teamId       String?
+  collegeId    String?
+  departmentId String?
+  projectId    String?
+  hackathonId  String?
+  communityId  String?
 
-  //
   // RELATIONS
-  //
   team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   college College? @relation(fields: [collegeId], references: [id])
 
   department Department? @relation(fields: [departmentId], references: [id])
 
-  companyCommunity CompanyCommunity? @relation(fields: [companyCommunityId], references: [id])
+  community Community? @relation(fields: [communityId], references: [id])
 
   project Project? @relation(fields: [projectId], references: [id])
 
@@ -1694,7 +1685,9 @@ model Conversation {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+
   @@index([type])
+  @@index([communityId])
 }
 
 model ConversationParticipant {
@@ -1702,17 +1695,17 @@ model ConversationParticipant {
 
   conversationId String
 
-  userId     String
+  userId String
 
   pinned Boolean @default(false)
 
   muted Boolean @default(false)
 
-  archived Boolean @default(false)
-  unreadCount Int @default(0)
+  archived    Boolean @default(false)
+  unreadCount Int     @default(0)
 
   lastDeliveredAt DateTime?
-  lastReadAt DateTime?
+  lastReadAt      DateTime?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -1759,7 +1752,7 @@ model Message {
 
   forwardedMessages Message[] @relation("ForwardedMessages")
 
-  forwardedFromMessage Message?@relation("ForwardedMessages",fields: [forwardedFromMessageId],references: [id])
+  forwardedFromMessage Message? @relation("ForwardedMessages", fields: [forwardedFromMessageId], references: [id])
 
   reactions MessageReaction[]
 
@@ -1954,66 +1947,13 @@ model Company {
 
   jobs Job[]
 
+  communities Community[]
+
   referralRequests ReferralRequest[]
 
   createdAt DateTime @default(now())
 
-  updatedAt          DateTime           @updatedAt
-  companyCommunities CompanyCommunity[]
-}
-
-model CompanyCommunity {
-  id String @id @default(uuid())
-
-  companyId String
-
-  city String
-
-  state   String?
-  country String?
-
-  slug String @unique
-
-  verified Boolean @default(false)
-
-  memberCount Int @default(0)
-
-  public Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  memberships CompanyCommunityMembership[]
-  conversations Conversation[]
-
-  posts Post[]
-
-  @@unique([companyId, city])
-}
-
-model CompanyCommunityMembership {
-  id String @id @default(uuid())
-
-  communityId String
-
-  communityScore Float @default(0)
-
-  userId String
-
-  verifiedEmployee Boolean @default(false)
-
-  active Boolean @default(true)
-
-  role CompanyCommunityRole @default(MEMBER)
-
-  joinedAt DateTime @default(now())
-
-  community CompanyCommunity @relation(fields: [communityId], references: [id], onDelete: Cascade)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([communityId, userId])
+  updatedAt DateTime @updatedAt
 }
 
 model Job {
@@ -2358,7 +2298,6 @@ model UserInterestProfile {
 }
 
 model RecommendationImpression {
-
   id String @id @default(uuid())
 
   userId String
@@ -2388,13 +2327,11 @@ model RecommendationImpression {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, entityType, entityId])
-
   @@index([userId])
   @@index([entityType, entityId])
 }
 
 model FeedAnalytics {
-
   id String @id @default(uuid())
 
   userId String
@@ -2426,7 +2363,6 @@ model FeedAnalytics {
 }
 
 model RecommendationSnapshot {
-
   id String @id @default(uuid())
 
   userId String
@@ -2445,7 +2381,6 @@ model RecommendationSnapshot {
 }
 
 model TrendingSnapshot {
-
   id String @id @default(uuid())
 
   entityId String
@@ -2460,13 +2395,12 @@ model TrendingSnapshot {
 
   calculatedAt DateTime @default(now())
 
+  @@unique([entityId, entityType])
   @@index([entityType])
   @@index([score])
-  @@unique([entityId, entityType])
 }
 
 model RecommendationCache {
-
   id String @id @default(uuid())
 
   userId String
@@ -2480,4 +2414,153 @@ model RecommendationCache {
   expiresAt DateTime
 
   @@index([userId])
+}
+
+model Community {
+  id String @id @default(uuid())
+
+  // CORE
+  name String
+
+  slug String @unique
+
+  description String?
+
+  shortDescription String?
+
+  avatarUrl String?
+
+  bannerUrl String?
+
+  type CommunityType
+
+  category CommunityCategory
+
+  visibility CommunityVisibility @default(PUBLIC)
+
+  verified Boolean @default(false)
+
+  archived Boolean @default(false)
+  archivedAt DateTime?
+
+  searchable Boolean @default(true)
+
+  featured Boolean @default(false)
+
+  // ANALYTICS
+  memberCount Int @default(0)
+
+  postCount Int @default(0)
+
+  conversationCount Int @default(0)
+
+  activityScore Float @default(0)
+
+  trendingScore Float @default(0)
+
+  // COLLEGE CONTEXT
+  collegeId String?
+
+  departmentId String?
+
+  // COMPANY CONTEXT
+  companyId String?
+
+  city String?
+
+  state String?
+
+  country String?
+
+  // GENERAL COMMUNITY
+  tags String[]
+
+  searchKeywords String[]
+
+  // ACCESS CONTROL
+  autoJoinEligible Boolean @default(false)
+
+  joinApprovalRequired Boolean @default(false)
+
+  allowExternalView Boolean @default(true)
+
+  // RELATIONS
+  college College? @relation(fields: [collegeId], references: [id])
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  members CommunityMember[]
+
+  posts Post[]
+
+  conversations Conversation[]
+
+  createdById String
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // UNIQUE CONSTRAINTS
+
+  // ONE COMMUNITY TYPE Example: IITB + CODING
+
+  @@unique([collegeId, category, slug])
+  // GOOGLE BANGALORE REFERRALS
+  @@unique([companyId, city, category, slug])
+  // INDEXES
+  @@index([type])
+  @@index([category])
+  @@index([collegeId])
+  @@index([companyId])
+  @@index([visibility])
+  @@index([activityScore])
+  @@index([trendingScore])
+  @@index([createdAt])
+}
+
+model CommunityMember {
+  id String @id @default(uuid())
+
+  communityId String
+
+  userId String
+
+  role CommunityMemberRole @default(MEMBER)
+
+  verified Boolean @default(false)
+
+  active Boolean @default(true)
+
+  muted Boolean @default(false)
+
+  pinned Boolean @default(false)
+
+  archived Boolean @default(false)
+
+  autoJoined Boolean @default(false)
+
+  contributionScore Float @default(0)
+
+  reputationScore Float @default(0)
+
+  joinedAt DateTime @default(now())
+
+  lastActiveAt DateTime?
+
+  leftAt DateTime?
+
+  // RELATIONS
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // INDEXES
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@index([communityId])
+  @@index([role])
+  @@index([active])
 }

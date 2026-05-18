@@ -4,7 +4,7 @@ const INTERACTION_WEIGHTS = {
   VIEW: 1,
   CLICK: 2,
   LIKE: 4,
-  COMMENT : 5,
+  COMMENT: 5,
   SAVE: 6,
   SHARE: 8,
   APPLY: 10,
@@ -12,205 +12,148 @@ const INTERACTION_WEIGHTS = {
   OPEN_PROFILE: 3,
 };
 
-const DAY_MS =
-  1000 * 60 * 60 * 24;
+const DAY_MS = 1000 * 60 * 60 * 24;
 
-export const trackInteraction =
-  async (
-    userId: string,
+export const trackInteraction = async (
+  userId: string,
 
+  data: {
+    targetId: string;
+
+    targetType:
+      | "POST"
+      | "PROJECT"
+      | "HACKATHON"
+      | "JOB"
+      | "COMPANY"
+      | "PROFILE"
+      | "COLLEGE"
+      | "TEAM";
+
+    interactionType:
+      | "VIEW"
+      | "CLICK"
+      | "LIKE"
+      | "COMMENT"
+      | "SAVE"
+      | "SHARE"
+      | "APPLY"
+      | "OPEN_PROJECT"
+      | "OPEN_PROFILE";
+
+    duration?: number;
+
+    metadata?: any;
+  },
+) => {
+  //
+  // Store interaction
+  //
+  const interaction = await prisma.feedInteraction.create({
     data: {
-      targetId: string;
+      userId,
 
-      targetType:
-        | "POST"
-        | "PROJECT"
-        | "HACKATHON"
-        | "JOB"
-        | "COMPANY"
-        | "PROFILE"
-        | "COLLEGE"
-        | "TEAM";
+      targetId: data.targetId,
 
-      interactionType:
-        | "VIEW"
-        | "CLICK"
-        | "LIKE"
-        | "COMMENT"
-        | "SAVE"
-        | "SHARE"
-        | "APPLY"
-        | "OPEN_PROJECT"
-        | "OPEN_PROFILE";
+      targetType: data.targetType,
 
-      duration?: number;
+      interactionType: data.interactionType,
 
-      metadata?: any;
-    }
-  ) => {
+      duration: data.duration,
 
-    //
-    // Store interaction
-    //
-    const interaction =
-      await prisma.feedInteraction.create({
-        data: {
-          userId,
+      metadata: data.metadata,
+    },
+  });
 
-          targetId:
-            data.targetId,
+  //
+  // Update profile
+  //
+  updateUserInterestProfile(userId).catch(console.error);
 
-          targetType:
-            data.targetType,
+  return interaction;
+};
 
-          interactionType:
-            data.interactionType,
+export const updateUserInterestProfile = async (userId: string) => {
+  //
+  // Recent interactions
+  //
+  const interactions = await prisma.feedInteraction.findMany({
+    where: {
+      userId,
+    },
 
-          duration:
-            data.duration,
+    orderBy: {
+      createdAt: "desc",
+    },
 
-          metadata:
-            data.metadata,
-        },
-      });
+    take: 500,
+  });
+
+  //
+  // Interest maps
+  //
+  const contentTypes: Record<string, number> = {};
+
+  const interactionTypes: Record<string, number> = {};
+
+  //
+  // Weighted scoring
+  //
+  for (const interaction of interactions) {
+    const weight = INTERACTION_WEIGHTS[interaction.interactionType] || 1;
 
     //
-    // Update profile
+    // Freshness decay
     //
-    updateUserInterestProfile(
-      userId
-    ).catch(console.error);
-
-    return interaction;
-  };
-
-export const updateUserInterestProfile =
-  async (
-    userId: string
-  ) => {
+    const daysOld = Math.floor(
+      (Date.now() - new Date(interaction.createdAt).getTime()) / DAY_MS,
+    );
 
     //
-    // Recent interactions
+    // Recent interactions stronger
     //
-    const interactions =
-      await prisma.feedInteraction.findMany({
-
-        where: {
-          userId,
-        },
-
-        orderBy: {
-          createdAt:
-            "desc",
-        },
-
-        take: 500,
-      });
+    const freshness = Math.max(1, 30 - daysOld);
 
     //
-    // Interest maps
+    // Final score
     //
-    const contentTypes:
-      Record<string, number> = {};
-
-    const interactionTypes:
-      Record<string, number> = {};
+    const score = weight * freshness;
 
     //
-    // Weighted scoring
+    // Content type
     //
-    for (
-      const interaction of interactions
-    ) {
-
-      const weight =
-        INTERACTION_WEIGHTS[
-          interaction.interactionType
-        ] || 1;
-
-      //
-      // Freshness decay
-      //
-      const daysOld =
-        Math.floor(
-          (
-            Date.now() -
-            new Date(
-              interaction.createdAt
-            ).getTime()
-          ) / DAY_MS
-        );
-
-      //
-      // Recent interactions stronger
-      //
-      const freshness =
-        Math.max(
-          1,
-          30 - daysOld
-        );
-
-      //
-      // Final score
-      //
-      const score =
-        weight * freshness;
-
-      //
-      // Content type
-      //
-      contentTypes[
-        interaction.targetType
-      ] =
-        (
-          contentTypes[
-            interaction.targetType
-          ] || 0
-        ) + score;
-
-      //
-      // Interaction type
-      //
-      interactionTypes[
-        interaction.interactionType
-      ] =
-        (
-          interactionTypes[
-            interaction.interactionType
-          ] || 0
-        ) + score;
-    }
+    contentTypes[interaction.targetType] =
+      (contentTypes[interaction.targetType] || 0) + score;
 
     //
-    // Persist profile
+    // Interaction type
     //
-    await prisma.userInterestProfile.upsert({
+    interactionTypes[interaction.interactionType] =
+      (interactionTypes[interaction.interactionType] || 0) + score;
+  }
 
-      where: {
-        userId,
-      },
+  //
+  // Persist profile
+  //
+  await prisma.userInterestProfile.upsert({
+    where: {
+      userId,
+    },
 
-      update: {
+    update: {
+      preferredContentTypes: contentTypes,
 
-        preferredContentTypes:
-          contentTypes,
+      preferredInteractionTypes: interactionTypes,
 
-        preferredInteractionTypes:
-          interactionTypes,
+      updatedAt: new Date(),
+    },
 
-        updatedAt:
-          new Date(),
-      },
+    create: {
+      userId,
 
-      create: {
+      preferredContentTypes: contentTypes,
 
-        userId,
-
-        preferredContentTypes:
-          contentTypes,
-
-        preferredInteractionTypes:
-          interactionTypes,
-      },
-    });
-  };
+      preferredInteractionTypes: interactionTypes,
+    },
+  });
+};

@@ -10,6 +10,7 @@ import {
   getSuggestedHackathons,
   getSuggestedCompanies,
   getSuggestedPosts,
+  getSuggestedCommunities,
 } from "./content-recommendation.service";
 
 export const getSuggestedProjectsHandler = asyncHandler(
@@ -49,5 +50,13 @@ export const getSuggestedPostsHandler = asyncHandler(
     const posts = await getSuggestedPosts(req.user!.id);
 
     res.json(successResponse(posts));
+  },
+);
+
+export const getSuggestedCommunitiesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const communities = await getSuggestedCommunities(req.user!.id);
+
+    res.json(successResponse(communities));
   },
 );

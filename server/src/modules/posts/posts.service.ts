@@ -11,207 +11,146 @@ import { createNotification } from "modules/notificatios/notifications.service";
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 // CREATE POST
-export const createPost = async (
-  userId: string,
-  data: any
-) => {
+export const createPost = async (userId: string, data: any) => {
+  const post = await prisma.post.create({
+    data: {
+      authorId: userId,
 
-  const post =  await prisma.post.create({
+      content: data.content,
 
-      data: {
+      type: data.type,
 
-        authorId:
-          userId,
+      media: data.media,
 
-        content:
-          data.content,
+      attachments: data.attachments,
 
-        type:
-          data.type,
+      thumbnailUrl: data.thumbnailUrl,
 
-        media:
-          data.media,
+      mentions: data.mentions || [],
 
-        attachments:
-          data.attachments,
+      visibility: data.visibility || "PUBLIC",
 
-        thumbnailUrl:
-          data.thumbnailUrl,
+      collegeId: data.collegeId,
 
-        mentions:
-          data.mentions || [],
+      departmentId: data.departmentId,
 
-        visibility:
-          data.visibility || "PUBLIC",
+      companyCommunityId: data.companyCommunityId,
 
-        collegeId:
-          data.collegeId,
+      projectId: data.projectId,
 
-        departmentId:
-          data.departmentId,
+      hackathonId: data.hackathonId,
 
-        companyCommunityId:
-          data.companyCommunityId,
+      tags: {
+        create: (data.tags || []).map((tag: string) => ({
+          tag: tag.toLowerCase(),
+        })),
+      },
+    },
 
-        projectId:
-          data.projectId,
-
-        hackathonId:
-          data.hackathonId,
-
-        tags: {
-
-          create:
-            (data.tags || []).map(
-              (tag: string) => ({
-                tag:
-                  tag.toLowerCase(),
-              })
-            ),
+    include: {
+      author: {
+        include: {
+          profile: true,
         },
       },
 
-      include: {
-        author: {
-          include: {
-            profile: true,
-          },
-        },
-
-        tags: true,
-      },
-    });
+      tags: true,
+    },
+  });
 
   //
   // Mention notifications
   //
   if (data.mentions?.length) {
-
     await Promise.all(
-      data.mentions.map(
-        (mentionedUserId: string) => {
-
-          if (
-            mentionedUserId ===
-            userId
-          ) {
-            return null;
-          }
-
-          return createNotification({
-
-  userId:
-    mentionedUserId,
-
-  actorId:
-    userId,
-
-  type:
-    "POST_MENTION",
-
-  title:
-    "Mentioned in a post",
-
-  message:
-    `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
-
-  entityType:
-    "POST",
-
-  entityId:
-    post.id,
-
-  actionUrl:
-    `/posts/${post.id}`,
-
-  metadata: {
-    postId:
-      post.id,
-  },
-
-  groupKey:
-    `post-mention-${post.id}`,
-});
+      data.mentions.map((mentionedUserId: string) => {
+        if (mentionedUserId === userId) {
+          return null;
         }
-      )
+
+        return createNotification({
+          userId: mentionedUserId,
+
+          actorId: userId,
+
+          type: "POST_MENTION",
+
+          title: "Mentioned in a post",
+
+          message: `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
+
+          entityType: "POST",
+
+          entityId: post.id,
+
+          actionUrl: `/posts/${post.id}`,
+
+          metadata: {
+            postId: post.id,
+          },
+
+          groupKey: `post-mention-${post.id}`,
+        });
+      }),
     );
   }
 
   //
-// Lightweight reputation
-//
-addReputation(
-  userId,
-  "POST_CREATED",
-  1,
-  "Created a post",
-  {
+  // Lightweight reputation
+  //
+  addReputation(userId, "POST_CREATED", 1, "Created a post", {
     postId: post.id,
+  }).catch(console.error);
+
+  //
+  // Activity
+  //
+  createActivity(
+    userId,
+    "POST_CREATED",
+    "Created a post",
+    "Published a new post",
+    {
+      postId: post.id,
+    },
+  ).catch(console.error);
+
+  //
+  // Affinity updates for mentions
+  //
+  if (data.mentions?.length) {
+    await Promise.all(
+      data.mentions.map((mentionedUserId: string) =>
+        calculateUserAffinity(userId, mentionedUserId),
+      ),
+    );
   }
-).catch(console.error);
-
-//
-// Activity
-//
-createActivity(
-  userId,
-  "POST_CREATED",
-  "Created a post",
-  "Published a new post",
-  {
-    postId: post.id,
-  }
-).catch(console.error);
-
-//
-// Affinity updates for mentions
-//
-if (data.mentions?.length) {
-
-  await Promise.all(
-    data.mentions.map(
-      (mentionedUserId: string) =>
-        calculateUserAffinity(
-          userId,
-          mentionedUserId
-        )
-    )
-  );
-}
 
   return post;
 };
 
 // GET FEED
-export const getFeed = async (
-  userId?: string
-) => {
-
+export const getFeed = async (userId?: string) => {
   return prisma.post.findMany({
-
     where: {
       deletedAt: null,
     },
 
     orderBy: [
       {
-        pinned:
-          "desc",
+        pinned: "desc",
       },
 
       {
-        trendingScore:
-          "desc",
+        trendingScore: "desc",
       },
 
       {
-        createdAt:
-          "desc",
+        createdAt: "desc",
       },
     ],
 
     include: {
-
       author: {
         include: {
           profile: {
@@ -250,88 +189,78 @@ export const getFeed = async (
 // GET POST
 export const getPostById = async (
   userId: string | undefined,
-  postId: string
+  postId: string,
 ) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
 
-  const post =
-    await prisma.post.findUnique({
-
-      where: {
-        id: postId,
+    include: {
+      author: {
+        include: {
+          profile: {
+            include: {
+              college: true,
+              department: true,
+            },
+          },
+        },
       },
 
-      include: {
+      tags: true,
 
-        author: {
-          include: {
-            profile: {
-              include: {
-                college: true,
-                department: true,
-              },
+      likes: {
+        include: {
+          user: {
+            include: {
+              profile: true,
             },
           },
         },
+      },
 
-        tags: true,
-
-        likes: {
-          include: {
-            user: {
-              include: {
-                profile: true,
-              },
-            },
-          },
+      comments: {
+        where: {
+          deletedAt: null,
         },
 
-        comments: {
-
-          where: {
-            deletedAt: null,
+        include: {
+          author: {
+            include: {
+              profile: true,
+            },
           },
 
-          include: {
-
-            author: {
-              include: {
-                profile: true,
-              },
-            },
-
-            replies: {
-              include: {
-                author: {
-                  include: {
-                    profile: true,
-                  },
+          replies: {
+            include: {
+              author: {
+                include: {
+                  profile: true,
                 },
               },
             },
           },
-
-          orderBy: {
-            createdAt:
-              "asc",
-          },
         },
 
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-            shares: true,
-            savedBy: true,
-          },
+        orderBy: {
+          createdAt: "asc",
         },
       },
-    });
+
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+          shares: true,
+          savedBy: true,
+        },
+      },
+    },
+  });
 
   if (!post) {
-    throw new AppError(
-      "Post not found",
-      404
-    );
+    throw new AppError("Post not found", 404);
   }
 
   //
@@ -349,55 +278,39 @@ export const getPostById = async (
     },
   });
 
-  if(userId){
+  if (userId) {
     if (userId) {
-
-  trackInteraction(userId, {
-    targetId: postId,
-    targetType: "POST",
-    interactionType: "VIEW",
-  }).catch(console.error);
-}
+      trackInteraction(userId, {
+        targetId: postId,
+        targetType: "POST",
+        interactionType: "VIEW",
+      }).catch(console.error);
+    }
   }
 
   return post;
 };
 
 // UPDATE POST
-export const updatePost = async (
-  userId: string,
-  postId: string,
-  data: any
-) => {
-
-  const post =
-    await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+export const updatePost = async (userId: string, postId: string, data: any) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+  });
 
   if (!post) {
-    throw new AppError(
-      "Post not found",
-      404
-    );
+    throw new AppError("Post not found", 404);
   }
 
-  if (
-    post.authorId !== userId
-  ) {
-    throw new AppError(
-      "Unauthorized",
-      403
-    );
+  if (post.authorId !== userId) {
+    throw new AppError("Unauthorized", 403);
   }
 
   //
   // Replace tags
   //
   if (data.tags) {
-
     await prisma.postTag.deleteMany({
       where: {
         postId,
@@ -406,37 +319,26 @@ export const updatePost = async (
   }
 
   return prisma.post.update({
-
     where: {
       id: postId,
     },
 
     data: {
+      content: data.content,
 
-      content:
-        data.content,
+      media: data.media,
 
-      media:
-        data.media,
+      attachments: data.attachments,
 
-      attachments:
-        data.attachments,
+      thumbnailUrl: data.thumbnailUrl,
 
-      thumbnailUrl:
-        data.thumbnailUrl,
-
-      visibility:
-        data.visibility,
+      visibility: data.visibility,
 
       tags: data.tags
         ? {
-            create:
-              data.tags.map(
-                (tag: string) => ({
-                  tag:
-                    tag.toLowerCase(),
-                })
-              ),
+            create: data.tags.map((tag: string) => ({
+              tag: tag.toLowerCase(),
+            })),
           }
         : undefined,
     },
@@ -454,32 +356,19 @@ export const updatePost = async (
 };
 
 // DELETE POST
-export const deletePost = async (
-  userId: string,
-  postId: string
-) => {
-
-  const post =
-    await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+export const deletePost = async (userId: string, postId: string) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+  });
 
   if (!post) {
-    throw new AppError(
-      "Post not found",
-      404
-    );
+    throw new AppError("Post not found", 404);
   }
 
-  if (
-    post.authorId !== userId
-  ) {
-    throw new AppError(
-      "Unauthorized",
-      403
-    );
+  if (post.authorId !== userId) {
+    throw new AppError("Unauthorized", 403);
   }
 
   await prisma.post.update({
@@ -488,8 +377,7 @@ export const deletePost = async (
     },
 
     data: {
-      deletedAt:
-        new Date(),
+      deletedAt: new Date(),
     },
   });
 
@@ -502,172 +390,133 @@ export const deletePost = async (
 export const createComment = async (
   userId: string,
   postId: string,
-  data: any
+  data: any,
 ) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
 
-  const post =  await prisma.post.findUnique({
-
-      where: {
-        id: postId,
-      },
-
-      select: {
-        id: true,
-        authorId: true,
-      },
-    });
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
 
   if (!post) {
-    throw new AppError(
-      "Post not found",
-      404
-    );
+    throw new AppError("Post not found", 404);
   }
 
-  const comment =  await prisma.comment.create({
+  const comment = await prisma.comment.create({
+    data: {
+      postId,
 
-      data: {
+      authorId: userId,
 
-        postId,
+      content: data.content,
 
-        authorId:
-          userId,
+      attachments: data.attachments,
 
-        content:
-          data.content,
+      mentions: data.mentions || [],
 
-        attachments:
-          data.attachments,
+      parentCommentId: data.parentCommentId,
+    },
 
-        mentions:
-          data.mentions || [],
-
-        parentCommentId:
-          data.parentCommentId,
-      },
-
-      include: {
-
-        author: {
-          include: {
-            profile: true,
-          },
+    include: {
+      author: {
+        include: {
+          profile: true,
         },
-
-        replies: true,
       },
-    });
 
-//
-// Increase engagement
-//
-await prisma.post.update({
-  where: {
-    id: postId,
-  },
+      replies: true,
+    },
+  });
 
-  data: {
-
-    commentsCount: {
-      increment: 1,
+  //
+  // Increase engagement
+  //
+  await prisma.post.update({
+    where: {
+      id: postId,
     },
 
-    engagementScore: {
-      increment: 2,
-    },
+    data: {
+      commentsCount: {
+        increment: 1,
+      },
 
-    trendingScore: {
-      increment: 1,
-    },
-  },
-});
+      engagementScore: {
+        increment: 2,
+      },
 
-//
-// Reputation
-//
-addReputation(
-  userId,
-  "COMMENT_CREATED",
-  1,
-  "Commented on a post",
-  {
+      trendingScore: {
+        increment: 1,
+      },
+    },
+  });
+
+  //
+  // Reputation
+  //
+  addReputation(userId, "COMMENT_CREATED", 1, "Commented on a post", {
     postId,
-  }
-).catch(console.error);
+  }).catch(console.error);
 
-//
-// Activity
-//
-createActivity(
-  userId,
-  "COMMENT_CREATED",
-  "Commented on a post",
-  "Added a comment",
-  {
-    postId,
-  }
-).catch(console.error);
-
-//
-// Affinity with post author
-//
-if (post.authorId !== userId) {
-
-  calculateUserAffinity(
+  //
+  // Activity
+  //
+  createActivity(
     userId,
-    post.authorId
+    "COMMENT_CREATED",
+    "Commented on a post",
+    "Added a comment",
+    {
+      postId,
+    },
   ).catch(console.error);
-}
+
+  //
+  // Affinity with post author
+  //
+  if (post.authorId !== userId) {
+    calculateUserAffinity(userId, post.authorId).catch(console.error);
+  }
 
   //
   // Notify author
   //
-  if (
-    post.authorId !== userId
-  ) {
-
+  if (post.authorId !== userId) {
     createNotification({
+      userId: post.authorId,
 
-  userId:
-    post.authorId,
+      actorId: userId,
 
-  actorId:
-    userId,
+      type: "COMMENT",
 
-  type:
-    "COMMENT",
+      title: "New Comment",
 
-  title:
-    "New Comment",
+      message: `${comment.author.profile?.fullName || comment.author.username} commented on your post`,
 
-  message:
-    `${comment.author.profile?.fullName || comment.author.username} commented on your post`,
+      entityType: "POST",
 
-  entityType:
-    "POST",
+      entityId: postId,
 
-  entityId:
-    postId,
+      actionUrl: `/posts/${postId}`,
 
-  actionUrl:
-    `/posts/${postId}`,
+      metadata: {
+        postId,
+      },
 
-  metadata: {
-    postId,
-  },
-
-  groupKey:
-    `post-comment-${postId}`,
-}).catch(console.error);
+      groupKey: `post-comment-${postId}`,
+    }).catch(console.error);
   }
 
   //
-// Reply notification
-//
-if (data.parentCommentId) {
-
-  const parentComment =  await prisma.comment.findUnique({
-
+  // Reply notification
+  //
+  if (data.parentCommentId) {
+    const parentComment = await prisma.comment.findUnique({
       where: {
         id: data.parentCommentId,
       },
@@ -681,184 +530,134 @@ if (data.parentCommentId) {
       },
     });
 
-  if (
-    parentComment &&
-    parentComment.authorId !== userId
-  ) {
+    if (parentComment && parentComment.authorId !== userId) {
+      createNotification({
+        userId: parentComment.authorId,
 
-    createNotification({
+        actorId: userId,
 
-  userId:
-    parentComment.authorId,
+        type: "COMMENT_REPLY",
 
-  actorId:
-    userId,
+        title: "New Reply",
 
-  type:
-    "COMMENT_REPLY",
+        message: `${comment.author.profile?.fullName || comment.author.username} replied to your comment`,
 
-  title:
-    "New Reply",
+        entityType: "COMMENT",
 
-  message:
-    `${comment.author.profile?.fullName || comment.author.username} replied to your comment`,
+        entityId: parentComment.id,
 
-  entityType:
-    "COMMENT",
+        actionUrl: `/posts/${postId}`,
 
-  entityId:
-    parentComment.id,
+        metadata: {
+          postId,
 
-  actionUrl:
-    `/posts/${postId}`,
+          commentId: parentComment.id,
+        },
 
-  metadata: {
+        groupKey: `comment-reply-${parentComment.id}`,
+      }).catch(console.error);
 
-    postId,
-
-    commentId:
-      parentComment.id,
-  },
-
-  groupKey:
-    `comment-reply-${parentComment.id}`,
-}).catch(console.error);
-
-    //
-    // Affinity
-    //
-    calculateUserAffinity(
-      userId,
-      parentComment.authorId
-    ).catch(console.error);
+      //
+      // Affinity
+      //
+      calculateUserAffinity(userId, parentComment.authorId).catch(
+        console.error,
+      );
+    }
   }
-}
 
-//
-// Mention notifications
-//
-if (data.mentions?.length) {
-
-  await Promise.all(
-    data.mentions.map(
-      (mentionedUserId: string) => {
-
-        if (
-          mentionedUserId === userId
-        ) {
+  //
+  // Mention notifications
+  //
+  if (data.mentions?.length) {
+    await Promise.all(
+      data.mentions.map((mentionedUserId: string) => {
+        if (mentionedUserId === userId) {
           return null;
         }
 
         return createNotification({
+          userId: mentionedUserId,
 
-  userId:
-    mentionedUserId,
+          actorId: userId,
 
-  actorId:
-    userId,
+          type: "COMMENT_MENTION",
 
-  type:
-    "COMMENT_MENTION",
+          title: "Mentioned in a comment",
 
-  title:
-    "Mentioned in a comment",
+          message: `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
 
-  message:
-    `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
+          entityType: "COMMENT",
 
-  entityType:
-    "COMMENT",
+          entityId: comment.id,
 
-  entityId:
-    comment.id,
+          actionUrl: `/posts/${postId}`,
 
-  actionUrl:
-    `/posts/${postId}`,
+          metadata: {
+            postId,
 
-  metadata: {
+            commentId: comment.id,
+          },
 
-    postId,
+          groupKey: `comment-mention-${comment.id}`,
+        });
+      }),
+    );
 
-    commentId:
-      comment.id,
-  },
+    //
+    // Affinity
+    //
+    await Promise.all(
+      data.mentions.map((mentionedUserId: string) =>
+        calculateUserAffinity(userId, mentionedUserId),
+      ),
+    );
+  }
 
-  groupKey:
-    `comment-mention-${comment.id}`,
-});
-      }
-    )
-  );
-
-  //
-  // Affinity
-  //
-  await Promise.all(
-    data.mentions.map(
-      (mentionedUserId: string) =>
-        calculateUserAffinity(
-          userId,
-          mentionedUserId
-        )
-    )
-  );
-}
-
-if (userId) {
-
-  trackInteraction(userId, {
-    targetId: postId,
-    targetType: "POST",
-    interactionType: "COMMENT",
-  }).catch(console.error);
-}
+  if (userId) {
+    trackInteraction(userId, {
+      targetId: postId,
+      targetType: "POST",
+      interactionType: "COMMENT",
+    }).catch(console.error);
+  }
 
   return comment;
 };
 
 // TOGGLE LIKE
-export const toggleLike = async (  userId: string, postId: string) => {
+export const toggleLike = async (userId: string, postId: string) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
 
-  const post =
-    await prisma.post.findUnique({
-
-      where: {
-        id: postId,
-      },
-
-      select: {
-        id: true,
-        authorId: true,
-      },
-    });
+    select: {
+      id: true,
+      authorId: true,
+    },
+  });
 
   if (!post) {
-    throw new AppError(
-      "Post not found",
-      404
-    );
+    throw new AppError("Post not found", 404);
   }
 
-  const existingLike =
-    await prisma.like.findUnique({
-
-      where: {
-        postId_userId: {
-          postId,
-          userId,
-        },
+  const existingLike = await prisma.like.findUnique({
+    where: {
+      postId_userId: {
+        postId,
+        userId,
       },
-    });
+    },
+  });
 
   //
   // UNLIKE
   //
   if (existingLike) {
-
     await prisma.like.delete({
       where: {
-        id:
-          existingLike.id,
+        id: existingLike.id,
       },
     });
 
@@ -868,7 +667,6 @@ export const toggleLike = async (  userId: string, postId: string) => {
       },
 
       data: {
-
         likesCount: {
           decrement: 1,
         },
@@ -883,62 +681,46 @@ export const toggleLike = async (  userId: string, postId: string) => {
       liked: false,
     };
   }
-//
-// LIKE
-//
-await prisma.like.create({
-  data: {
-    postId,
-    userId,
-  },
-});
+  //
+  // LIKE
+  //
+  await prisma.like.create({
+    data: {
+      postId,
+      userId,
+    },
+  });
 
-await prisma.post.update({
-
-  where: {
-    id: postId,
-  },
-
-  data: {
-
-    likesCount: {
-      increment: 1,
+  await prisma.post.update({
+    where: {
+      id: postId,
     },
 
-    engagementScore: {
-      increment: 1,
+    data: {
+      likesCount: {
+        increment: 1,
+      },
+
+      engagementScore: {
+        increment: 1,
+      },
     },
-  },
-});
+  });
 
-//
-// Affinity
-//
-if (
-  post.authorId !== userId
-) {
+  //
+  // Affinity
+  //
+  if (post.authorId !== userId) {
+    await calculateUserAffinity(userId, post.authorId);
 
-  await calculateUserAffinity(
-    userId,
-    post.authorId
-  );
+    await calculateUserAffinity(post.authorId, userId);
+  }
 
-  await calculateUserAffinity(
-    post.authorId,
-    userId
-  );
-}
-
-//
-// Notify
-//
-if (
-  post.authorId !== userId
-) {
-
-  const liker =
-    await prisma.user.findUnique({
-
+  //
+  // Notify
+  //
+  if (post.authorId !== userId) {
+    const liker = await prisma.user.findUnique({
       where: {
         id: userId,
       },
@@ -948,477 +730,352 @@ if (
       },
     });
 
-  createNotification({
+    createNotification({
+      userId: post.authorId,
 
-    userId:
-      post.authorId,
+      actorId: userId,
 
-    actorId:
-      userId,
+      type: "LIKE",
 
-    type:
-      "LIKE",
+      title: "New Like",
 
-    title:
-      "New Like",
+      message: `${liker?.profile?.fullName || liker?.username} liked your post`,
 
-    message:
-      `${liker?.profile?.fullName || liker?.username} liked your post`,
+      entityType: "POST",
 
-    entityType:
-      "POST",
+      entityId: postId,
 
-    entityId:
-      postId,
+      actionUrl: `/posts/${postId}`,
 
-    actionUrl:
-      `/posts/${postId}`,
+      metadata: {
+        postId,
+      },
 
-    metadata: {
-      postId,
-    },
+      groupKey: `post-like-${postId}`,
+    }).catch(console.error);
+  }
 
-    groupKey:
-      `post-like-${postId}`,
+  //
+  // Track interaction
+  //
+  trackInteraction(userId, {
+    targetId: postId,
+
+    targetType: "POST",
+
+    interactionType: "LIKE",
   }).catch(console.error);
-}
 
-//
-// Track interaction
-//
-trackInteraction(userId, {
-
-  targetId:
-    postId,
-
-  targetType:
-    "POST",
-
-  interactionType:
-    "LIKE",
-}).catch(console.error);
-
-return {
-  liked: true,
-};
+  return {
+    liked: true,
+  };
 };
 
 // REPOST POST
-export const repostPost =  async (
-    userId: string,
-    postId: string,
-    caption?: string
-  ) => {
+export const repostPost = async (
+  userId: string,
+  postId: string,
+  caption?: string,
+) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
 
-    const post =
-      await prisma.post.findUnique({
-
-        where: {
-          id: postId,
-        },
-
+    include: {
+      author: {
         include: {
-          author: {
-            include: {
-              profile: true,
-            },
-          },
+          profile: true,
         },
-      });
+      },
+    },
+  });
 
-    if (!post) {
-      throw new AppError(
-        "Post not found",
-        404
-      );
-    }
+  if (!post) {
+    throw new AppError("Post not found", 404);
+  }
 
-    const existingShare =
-      await prisma.postShare.findUnique({
+  const existingShare = await prisma.postShare.findUnique({
+    where: {
+      postId_userId: {
+        postId,
+        userId,
+      },
+    },
+  });
 
-        where: {
-          postId_userId: {
-            postId,
-            userId,
-          },
-        },
-      });
+  if (existingShare) {
+    throw new AppError("Already reposted", 400);
+  }
 
-    if (existingShare) {
+  const repost = await prisma.postShare.create({
+    data: {
+      userId,
 
-      throw new AppError(
-        "Already reposted",
-        400
-      );
-    }
+      postId,
 
-    const repost =  await prisma.postShare.create({
+      caption,
+    },
 
-        data: {
-
-          userId,
-
-          postId,
-
-          caption,
-        },
-
+    include: {
+      user: {
         include: {
-          user: {
-            include: {
-              profile: true,
-            },
-          },
-
-          post: true,
+          profile: true,
         },
-      });
+      },
+
+      post: true,
+    },
+  });
+
+  await prisma.post.update({
+    where: {
+      id: postId,
+    },
+
+    data: {
+      shareCount: {
+        increment: 1,
+      },
+
+      engagementScore: {
+        increment: 3,
+      },
+
+      trendingScore: {
+        increment: 5,
+      },
+    },
+  });
+
+  //
+  // Reputation
+  //
+  addReputation(userId, "POST_SHARED", 1, "Reposted a post", {
+    postId,
+  }).catch(console.error);
+
+  //
+  // Activity
+  //
+  createActivity(userId, "POST_SHARED", "Reposted a post", "Shared a post", {
+    postId,
+  }).catch(console.error);
+
+  //
+  // Affinity
+  //
+  calculateUserAffinity(userId, post.authorId).catch(console.error);
+
+  //
+  // Notification
+  //
+  if (post.authorId !== userId) {
+    createNotification({
+      userId: post.authorId,
+
+      actorId: userId,
+
+      type: "POST_SHARED",
+
+      title: "Post Reposted",
+
+      message: `${repost.user.profile?.fullName || repost.user.username} reposted your post`,
+
+      entityType: "POST",
+
+      entityId: postId,
+
+      actionUrl: `/posts/${postId}`,
+
+      metadata: {
+        postId,
+      },
+
+      groupKey: `post-share-${postId}`,
+    }).catch(console.error);
+  }
+
+  return repost;
+};
+
+// SAVE POST
+export const toggleSavePost = async (userId: string, postId: string) => {
+  const post = await prisma.post.findUnique({
+    where: {
+      id: postId,
+    },
+  });
+
+  if (!post) {
+    throw new AppError("Post not found", 404);
+  }
+
+  const existingSave = await prisma.savedPost.findUnique({
+    where: {
+      userId_postId: {
+        userId,
+        postId,
+      },
+    },
+  });
+
+  //
+  // UNSAVE
+  //
+  if (existingSave) {
+    await prisma.savedPost.delete({
+      where: {
+        id: existingSave.id,
+      },
+    });
 
     await prisma.post.update({
-
       where: {
         id: postId,
       },
 
       data: {
-
-        shareCount: {
-          increment: 1,
-        },
-
-        engagementScore: {
-          increment: 3,
-        },
-
-        trendingScore: {
-          increment: 5,
-        },
-      },
-    });
-
-    //
-    // Reputation
-    //
-    addReputation(
-      userId,
-      "POST_SHARED",
-      1,
-      "Reposted a post",
-      {
-        postId,
-      }
-    ).catch(console.error);
-
-    //
-    // Activity
-    //
-    createActivity(
-      userId,
-      "POST_SHARED",
-      "Reposted a post",
-      "Shared a post",
-      {
-        postId,
-      }
-    ).catch(console.error);
-
-    //
-    // Affinity
-    //
-    calculateUserAffinity(
-      userId,
-      post.authorId
-    ).catch(console.error);
-
-    //
-    // Notification
-    //
-    if (
-      post.authorId !== userId
-    ) {
-
-      createNotification({
-
-  userId:
-    post.authorId,
-
-  actorId:
-    userId,
-
-  type:
-    "POST_SHARED",
-
-  title:
-    "Post Reposted",
-
-  message:
-    `${repost.user.profile?.fullName || repost.user.username} reposted your post`,
-
-  entityType:
-    "POST",
-
-  entityId:
-    postId,
-
-  actionUrl:
-    `/posts/${postId}`,
-
-  metadata: {
-    postId,
-  },
-
-  groupKey:
-    `post-share-${postId}`,
-}).catch(console.error);
-    }
-
-    return repost;
-  };
-
-// SAVE POST
-export const toggleSavePost =  async (
-    userId: string,
-    postId: string
-  ) => {
-
-    const post =
-      await prisma.post.findUnique({
-        where: {
-          id: postId,
-        },
-      });
-
-    if (!post) {
-      throw new AppError(
-        "Post not found",
-        404
-      );
-    }
-
-    const existingSave =
-      await prisma.savedPost.findUnique({
-
-        where: {
-          userId_postId: {
-            userId,
-            postId,
-          },
-        },
-      });
-
-    //
-    // UNSAVE
-    //
-    if (existingSave) {
-
-      await prisma.savedPost.delete({
-        where: {
-          id:
-            existingSave.id,
-        },
-      });
-
-      await prisma.post.update({
-
-        where: {
-          id: postId,
-        },
-
-        data: {
-
-          saveCount: {
-            decrement: 1,
-          },
-        },
-      });
-
-      return {
-        saved: false,
-      };
-    }
-
-    //
-// SAVE
-//
-await prisma.savedPost.create({
-  data: {
-    userId,
-    postId,
-  },
-});
-
-await prisma.post.update({
-
-  where: {
-    id: postId,
-  },
-
-  data: {
-
-    saveCount: {
-      increment: 1,
-    },
-
-    engagementScore: {
-      increment: 2,
-    },
-  },
-});
-
-//
-// Affinity
-//
-if (
-  post.authorId !== userId
-) {
-
-  await calculateUserAffinity(
-    userId,
-    post.authorId
-  );
-
-  await calculateUserAffinity(
-    post.authorId,
-    userId
-  );
-}
-
-//
-// Track interaction
-//
-trackInteraction(userId, {
-
-  targetId:
-    postId,
-
-  targetType:
-    "POST",
-
-  interactionType:
-    "SAVE",
-}).catch(console.error);
-
-//
-// Advanced notification
-//
-if (
-  post.authorId !== userId
-) {
-
-  const saver =
-    await prisma.user.findUnique({
-
-      where: {
-        id: userId,
-      },
-
-      include: {
-        profile: true,
-      },
-    });
-
-  createNotification({
-
-    userId:
-      post.authorId,
-
-    actorId:
-      userId,
-
-    type:
-      "SAVE",
-
-    title:
-      "Post Saved",
-
-    message:
-      `${saver?.profile?.fullName || saver?.username} saved your post`,
-
-    entityType:
-      "POST",
-
-    entityId:
-      postId,
-
-    actionUrl:
-      `/posts/${postId}`,
-
-    metadata: {
-      postId,
-    },
-
-    groupKey:
-      `post-save-${postId}`,
-  }).catch(console.error);
-}
-
-return {
-  saved: true,
-};
-
-
-  };
-
-// DELETE COMMENT
-export const deleteComment =  async (
-    userId: string,
-    commentId: string
-  ) => {
-
-    const comment =
-      await prisma.comment.findUnique({
-
-        where: {
-          id: commentId,
-        },
-      });
-
-    if (!comment) {
-
-      throw new AppError(
-        "Comment not found",
-        404
-      );
-    }
-
-    if (
-      comment.authorId !== userId
-    ) {
-
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
-
-    await prisma.comment.update({
-
-      where: {
-        id: commentId,
-      },
-
-      data: {
-        deletedAt:
-          new Date(),
-      },
-    });
-
-    await prisma.post.update({
-
-      where: {
-        id:
-          comment.postId,
-      },
-
-      data: {
-
-        commentsCount: {
+        saveCount: {
           decrement: 1,
         },
       },
     });
 
     return {
-      success: true,
+      saved: false,
     };
+  }
+
+  //
+  // SAVE
+  //
+  await prisma.savedPost.create({
+    data: {
+      userId,
+      postId,
+    },
+  });
+
+  await prisma.post.update({
+    where: {
+      id: postId,
+    },
+
+    data: {
+      saveCount: {
+        increment: 1,
+      },
+
+      engagementScore: {
+        increment: 2,
+      },
+    },
+  });
+
+  //
+  // Affinity
+  //
+  if (post.authorId !== userId) {
+    await calculateUserAffinity(userId, post.authorId);
+
+    await calculateUserAffinity(post.authorId, userId);
+  }
+
+  //
+  // Track interaction
+  //
+  trackInteraction(userId, {
+    targetId: postId,
+
+    targetType: "POST",
+
+    interactionType: "SAVE",
+  }).catch(console.error);
+
+  //
+  // Advanced notification
+  //
+  if (post.authorId !== userId) {
+    const saver = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+
+      include: {
+        profile: true,
+      },
+    });
+
+    createNotification({
+      userId: post.authorId,
+
+      actorId: userId,
+
+      type: "SAVE",
+
+      title: "Post Saved",
+
+      message: `${saver?.profile?.fullName || saver?.username} saved your post`,
+
+      entityType: "POST",
+
+      entityId: postId,
+
+      actionUrl: `/posts/${postId}`,
+
+      metadata: {
+        postId,
+      },
+
+      groupKey: `post-save-${postId}`,
+    }).catch(console.error);
+  }
+
+  return {
+    saved: true,
   };
+};
+
+// DELETE COMMENT
+export const deleteComment = async (userId: string, commentId: string) => {
+  const comment = await prisma.comment.findUnique({
+    where: {
+      id: commentId,
+    },
+  });
+
+  if (!comment) {
+    throw new AppError("Comment not found", 404);
+  }
+
+  if (comment.authorId !== userId) {
+    throw new AppError("Unauthorized", 403);
+  }
+
+  await prisma.comment.update({
+    where: {
+      id: commentId,
+    },
+
+    data: {
+      deletedAt: new Date(),
+    },
+  });
+
+  await prisma.post.update({
+    where: {
+      id: comment.postId,
+    },
+
+    data: {
+      commentsCount: {
+        decrement: 1,
+      },
+    },
+  });
+
+  return {
+    success: true,
+  };
+};

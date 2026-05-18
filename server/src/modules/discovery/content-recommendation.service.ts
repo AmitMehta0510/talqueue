@@ -1,3 +1,4 @@
+import AppError from "../../shared/errors/AppError";
 import prisma from "shared/database/prisma";
 
 import { buildFeedContext } from "./feed-context.service";
@@ -25,8 +26,7 @@ export const getSuggestedProjects = async (userId: string) => {
 
   const memoryMap = await getRecommendationMemoryMap(userId);
 
-  const projects = await prisma.project.findMany(
-    {
+  const projects = await prisma.project.findMany({
     where: {
       visibility: "PUBLIC",
 
@@ -306,4 +306,294 @@ export const getSuggestedPosts = async (userId: string) => {
   ranked.sort((a, b) => b.recommendationScore - a.recommendationScore);
 
   return ranked.slice(0, 30);
+};
+
+// COMMUNITIES
+export const getSuggestedCommunities = async (userId: string) => {
+  const context = await buildFeedContext(userId);
+
+  const memoryMap = await getRecommendationMemoryMap(userId);
+
+  // USER
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+
+    include: {
+      educations: true,
+
+      experiences: {
+        include: {
+          company: true,
+        },
+      },
+
+      communityMemberships: {
+        select: {
+          communityId: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // EXCLUDE ALREADY JOINED
+  const joinedCommunityIds = user.communityMemberships.map(
+    (m) => m.communityId,
+  );
+
+  // COLLEGE IDS
+  const collegeIds = user.educations.map((e) => e.collegeId);
+
+  // COMPANY IDS
+  const companyIds = user.experiences.map((e) => e.companyId);
+
+  // COMMUNITIES
+  const communities = await prisma.community.findMany({
+    where: {
+      archived: false,
+
+      id: {
+        notIn: joinedCommunityIds,
+      },
+
+      OR: [
+        // Same college
+        {
+          collegeId: {
+            in: collegeIds,
+          },
+        },
+
+        // Same companies
+        {
+          companyId: {
+            in: companyIds,
+          },
+        },
+
+        // Skills overlap
+        {
+          tags: {
+            hasSome: context.skillNames,
+          },
+        },
+
+        // Search keywords overlap
+        {
+          searchKeywords: {
+            hasSome: context.skillNames,
+          },
+        },
+
+        // Trending communities
+        {
+          trendingScore: {
+            gte: 20,
+          },
+        },
+      ],
+    },
+
+    include: {
+      createdBy: {
+        include: {
+          profile: true,
+        },
+      },
+
+      _count: {
+        select: {
+          members: true,
+
+          posts: true,
+
+          conversations: true,
+        },
+      },
+    },
+
+    take: 100,
+  });
+
+  // RANKING
+  const ranked = communities.map((community) => {
+    let score = 0;
+
+    // MEMBER COUNT
+    score += community.memberCount * 0.4;
+
+    // TRENDING
+    score += community.trendingScore || 0;
+
+    // ACTIVITY
+    score += community.activityScore || 0;
+
+    // VERIFIED
+    if (community.verified) {
+      score += 80;
+    }
+
+    // COLLEGE MATCH
+    if (community.collegeId && collegeIds.includes(community.collegeId)) {
+      score += 120;
+    }
+
+    // COMPANY MATCH
+    if (community.companyId && companyIds.includes(community.companyId)) {
+      score += 100;
+    }
+
+    // SKILL OVERLAP
+    const overlap = (community.tags || []).filter((tag) =>
+      context.skillNames.includes(tag.toLowerCase()),
+    );
+
+    score += overlap.length * 25;
+
+    // MEMORY
+    const memory = memoryMap.get(`COMMUNITY:${community.id}`);
+
+    score = applyMemoryScore(memory, score);
+
+    return {
+      ...community,
+
+      recommendationScore: Math.round(score),
+    };
+  });
+
+  ranked.sort((a, b) => b.recommendationScore - a.recommendationScore);
+
+  return ranked.slice(0, 20);
+};
+
+//////////COMMUNITY RECOMMENDATIONS  /////////
+// GET COMMUNITY
+export const getCommunityBySlug = async (
+  slug: string,
+
+  page = 1,
+
+  limit = 10,
+) => {
+  const skip = (page - 1) * limit;
+
+  const community = await prisma.community.findUnique({
+    where: {
+      slug,
+    },
+
+    include: {
+      college: true,
+
+      company: true,
+
+      department: true,
+
+      //
+      // RECENT POSTS
+      //
+      posts: {
+        where: {
+          deletedAt: null,
+        },
+
+        include: {
+          author: {
+            include: {
+              profile: true,
+            },
+          },
+
+          _count: {
+            select: {
+              likes: true,
+
+              comments: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        skip,
+
+        take: limit,
+      },
+
+      //
+      // CONVERSATIONS
+      //
+      conversations: {
+        orderBy: {
+          updatedAt: "desc",
+        },
+
+        take: 10,
+      },
+
+      //
+      // ONLINE MEMBERS
+      //
+      members: {
+        where: {
+          active: true,
+
+          user: {
+            presence: {
+              online: true,
+            },
+          },
+        },
+
+        include: {
+          user: {
+            include: {
+              presence: true,
+            },
+          },
+        },
+
+        take: 20,
+      },
+    },
+  });
+
+  if (!community) {
+    throw new AppError("Community not found", 404);
+  }
+
+  return community;
+};
+
+// TRENDING COMMUNITIES
+export const getTrendingCommunities = async () => {
+  return prisma.community.findMany({
+    where: {
+      archived: false,
+    },
+
+    orderBy: [
+      {
+        activityScore: "desc",
+      },
+
+      {
+        trendingScore: "desc",
+      },
+
+      {
+        memberCount: "desc",
+      },
+    ],
+
+    take: 20,
+  });
 };

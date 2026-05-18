@@ -18,6 +18,7 @@ import {
   getSuggestedHackathonsHandler,
   getSuggestedCompaniesHandler,
   getSuggestedPostsHandler,
+  getSuggestedCommunitiesHandler,
 } from "./content-recommendation.controller";
 
 const router = Router();
@@ -52,5 +53,7 @@ router.get("/suggested-hackathons", protect, getSuggestedHackathonsHandler);
 router.get("/suggested-companies", protect, getSuggestedCompaniesHandler);
 
 router.get("/suggested-posts", protect, getSuggestedPostsHandler);
+
+router.get("/suggested-communities", protect, getSuggestedCommunitiesHandler);
 
 export default router;
