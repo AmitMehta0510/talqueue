@@ -40,9 +40,7 @@ export const calculateTrustLevel =  async (
             .verified
       ).length;
 
-    //
     // COMPLETED PROJECTS
-    //
     const completedProjects =
       user.projectMemberships.filter(
         (membership) =>
@@ -51,18 +49,14 @@ export const calculateTrustLevel =  async (
           "COMPLETED"
       ).length;
 
-    //
     // VERIFIED EXPERIENCES
-    //
     const verifiedExperiences =
       user.experiences.filter(
         (experience) =>
           experience.verified
       ).length;
 
-    //
     // HACKATHON WINS
-    //
     const hackathonWins =
       await prisma.hackathonWinner.count({
         where: {
@@ -76,9 +70,7 @@ export const calculateTrustLevel =  async (
         },
       });
 
-    //
     // VERIFIED HACKATHON WINS
-    //
     const verifiedHackathonWins =
       await prisma.hackathonWinner.count({
         where: {
@@ -97,21 +89,15 @@ export const calculateTrustLevel =  async (
         },
       });
 
-    //
     // ENGINEERING SCORE
-    //
     const engineeringScore =
       user.engineeringScore;
 
-    //
     // REPUTATION
-    //
     const reputationScore =
       user.reputationScore;
 
-    //
     // TRUST LEVEL
-    //
     let trustLevel:
       | "BEGINNER"
       | "EMERGING"
@@ -120,9 +106,7 @@ export const calculateTrustLevel =  async (
       | "ELITE" =
       "BEGINNER";
 
-    //
     // EMERGING
-    //
     if (
       engineeringScore >= 100 ||
       completedProjects >= 1
@@ -132,9 +116,7 @@ export const calculateTrustLevel =  async (
         "EMERGING";
     }
 
-    //
     // VERIFIED
-    //
     if (
 
       verifiedProjects >= 1 ||
@@ -150,9 +132,7 @@ export const calculateTrustLevel =  async (
         "VERIFIED";
     }
 
-    //
     // ADVANCED
-    //
     if (
 
       engineeringScore >= 500 &&
@@ -170,9 +150,7 @@ export const calculateTrustLevel =  async (
         "ADVANCED";
     }
 
-    //
     // ELITE
-    //
     if (
 
       engineeringScore >= 1200 &&
@@ -192,9 +170,7 @@ export const calculateTrustLevel =  async (
         "ELITE";
     }
 
-    //
     // PERSIST
-    //
     await prisma.user.update({
       where: {
         id: userId,

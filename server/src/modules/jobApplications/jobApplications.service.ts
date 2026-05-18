@@ -2,115 +2,238 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import {createNotification,} from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notificatios/notifications.service";
 
-import { addReputation,} from "modules/reputation/reputation.service";
-import { createActivity,} from "modules/activities/activity.service";
-import { trackInteraction,} from "modules/interaction/interaction-tracking.service";
-import { calculateUserAffinity,} from "modules/affinity/affinity.service";
+import { addReputation } from "modules/reputation/reputation.service";
+
+import { createActivity } from "modules/activities/activity.service";
+
+import { trackInteraction } from "modules/interaction/interaction-tracking.service";
+
+import { calculateUserAffinity } from "modules/affinity/affinity.service";
+
 import { calculateEngineeringScore } from "modules/reputation/engineering-score.service";
 
-export const applyToJob =  async (
-    userId: string,
-    jobId: string,
-    data: any
-  ) => {
+// TYPES
+interface CreateJobApplicationData {
+  resumeUrl?: string;
 
-    const job =  await prisma.job.findUnique({
-        where: {
-          id: jobId,
+  coverLetter?: string;
+
+  githubUrl?: string;
+
+  portfolioUrl?: string;
+
+  linkedinUrl?: string;
+}
+
+interface UpdateApplicationStatusData {
+  status: "VIEWED" | "SHORTLISTED" | "INTERVIEW" | "REJECTED" | "HIRED";
+
+  recruiterNotes?: string;
+}
+
+// HELPERS
+const getJobForRecruiter = async (recruiterId: string, jobId: string) => {
+  const job = await prisma.job.findFirst({
+    where: {
+      id: jobId,
+
+      postedById: recruiterId,
+
+      deletedAt: null,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+    },
+  });
+
+  if (!job) {
+    throw new AppError("Job not found or unauthorized", 404);
+  }
+
+  return job;
+};
+
+const getApplicationForRecruiter = async (
+  recruiterId: string,
+  applicationId: string,
+) => {
+  const application = await prisma.jobApplication.findFirst({
+    where: {
+      id: applicationId,
+
+      job: {
+        postedById: recruiterId,
+      },
+    },
+
+    include: {
+      job: {
+        select: {
+          id: true,
+
+          title: true,
+
+          postedById: true,
         },
+      },
 
+      applicant: {
         include: {
-          company: true,
+          profile: true,
         },
-      });
+      },
+    },
+  });
 
-    if (!job) {
-      throw new AppError(
-        "Job not found",
-        404
-      );
-    }
+  if (!application) {
+    throw new AppError("Application not found or unauthorized", 404);
+  }
 
-    if (
-      job.status !== "OPEN"
-    ) {
-      throw new AppError(
-        "Job is not open",
-        400
-      );
-    }
+  return application;
+};
 
-    // Prevent recruiter applying
-    if (
-      job.postedById === userId
-    ) {
-      throw new AppError(
-        "Cannot apply to own job",
-        400
-      );
-    }
+const getStatusTimestampData = (status: string) => {
+  const now = new Date();
 
-    // Prevent duplicate applications
-    const existingApplication =
-      await prisma.jobApplication.findUnique({
-        where: {
-          jobId_applicantId: {
-            jobId,
-            applicantId:
-              userId,
+  switch (status) {
+    case "SHORTLISTED":
+      return {
+        shortlistedAt: now,
+      };
+
+    case "INTERVIEW":
+      return {
+        interviewScheduledAt: now,
+      };
+
+    case "REJECTED":
+      return {
+        rejectedAt: now,
+      };
+
+    case "HIRED":
+      return {
+        hiredAt: now,
+      };
+
+    default:
+      return {};
+  }
+};
+
+// APPLY TO JOB
+export const applyToJob = async (
+  userId: string,
+  jobId: string,
+  data: CreateJobApplicationData,
+) => {
+  //
+  // JOB
+  //
+  const job = await prisma.job.findUnique({
+    where: {
+      id: jobId,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+
+      status: true,
+
+      companyId: true,
+
+      postedById: true,
+
+      company: {
+        select: {
+          id: true,
+
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!job) {
+    throw new AppError("Job not found", 404);
+  }
+
+  if (job.status !== "OPEN") {
+    throw new AppError("Job is not open", 400);
+  }
+
+  //
+  // RECRUITER CANNOT APPLY
+  //
+  if (job.postedById === userId) {
+    throw new AppError("Cannot apply to own job", 400);
+  }
+
+  //
+  // DUPLICATE CHECK
+  //
+  const existing = await prisma.jobApplication.findUnique({
+    where: {
+      jobId_applicantId: {
+        jobId,
+
+        applicantId: userId,
+      },
+    },
+
+    select: {
+      id: true,
+    },
+  });
+
+  if (existing) {
+    throw new AppError("Already applied", 400);
+  }
+
+  //
+  // TRANSACTION
+  //
+  const [application] = await prisma.$transaction([
+    prisma.jobApplication.create({
+      data: {
+        jobId,
+
+        applicantId: userId,
+
+        resumeUrl: data.resumeUrl,
+
+        coverLetter: data.coverLetter,
+
+        githubUrl: data.githubUrl,
+
+        portfolioUrl: data.portfolioUrl,
+
+        linkedinUrl: data.linkedinUrl,
+      },
+
+      include: {
+        applicant: {
+          include: {
+            profile: true,
           },
         },
-      });
 
-    if (existingApplication) {
-      throw new AppError(
-        "Already applied",
-        400
-      );
-    }
-
-    const application =  await prisma.jobApplication.create({
-        data: {
-          jobId,
-
-          applicantId:
-            userId,
-
-          resumeUrl:
-            data.resumeUrl,
-
-          coverLetter:
-            data.coverLetter,
-
-          githubUrl:
-            data.githubUrl,
-
-          portfolioUrl:
-            data.portfolioUrl,
-
-          linkedinUrl:
-            data.linkedinUrl,
-        },
-
-        include: {
-          applicant: {
-            include: {
-              profile: true,
-            },
-          },
-
-          job: {
-            include: {
-              company: true,
-            },
+        job: {
+          include: {
+            company: true,
           },
         },
-      });
+      },
+    }),
 
-    // Increment application count
-    await prisma.job.update({
+    prisma.job.update({
       where: {
         id: jobId,
       },
@@ -120,567 +243,475 @@ export const applyToJob =  async (
           increment: 1,
         },
       },
-    });
+    }),
+  ]);
 
-    // Notify recruiter
-    if (job.postedById) {
-
-      createNotification({
-
-  userId:
-    job.postedById,
-
-  actorId:
-    userId,
-
-  type:
-    "JOB",
-
-  title:
-    "New Job Application",
-
-  message:
-    `${application.applicant.profile?.fullName || application.applicant.username} applied for ${job.title}`,
-
-  entityType:
-    "JOB",
-
-  entityId:
-    jobId,
-
-  actionUrl:
-    `/jobs/${jobId}/applications`,
-
-  metadata: {
-    applicationId:
-      application.id,
-  },
-
-  groupKey:
-    `job-application-${jobId}`,
-}).catch(console.error);
-      
-    }
-
-//
-// Affinity
-//
-if (
-  job.postedById &&
-  job.postedById !== userId
-) {
-
-  await calculateUserAffinity(
-    userId,
-    job.postedById
-  );
-
-  await calculateUserAffinity(
-    job.postedById,
-    userId
-  );
-}
-
-//
-// Track interaction
-//
-trackInteraction(userId, {
-
-  targetId:
-    jobId,
-
-  targetType:
-    "JOB",
-
-  interactionType:
-    "APPLY",
-
-  metadata: {
-    companyId:
-      job.companyId,
-
-    recruiterId:
-      job.postedById,
-  },
-}).catch(console.error);
-
-    // Applicant reputation
-addReputation(
-  userId,
-
-  "JOB_APPLIED",
-
-  3,
-
-  "Applied to a job",
-
-  {
-    jobId,
-  }
-).catch(console.error);
-
-// Create activity
-createActivity(
-  userId,
-
-  "JOB_APPLIED",
-
-  "Applied to a job",
-
-  `Applied for "${job.title}" role`,
-
-  {
-    jobId,
-  }
-).catch(console.error);
-
-    return application;
-  };
-
-export const getMyApplications =  async (userId: string) => {
-
-    return prisma.jobApplication.findMany({
-      where: {
-        applicantId: userId,
-      },
-
-      include: {
-        job: {
-          include: {
-            company: true,
-          },
-        },
-      },
-
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  };  
-
-  //recruiter can see all applications for their job
-export const getJobApplications =  async (
-    recruiterId: string,
-    jobId: string
-  ) => {
-
-    const job =
-      await prisma.job.findUnique({
-        where: {
-          id: jobId,
-        },
-      });
-
-    if (!job) {
-      throw new AppError(
-        "Job not found",
-        404
-      );
-    }
-
-    if (
-      job.postedById !==
-      recruiterId
-    ) {
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
-
-    return prisma.jobApplication.findMany({
-      where: {
-        jobId,
-      },
-
-      include: {
-        applicant: {
-          include: {
-            profile: true,
-
-            skills: {
-              include: {
-                skill: true,
-              },
-            },
-
-            experiences: {
-              include: {
-                company: true,
-              },
-            },
-
-            educations: {
-              include: {
-                college: true,
-              },
-            },
-          },
-        },
-      },
-
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  };  
-
-  //recruiter can update application status and add notes
-export const updateApplicationStatus =  async (
-    recruiterId: string,
-    applicationId: string,
-    data: any
-  ) => {
-
-    const application =  await prisma.jobApplication.findUnique({
-        where: {
-          id: applicationId,
-        },
-
-        include: {
-          job: true,
-
-          applicant: {
-            include: {
-              profile: true,
-            },
-          },
-        },
-      });
-
-    if (!application) {
-      throw new AppError(
-        "Application not found",
-        404
-      );
-    }
-
-    if (
-      application.job
-        .postedById !==
-      recruiterId
-    ) {
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
-
-    // Prevent updates after hire
-    if (
-      application.status ===
-      "HIRED"
-    ) {
-      throw new AppError(
-        "Applicant already hired",
-        400
-      );
-    }
-
-    const updatedApplication =  await prisma.jobApplication.update({
-        where: {
-          id: applicationId,
-        },
-
-        data: {
-          status:
-            data.status,
-
-          recruiterNotes:
-            data.recruiterNotes,
-
-          shortlistedAt:
-            data.status ===
-            "SHORTLISTED"
-              ? new Date()
-              : undefined,
-
-          interviewScheduledAt:
-            data.status ===
-            "INTERVIEW"
-              ? new Date()
-              : undefined,
-
-          rejectedAt:
-            data.status ===
-            "REJECTED"
-              ? new Date()
-              : undefined,
-
-          hiredAt:
-            data.status ===
-            "HIRED"
-              ? new Date()
-              : undefined,
-        },
-      });
-
-    // Notify applicant
+  //
+  // NOTIFICATION
+  //
+  if (job.postedById) {
     createNotification({
+      userId: job.postedById,
 
-  userId:
-    application.applicantId,
+      actorId: userId,
 
-  actorId:
-    recruiterId,
+      type: "JOB",
 
-  type:
-    "JOB",
+      title: "New Job Application",
 
-  title:
-    "Application Status Updated",
+      message: `${application.applicant.profile?.fullName || application.applicant.username} applied for ${job.title}`,
 
-  message:
-    `Your application for ${application.job.title} is now ${data.status}`,
+      entityType: "JOB",
 
-  entityType:
-    "JOB",
+      entityId: jobId,
 
-  entityId:
-    application.jobId,
+      actionUrl: `/jobs/${jobId}/applications`,
 
-  actionUrl:
-    `/jobs/applications/${applicationId}`,
+      metadata: {
+        applicationId: application.id,
+      },
 
-  metadata: {
-    applicationId,
-    status:
-      data.status,
-  },
-
-  groupKey:
-    `job-status-${applicationId}`,
-}).catch(console.error);
-
-    //
-// Affinity
-//
-await calculateUserAffinity(
-  recruiterId,
-  application.applicantId
-);
-
-await calculateUserAffinity(
-  application.applicantId,
-  recruiterId
-);
-
-
-// Reputation rewards
-
-if (
-  data.status ===
-  "SHORTLISTED"
-) {
-
-  addReputation(
-    application.applicantId,
-
-    "JOB_SHORTLISTED",
-
-    20,
-
-    "Shortlisted for a job",
-
-    {
-      applicationId,
-    }
-  ).catch(console.error);
-
-  createActivity(
-  application.applicantId,
-
-  "JOB_SHORTLISTED",
-
-  "Shortlisted for a job",
-
-  `Shortlisted for "${application.job.title}"`,
-
-  {
-    applicationId,
-  }
-).catch(console.error);
-}
-
-if (
-  data.status ===
-  "INTERVIEW"
-) {
-
-  addReputation(
-    application.applicantId,
-
-    "JOB_INTERVIEW",
-
-    35,
-
-    "Reached interview round",
-
-    {
-      applicationId,
-    }
-  ).catch(console.error);
-
-  createActivity(
-  application.applicantId,
-
-  "JOB_INTERVIEW",
-
-  "Reached interview round",
-
-  `Interview scheduled for "${application.job.title}"`,
-
-  {
-    applicationId,
-  }
-).catch(console.error);
-}
-
-if ( data.status ==="HIRED") {
-
-  // Candidate reward
-  addReputation(
-    application.applicantId,
-
-    "JOB_HIRED",
-
-    100,
-
-    "Got hired",
-
-    {
-      applicationId,
-    }
-  ).catch(console.error);
-
-  // Recruiter reward
-  addReputation(
-    recruiterId,
-
-    "SUCCESSFUL_HIRE",
-
-    40,
-
-    "Successfully hired candidate",
-
-    {
-      applicationId,
-    }
-  ).catch(console.error);
-
-  createActivity(
-  application.applicantId,
-
-  "JOB_HIRED",
-
-  "Got hired",
-
-  `Hired for "${application.job.title}"`,
-
-  {
-    applicationId,
-  }
-).catch(console.error);
-
-//
-// Engineering score recalculation
-//
-calculateEngineeringScore(
-  application.applicantId
-).catch(console.error);
-
-calculateEngineeringScore(
-  recruiterId
-).catch(console.error);
-}
-
-    return updatedApplication;
-  };  
-
-  //recruiter can mark application as viewed
-export const markApplicationViewed =  async (
-    recruiterId: string,
-    applicationId: string
-  ) => {
-
-    const application =
-      await prisma.jobApplication.findUnique({
-        where: {
-          id: applicationId,
-        },
-
-        include: {
-          job: true,
-        },
-      });
-
-    if (!application) {
-      throw new AppError(
-        "Application not found",
-        404
-      );
-    }
-
-    if (
-      application.job
-        .postedById !==
-      recruiterId
-    ) {
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
-
-    // Prevent unnecessary updates
-    if (
-      application.status !==
-      "APPLIED"
-    ) {
-      throw new AppError(
-        "Application already reviewed",
-        400
-      );
-    }
-
-    const updatedApplication =
-      await prisma.jobApplication.update({
-        where: {
-          id: applicationId,
-        },
-
-        data: {
-          status: "VIEWED",
-        },
-      });
-
-    // Notify applicant
-    createNotification({
-      userId:
-        application.applicantId,
-
-      type: "SYSTEM",
-
-      title:
-        "Application Viewed",
-
-      message:
-        `Your application for ${application.job.title} was viewed by recruiter`,
+      groupKey: `job-application-${jobId}`,
     }).catch(console.error);
+  }
+
+  //
+  // BACKGROUND TASKS
+  //
+  Promise.all([
+    trackInteraction(userId, {
+      targetId: jobId,
+
+      targetType: "JOB",
+
+      interactionType: "APPLY",
+
+      metadata: {
+        companyId: job.companyId,
+
+        recruiterId: job.postedById,
+      },
+    }),
 
     addReputation(
-  application.applicantId,
+      userId,
 
-  "APPLICATION_VIEWED",
+      "JOB_APPLIED",
 
-  2,
+      3,
 
-  "Application viewed by recruiter",
+      "Applied to a job",
 
-  {
+      {
+        jobId,
+      },
+    ),
+
+    createActivity(
+      userId,
+
+      "JOB_APPLIED",
+
+      "Applied to a job",
+
+      `Applied for "${job.title}" role`,
+
+      {
+        jobId,
+      },
+    ),
+
+    ...(job.postedById && job.postedById !== userId
+      ? [
+          calculateUserAffinity(userId, job.postedById),
+
+          calculateUserAffinity(job.postedById, userId),
+        ]
+      : []),
+  ]).catch(console.error);
+
+  return application;
+};
+
+// MY APPLICATIONS
+export const getMyApplications = async (
+  userId: string,
+
+  page = 1,
+
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
+
+  return prisma.jobApplication.findMany({
+    where: {
+      applicantId: userId,
+    },
+
+    include: {
+      job: {
+        include: {
+          company: {
+            select: {
+              id: true,
+
+              name: true,
+
+              logoUrl: true,
+            },
+          },
+        },
+      },
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    skip: (page - 1) * safeLimit,
+
+    take: safeLimit,
+  });
+};
+
+// JOB APPLICATIONS
+export const getJobApplications = async (
+  recruiterId: string,
+
+  jobId: string,
+
+  page = 1,
+
+  limit = 20,
+) => {
+  await getJobForRecruiter(recruiterId, jobId);
+
+  const safeLimit = Math.min(limit, 50);
+
+  return prisma.jobApplication.findMany({
+    where: {
+      jobId,
+    },
+
+    include: {
+      applicant: {
+        include: {
+          profile: true,
+
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+
+          experiences: {
+            include: {
+              company: {
+                select: {
+                  id: true,
+
+                  name: true,
+
+                  logoUrl: true,
+                },
+              },
+            },
+          },
+
+          educations: {
+            include: {
+              college: {
+                select: {
+                  id: true,
+
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    skip: (page - 1) * safeLimit,
+
+    take: safeLimit,
+  });
+};
+
+// UPDATE APPLICATION STATUS
+export const updateApplicationStatus = async (
+  recruiterId: string,
+
+  applicationId: string,
+
+  data: UpdateApplicationStatusData,
+) => {
+  const application = await getApplicationForRecruiter(
+    recruiterId,
+
     applicationId,
-  }
-).catch(console.error);
+  );
 
-    return updatedApplication;
-  };
+  //
+  // INVALID TRANSITIONS
+  //
+  if (application.status === "HIRED") {
+    throw new AppError("Applicant already hired", 400);
+  }
+
+  if (application.status === "REJECTED") {
+    throw new AppError("Rejected applications cannot be updated", 400);
+  }
+
+  //
+  // UPDATE
+  //
+  const updatedApplication = await prisma.jobApplication.update({
+    where: {
+      id: applicationId,
+    },
+
+    data: {
+      status: data.status,
+
+      recruiterNotes: data.recruiterNotes,
+
+      ...getStatusTimestampData(data.status),
+    },
+  });
+
+  //
+  // NOTIFICATION
+  //
+  createNotification({
+    userId: application.applicantId,
+
+    actorId: recruiterId,
+
+    type: "JOB",
+
+    title: "Application Status Updated",
+
+    message: `Your application for ${application.job.title} is now ${data.status}`,
+
+    entityType: "JOB",
+
+    entityId: application.jobId,
+
+    actionUrl: `/jobs/applications/${applicationId}`,
+
+    metadata: {
+      applicationId,
+
+      status: data.status,
+    },
+
+    groupKey: `job-status-${applicationId}`,
+  }).catch(console.error);
+
+  //
+  // AFFINITY
+  //
+  Promise.all([
+    calculateUserAffinity(
+      recruiterId,
+
+      application.applicantId,
+    ),
+
+    calculateUserAffinity(
+      application.applicantId,
+
+      recruiterId,
+    ),
+  ]).catch(console.error);
+
+  //
+  // SHORTLISTED
+  //
+  if (data.status === "SHORTLISTED") {
+    Promise.all([
+      addReputation(
+        application.applicantId,
+
+        "JOB_SHORTLISTED",
+
+        20,
+
+        "Shortlisted for a job",
+
+        {
+          applicationId,
+        },
+      ),
+
+      createActivity(
+        application.applicantId,
+
+        "JOB_SHORTLISTED",
+
+        "Shortlisted for a job",
+
+        `Shortlisted for "${application.job.title}"`,
+
+        {
+          applicationId,
+        },
+      ),
+    ]).catch(console.error);
+  }
+
+  //
+  // INTERVIEW
+  //
+  if (data.status === "INTERVIEW") {
+    Promise.all([
+      addReputation(
+        application.applicantId,
+
+        "JOB_INTERVIEW",
+
+        35,
+
+        "Reached interview round",
+
+        {
+          applicationId,
+        },
+      ),
+
+      createActivity(
+        application.applicantId,
+
+        "JOB_INTERVIEW",
+
+        "Reached interview round",
+
+        `Interview scheduled for "${application.job.title}"`,
+
+        {
+          applicationId,
+        },
+      ),
+    ]).catch(console.error);
+  }
+
+  //
+  // HIRED
+  //
+  if (data.status === "HIRED") {
+    Promise.all([
+      addReputation(
+        application.applicantId,
+
+        "JOB_HIRED",
+
+        100,
+
+        "Got hired",
+
+        {
+          applicationId,
+        },
+      ),
+
+      addReputation(
+        recruiterId,
+
+        "SUCCESSFUL_HIRE",
+
+        40,
+
+        "Successfully hired candidate",
+
+        {
+          applicationId,
+        },
+      ),
+
+      createActivity(
+        application.applicantId,
+
+        "JOB_HIRED",
+
+        "Got hired",
+
+        `Hired for "${application.job.title}"`,
+
+        {
+          applicationId,
+        },
+      ),
+
+      calculateEngineeringScore(application.applicantId),
+
+      calculateEngineeringScore(recruiterId),
+    ]).catch(console.error);
+  }
+
+  return updatedApplication;
+};
+
+// MARK VIEWED
+export const markApplicationViewed = async (
+  recruiterId: string,
+
+  applicationId: string,
+) => {
+  const application = await getApplicationForRecruiter(
+    recruiterId,
+
+    applicationId,
+  );
+
+  if (application.status !== "APPLIED") {
+    throw new AppError("Application already reviewed", 400);
+  }
+
+  const updated = await prisma.jobApplication.update({
+    where: {
+      id: applicationId,
+    },
+
+    data: {
+      status: "VIEWED",
+    },
+  });
+
+  //
+  // NOTIFICATION
+  //
+  createNotification({
+    userId: application.applicantId,
+
+    type: "JOB",
+
+    title: "Application Viewed",
+
+    message: `Your application for ${application.job.title} was viewed by recruiter`,
+  }).catch(console.error);
+
+  //
+  // REPUTATION
+  //
+  addReputation(
+    application.applicantId,
+
+    "APPLICATION_VIEWED",
+
+    2,
+
+    "Application viewed by recruiter",
+
+    {
+      applicationId,
+    },
+  ).catch(console.error);
+
+  return updated;
+};

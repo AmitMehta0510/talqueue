@@ -350,6 +350,8 @@ enum FeedInteractionType {
   APPLY
   OPEN_PROJECT
   OPEN_PROFILE
+  JOIN_COMMUNITY
+  LEAVE_COMMUNITY
 }
 
 enum CommunityType {

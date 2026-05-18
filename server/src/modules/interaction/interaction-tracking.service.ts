@@ -1,14 +1,26 @@
 import prisma from "shared/database/prisma";
 
-const INTERACTION_WEIGHTS = {
+const INTERACTION_WEIGHTS: Record<string, number> = {
   VIEW: 1,
+
   CLICK: 2,
+
   LIKE: 4,
+
   COMMENT: 5,
+
   SAVE: 6,
+
   SHARE: 8,
+
   APPLY: 10,
+
+  JOIN_COMMUNITY: 10,
+
+  LEAVE_COMMUNITY: -5,
+
   OPEN_PROJECT: 5,
+
   OPEN_PROFILE: 3,
 };
 
@@ -26,6 +38,7 @@ export const trackInteraction = async (
       | "HACKATHON"
       | "JOB"
       | "COMPANY"
+      | "COMMUNITY"
       | "PROFILE"
       | "COLLEGE"
       | "TEAM";
@@ -38,6 +51,8 @@ export const trackInteraction = async (
       | "SAVE"
       | "SHARE"
       | "APPLY"
+      | "JOIN_COMMUNITY"
+      | "LEAVE_COMMUNITY"
       | "OPEN_PROJECT"
       | "OPEN_PROFILE";
 
@@ -46,9 +61,7 @@ export const trackInteraction = async (
     metadata?: any;
   },
 ) => {
-  //
-  // Store interaction
-  //
+  // STORE INTERACTION
   const interaction = await prisma.feedInteraction.create({
     data: {
       userId,
@@ -65,85 +78,55 @@ export const trackInteraction = async (
     },
   });
 
-  //
-  // Update profile
-  //
-  updateUserInterestProfile(userId).catch(console.error);
+  // LIGHTWEIGHT PROFILE UPDATE
+  incrementInterestProfile(userId, data).catch(console.error);
 
   return interaction;
 };
 
-export const updateUserInterestProfile = async (userId: string) => {
-  //
-  // Recent interactions
-  //
-  const interactions = await prisma.feedInteraction.findMany({
+export const incrementInterestProfile = async (
+  userId: string,
+
+  data: {
+    targetType: string;
+
+    interactionType: string;
+  },
+) => {
+  const weight = INTERACTION_WEIGHTS[data.interactionType] || 1;
+
+  // GET EXISTING PROFILE
+  const profile = await prisma.userInterestProfile.findUnique({
     where: {
       userId,
     },
-
-    orderBy: {
-      createdAt: "desc",
-    },
-
-    take: 500,
   });
 
-  //
-  // Interest maps
-  //
-  const contentTypes: Record<string, number> = {};
+  const preferredContentTypes =
+    (profile?.preferredContentTypes as Record<string, number>) || {};
 
-  const interactionTypes: Record<string, number> = {};
+  const preferredInteractionTypes =
+    (profile?.preferredInteractionTypes as Record<string, number>) || {};
 
-  //
-  // Weighted scoring
-  //
-  for (const interaction of interactions) {
-    const weight = INTERACTION_WEIGHTS[interaction.interactionType] || 1;
-
-    //
-    // Freshness decay
-    //
-    const daysOld = Math.floor(
-      (Date.now() - new Date(interaction.createdAt).getTime()) / DAY_MS,
-    );
-
-    //
-    // Recent interactions stronger
-    //
-    const freshness = Math.max(1, 30 - daysOld);
-
-    //
-    // Final score
-    //
-    const score = weight * freshness;
-
-    //
-    // Content type
-    //
-    contentTypes[interaction.targetType] =
-      (contentTypes[interaction.targetType] || 0) + score;
-
-    //
-    // Interaction type
-    //
-    interactionTypes[interaction.interactionType] =
-      (interactionTypes[interaction.interactionType] || 0) + score;
-  }
+  // INCREMENT CONTENT TYPE
+  preferredContentTypes[data.targetType] =
+    (preferredContentTypes[data.targetType] || 0) + weight;
 
   //
-  // Persist profile
-  //
+  // INCREMENT INTERACTION TYPE
+  preferredInteractionTypes[data.interactionType] =
+    (preferredInteractionTypes[data.interactionType] || 0) + weight;
+
+  // UPSERT
   await prisma.userInterestProfile.upsert({
     where: {
       userId,
     },
 
     update: {
-      preferredContentTypes: contentTypes,
+      preferredContentTypes,
 
-      preferredInteractionTypes: interactionTypes,
+      preferredInteractionTypes,
 
       updatedAt: new Date(),
     },
@@ -151,9 +134,9 @@ export const updateUserInterestProfile = async (userId: string) => {
     create: {
       userId,
 
-      preferredContentTypes: contentTypes,
+      preferredContentTypes,
 
-      preferredInteractionTypes: interactionTypes,
+      preferredInteractionTypes,
     },
   });
 };

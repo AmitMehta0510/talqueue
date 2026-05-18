@@ -2,237 +2,414 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import { createNotification,} from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notificatios/notifications.service";
 
-import { addReputation,} from "modules/reputation/reputation.service";
-import {
-  createActivity,
-} from "modules/activities/activity.service";
+import { addReputation } from "modules/reputation/reputation.service";
 
-export const createJob =  async (
-    userId: string,
-    data: any
-  ) => {
+import { createActivity } from "modules/activities/activity.service";
 
-    const company =  await prisma.company.findUnique({
-        where: {
-          id: data.companyId,
-        },
-      });
+import { generateSlug } from "shared/utils/slugify";
 
-    if (!company) {
-      throw new AppError(
-        "Company not found",
-        404
-      );
-    }
-
-    const slug =
-      `${data.title}-${company.name}`
-        .toLowerCase()
-        .replace(/\s+/g, "-");
-
-    const job = await prisma.job.create({
-      data: {
-        companyId:
-          data.companyId,
-
-        postedById:
-          userId,
-
-        title:
-          data.title,
-
-        slug,
-
-        description:
-          data.description,
-
-        requirements:
-          data.requirements,
-
-        responsibilities:
-          data.responsibilities,
-
-        perks:
-          data.perks,
-
-        location:
-          data.location,
-
-        workMode:
-          data.workMode,
-
-        type:
-          data.type,
-
-        experienceLevel:
-          data.experienceLevel,
-
-        salaryMin:
-          data.salaryMin,
-
-        salaryMax:
-          data.salaryMax,
-
-        openings:
-          data.openings,
-
-        skillsRequired:
-          data.skillsRequired,
-
-        applicationDeadline:
-          data.applicationDeadline
-            ? new Date(
-                data.applicationDeadline
-              )
-            : null,
-
-        applyUrl:
-          data.applyUrl,
-      },
-
-      include: {
-        company: true,
-      },
-    });
-
-    // Notify recruiter's connections
-const connections =  await prisma.connection.findMany({
+//
+// HELPERS
+//
+const getOwnedJob = async (jobId: string, recruiterId: string) => {
+  const job = await prisma.job.findFirst({
     where: {
-      status: "ACCEPTED",
+      id: jobId,
 
-      OR: [
-        {
-          senderId: userId,
-        },
-        {
-          receiverId: userId,
-        },
-      ],
+      postedById: recruiterId,
+
+      deletedAt: null,
+    },
+
+    select: {
+      id: true,
     },
   });
 
-for (const connection of connections) {
+  if (!job) {
+    throw new AppError("Job not found or unauthorized", 404);
+  }
 
-  const targetUserId =
-    connection.senderId === userId
-      ? connection.receiverId
-      : connection.senderId;
+  return job;
+};
 
-  createNotification({
-    userId: targetUserId,
-
-    type: "SYSTEM",
-
-    title:
-      "New Job Posted",
-
-    message:
-      `${job.title} role posted at ${company.name}`,
-  }).catch(console.error);
-}
-
-// Notify current employees
-const employees =
-  await prisma.experience.findMany({
+//
+// CREATE JOB
+//
+export const createJob = async (userId: string, data: any) => {
+  //
+  // COMPANY
+  //
+  const company = await prisma.company.findUnique({
     where: {
-      companyId:
-        company.id,
+      id: data.companyId,
+    },
 
-      isCurrent: true,
+    select: {
+      id: true,
+
+      name: true,
     },
   });
 
-for (const employee of employees) {
-
-  // Skip recruiter self-notification
-  if (
-    employee.userId === userId
-  ) {
-    continue;
+  if (!company) {
+    throw new AppError("Company not found", 404);
   }
 
-  // Recruiter reputation
-addReputation(
-  userId,
+  //
+  // SLUG
+  //
+  const baseSlug = generateSlug(`${data.title}-${company.name}`);
 
-  "JOB_POSTED",
+  const slug = `${baseSlug}-${Date.now()}`;
 
-  20,
+  //
+  // CREATE JOB
+  //
+  const job = await prisma.job.create({
+    data: {
+      companyId: company.id,
 
-  "Posted a job",
+      postedById: userId,
 
-  {
-    jobId: job.id,
-    companyId:
-      company.id,
-  }
-).catch(console.error);
+      title: data.title,
 
-  createNotification({
-    userId: employee.userId,
+      slug,
 
-    type: "SYSTEM",
+      description: data.description,
 
-    title:
-      "New Opening At Your Company",
+      requirements: data.requirements,
 
-    message:
-      `${job.title} opening was posted at ${company.name}`,
-  }).catch(console.error);
-}
+      responsibilities: data.responsibilities,
 
+      perks: data.perks,
 
+      location: data.location,
 
-return job;
-  };
+      workMode: data.workMode,
 
-export const getJobs =  async () => {
+      type: data.type,
 
-    return prisma.job.findMany({
+      experienceLevel: data.experienceLevel,
+
+      salaryMin: data.salaryMin,
+
+      salaryMax: data.salaryMax,
+
+      currency: data.currency || "INR",
+
+      openings: data.openings,
+
+      skillsRequired: data.skillsRequired || [],
+
+      applicationDeadline: data.applicationDeadline
+        ? new Date(data.applicationDeadline)
+        : null,
+
+      applyUrl: data.applyUrl,
+
+      featured: data.featured || false,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+
+      slug: true,
+
+      companyId: true,
+
+      createdAt: true,
+
+      company: {
+        select: {
+          id: true,
+
+          name: true,
+
+          logoUrl: true,
+        },
+      },
+    },
+  });
+
+  //
+  // ACTIVITY
+  //
+  createActivity(
+    userId,
+
+    "JOB_CREATED",
+
+    "Created a new job",
+
+    `Posted ${job.title} role at ${company.name}`,
+
+    {
+      jobId: job.id,
+    },
+  ).catch(console.error);
+
+  //
+  // REPUTATION
+  //
+  addReputation(
+    userId,
+
+    "JOB_POSTED",
+
+    20,
+
+    "Posted a job",
+
+    {
+      jobId: job.id,
+
+      companyId: company.id,
+    },
+  ).catch(console.error);
+
+  //
+  // FETCH CONNECTIONS + EMPLOYEES
+  //
+  const [connections, employees] = await Promise.all([
+    prisma.connection.findMany({
       where: {
-        status: "OPEN",
+        status: "ACCEPTED",
+
+        OR: [
+          {
+            senderId: userId,
+          },
+
+          {
+            receiverId: userId,
+          },
+        ],
       },
 
-      include: {
-        company: true,
+      select: {
+        senderId: true,
+
+        receiverId: true,
+      },
+    }),
+
+    prisma.experience.findMany({
+      where: {
+        companyId: company.id,
+
+        isCurrent: true,
       },
 
-      orderBy: {
-        createdAt: "desc",
+      select: {
+        userId: true,
       },
+    }),
+  ]);
+
+  //
+  // CONNECTION NOTIFICATIONS
+  //
+  const connectionNotifications = connections.map((connection) => {
+    const targetUserId =
+      connection.senderId === userId
+        ? connection.receiverId
+        : connection.senderId;
+
+    return createNotification({
+      userId: targetUserId,
+
+      type: "SYSTEM",
+
+      title: "New Job Posted",
+
+      message: `${job.title} role posted at ${company.name}`,
     });
-  };
+  });
 
-export const getJobBySlug =  async (slug: string) => {
+  //
+  // EMPLOYEE NOTIFICATIONS
+  //
+  const employeeNotifications = employees
 
-    const job =
-      await prisma.job.findUnique({
-        where: {
-          slug,
+    .filter((employee) => employee.userId !== userId)
+
+    .map((employee) =>
+      createNotification({
+        userId: employee.userId,
+
+        type: "SYSTEM",
+
+        title: "New Opening At Your Company",
+
+        message: `${job.title} opening was posted at ${company.name}`,
+      }),
+    );
+
+  //
+  // FIRE IN PARALLEL
+  //
+  Promise.all([...connectionNotifications, ...employeeNotifications]).catch(
+    console.error,
+  );
+
+  return job;
+};
+
+//
+// GET JOBS
+//
+export const getJobs = async (page = 1, limit = 20) => {
+  const safeLimit = Math.min(limit, 50);
+
+  const skip = (page - 1) * safeLimit;
+
+  return prisma.job.findMany({
+    where: {
+      status: "OPEN",
+
+      deletedAt: null,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+
+      slug: true,
+
+      location: true,
+
+      workMode: true,
+
+      type: true,
+
+      experienceLevel: true,
+
+      salaryMin: true,
+
+      salaryMax: true,
+
+      createdAt: true,
+
+      featured: true,
+
+      company: {
+        select: {
+          id: true,
+
+          name: true,
+
+          logoUrl: true,
+
+          verified: true,
         },
+      },
+    },
 
-        include: {
-          company: true,
+    orderBy: {
+      createdAt: "desc",
+    },
 
-          postedBy: {
-            include: {
-              profile: true,
+    skip,
+
+    take: safeLimit,
+  });
+};
+
+//
+// GET JOB BY SLUG
+//
+export const getJobBySlug = async (slug: string) => {
+  const job = await prisma.job.findUnique({
+    where: {
+      slug,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+
+      slug: true,
+
+      description: true,
+
+      requirements: true,
+
+      responsibilities: true,
+
+      perks: true,
+
+      location: true,
+
+      workMode: true,
+
+      type: true,
+
+      experienceLevel: true,
+
+      salaryMin: true,
+
+      salaryMax: true,
+
+      currency: true,
+
+      openings: true,
+
+      skillsRequired: true,
+
+      views: true,
+
+      applicationsCount: true,
+
+      createdAt: true,
+
+      company: {
+        select: {
+          id: true,
+
+          name: true,
+
+          logoUrl: true,
+
+          verified: true,
+
+          websiteUrl: true,
+        },
+      },
+
+      postedBy: {
+        select: {
+          id: true,
+
+          username: true,
+
+          profile: {
+            select: {
+              fullName: true,
+
+              avatarUrl: true,
             },
           },
         },
-      });
+      },
+    },
+  });
 
-    if (!job) {
-      throw new AppError(
-        "Job not found",
-        404
-      );
-    }
+  if (!job) {
+    throw new AppError("Job not found", 404);
+  }
 
-    // Increment views
-    await prisma.job.update({
+  //
+  // NON BLOCKING VIEW UPDATE
+  //
+  prisma.job
+    .update({
       where: {
         id: job.id,
       },
@@ -242,149 +419,213 @@ export const getJobBySlug =  async (slug: string) => {
           increment: 1,
         },
       },
-    });
+    })
+    .catch(console.error);
 
-    return job;
-  };
+  return job;
+};
 
-export const getCompanyJobs =  async (companyId: string) => {
+//
+// COMPANY JOBS
+//
+export const getCompanyJobs = async (
+  companyId: string,
 
-    return prisma.job.findMany({
-      where: {
-        companyId,
+  page = 1,
 
-        status: "OPEN",
-      },
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
 
-      include: {
-        company: true,
-      },
+  return prisma.job.findMany({
+    where: {
+      companyId,
 
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  };
+      status: "OPEN",
 
-export const getRecruiterJobs =  async (userId: string) => {
+      deletedAt: null,
+    },
 
-    return prisma.job.findMany({
-      where: {
-        postedById: userId,
-      },
+    select: {
+      id: true,
 
-      include: {
-        company: true,
-      },
+      title: true,
 
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  };
+      slug: true,
 
-export const archiveJob =  async (
-    recruiterId: string,
-    jobId: string
-  ) => {
+      location: true,
 
-    const job =
-      await prisma.job.findUnique({
-        where: {
-          id: jobId,
+      type: true,
+
+      workMode: true,
+
+      experienceLevel: true,
+
+      createdAt: true,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    skip: (page - 1) * safeLimit,
+
+    take: safeLimit,
+  });
+};
+
+//
+// RECRUITER JOBS
+//
+export const getRecruiterJobs = async (
+  userId: string,
+
+  page = 1,
+
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
+
+  return prisma.job.findMany({
+    where: {
+      postedById: userId,
+
+      deletedAt: null,
+    },
+
+    select: {
+      id: true,
+
+      title: true,
+
+      slug: true,
+
+      status: true,
+
+      views: true,
+
+      applicationsCount: true,
+
+      createdAt: true,
+
+      company: {
+        select: {
+          id: true,
+
+          name: true,
+
+          logoUrl: true,
         },
-      });
-
-    if (!job) {
-      throw new AppError(
-        "Job not found",
-        404
-      );
-    }
-
-    if (
-      job.postedById !==
-      recruiterId
-    ) {
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
-
-    return prisma.job.update({
-      where: {
-        id: jobId,
       },
+    },
 
-      data: {
-        status: "ARCHIVED",
+    orderBy: {
+      createdAt: "desc",
+    },
 
-        archivedAt:
-          new Date(),
-      },
-    });
-  };
-  
+    skip: (page - 1) * safeLimit,
+
+    take: safeLimit,
+  });
+};
+
+//
+// ARCHIVE JOB
+//
+export const archiveJob = async (
+  recruiterId: string,
+
+  jobId: string,
+) => {
+  await getOwnedJob(jobId, recruiterId);
+
+  const job = await prisma.job.update({
+    where: {
+      id: jobId,
+    },
+
+    data: {
+      status: "ARCHIVED",
+
+      archivedAt: new Date(),
+    },
+  });
+
+  //
+  // ACTIVITY
+  //
+  createActivity(
+    recruiterId,
+
+    "JOB_ARCHIVED",
+
+    "Archived a job",
+
+    "Archived a job posting",
+
+    {
+      jobId,
+    },
+  ).catch(console.error);
+
+  return job;
+};
+
+//
+// DELETE JOB
+//
 export const deleteJob = async (
-    recruiterId: string,
-    jobId: string
-  ) => {
+  recruiterId: string,
 
-    const job =
-      await prisma.job.findUnique({
-        where: {
-          id: jobId,
-        },
-      });
+  jobId: string,
+) => {
+  await getOwnedJob(jobId, recruiterId);
 
-    if (!job) {
-      throw new AppError(
-        "Job not found",
-        404
-      );
-    }
+  const job = await prisma.job.update({
+    where: {
+      id: jobId,
+    },
 
-    if (
-      job.postedById !==
-      recruiterId
-    ) {
-      throw new AppError(
-        "Unauthorized",
-        403
-      );
-    }
+    data: {
+      status: "DELETED",
 
-    const updatedJob =
-      await prisma.job.update({
-        where: {
-          id: jobId,
-        },
+      deletedAt: new Date(),
+    },
+  });
 
-        data: {
-          status: "DELETED",
+  //
+  // REPUTATION
+  //
+  addReputation(
+    recruiterId,
 
-          deletedAt:
-            new Date(),
-        },
-      });
+    "JOB_DELETED",
 
-    //
-    // Recruiter penalty
-    //
-    await addReputation(
-      recruiterId,
+    -10,
 
-      "JOB_DELETED",
+    "Deleted job posting",
 
-      -10,
+    {
+      jobId,
+    },
+  ).catch(console.error);
 
-      "Deleted job posting",
+  //
+  // ACTIVITY
+  //
+  createActivity(
+    recruiterId,
 
-      {
-        jobId,
-      }
-    );
+    "JOB_DELETED",
 
-    return updatedJob;
-  };  
+    "Deleted a job",
+
+    "Removed a job posting",
+
+    {
+      jobId,
+    },
+  ).catch(console.error);
+
+  return job;
+};
