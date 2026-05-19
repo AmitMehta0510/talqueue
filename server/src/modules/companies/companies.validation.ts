@@ -1,44 +1,46 @@
 import { z } from "zod";
 
-export const createCompanySchema =
-  z.object({
-    name:
-      z.string().min(2),
+export const createCompanySchema = z.object({
+  name: z.string().trim().min(2),
 
-    websiteUrl:
-      z.string().optional(),
+  logoUrl: z.string().url().optional(),
 
-    description:
-      z.string().optional(),
+  coverImageUrl: z.string().url().optional(),
 
-    tagline:
-      z.string().optional(),
+  websiteUrl: z.string().url().optional(),
 
-    headquarters:
-      z.string().optional(),
+  linkedinUrl: z.string().url().optional(),
 
-    industry:
-      z.string().optional(),
+  twitterUrl: z.string().url().optional(),
 
-    foundedYear:
-      z.number().optional(),
+  githubUrl: z.string().url().optional(),
 
-    type:
-      z.enum([
-        "STARTUP",
-        "PRODUCT_BASED",
-        "SERVICE_BASED",
-        "ENTERPRISE",
-        "MNC",
-        "OTHER",
-      ]).optional(),
+  careersPageUrl: z.string().url().optional(),
 
-    size:
-      z.enum([
-        "SOLO",
-        "SMALL",
-        "MEDIUM",
-        "LARGE",
-        "ENTERPRISE",
-      ]).optional(),
-  });
+  description: z.string().optional(),
+
+  tagline: z.string().optional(),
+
+  headquarters: z.string().optional(),
+
+  industry: z.string().optional(),
+
+  foundedYear: z.number().int().optional(),
+
+  type: z
+    .enum([
+      "STARTUP",
+      "PRODUCT_BASED",
+      "SERVICE_BASED",
+      "ENTERPRISE",
+      "MNC",
+      "OTHER",
+    ])
+    .optional(),
+
+  size: z.enum(["SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE"]).optional(),
+
+  hiringEnabled: z.boolean().optional(),
+
+  referralEnabled: z.boolean().optional(),
+});
