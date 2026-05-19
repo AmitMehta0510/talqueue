@@ -19,12 +19,15 @@ import {
 
 export const createCollegeHandler =
   asyncHandler(
-    async (req: Request, res: Response) => {
+    async (req: any, res: Response) => {
       const validatedData =
         createCollegeSchema.parse(req.body);
 
       const college =
-        await createCollege(validatedData);
+        await createCollege(
+          req.user,
+          validatedData
+        );
 
       res.status(201).json(
         successResponse(
@@ -39,7 +42,17 @@ export const getCollegesHandler =
   asyncHandler(
     async (req: Request, res: Response) => {
       const colleges =
-        await getAllColleges();
+        await getAllColleges({
+          cursor:
+            (req.query.cursor as string) ||
+            undefined,
+
+          limit:
+            Number.parseInt(
+              (req.query.limit as string) || "50",
+              10
+            ) || 50,
+        });
 
       res.json(
         successResponse(colleges)
@@ -64,7 +77,7 @@ export const searchCollegesHandler =
 
 export const createDepartmentHandler =
   asyncHandler(
-    async (req: Request, res: Response) => {
+    async (req: any, res: Response) => {
       const validatedData =
         createDepartmentSchema.parse(
           req.body
@@ -72,6 +85,7 @@ export const createDepartmentHandler =
 
       const department =
         await createDepartment(
+          req.user,
           validatedData
         );
 

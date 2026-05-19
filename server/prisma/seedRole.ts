@@ -8,7 +8,11 @@ async function main() {
     "PROFESSOR",
     "PROFESSIONAL",
     "RECRUITER",
-    "ADMIN"
+    "ADMIN",
+    "SUPER_ADMIN",
+    "PLATFORM_ADMIN",
+    "COLLEGE_ADMIN",
+    "COLLEGE_DIRECTOR"
   ];
 
   for (const role of roles) {

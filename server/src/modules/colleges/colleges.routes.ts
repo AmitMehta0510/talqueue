@@ -1,5 +1,7 @@
 import { Router } from "express";
 
+import { protect } from "modules/auth/auth.middleware";
+
 import {
   createCollegeHandler,
   createDepartmentHandler,
@@ -10,7 +12,11 @@ import {
 
 const router = Router();
 
-router.post("/", createCollegeHandler);
+router.post(
+  "/",
+  protect,
+  createCollegeHandler
+);
 
 router.get("/", getCollegesHandler);
 
@@ -18,6 +24,7 @@ router.get("/search", searchCollegesHandler);
 
 router.post(
   "/departments",
+  protect,
   createDepartmentHandler
 );
 

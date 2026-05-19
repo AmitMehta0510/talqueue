@@ -571,7 +571,7 @@ export const archiveJob = async (
   return job;
 };
 
-//
+
 // DELETE JOB
 //
 export const deleteJob = async (

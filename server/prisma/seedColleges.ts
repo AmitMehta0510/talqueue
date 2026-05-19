@@ -2,6 +2,15 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const normalizeKey = (value: string) =>
+  value
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 async function main() {
   const colleges = [
     {
@@ -30,8 +39,17 @@ async function main() {
   ];
 
   for (const college of colleges) {
-    await prisma.college.create({
-      data: college,
+    await prisma.college.upsert({
+      where: {
+        normalizedKey: normalizeKey(college.name),
+      },
+
+      update: college,
+
+      create: {
+        ...college,
+        normalizedKey: normalizeKey(college.name),
+      },
     });
   }
 

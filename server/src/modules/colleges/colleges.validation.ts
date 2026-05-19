@@ -3,13 +3,13 @@ import { z } from "zod";
 export const createCollegeSchema = z.object({
   name: z.string().min(2),
 
-  state: z.string().optional(),
+  state: z.string().max(120).optional(),
 
-  city: z.string().optional(),
+  city: z.string().max(120).optional(),
 
-  website: z.string().optional(),
+  website: z.string().url().optional(),
 
-  logoUrl: z.string().optional(),
+  logoUrl: z.string().url().optional(),
 });
 
 export const createDepartmentSchema =

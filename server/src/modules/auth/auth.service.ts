@@ -3,6 +3,13 @@ import bcrypt from "bcryptjs";
 import AppError from "shared/errors/AppError";
 import { generateToken } from "shared/utils/jwt";
 
+const PUBLIC_SIGNUP_ROLES = new Set([
+  "STUDENT",
+  "PROFESSOR",
+  "PROFESSIONAL",
+  "RECRUITER",
+]);
+
 export const registerUser =  async (data: any) => {
 
     const {
@@ -12,6 +19,13 @@ export const registerUser =  async (data: any) => {
       username,
       role,
     } = data;
+
+    if (!PUBLIC_SIGNUP_ROLES.has(role)) {
+      throw new AppError(
+        "This role cannot be selected during public signup",
+        403
+      );
+    }
 
     // Check existing email
     const existingUser =

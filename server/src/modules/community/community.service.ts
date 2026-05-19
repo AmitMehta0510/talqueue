@@ -21,6 +21,88 @@ import { createNotification } from "modules/notificatios/notifications.service";
 
 type CommunityWriteClient = Prisma.TransactionClient | typeof prisma;
 
+const OFFICIAL_COMMUNITY_ROLES = new Set([
+  "ADMIN",
+  "SUPER_ADMIN",
+  "PLATFORM_ADMIN",
+  "COLLEGE_ADMIN",
+  "COLLEGE_DIRECTOR",
+]);
+
+const PLATFORM_COMMUNITY_ROLES = new Set([
+  "ADMIN",
+  "SUPER_ADMIN",
+  "PLATFORM_ADMIN",
+]);
+
+const getUserAccessContext = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+
+    select: {
+      roles: {
+        select: {
+          role: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+
+      profile: {
+        select: {
+          collegeId: true,
+        },
+      },
+    },
+  });
+
+  return {
+    roleNames: new Set(
+      (user?.roles || []).map((userRole) => userRole.role.name),
+    ),
+
+    collegeId: user?.profile?.collegeId,
+  };
+};
+
+const assertCanCreateOfficialCommunity = async (
+  userId: string,
+
+  data: CreateCommunityData,
+) => {
+  if (data.type === CommunityType.GENERAL) {
+    return;
+  }
+
+  const accessContext = await getUserAccessContext(userId);
+
+  const canCreateOfficialCommunity =
+    [...OFFICIAL_COMMUNITY_ROLES].some((roleName) =>
+      accessContext.roleNames.has(roleName),
+    );
+
+  if (!canCreateOfficialCommunity) {
+    throw new AppError("Only verified admins can create official communities", 403);
+  }
+
+  const isPlatformAdmin =
+    [...PLATFORM_COMMUNITY_ROLES].some((roleName) =>
+      accessContext.roleNames.has(roleName),
+    );
+
+  if (
+    data.type === CommunityType.COLLEGE &&
+    !isPlatformAdmin &&
+    accessContext.collegeId !== data.collegeId
+  ) {
+    throw new AppError("You can only create communities for your own college", 403);
+  }
+};
+
 export interface CommunityAutoJoinContext {
   collegeId?: string | null;
   departmentId?: string | null;
@@ -36,6 +118,7 @@ export interface CreateCommunityData {
   searchKeywords?: string[];
   companyId?: string;
   collegeId?: string;
+  departmentId?: string;
   city?: string;
   autoJoinEligible?: boolean;
 }
@@ -174,6 +257,8 @@ export const createCommunity = async (
 
   data: CreateCommunityData,
 ) => {
+  await assertCanCreateOfficialCommunity(userId, data);
+
   const slug = slugify(data.name, {
     lower: true,
     strict: true,
@@ -209,6 +294,26 @@ export const createCommunity = async (
 
     if (!college) {
       throw new AppError("College not found", 404);
+    }
+
+    if (data.departmentId) {
+      const department = await prisma.department.findUnique({
+        where: {
+          id: data.departmentId,
+        },
+
+        select: {
+          collegeId: true,
+        },
+      });
+
+      if (!department) {
+        throw new AppError("Department not found", 404);
+      }
+
+      if (department.collegeId !== data.collegeId) {
+        throw new AppError("Department does not belong to selected college", 400);
+      }
     }
   }
 
@@ -255,6 +360,8 @@ export const createCommunity = async (
       companyId: data.companyId,
 
       collegeId: data.collegeId,
+
+      departmentId: data.departmentId,
 
       city: data.city,
 
