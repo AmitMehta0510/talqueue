@@ -1,4 +1,9 @@
 import prisma from "shared/database/prisma";
+import {
+  CommunityCategory,
+  CommunityType,
+  Prisma,
+} from "@prisma/client";
 
 import AppError from "shared/errors/AppError";
 
@@ -14,7 +19,161 @@ import { calculateUserAffinity } from "modules/affinity/affinity.service";
 
 import { createNotification } from "modules/notificatios/notifications.service";
 
-export const createCommunity = async (userId: string, data: any) => {
+type CommunityWriteClient = Prisma.TransactionClient | typeof prisma;
+
+export interface CommunityAutoJoinContext {
+  collegeId?: string | null;
+  departmentId?: string | null;
+  companyId?: string | null;
+}
+
+export interface CreateCommunityData {
+  name: string;
+  description?: string;
+  type: CommunityType;
+  category: CommunityCategory;
+  tags?: string[];
+  searchKeywords?: string[];
+  companyId?: string;
+  collegeId?: string;
+  city?: string;
+  autoJoinEligible?: boolean;
+}
+
+export const autoJoinUserCommunities = async (
+  userId: string,
+
+  context: CommunityAutoJoinContext,
+
+  client: CommunityWriteClient = prisma,
+) => {
+  const communityFilters: Prisma.CommunityWhereInput[] = [];
+
+  if (context.collegeId) {
+    communityFilters.push({
+      type: "COLLEGE",
+
+      collegeId: context.collegeId,
+
+      departmentId: null,
+    });
+
+    if (context.departmentId) {
+      communityFilters.push({
+        type: "COLLEGE",
+
+        collegeId: context.collegeId,
+
+        departmentId: context.departmentId,
+      });
+    }
+  }
+
+  if (context.companyId) {
+    communityFilters.push({
+      type: "COMPANY",
+
+      companyId: context.companyId,
+    });
+  }
+
+  if (communityFilters.length === 0) {
+    return {
+      joinedCommunityIds: [],
+    };
+  }
+
+  const communities = await client.community.findMany({
+    where: {
+      archived: false,
+
+      autoJoinEligible: true,
+
+      OR: communityFilters,
+    },
+
+    select: {
+      id: true,
+    },
+  });
+
+  const joinedCommunityIds: string[] = [];
+
+  for (const community of communities) {
+    const existingMembership = await client.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+
+          userId,
+        },
+      },
+
+      select: {
+        id: true,
+        active: true,
+      },
+    });
+
+    if (existingMembership?.active) {
+      continue;
+    }
+
+    if (existingMembership) {
+      await client.communityMember.update({
+        where: {
+          id: existingMembership.id,
+        },
+
+        data: {
+          active: true,
+
+          archived: false,
+
+          autoJoined: true,
+
+          leftAt: null,
+
+          joinedAt: new Date(),
+        },
+      });
+    } else {
+      await client.communityMember.create({
+        data: {
+          communityId: community.id,
+
+          userId,
+
+          autoJoined: true,
+        },
+      });
+    }
+
+    await client.community.update({
+      where: {
+        id: community.id,
+      },
+
+      data: {
+        memberCount: {
+          increment: 1,
+        },
+      },
+    });
+
+    joinedCommunityIds.push(community.id);
+  }
+
+  return {
+    joinedCommunityIds,
+  };
+};
+
+export const createCommunity = async (
+  userId: string,
+
+  data: CreateCommunityData,
+) => {
   const slug = slugify(data.name, {
     lower: true,
     strict: true,
@@ -32,7 +191,7 @@ export const createCommunity = async (userId: string, data: any) => {
   }
 
   // TYPE VALIDATION
-  if (!["GENERAL", "COLLEGE", "COMPANY"].includes(data.type)) {
+  if (!Object.values(CommunityType).includes(data.type)) {
     throw new AppError("Invalid community type", 400);
   }
 
@@ -83,6 +242,10 @@ export const createCommunity = async (userId: string, data: any) => {
 
       visibility: data.type === "COMPANY" ? "PRIVATE" : "PUBLIC",
 
+      autoJoinEligible:
+        data.autoJoinEligible ??
+        data.type !== "GENERAL",
+
       category: data.category,
 
       tags: data.tags || [],
@@ -104,6 +267,8 @@ export const createCommunity = async (userId: string, data: any) => {
           role: "OWNER",
         },
       },
+
+      memberCount: 1,
     },
 
     include: {

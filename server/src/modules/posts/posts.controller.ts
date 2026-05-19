@@ -63,7 +63,17 @@ export const getFeedHandler =  asyncHandler(
 
       const feed =
         await getFeed(
-          req.user?.id
+          req.user?.id,
+          {
+            cursor:
+              (req.query.cursor as string) || undefined,
+
+            limit:
+              Number.parseInt(
+                (req.query.limit as string) || "20",
+                10
+              ) || 20,
+          }
         );
 
       res.json(
@@ -82,7 +92,20 @@ export const getPostHandler =  asyncHandler(
       const post =
         await getPostById(
           req.user?.id,
-          req.params.id as string
+          req.params.id as string,
+          {
+            commentsLimit:
+              Number.parseInt(
+                (req.query.commentsLimit as string) || "20",
+                10
+              ) || 20,
+
+            repliesLimit:
+              Number.parseInt(
+                (req.query.repliesLimit as string) || "3",
+                10
+              ) || 3,
+          }
         );
 
       res.json(

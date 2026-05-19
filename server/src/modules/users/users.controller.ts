@@ -8,7 +8,11 @@ import {
   addEducation,
   addExperience,
   addSkill,
+  getMyEducations,
+  getMyExperiences,
+  getMyFullProfile,
   getMyProfile,
+  getMySkills,
   updateProfile,
 } from "./users.service";
 
@@ -27,6 +31,69 @@ export const getMe = asyncHandler(
 
     res.json(
       successResponse(profile)
+    );
+  }
+);
+
+const getPaginationParams = (req: any) => ({
+  cursor:
+    (req.query.cursor as string) ||
+    undefined,
+
+  limit:
+    Number.parseInt(
+      (req.query.limit as string) || "20",
+      10
+    ) || 20,
+});
+
+export const getMeFull = asyncHandler(
+  async (req: any, res: Response) => {
+    const profile = await getMyFullProfile(
+      req.user.id
+    );
+
+    res.json(
+      successResponse(profile)
+    );
+  }
+);
+
+export const getMeSkills = asyncHandler(
+  async (req: any, res: Response) => {
+    const skills = await getMySkills(
+      req.user.id,
+      getPaginationParams(req)
+    );
+
+    res.json(
+      successResponse(skills)
+    );
+  }
+);
+
+export const getMeExperiences = asyncHandler(
+  async (req: any, res: Response) => {
+    const experiences = await getMyExperiences(
+      req.user.id,
+      getPaginationParams(req)
+    );
+
+    res.json(
+      successResponse(experiences)
+    );
+  }
+);
+
+export const getMeEducations = asyncHandler(
+  async (req: any, res: Response) => {
+    const educations = await getMyEducations(
+      req.user.id,
+      getPaginationParams(req)
+    );
+
+    res.json(
+      successResponse(educations)
     );
   }
 );

@@ -7,7 +7,19 @@ export const updateProfileSchema = z.object({
   .max(30)
   .regex(/^[a-zA-Z0-9_]+$/)
   .optional(),
-  bio: z.string().optional(),
+  bio: z.string().max(1000).optional(),
+
+  headline: z.string().max(160).optional(),
+
+  location: z.string().max(120).optional(),
+
+  avatarUrl: z.string().optional(),
+
+  bannerUrl: z.string().optional(),
+
+  resumeUrl: z.string().optional(),
+
+  availabilityText: z.string().max(240).optional(),
 
   githubUrl: z.string().optional(),
   linkedinUrl: z.string().optional(),
@@ -31,13 +43,13 @@ export const addSkillSchema = z.object({
 });
 
 export const addExperienceSchema = z.object({
-  companyName: z.string(),
-  title: z.string(),
+  companyName: z.string().min(1),
+  title: z.string().min(1),
 
   employmentType: z.enum([
       "FULL_TIME",
+      "INTERN",
       "INTERNSHIP",
-      "PART_TIME",
       "CONTRACT",
       "FREELANCE",
   ]),
@@ -49,6 +61,24 @@ export const addExperienceSchema = z.object({
   isCurrent: z.boolean().optional(),
 
   description: z.string().optional(),
+
+  workEmail: z.string().email().optional(),
+
+  managerName: z.string().optional(),
+
+  managerEmail: z.string().email().optional(),
+
+  managerLinkedinUrl: z.string().optional(),
+
+  documents: z.any().optional(),
+
+  skillsUsed: z.array(z.string()).optional(),
+
+  achievements: z.any().optional(),
+
+  techStack: z.array(z.string()).optional(),
+
+  teamSize: z.number().int().positive().optional(),
 });
 
 export const addEducationSchema = z.object({
@@ -60,9 +90,9 @@ export const addEducationSchema = z.object({
 
   fieldOfStudy: z.string().optional(),
 
-  startYear: z.number().optional(),
+  startYear: z.number().int().optional(),
 
-  endYear: z.number().optional(),
+  endYear: z.number().int().optional(),
 
   current: z.boolean().optional(),
 });

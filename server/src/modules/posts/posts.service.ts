@@ -10,6 +10,61 @@ import { calculateUserAffinity } from "modules/affinity/affinity.service";
 import { createNotification } from "modules/notificatios/notifications.service";
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
+const DEFAULT_FEED_LIMIT = 20;
+const MAX_FEED_LIMIT = 50;
+const DEFAULT_COMMENT_LIMIT = 20;
+const MAX_COMMENT_LIMIT = 50;
+const DEFAULT_REPLY_LIMIT = 3;
+const MAX_REPLY_LIMIT = 10;
+
+const clampLimit = (limit: number | undefined, fallback: number, max: number) =>
+  Math.min(max, Math.max(1, limit || fallback));
+
+const runAffinityUpdates = (pairs: Array<[string, string]>) => {
+  Promise.all(
+    pairs
+      .filter(([sourceUserId, targetUserId]) => sourceUserId !== targetUserId)
+      .map(([sourceUserId, targetUserId]) =>
+        calculateUserAffinity(sourceUserId, targetUserId),
+      ),
+  ).catch(console.error);
+};
+
+const compactPostAuthorSelect = {
+  id: true,
+  username: true,
+  verifiedEngineer: true,
+  primaryRole: true,
+  profile: {
+    select: {
+      fullName: true,
+      avatarUrl: true,
+      headline: true,
+    },
+  },
+};
+
+const compactCommentAuthorSelect = {
+  id: true,
+  username: true,
+  profile: {
+    select: {
+      fullName: true,
+      avatarUrl: true,
+    },
+  },
+};
+
+const serializePostPreview = (post: any) => {
+  const { likes, savedBy, ...rest } = post;
+
+  return {
+    ...rest,
+    isLiked: likes?.length > 0,
+    isSaved: savedBy?.length > 0,
+  };
+};
+
 // CREATE POST
 export const createPost = async (userId: string, data: any) => {
   const post = await prisma.post.create({
@@ -119,10 +174,8 @@ export const createPost = async (userId: string, data: any) => {
   // Affinity updates for mentions
   //
   if (data.mentions?.length) {
-    await Promise.all(
-      data.mentions.map((mentionedUserId: string) =>
-        calculateUserAffinity(userId, mentionedUserId),
-      ),
+    runAffinityUpdates(
+      data.mentions.map((mentionedUserId: string) => [userId, mentionedUserId]),
     );
   }
 
@@ -130,8 +183,16 @@ export const createPost = async (userId: string, data: any) => {
 };
 
 // GET FEED
-export const getFeed = async (userId?: string) => {
-  return prisma.post.findMany({
+export const getFeed = async (
+  userId?: string,
+  params: {
+    cursor?: string;
+    limit?: number;
+  } = {},
+) => {
+  const limit = clampLimit(params.limit, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT);
+
+  const posts = await prisma.post.findMany({
     where: {
       deletedAt: null,
     },
@@ -148,97 +209,229 @@ export const getFeed = async (userId?: string) => {
       {
         createdAt: "desc",
       },
+
+      {
+        id: "desc",
+      },
     ],
 
-    include: {
+    select: {
+      id: true,
+      authorId: true,
+      content: true,
+      type: true,
+      media: true,
+      attachments: true,
+      thumbnailUrl: true,
+      mentions: true,
+      visibility: true,
+      pinned: true,
+      featured: true,
+      shareCount: true,
+      saveCount: true,
+      commentsCount: true,
+      likesCount: true,
+      impressionCount: true,
+      engagementScore: true,
+      trendingScore: true,
+      createdAt: true,
+      updatedAt: true,
+
       author: {
-        include: {
-          profile: {
-            include: {
-              college: true,
-              department: true,
-            },
-          },
-        },
+        select: compactPostAuthorSelect,
       },
 
       tags: true,
-
-      _count: {
-        select: {
-          comments: true,
-          likes: true,
-          shares: true,
-          savedBy: true,
-        },
-      },
 
       likes: userId
         ? {
             where: {
               userId,
             },
+
+            select: {
+              id: true,
+            },
+
+            take: 1,
+          }
+        : false,
+
+      savedBy: userId
+        ? {
+            where: {
+              userId,
+            },
+
+            select: {
+              id: true,
+            },
+
+            take: 1,
           }
         : false,
     },
 
-    take: 50,
+    ...(params.cursor
+      ? {
+          cursor: {
+            id: params.cursor,
+          },
+
+          skip: 1,
+        }
+      : {}),
+
+    take: limit + 1,
   });
+
+  const hasNextPage = posts.length > limit;
+
+  const pagePosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+  return {
+    posts: pagePosts.map(serializePostPreview),
+    nextCursor: hasNextPage ? pagePosts[pagePosts.length - 1]?.id : null,
+    hasNextPage,
+    limit,
+  };
 };
 
 // GET POST
 export const getPostById = async (
   userId: string | undefined,
   postId: string,
+  params: {
+    commentsLimit?: number;
+    repliesLimit?: number;
+  } = {},
 ) => {
+  const commentsLimit = clampLimit(
+    params.commentsLimit,
+    DEFAULT_COMMENT_LIMIT,
+    MAX_COMMENT_LIMIT,
+  );
+
+  const repliesLimit = clampLimit(
+    params.repliesLimit,
+    DEFAULT_REPLY_LIMIT,
+    MAX_REPLY_LIMIT,
+  );
+
   const post = await prisma.post.findUnique({
     where: {
       id: postId,
     },
 
-    include: {
+    select: {
+      id: true,
+      authorId: true,
+      content: true,
+      type: true,
+      media: true,
+      attachments: true,
+      thumbnailUrl: true,
+      mentions: true,
+      visibility: true,
+      pinned: true,
+      featured: true,
+      shareCount: true,
+      saveCount: true,
+      commentsCount: true,
+      likesCount: true,
+      impressionCount: true,
+      engagementScore: true,
+      trendingScore: true,
+      createdAt: true,
+      updatedAt: true,
+
       author: {
-        include: {
-          profile: {
-            include: {
-              college: true,
-              department: true,
-            },
-          },
-        },
+        select: compactPostAuthorSelect,
       },
 
       tags: true,
 
-      likes: {
-        include: {
-          user: {
-            include: {
-              profile: true,
+      likes: userId
+        ? {
+            where: {
+              userId,
             },
-          },
-        },
-      },
+
+            select: {
+              id: true,
+            },
+
+            take: 1,
+          }
+        : false,
+
+      savedBy: userId
+        ? {
+            where: {
+              userId,
+            },
+
+            select: {
+              id: true,
+            },
+
+            take: 1,
+          }
+        : false,
 
       comments: {
         where: {
           deletedAt: null,
+
+          parentCommentId: null,
         },
 
-        include: {
+        select: {
+          id: true,
+          postId: true,
+          authorId: true,
+          content: true,
+          attachments: true,
+          mentions: true,
+          parentCommentId: true,
+          createdAt: true,
+          editedAt: true,
+
           author: {
-            include: {
-              profile: true,
-            },
+            select: compactCommentAuthorSelect,
           },
 
           replies: {
-            include: {
+            where: {
+              deletedAt: null,
+            },
+
+            select: {
+              id: true,
+              postId: true,
+              authorId: true,
+              content: true,
+              attachments: true,
+              mentions: true,
+              parentCommentId: true,
+              createdAt: true,
+              editedAt: true,
+
               author: {
-                include: {
-                  profile: true,
-                },
+                select: compactCommentAuthorSelect,
               },
+            },
+
+            orderBy: {
+              createdAt: "asc",
+            },
+
+            take: repliesLimit,
+          },
+
+          _count: {
+            select: {
+              replies: true,
             },
           },
         },
@@ -246,15 +439,8 @@ export const getPostById = async (
         orderBy: {
           createdAt: "asc",
         },
-      },
 
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-          shares: true,
-          savedBy: true,
-        },
+        take: commentsLimit,
       },
     },
   });
@@ -279,16 +465,18 @@ export const getPostById = async (
   });
 
   if (userId) {
-    if (userId) {
-      trackInteraction(userId, {
-        targetId: postId,
-        targetType: "POST",
-        interactionType: "VIEW",
-      }).catch(console.error);
-    }
+    trackInteraction(userId, {
+      targetId: postId,
+      targetType: "POST",
+      interactionType: "VIEW",
+    }).catch(console.error);
   }
 
-  return post;
+  return {
+    ...serializePostPreview(post),
+    commentsLimit,
+    repliesLimit,
+  };
 };
 
 // UPDATE POST
@@ -424,12 +612,14 @@ export const createComment = async (
 
     include: {
       author: {
-        include: {
-          profile: true,
-        },
+        select: compactCommentAuthorSelect,
       },
 
-      replies: true,
+      _count: {
+        select: {
+          replies: true,
+        },
+      },
     },
   });
 
@@ -521,12 +711,9 @@ export const createComment = async (
         id: data.parentCommentId,
       },
 
-      include: {
-        author: {
-          include: {
-            profile: true,
-          },
-        },
+      select: {
+        id: true,
+        authorId: true,
       },
     });
 
@@ -607,10 +794,8 @@ export const createComment = async (
     //
     // Affinity
     //
-    await Promise.all(
-      data.mentions.map((mentionedUserId: string) =>
-        calculateUserAffinity(userId, mentionedUserId),
-      ),
+    runAffinityUpdates(
+      data.mentions.map((mentionedUserId: string) => [userId, mentionedUserId]),
     );
   }
 
@@ -648,6 +833,10 @@ export const toggleLike = async (userId: string, postId: string) => {
         postId,
         userId,
       },
+    },
+
+    select: {
+      id: true,
     },
   });
 
@@ -711,25 +900,16 @@ export const toggleLike = async (userId: string, postId: string) => {
   // Affinity
   //
   if (post.authorId !== userId) {
-    await calculateUserAffinity(userId, post.authorId);
-
-    await calculateUserAffinity(post.authorId, userId);
+    runAffinityUpdates([
+      [userId, post.authorId],
+      [post.authorId, userId],
+    ]);
   }
 
   //
   // Notify
   //
   if (post.authorId !== userId) {
-    const liker = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-
-      include: {
-        profile: true,
-      },
-    });
-
     createNotification({
       userId: post.authorId,
 
@@ -739,7 +919,7 @@ export const toggleLike = async (userId: string, postId: string) => {
 
       title: "New Like",
 
-      message: `${liker?.profile?.fullName || liker?.username} liked your post`,
+      message: "Someone liked your post",
 
       entityType: "POST",
 
@@ -905,6 +1085,11 @@ export const toggleSavePost = async (userId: string, postId: string) => {
     where: {
       id: postId,
     },
+
+    select: {
+      id: true,
+      authorId: true,
+    },
   });
 
   if (!post) {
@@ -917,6 +1102,10 @@ export const toggleSavePost = async (userId: string, postId: string) => {
         userId,
         postId,
       },
+    },
+
+    select: {
+      id: true,
     },
   });
 
@@ -977,9 +1166,10 @@ export const toggleSavePost = async (userId: string, postId: string) => {
   // Affinity
   //
   if (post.authorId !== userId) {
-    await calculateUserAffinity(userId, post.authorId);
-
-    await calculateUserAffinity(post.authorId, userId);
+    runAffinityUpdates([
+      [userId, post.authorId],
+      [post.authorId, userId],
+    ]);
   }
 
   //
@@ -997,16 +1187,6 @@ export const toggleSavePost = async (userId: string, postId: string) => {
   // Advanced notification
   //
   if (post.authorId !== userId) {
-    const saver = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-
-      include: {
-        profile: true,
-      },
-    });
-
     createNotification({
       userId: post.authorId,
 
@@ -1016,7 +1196,7 @@ export const toggleSavePost = async (userId: string, postId: string) => {
 
       title: "Post Saved",
 
-      message: `${saver?.profile?.fullName || saver?.username} saved your post`,
+      message: "Someone saved your post",
 
       entityType: "POST",
 

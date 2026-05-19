@@ -624,6 +624,9 @@ model Profile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([collegeId])
+  @@index([departmentId])
 }
 
 model CodingProfile {
@@ -638,6 +641,8 @@ model CodingProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model College {
@@ -678,6 +683,8 @@ model Department {
   posts         Post[]
   conversations Conversation[]
   communities   Community[]
+
+  @@index([collegeId])
 }
 
 model Skill {
@@ -705,6 +712,7 @@ model UserSkill {
   createdAt DateTime @default(now())
 
   @@unique([userId, skillId])
+  @@index([skillId])
 }
 
 model Experience {
@@ -781,6 +789,10 @@ model Experience {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([userId, employmentType, startDate, endDate])
 }
 
 model Education {
@@ -806,6 +818,11 @@ model Education {
   department Department? @relation(fields: [departmentId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([collegeId])
+  @@index([departmentId])
+  @@index([userId, collegeId, departmentId])
 }
 
 model Post {
@@ -1211,6 +1228,7 @@ model ProjectMember {
   joinedAt DateTime @default(now())
 
   @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model ProjectJoinRequest {
@@ -1311,6 +1329,7 @@ model TeamMember {
   joinedAt DateTime @default(now())
 
   @@unique([teamId, userId])
+  @@index([userId])
 }
 
 model TeamInvite {
@@ -2171,6 +2190,7 @@ model EngineeringActivity {
 
   createdAt DateTime @default(now())
 
+  @@index([userId, createdAt])
   @@index([userId])
   @@index([type])
   @@index([createdAt])
@@ -2521,6 +2541,8 @@ model Community {
   @@index([category])
   @@index([collegeId])
   @@index([companyId])
+  @@index([collegeId, departmentId, autoJoinEligible])
+  @@index([companyId, autoJoinEligible])
   @@index([visibility])
   @@index([activityScore])
   @@index([trendingScore])
@@ -2566,6 +2588,7 @@ model CommunityMember {
   // INDEXES
   @@unique([communityId, userId])
   @@index([userId])
+  @@index([userId, active])
   @@index([communityId])
   @@index([role])
   @@index([active])
