@@ -1870,6 +1870,10 @@ model ReferralRequest {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+  
+  @@index([requesterId, createdAt])
+  @@index([receiverId, status])
+  @@index([companyId, status])
 }
 
 model MentorshipRequest {
