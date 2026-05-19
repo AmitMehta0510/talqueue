@@ -26,6 +26,18 @@ import {
   reviewConnectionSchema,
 } from "./social.validation";
 
+const getPaginationParams = (req: any) => ({
+  cursor:
+    (req.query.cursor as string) ||
+    undefined,
+
+  limit:
+    Number.parseInt(
+      (req.query.limit as string) || "20",
+      10
+    ) || 20,
+});
+
 export const followUserHandler =  asyncHandler(
     async (
       req: any,
@@ -127,7 +139,10 @@ export const getFollowersHandler =
         req.params.userId as string;
 
       const followers =
-        await getFollowers(userId);
+        await getFollowers(
+          userId,
+          getPaginationParams(req)
+        );
 
       res.json(
         successResponse(
@@ -148,7 +163,10 @@ export const getFollowingHandler =
         req.params.userId as string;
 
       const following =
-        await getFollowing(userId);
+        await getFollowing(
+          userId,
+          getPaginationParams(req)
+        );
 
       res.json(
         successResponse(
@@ -168,7 +186,10 @@ export const getConnectionsHandler =  asyncHandler(
         req.params.userId as string;
 
       const connections =
-        await getConnections(userId);
+        await getConnections(
+          userId,
+          getPaginationParams(req)
+        );
 
       res.json(
         successResponse(
@@ -187,7 +208,8 @@ export const suggestedConnectionsHandler =  asyncHandler(
 
       const users =
         await getSuggestedConnections(
-          req.user.id
+          req.user.id,
+          getPaginationParams(req)
         );
 
       res.json(
@@ -205,7 +227,8 @@ export const mutualConnectionsHandler =  asyncHandler(
       const users =
         await getMutualConnections(
           req.user.id,
-          req.params.userId
+          req.params.userId,
+          getPaginationParams(req)
         );
 
       res.json(
