@@ -1,235 +1,261 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 
-export const getEngineeringPortfolio =  async (
-    username: string
-  ) => {
-    // User
-    const user =  await prisma.user.findUnique({
-        where: {
-          username,
-        },
+export const getEngineeringPortfolio = async (username: string) => {
+  // User
+  const user = await prisma.user.findUnique({
+    where: {
+      username,
+    },
 
+    select: {
+      id: true,
+      username: true,
+      reputationScore: true,
+      engineeringScore: true,
+      trustLevel: true,
+      featuredProjectId: true,
+      profile: true,
+      skills: {
         include: {
-          // Profil
-          profile: true,
-          // Skill
-          skills: {
-            include: {
-              skill: true,
+          skill: true,
+        },
+      },
+      projectMemberships: {
+        select: {
+          role: true,
+          project: {
+            select: {
+              id: true,
+              title: true,
+              shortDescription: true,
+              featured: true,
+              verified: true,
+              status: true,
+              githubUrl: true,
+              liveUrl: true,
+              videoDemoUrl: true,
+              techStack: true,
+              deploymentStatus: true,
+              starsCount: true,
+              forksCount: true,
+              commitCount: true,
+              contributorsCount: true,
+              engineeringScore: true,
+              ownerId: true,
+              createdAt: true,
+              updatedAt: true,
             },
-          },
-          // Experience
-          experiences: {
-            include: {
-              company: true,
-            },
-
-            orderBy: {
-              startDate:
-                "desc",
-            },
-          },
-          // Project
-          projectMemberships: {
-            include: {
-              project: true,
-            },
-          },
-          // Badge
-          badges: {
-            include: {
-              badge: true,
-            },
-          },
-          // Activitie
-          activities: {
-            orderBy: {
-              createdAt:
-                "desc",
-            },
-
-            take: 20,
           },
         },
-      });
+      },
+      codingProfiles: {
+        select: {
+          platform: true,
+          username: true,
+          url: true,
+        },
+      },
+      educations: {
+        select: {
+          id: true,
+          degree: true,
+          fieldOfStudy: true,
+          startYear: true,
+          endYear: true,
+          current: true,
+          college: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      badges: {
+        include: {
+          badge: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              imageUrl: true,
+              category: true,
+            },
+          },
+        },
+      },
+      experiences: {
+        include: {
+          company: {
+            select: {
+              id: true,
+              name: true,
+              websiteUrl: true,
+              logoUrl: true,
+              industry: true,
+              headquarters: true,
+              type: true,
+              size: true,
+            },
+          },
+        },
+        orderBy: {
+          startDate: "desc",
+        },
+      },
+      activities: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 20,
+      },
+    },
+  });
 
-    if (!user) {
-      throw new AppError(
-        "User not found",
-        404
-      );
-    }
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
 
-    // Project extraction
-    const projects =
-      user.projectMemberships.map(
-        (membership) =>
-          membership.project
-      );
+  const projects = user.projectMemberships
+    .map((membership) => ({
+      role: membership.role,
+      ...membership.project,
+    }))
+    .filter((project) => Boolean(project && project.id));
 
-    // Verified projects
-    const verifiedProjects =
-      projects.filter(
-        (project) =>
-          project.verified
-      );
+  const stats = projects.reduce(
+    (acc, project) => {
+      acc.totalStars += project.starsCount;
+      acc.totalForks += project.forksCount;
+      acc.totalCommits += project.commitCount;
 
-    // Completed projects
-    const completedProjects =
-      projects.filter(
-        (project) =>
-          project.status ===
-          "COMPLETED"
-      );
+      if (project.verified) {
+        acc.verifiedProjects += 1;
+      }
+
+      if (project.status === "COMPLETED") {
+        acc.completedProjects += 1;
+      }
+
+      return acc;
+    },
+    {
+      totalStars: 0,
+      totalForks: 0,
+      totalCommits: 0,
+      verifiedProjects: 0,
+      completedProjects: 0,
+    },
+  );
+
+  const featuredProject =
+    projects.find((project) => project.id === user.featuredProjectId) ||
+    projects.find((project) => project.featured);
+
+  const primaryTechStack = user.skills
+    .map((skill) => skill.skill.name)
+    .slice(0, 12);
+
+  const topSkills = user.skills.map((skill) => skill.skill).slice(0, 12);
+
+  const topProjects = projects
+    .sort((a, b) => (b.engineeringScore || 0) - (a.engineeringScore || 0))
+    .slice(0, 6);
+
+  // Hackathon wins
+  const hackathonWins = await prisma.hackathonWinner.count({
+    where: {
+      team: {
+        members: {
+          some: {
+            userId: user.id,
+          },
+        },
+      },
+    },
+  });
+
+  // GitHub totals
+  const githubStats = {
+    totalStars: stats.totalStars,
+    totalForks: stats.totalForks,
+    totalCommits: stats.totalCommits,
+  };
+
+  // Portfolio
+  return {
+    // User
+    id: user.id,
+
+    username: user.username,
+
+    profile: user.profile,
+
+    // Scores
+    reputationScore: user.reputationScore,
+
+    engineeringScore: user.engineeringScore,
+
+    trustLevel: user.trustLevel,
+
+    // Recruiter-friendly summary
+    primaryTechStack,
+
+    topSkills: topSkills,
+
+    totalSkills: user.skills.length,
+
+    totalCodingProfiles: user.codingProfiles.length,
+
+    totalEducation: user.educations.length,
+
+    // Stats
+    stats: {
+      totalProjects: projects.length,
+
+      verifiedProjects: stats.verifiedProjects,
+
+      completedProjects: stats.completedProjects,
+
+      hackathonWins,
+
+      totalBadges: user.badges.length,
+
+      totalExperiences: user.experiences.length,
+    },
+
+    // GitHub
+    githubStats,
 
     // Featured project
-    const featuredProject =
-      projects.find(
-        (project) =>
-          project.id ===
-          user.featuredProjectId
-      ) ||
-      projects.find(
-        (project) =>
-          project.featured
-      );
+    featuredProject,
 
-    // Hackathon wins
-    const hackathonWins =
-      await prisma.hackathonWinner.count({
-        where: {
-          team: {
-            members: {
-              some: {
-                userId:
-                  user.id,
-              },
-            },
-          },
-        },
-      });
+    // Projects
+    topProjects,
 
-    // GitHub totals
-    const githubStats = {
-      totalStars:
-        projects.reduce(
-          (
-            acc,
-            project
-          ) =>
-            acc +
-            project.starsCount,
+    // Experiences
+    experiences: user.experiences,
 
-          0
-        ),
+    // Education
+    educations: user.educations,
 
-      totalForks:
-        projects.reduce(
-          (
-            acc,
-            project
-          ) =>
-            acc +
-            project.forksCount,
+    // Skills
+    skills: user.skills,
 
-          0
-        ),
+    // Coding profiles
+    codingProfiles: user.codingProfiles,
 
-      totalCommits:
-        projects.reduce(
-          (
-            acc,
-            project
-          ) =>
-            acc +
-            project.commitCount,
+    // Badges
+    badges: user.badges,
 
-          0
-        ),
-    };
-
-    // Portfolio
-    return {
-
-      // User
-      id: user.id,
-
-      username:
-        user.username,
-
-      profile:
-        user.profile,
-
-      // Scores
-      reputationScore:
-        user.reputationScore,
-
-      engineeringScore:
-        user.engineeringScore,
-
-      trustLevel:
-        user.trustLevel,
-
-      // Stats
-      stats: {
-        totalProjects:
-          projects.length,
-
-        verifiedProjects:
-          verifiedProjects.length,
-
-        completedProjects:
-          completedProjects.length,
-
-        hackathonWins,
-
-        totalBadges:
-          user.badges.length,
-
-        totalExperiences:
-          user.experiences.length,
-      },
-
-      
-      // GitHub
-      
-      githubStats,
-
-      // Featured project
-      featuredProject,
-
-      // Projects
-      topProjects:
-        projects
-          .sort(
-            (a, b) =>
-              (
-                b.engineeringScore ||
-                0
-              ) -
-              (
-                a.engineeringScore ||
-                0
-              )
-          )
-          .slice(0, 6),
-
-      // Experiences
-      experiences:
-        user.experiences,
-
-      // Skills
-      skills:
-        user.skills,
-
-      // Badges
-      //
-      badges:
-        user.badges,
-
-      // Activities
-      recentActivities:
-        user.activities,
-    };
+    // Activities
+    recentActivities: user.activities,
   };
+};

@@ -1,4 +1,5 @@
 import prisma from "shared/database/prisma";
+import { Prisma } from "@prisma/client";
 
 import AppError from "shared/errors/AppError";
 
@@ -16,20 +17,17 @@ import { calculateTrustLevel } from "modules/engineering/engineering-trust.servi
 import { calculateUserAffinity } from "modules/affinity/affinity.service";
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
-export const createHackathon = async (userId: string, data: any) => {
-  //
-  // Generate slug
-  //
-  const slug = data.title?.toLowerCase()?.replace(/\s+/g, "-");
+import slugify from "slugify";
 
-  //
-  // Create hackathon
-  //
+export const createHackathon = async (userId: string, data: any) => {
+  const slug = slugify(data.title, {
+    lower: true,
+    strict: true,
+    trim: true,
+  });
+
   const hackathon = await prisma.hackathon.create({
     data: {
-      //
-      // BASIC
-      //
       title: data.title,
 
       slug,
@@ -42,18 +40,12 @@ export const createHackathon = async (userId: string, data: any) => {
 
       logoUrl: data.logoUrl,
 
-      //
-      // TIMELINE
-      //
       startDate: new Date(data.startDate),
 
       endDate: new Date(data.endDate),
 
       registrationDeadline: new Date(data.registrationDeadline),
 
-      //
-      // PARTICIPATION
-      //
       maxTeamSize: data.maxTeamSize,
 
       tracks: data.tracks,
@@ -64,9 +56,6 @@ export const createHackathon = async (userId: string, data: any) => {
 
       judgingCriteria: data.judgingCriteria,
 
-      //
-      // ORGANIZER
-      //
       organizerName: data.organizerName,
 
       organizerWebsite: data.organizerWebsite,
@@ -77,74 +66,103 @@ export const createHackathon = async (userId: string, data: any) => {
 
       sponsorWebsite: data.sponsorWebsite,
 
-      //
-      // LOCATION
-      //
       mode: data.mode,
 
       location: data.location,
 
-      //
-      // EXTERNAL
-      //
-      isExternal: data.isExternal || false,
+      isExternal: Boolean(data.isExternal),
 
       sourcePlatform: data.sourcePlatform,
 
       externalUrl: data.externalUrl,
 
-      //
-      // STATUS
-      //
       status: data.status || "DRAFT",
 
-      //
-      // RELATION
-      //
       createdById: userId,
+    },
+
+    include: {
+      createdBy: {
+        include: {
+          profile: true,
+        },
+      },
     },
   });
 
-  //
-  // Small creation reward
-  //
-  addReputation(
-    userId,
-
-    "HACKATHON_CREATED",
-
-    10,
-
-    "Created a hackathon",
-
-    {
+  // Non-blocking side effects
+  void Promise.all([
+    addReputation(userId, "HACKATHON_CREATED", 10, "Created a hackathon", {
       hackathonId: hackathon.id,
-    },
-  ).catch(console.error);
+    }),
 
-  //
-  // Activity
-  //
-  createActivity(
-    userId,
-
-    "HACKATHON_CREATED",
-
-    "Created a hackathon",
-
-    `Created hackathon "${hackathon.title}"`,
-
-    {
-      hackathonId: hackathon.id,
-    },
-  ).catch(console.error);
+    createActivity(
+      userId,
+      "HACKATHON_CREATED",
+      "Created a hackathon",
+      `Created hackathon "${hackathon.title}"`,
+      {
+        hackathonId: hackathon.id,
+      },
+    ),
+  ]).catch(console.error);
 
   return hackathon;
+};
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+const calculateHackathonRankingScore = (hackathon: any) => {
+  let score = 0;
+
+  if (hackathon.verified) {
+    score += 100;
+  }
+
+  if (hackathon.featured) {
+    score += 60;
+  }
+
+  if (hackathon.isExternal) {
+    score += 40;
+  }
+
+  score += hackathon._count.registrations * 2;
+
+  score += hackathon._count.submissions * 5;
+
+  score += hackathon._count.judges * 10;
+
+  score += hackathon._count.winners * 15;
+
+  const daysOld = Math.floor(
+    (Date.now() - new Date(hackathon.createdAt).getTime()) / DAY_MS,
+  );
+
+  score += Math.max(30 - daysOld, 0);
+
+  switch (hackathon.status) {
+    case "LIVE":
+      score += 50;
+      break;
+
+    case "COMPLETED":
+      score += 30;
+      break;
+
+    case "ARCHIVED":
+      score -= 20;
+      break;
+  }
+
+  return score;
 };
 
 export const getHackathons = async () => {
   const hackathons = await prisma.hackathon.findMany({
     where: {
+      deletedAt: null,
+
       NOT: {
         status: "DELETED",
       },
@@ -170,92 +188,14 @@ export const getHackathons = async () => {
     take: 100,
   });
 
-  //
-  // Ranking engine
-  //
-  const rankedHackathons = hackathons
-    .map((hackathon) => {
-      let score = 0;
+  return hackathons
+    .map((hackathon) => ({
+      ...hackathon,
 
-      //
-      // Verified hackathon
-      //
-      if (hackathon.verified) {
-        score += 100;
-      }
-
-      //
-      // Featured
-      //
-      if (hackathon.featured) {
-        score += 60;
-      }
-
-      //
-      // External recognized source
-      //
-      if (hackathon.isExternal) {
-        score += 40;
-      }
-
-      //
-      // Registration activity
-      //
-      score += hackathon._count.registrations * 2;
-
-      //
-      // Submission quality
-      //
-      score += hackathon._count.submissions * 5;
-
-      //
-      // Judges
-      //
-      score += hackathon._count.judges * 10;
-
-      //
-      // Winners declared
-      //
-      score += hackathon._count.winners * 15;
-
-      //
-      // Freshness
-      //
-      const daysOld = Math.floor(
-        (Date.now() - new Date(hackathon.createdAt).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
-
-      //
-      // Newer events boost
-      //
-      score += Math.max(30 - daysOld, 0);
-
-      //
-      // Status scoring
-      //
-      if (hackathon.status === "LIVE") {
-        score += 50;
-      }
-
-      if (hackathon.status === "COMPLETED") {
-        score += 30;
-      }
-
-      if (hackathon.status === "ARCHIVED") {
-        score -= 20;
-      }
-
-      return {
-        ...hackathon,
-
-        rankingScore: score,
-      };
-    })
+      rankingScore: calculateHackathonRankingScore(hackathon),
+    }))
     .sort((a, b) => b.rankingScore - a.rankingScore)
     .slice(0, 50);
-
-  return rankedHackathons;
 };
 
 export const getHackathonById = async (
@@ -266,131 +206,12 @@ export const getHackathonById = async (
     where: {
       id: hackathonId,
     },
-
     include: {
-      //
-      // ORGANIZER
-      //
       createdBy: {
         include: {
           profile: true,
         },
       },
-
-      //
-      // REGISTRATIONS
-      //
-      registrations: {
-        include: {
-          team: {
-            include: {
-              members: {
-                include: {
-                  user: {
-                    include: {
-                      profile: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-
-      //
-      // SUBMISSIONS
-      //
-      submissions: {
-        include: {
-          project: {
-            include: {
-              owner: {
-                include: {
-                  profile: true,
-                },
-              },
-
-              members: {
-                include: {
-                  user: {
-                    include: {
-                      profile: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-
-          team: true,
-
-          evaluations: {
-            include: {
-              judge: {
-                include: {
-                  user: {
-                    include: {
-                      profile: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-
-          winners: true,
-        },
-
-        orderBy: [
-          {
-            engineeringScore: "desc",
-          },
-
-          {
-            submittedAt: "desc",
-          },
-        ],
-      },
-
-      //
-      // JUDGES
-      //
-      judges: {
-        include: {
-          user: {
-            include: {
-              profile: true,
-            },
-          },
-        },
-      },
-
-      //
-      // WINNERS
-      //
-      winners: {
-        include: {
-          submission: {
-            include: {
-              project: true,
-              team: true,
-            },
-          },
-        },
-
-        orderBy: {
-          position: "asc",
-        },
-      },
-
-      //
-      // COUNTS
-      //
       _count: {
         select: {
           registrations: true,
@@ -406,66 +227,247 @@ export const getHackathonById = async (
     throw new AppError("Hackathon not found", 404);
   }
 
-  //
-  // View count increment
-  //
-  await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      viewCount: {
-        increment: 1,
+  const [registrations, submissions, judges, winners] = await Promise.all([
+    prisma.hackathonRegistration.findMany({
+      where: {
+        hackathonId,
       },
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 50,
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        team: {
+          select: {
+            id: true,
+            name: true,
+            reputationScore: true,
+            completedProjectsCount: true,
+            members: {
+              select: {
+                role: true,
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                    profile: {
+                      select: {
+                        fullName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
 
-  //
-  // Derived analytics
-  //
-  const submissions = hackathon.submissions || [];
+    prisma.hackathonSubmission.findMany({
+      where: {
+        hackathonId,
+      },
+      orderBy: [
+        {
+          engineeringScore: "desc",
+        },
+        {
+          submittedAt: "desc",
+        },
+      ],
+      take: 100,
+      select: {
+        id: true,
+        githubUrl: true,
+        demoUrl: true,
+        videoUrl: true,
+        presentationUrl: true,
+        description: true,
+        techStack: true,
+        status: true,
+        score: true,
+        finalScore: true,
+        engineeringScore: true,
+        verifiedProject: true,
+        submittedAt: true,
+        reviewedAt: true,
+        project: {
+          select: {
+            id: true,
+            title: true,
+            verified: true,
+            status: true,
+            contributorsCount: true,
+            deploymentStatus: true,
+            owner: {
+              select: {
+                id: true,
+                username: true,
+                profile: {
+                  select: {
+                    fullName: true,
+                  },
+                },
+              },
+            },
+            members: {
+              select: {
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                    profile: {
+                      select: {
+                        fullName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        team: {
+          select: {
+            id: true,
+            name: true,
+            reputationScore: true,
+            completedProjectsCount: true,
+          },
+        },
+        evaluations: {
+          select: {
+            id: true,
+            judge: {
+              select: {
+                id: true,
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                    profile: {
+                      select: {
+                        fullName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        winners: {
+          select: {
+            id: true,
+            position: true,
+            score: true,
+          },
+        },
+      },
+    }),
 
-  const registrations = hackathon.registrations || [];
+    prisma.hackathonJudge.findMany({
+      where: {
+        hackathonId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+    }),
 
-  const judges = hackathon.judges || [];
+    prisma.hackathonWinner.findMany({
+      where: {
+        hackathonId,
+      },
+      orderBy: {
+        position: "asc",
+      },
+      select: {
+        id: true,
+        position: true,
+        score: true,
+        submission: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+            team: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
 
-  const winners = hackathon.winners || [];
+  // Non-blocking view increment
+  prisma.hackathon
+    .update({
+      where: {
+        id: hackathonId,
+      },
+      data: {
+        viewCount: {
+          increment: 1,
+        },
+      },
+    })
+    .catch(console.error);
+
+  if (userId) {
+    trackInteraction(userId, {
+      targetId: hackathonId,
+      targetType: "HACKATHON",
+      interactionType: "VIEW",
+    }).catch(console.error);
+  }
 
   const totalEngineeringScore = submissions.reduce(
-    (acc: number, submission: any) => acc + (submission.engineeringScore || 0),
-
+    (acc, submission) => acc + (submission.engineeringScore || 0),
     0,
   );
 
   const averageEngineeringScore =
     submissions.length > 0 ? totalEngineeringScore / submissions.length : 0;
 
-  //
-  // Verified submissions
-  //
   const verifiedSubmissionCount = submissions.filter(
-    (submission: any) => submission.verifiedProject,
+    (submission) => submission.verifiedProject,
   ).length;
 
-  //
-  // Attach analytics
-  //
   return {
     ...hackathon,
-
+    registrations,
+    submissions,
+    judges,
+    winners,
     analytics: {
       averageEngineeringScore,
-
       verifiedSubmissionCount,
-
       totalProjects: submissions.length,
-
-      totalTeams: registrations.length,
-
-      totalJudges: judges.length,
-
-      totalWinners: winners.length,
+      totalTeams: hackathon._count.registrations,
+      totalJudges: hackathon._count.judges,
+      totalWinners: hackathon._count.winners,
     },
   };
 };
@@ -475,125 +477,115 @@ export const registerTeamForHackathon = async (
   hackathonId: string,
   teamId: string,
 ) => {
-  //
-  // Fetch hackathon
-  //
-  const hackathon = await prisma.hackathon.findUnique({
-    where: {
-      id: hackathonId,
-    },
-  });
+  const [hackathon, membership] = await Promise.all([
+    prisma.hackathon.findUnique({
+      where: {
+        id: hackathonId,
+      },
+
+      select: {
+        id: true,
+        title: true,
+        createdById: true,
+        registrationDeadline: true,
+        maxTeamSize: true,
+        status: true,
+      },
+    }),
+
+    prisma.teamMember.findFirst({
+      where: {
+        teamId,
+        userId,
+      },
+
+      select: {
+        id: true,
+      },
+    }),
+  ]);
 
   if (!hackathon) {
     throw new AppError("Hackathon not found", 404);
   }
 
-  //
-  // Prevent deleted/archived
-  //
-  if (hackathon.status === "DELETED" || hackathon.status === "ARCHIVED") {
-    throw new AppError("Hackathon unavailable", 400);
-  }
-
-  //
-  // Deadline check
-  //
-  if (new Date() > hackathon.registrationDeadline) {
-    throw new AppError("Registration closed", 400);
-  }
-
-  //
-  // Team membership validation
-  //
-  const membership = await prisma.teamMember.findFirst({
-    where: {
-      teamId,
-      userId,
-    },
-  });
-
   if (!membership) {
     throw new AppError("Not a team member", 403);
   }
 
-  //
-  // Fetch full team
-  //
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-    },
+  if (hackathon.status === "DELETED" || hackathon.status === "ARCHIVED") {
+    throw new AppError("Hackathon unavailable", 400);
+  }
 
-    include: {
-      members: true,
+  if (new Date() > hackathon.registrationDeadline) {
+    throw new AppError("Registration closed", 400);
+  }
 
-      projects: true,
+  const [team, existingRegistration] = await Promise.all([
+    prisma.team.findUnique({
+      where: {
+        id: teamId,
+      },
 
-      hackathonRegistrations: true,
-    },
-  });
+      include: {
+        members: {
+          select: {
+            userId: true,
+          },
+        },
+
+        projects: {
+          select: {
+            verified: true,
+          },
+        },
+
+        _count: {
+          select: {
+            hackathonRegistrations: true,
+          },
+        },
+      },
+    }),
+
+    prisma.hackathonRegistration.findUnique({
+      where: {
+        hackathonId_teamId: {
+          hackathonId,
+          teamId,
+        },
+      },
+
+      select: {
+        id: true,
+      },
+    }),
+  ]);
 
   if (!team) {
     throw new AppError("Team not found", 404);
   }
 
-  //
-  // Team size validation
-  //
-  const memberCount = team.members.length;
-
-  if (memberCount > hackathon.maxTeamSize) {
-    throw new AppError("Team exceeds maximum allowed size", 400);
-  }
-
-  //
-  // Duplicate registration prevention
-  //
-  const existingRegistration = await prisma.hackathonRegistration.findUnique({
-    where: {
-      hackathonId_teamId: {
-        hackathonId,
-        teamId,
-      },
-    },
-  });
-
   if (existingRegistration) {
     throw new AppError("Team already registered", 400);
   }
 
-  //
-  // Team credibility scoring
-  //
+  if (team.members.length > hackathon.maxTeamSize) {
+    throw new AppError("Team exceeds maximum allowed size", 400);
+  }
+
+  // Credibility score
   let credibilityScore = 0;
 
-  //
-  // Team reputation
-  //
   credibilityScore += team.reputationScore || 0;
 
-  //
-  // Completed projects
-  //
   credibilityScore += (team.completedProjectsCount || 0) * 20;
 
-  //
-  // Verified projects
-  //
-  const verifiedProjects = team.projects.filter(
-    (project) => project.verified,
-  ).length;
+  credibilityScore +=
+    team.projects.filter((project) => project.verified).length * 30;
 
-  credibilityScore += verifiedProjects * 30;
+  credibilityScore += team._count.hackathonRegistrations * 5;
 
-  //
-  // Existing hackathon history
-  //
-  credibilityScore += team.hackathonRegistrations.length * 5;
-
-  //
-  // Determine registration quality
-  //
   let rewardPoints = 5;
 
   if (credibilityScore >= 300) {
@@ -604,112 +596,70 @@ export const registerTeamForHackathon = async (
     rewardPoints = 10;
   }
 
-  //
-  // Create registration
-  //
-  const registration = await prisma.hackathonRegistration.create({
-    data: {
-      hackathonId,
-      teamId,
-    },
-  });
-
-  //
-  // Increment registration count
-  //
-  await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      registrationCount: {
-        increment: 1,
+  // Atomic registration + counter increment
+  const [registration] = await prisma.$transaction([
+    prisma.hackathonRegistration.create({
+      data: {
+        hackathonId,
+        teamId,
       },
-    },
-  });
+    }),
 
-  //
-  // Team reputation
-  //
-  addTeamReputation(
-    teamId,
+    prisma.hackathon.update({
+      where: {
+        id: hackathonId,
+      },
 
-    rewardPoints,
-  ).catch(console.error);
+      data: {
+        registrationCount: {
+          increment: 1,
+        },
+      },
+    }),
+  ]);
 
-  //
-  // Reward team members
-  //
-  rewardTeamMembers(
-    teamId,
+  // Background side effects
+  void Promise.all([
+    addTeamReputation(teamId, rewardPoints),
 
-    "HACKATHON_REGISTERED",
+    rewardTeamMembers(
+      teamId,
+      "HACKATHON_REGISTERED",
+      rewardPoints,
+      "Registered for hackathon",
+      {
+        hackathonId,
+      },
+    ),
 
-    rewardPoints,
-
-    "Registered for hackathon",
-
-    {
-      hackathonId,
-    },
-  ).catch(console.error);
-
-  //
-  // Activities
-  //
-  await Promise.all(
-    team.members.map((member) =>
+    ...team.members.map((member) =>
       createActivity(
         member.userId,
-
         "HACKATHON_REGISTERED",
-
         "Registered for hackathon",
-
         `Registered for "${hackathon.title}"`,
-
         {
           hackathonId,
         },
       ),
     ),
-  );
 
-  //
-  // Notify organizer
-  //
+    createNotification({
+      userId: hackathon.createdById,
 
-  const requester = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+      type: "SYSTEM",
 
-    include: {
-      profile: true,
-    },
-  });
+      title: "New Hackathon Registration",
 
-  createNotification({
-    userId: hackathon.createdById,
-
-    type: "SYSTEM",
-
-    title: "New Hackathon Registration",
-
-    message: `${requester?.profile?.fullName || requester?.username} registered team "${team.name}" for your hackathon`,
-  }).catch(console.error);
-
-  //
-  // Team collaboration affinity
-  //
-  await Promise.all(
-    team.members.map(async (member) => {
-      await calculateUserAffinity(member.userId, hackathon.createdById);
-
-      await calculateUserAffinity(hackathon.createdById, member.userId);
+      message: `A new team registered for "${hackathon.title}"`,
     }),
-  );
+
+    ...team.members.flatMap((member) => [
+      calculateUserAffinity(member.userId, hackathon.createdById),
+
+      calculateUserAffinity(hackathon.createdById, member.userId),
+    ]),
+  ]).catch(console.error);
 
   return registration;
 };
@@ -719,22 +669,95 @@ export const submitProjectToHackathon = async (
   hackathonId: string,
   data: any,
 ) => {
-  //
-  // Registration validation
-  //
-  const registration = await prisma.hackathonRegistration.findUnique({
-    where: {
-      hackathonId_teamId: {
-        hackathonId,
-        teamId: data.teamId,
+  const [team, project] = await Promise.all([
+    prisma.team.findUnique({
+      where: {
+        id: data.teamId,
       },
-    },
+      select: {
+        id: true,
+        reputationScore: true,
+        completedProjectsCount: true,
+        members: {
+          select: {
+            userId: true,
+            role: true,
+          },
+        },
+        projects: {
+          where: {
+            verified: true,
+          },
+          select: {
+            id: true,
+          },
+        },
+        _count: {
+          select: {
+            hackathonRegistrations: true,
+          },
+        },
+        hackathonRegistrations: {
+          where: {
+            hackathonId,
+          },
+          select: {
+            id: true,
+            status: true,
+            hackathon: {
+              select: {
+                id: true,
+                title: true,
+                createdById: true,
+                registrationDeadline: true,
+                maxTeamSize: true,
+                status: true,
+              },
+            },
+          },
+        },
+        hackathonSubmissions: {
+          where: {
+            hackathonId,
+          },
+          select: {
+            id: true,
+          },
+        },
+      },
+    }),
 
-    include: {
-      hackathon: true,
-      team: true,
-    },
-  });
+    prisma.project.findUnique({
+      where: {
+        id: data.projectId,
+      },
+      select: {
+        id: true,
+        title: true,
+        verified: true,
+        githubUrl: true,
+        liveUrl: true,
+        videoDemoUrl: true,
+        starsCount: true,
+        contributorsCount: true,
+        techStack: true,
+        status: true,
+        members: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!team) {
+    throw new AppError("Team not found", 404);
+  }
+
+  const registration = team.hackathonRegistrations[0];
+  const existingSubmission = team.hackathonSubmissions[0];
+  const membership = team.members.some((member) => member.userId === userId);
 
   if (!registration) {
     throw new AppError("Team not registered", 400);
@@ -744,83 +767,25 @@ export const submitProjectToHackathon = async (
     throw new AppError("Registration not approved", 400);
   }
 
-  //
-  // Team membership validation
-  //
-  const membership = await prisma.teamMember.findFirst({
-    where: {
-      teamId: data.teamId,
-      userId,
-    },
-  });
-
   if (!membership) {
     throw new AppError("Not a team member", 403);
   }
-
-  //
-  // Project membership validation
-  //
-  const projectMember = await prisma.projectMember.findFirst({
-    where: {
-      projectId: data.projectId,
-
-      userId,
-    },
-  });
-
-  if (!projectMember) {
-    throw new AppError("You are not part of this project", 403);
-  }
-
-  //
-  // Fetch project
-  //
-  const project = await prisma.project.findUnique({
-    where: {
-      id: data.projectId,
-    },
-  });
 
   if (!project) {
     throw new AppError("Project not found", 404);
   }
 
-  //
-  // Prevent deleted project
-  //
   if (project.status === "DELETED") {
     throw new AppError("Deleted project cannot be submitted", 400);
   }
 
-  //
-  // Validate that all
-  // project members belong
-  // to submitting team
-  //
-  const projectMembers = await prisma.projectMember.findMany({
-    where: {
-      projectId: data.projectId,
-    },
+  if (!project.githubUrl) {
+    throw new AppError("GitHub repository required", 400);
+  }
 
-    select: {
-      userId: true,
-    },
-  });
+  const teamMemberIds = new Set(team.members.map((m) => m.userId));
 
-  const teamMembers = await prisma.teamMember.findMany({
-    where: {
-      teamId: data.teamId,
-    },
-
-    select: {
-      userId: true,
-    },
-  });
-
-  const teamMemberIds = new Set(teamMembers.map((m) => m.userId));
-
-  const invalidMembers = projectMembers.filter(
+  const invalidMembers = project.members.filter(
     (member) => !teamMemberIds.has(member.userId),
   );
 
@@ -831,16 +796,7 @@ export const submitProjectToHackathon = async (
     );
   }
 
-  //
-  // GitHub required
-  //
-  if (!project.githubUrl) {
-    throw new AppError("GitHub repository required for submission", 400);
-  }
-
-  //
-  // Calculate engineering score
-  //
+  // Engineering score
   let engineeringScore = 0;
 
   if (project.verified) {
@@ -859,9 +815,6 @@ export const submitProjectToHackathon = async (
 
   engineeringScore += project.contributorsCount * 5;
 
-  //
-  // Determine submission reward
-  //
   let rewardPoints = 10;
 
   if (engineeringScore >= 150) {
@@ -872,23 +825,8 @@ export const submitProjectToHackathon = async (
     rewardPoints = 20;
   }
 
-  //
-  // Existing submission
-  //
-  const existingSubmission = await prisma.hackathonSubmission.findUnique({
-    where: {
-      hackathonId_teamId: {
-        hackathonId,
-        teamId: data.teamId,
-      },
-    },
-  });
-
   let submission;
 
-  //
-  // Update existing
-  //
   if (existingSubmission) {
     submission = await prisma.hackathonSubmission.update({
       where: {
@@ -918,176 +856,114 @@ export const submitProjectToHackathon = async (
       },
     });
   } else {
-    submission = await prisma.hackathonSubmission.create({
-      data: {
-        hackathonId,
+    const [createdSubmission] = await prisma.$transaction([
+      prisma.hackathonSubmission.create({
+        data: {
+          hackathonId,
 
-        teamId: data.teamId,
+          teamId: data.teamId,
 
-        projectId: data.projectId,
+          projectId: data.projectId,
 
-        githubUrl: project.githubUrl,
+          githubUrl: project.githubUrl,
 
-        demoUrl: data.demoUrl || project.liveUrl,
+          demoUrl: data.demoUrl || project.liveUrl,
 
-        videoUrl: project.videoDemoUrl,
+          videoUrl: project.videoDemoUrl,
 
-        presentationUrl: data.presentationUrl,
+          presentationUrl: data.presentationUrl,
 
-        description: data.description,
+          description: data.description,
 
-        techStack: project.techStack || undefined,
+          techStack: project.techStack || undefined,
 
-        verifiedProject: project.verified,
+          verifiedProject: project.verified,
 
-        engineeringScore,
-      },
-    });
-
-    //
-    // Increment submission count
-    //
-    await prisma.hackathon.update({
-      where: {
-        id: hackathonId,
-      },
-
-      data: {
-        submissionCount: {
-          increment: 1,
+          engineeringScore,
         },
-      },
-    });
+      }),
 
-    //
-    // Team reputation
-    //
-    addTeamReputation(
-      data.teamId,
+      prisma.hackathon.update({
+        where: {
+          id: hackathonId,
+        },
 
-      rewardPoints,
-    ).catch(console.error);
+        data: {
+          submissionCount: {
+            increment: 1,
+          },
+        },
+      }),
+    ]);
 
-    //
-    // Reward team members
-    //
-    rewardTeamMembers(
-      data.teamId,
+    submission = createdSubmission;
 
-      "HACKATHON_SUBMISSION",
+    void Promise.all([
+      addTeamReputation(data.teamId, rewardPoints),
 
-      rewardPoints,
+      rewardTeamMembers(
+        data.teamId,
+        "HACKATHON_SUBMISSION",
+        rewardPoints,
+        "Submitted hackathon project",
+        {
+          hackathonId,
+          projectId: data.projectId,
+        },
+      ),
 
-      "Submitted hackathon project",
-
-      {
-        hackathonId,
-
-        projectId: data.projectId,
-      },
-    ).catch(console.error);
-
-    //
-    // Activities
-    //
-    const teamMembers = await prisma.teamMember.findMany({
-      where: {
-        teamId: data.teamId,
-      },
-    });
-
-    await Promise.all(
-      teamMembers.map((member) =>
+      ...team.members.map((member) =>
         createActivity(
           member.userId,
-
           "HACKATHON_SUBMITTED",
-
           "Submitted hackathon project",
-
-          `Submitted "${project.title}" to hackathon "${registration.hackathon.title}"`,
-
+          `Submitted "${project.title}" to "${registration.hackathon.title}"`,
           {
             hackathonId,
-
             projectId: data.projectId,
           },
         ),
       ),
-    );
+    ]).catch(console.error);
   }
 
-  //
-  // Notify organizer
+  const owner = team.members.find((member) => member.role === "OWNER");
 
-  const submitter = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-
-    include: {
-      profile: true,
-    },
-  });
-
-  createNotification({
-    userId: registration.hackathon.createdById,
-
-    type: "SYSTEM",
-
-    title: "New Hackathon Submission",
-
-    message: `${submitter?.profile?.fullName || submitter?.username} submitted project for team "${registration.team.name}"`,
-  }).catch(console.error);
-
-  //
-  // Notify team owner
-  //
-  const owner = await prisma.teamMember.findFirst({
-    where: {
-      teamId: data.teamId,
-
-      role: "OWNER",
-    },
-  });
-
-  if (owner && owner.userId !== userId) {
+  void Promise.all([
     createNotification({
-      userId: owner.userId,
+      userId: registration.hackathon.createdById,
 
       type: "SYSTEM",
 
-      title: "Hackathon Submission Updated",
+      title: "New Hackathon Submission",
 
-      message: `${submitter?.profile?.fullName || submitter?.username} submitted your team's project to hackathon`,
-    }).catch(console.error);
-  }
-
-  //
-  // Team collaboration affinity
-  //
-  await Promise.all(
-    teamMembers.map(async (member) => {
-      await calculateUserAffinity(
-        member.userId,
-        registration.hackathon.createdById,
-      );
-
-      await calculateUserAffinity(
-        registration.hackathon.createdById,
-        member.userId,
-      );
+      message: `A new project was submitted to "${registration.hackathon.title}"`,
     }),
-  );
 
-  //
-  // Project collaboration affinity
-  //
-  await Promise.all(
-    projectMembers.map(async (member) => {
-      await calculateUserAffinity(userId, member.userId);
-    }),
-  );
+    ...(owner && owner.userId !== userId
+      ? [
+          createNotification({
+            userId: owner.userId,
+
+            type: "SYSTEM",
+
+            title: "Hackathon Submission Updated",
+
+            message: "Your team's project was submitted",
+          }),
+        ]
+      : []),
+
+    ...team.members.flatMap((member) => [
+      calculateUserAffinity(member.userId, registration.hackathon.createdById),
+
+      calculateUserAffinity(registration.hackathon.createdById, member.userId),
+    ]),
+
+    ...project.members.map((member) =>
+      calculateUserAffinity(userId, member.userId),
+    ),
+  ]).catch(console.error);
 
   return submission;
 };
@@ -1097,20 +973,27 @@ export const reviewRegistration = async (
   registrationId: string,
   status: "APPROVED" | "REJECTED",
 ) => {
-  //
-  // Fetch registration
-  //
   const registration = await prisma.hackathonRegistration.findUnique({
     where: {
       id: registrationId,
     },
 
     include: {
-      hackathon: true,
+      hackathon: {
+        select: {
+          id: true,
+          title: true,
+          createdById: true,
+        },
+      },
 
       team: {
         include: {
-          members: true,
+          members: {
+            select: {
+              userId: true,
+            },
+          },
         },
       },
     },
@@ -1120,23 +1003,14 @@ export const reviewRegistration = async (
     throw new AppError("Registration not found", 404);
   }
 
-  //
-  // Authorization
-  //
   if (registration.hackathon.createdById !== organizerId) {
     throw new AppError("Unauthorized", 403);
   }
 
-  //
-  // Prevent re-review
-  //
   if (registration.status !== "PENDING") {
     throw new AppError("Registration already reviewed", 400);
   }
 
-  //
-  // Update status
-  //
   const updatedRegistration = await prisma.hackathonRegistration.update({
     where: {
       id: registrationId,
@@ -1149,54 +1023,28 @@ export const reviewRegistration = async (
     },
   });
 
-  //
-  // Approval rewards
-  //
-  if (status === "APPROVED") {
-    //
-    // Team reputation
-    //
-    addTeamReputation(
-      registration.teamId,
+  const reputationDelta = status === "APPROVED" ? 10 : -2;
 
-      10,
-    ).catch(console.error);
+  void Promise.all([
+    addTeamReputation(registration.teamId, reputationDelta),
 
-    //
-    // Reward all members
-    //
-    rewardTeamMembers(
-      registration.teamId,
+    ...(status === "APPROVED"
+      ? [
+          rewardTeamMembers(
+            registration.teamId,
+            "HACKATHON_APPROVED",
+            5,
+            "Hackathon registration approved",
+            {
+              hackathonId: registration.hackathonId,
+            },
+          ),
+        ]
+      : []),
 
-      "HACKATHON_APPROVED",
-
-      5,
-
-      "Hackathon registration approved",
-
-      {
-        hackathonId: registration.hackathonId,
-      },
-    ).catch(console.error);
-  } else {
-    //
-    // Small rejection penalty
-    //
-    addTeamReputation(
-      registration.teamId,
-
-      -2,
-    ).catch(console.error);
-  }
-
-  //
-  // Activities for all members
-  //
-  await Promise.all(
-    registration.team.members.map((member) =>
+    ...registration.team.members.map((member) =>
       createActivity(
         member.userId,
-
         status === "APPROVED" ? "HACKATHON_APPROVED" : "HACKATHON_REJECTED",
 
         status === "APPROVED"
@@ -1212,56 +1060,13 @@ export const reviewRegistration = async (
         },
       ),
     ),
-  );
 
-  //
-  // Notify team owner
-  //
-  const owner = await prisma.teamMember.findFirst({
-    where: {
-      teamId: registration.teamId,
+    ...registration.team.members.flatMap((member) => [
+      calculateUserAffinity(organizerId, member.userId),
 
-      role: "OWNER",
-    },
-  });
-  const organizer = await prisma.user.findUnique({
-    where: {
-      id: organizerId,
-    },
-
-    include: {
-      profile: true,
-    },
-  });
-
-  if (owner) {
-    createNotification({
-      userId: owner.userId,
-
-      type: "SYSTEM",
-
-      title:
-        status === "APPROVED"
-          ? "Hackathon Registration Approved"
-          : "Hackathon Registration Rejected",
-
-      message:
-        status === "APPROVED"
-          ? `${organizer?.profile?.fullName || organizer?.username} approved your team for "${registration.hackathon.title}"`
-          : `${organizer?.profile?.fullName || organizer?.username} rejected your team from "${registration.hackathon.title}"`,
-    }).catch(console.error);
-  }
-
-  //
-  // Affinity updates
-  //
-  await Promise.all(
-    registration.team.members.map(async (member) => {
-      await calculateUserAffinity(organizerId, member.userId);
-
-      await calculateUserAffinity(member.userId, organizerId);
-    }),
-  );
+      calculateUserAffinity(member.userId, organizerId),
+    ]),
+  ]).catch(console.error);
 
   return updatedRegistration;
 };
@@ -1271,34 +1076,35 @@ export const archiveHackathon = async (
   hackathonId: string,
 ) => {
   //
-  // Fetch hackathon
+  // OWNERSHIP + STATUS VALIDATION
   //
-  const hackathon = await prisma.hackathon.findUnique({
+  const hackathon = await prisma.hackathon.findFirst({
     where: {
       id: hackathonId,
+
+      createdById: organizerId,
+    },
+
+    select: {
+      id: true,
+      title: true,
+      status: true,
     },
   });
 
   if (!hackathon) {
-    throw new AppError("Hackathon not found", 404);
+    throw new AppError("Hackathon not found or unauthorized", 404);
   }
 
   //
-  // Authorization
-  //
-  if (hackathon.createdById !== organizerId) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  //
-  // Prevent duplicate archive
+  // PREVENT DUPLICATE ARCHIVE
   //
   if (hackathon.status === "ARCHIVED") {
     throw new AppError("Hackathon already archived", 400);
   }
 
   //
-  // Archive
+  // SOFT ARCHIVE
   //
   const updatedHackathon = await prisma.hackathon.update({
     where: {
@@ -1313,21 +1119,23 @@ export const archiveHackathon = async (
   });
 
   //
-  // Activity
+  // NON BLOCKING SIDE EFFECTS
   //
-  createActivity(
-    organizerId,
+  void Promise.all([
+    createActivity(
+      organizerId,
 
-    "HACKATHON_ARCHIVED",
+      "HACKATHON_ARCHIVED",
 
-    "Archived a hackathon",
+      "Archived a hackathon",
 
-    `Archived hackathon "${hackathon.title}"`,
+      `Archived hackathon "${hackathon.title}"`,
 
-    {
-      hackathonId,
-    },
-  ).catch(console.error);
+      {
+        hackathonId,
+      },
+    ),
+  ]).catch(console.error);
 
   return updatedHackathon;
 };
@@ -1337,19 +1145,24 @@ export const deleteHackathon = async (
   hackathonId: string,
 ) => {
   //
-  // Fetch hackathon
+  // FETCH HACKATHON + COUNTS
   //
-  const hackathon = await prisma.hackathon.findUnique({
+  const hackathon = await prisma.hackathon.findFirst({
     where: {
       id: hackathonId,
+
+      createdById: organizerId,
     },
 
     include: {
       _count: {
         select: {
           registrations: true,
+
           submissions: true,
+
           judges: true,
+
           winners: true,
         },
       },
@@ -1357,55 +1170,36 @@ export const deleteHackathon = async (
   });
 
   if (!hackathon) {
-    throw new AppError("Hackathon not found", 404);
+    throw new AppError("Hackathon not found or unauthorized", 404);
   }
 
   //
-  // Authorization
-  //
-  if (hackathon.createdById !== organizerId) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  //
-  // Prevent duplicate delete
+  // PREVENT DUPLICATE DELETE
   //
   if (hackathon.status === "DELETED") {
     throw new AppError("Hackathon already deleted", 400);
   }
 
   //
-  // Calculate penalty
+  // PENALTY CALCULATION
   //
   let penalty = -20;
 
-  //
-  // Registrations existed
-  //
   penalty -= hackathon._count.registrations * 2;
 
-  //
-  // Submissions existed
-  //
   penalty -= hackathon._count.submissions * 5;
 
-  //
-  // Judges existed
-  //
   penalty -= hackathon._count.judges * 10;
 
-  //
-  // Winners existed
-  //
   penalty -= hackathon._count.winners * 15;
 
   //
-  // Limit max penalty
+  // MAX PENALTY CAP
   //
   penalty = Math.max(penalty, -150);
 
   //
-  // Soft delete
+  // SOFT DELETE
   //
   const updatedHackathon = await prisma.hackathon.update({
     where: {
@@ -1420,38 +1214,43 @@ export const deleteHackathon = async (
   });
 
   //
-  // Reputation penalty
+  // NON BLOCKING SIDE EFFECTS
   //
-  await addReputation(
-    organizerId,
+  void Promise.all([
+    //
+    // REPUTATION PENALTY
+    //
+    addReputation(
+      organizerId,
 
-    "HACKATHON_DELETED",
+      "HACKATHON_DELETED",
 
-    penalty,
+      penalty,
 
-    "Deleted hackathon",
+      "Deleted hackathon",
 
-    {
-      hackathonId,
-    },
-  );
+      {
+        hackathonId,
+      },
+    ),
 
-  //
-  // Activity
-  //
-  createActivity(
-    organizerId,
+    //
+    // ACTIVITY
+    //
+    createActivity(
+      organizerId,
 
-    "HACKATHON_DELETED",
+      "HACKATHON_DELETED",
 
-    "Deleted a hackathon",
+      "Deleted a hackathon",
 
-    `Deleted hackathon "${hackathon.title}"`,
+      `Deleted hackathon "${hackathon.title}"`,
 
-    {
-      hackathonId,
-    },
-  ).catch(console.error);
+      {
+        hackathonId,
+      },
+    ),
+  ]).catch(console.error);
 
   return updatedHackathon;
 };
@@ -1459,189 +1258,182 @@ export const deleteHackathon = async (
 export const assignJudgeToHackathon = async (
   organizerId: string,
   hackathonId: string,
-  data: any,
+  judgeUserId: string,
 ) => {
-  //
-  // Fetch hackathon
-  //
-  const hackathon = await prisma.hackathon.findUnique({
-    where: {
-      id: hackathonId,
-    },
-  });
+  const [hackathon, existingJudge] = await Promise.all([
+    prisma.hackathon.findUnique({
+      where: {
+        id: hackathonId,
+      },
+
+      select: {
+        id: true,
+        title: true,
+        createdById: true,
+      },
+    }),
+
+    prisma.hackathonJudge.findUnique({
+      where: {
+        hackathonId_userId: {
+          hackathonId,
+          userId: judgeUserId,
+        },
+      },
+
+      select: {
+        id: true,
+      },
+    }),
+  ]);
 
   if (!hackathon) {
     throw new AppError("Hackathon not found", 404);
   }
 
-  //
-  // Authorization
-  //
   if (hackathon.createdById !== organizerId) {
     throw new AppError("Unauthorized", 403);
   }
-
-  //
-  // Prevent organizer self-judge
-  //
-  if (organizerId === data.userId) {
-    throw new AppError("Organizer cannot be judge", 400);
-  }
-
-  //
-  // Judge existence
-  //
-  const judge = await prisma.user.findUnique({
-    where: {
-      id: data.userId,
-    },
-
-    include: {
-      profile: true,
-    },
-  });
-
-  if (!judge) {
-    throw new AppError("Judge not found", 404);
-  }
-
-  //
-  // Duplicate prevention
-  //
-  const existingJudge = await prisma.hackathonJudge.findUnique({
-    where: {
-      hackathonId_userId: {
-        hackathonId,
-        userId: data.userId,
-      },
-    },
-  });
 
   if (existingJudge) {
     throw new AppError("Judge already assigned", 400);
   }
 
-  //
-  // Create judge assignment
-  //
-  const assignment = await prisma.hackathonJudge.create({
-    data: {
-      hackathonId,
+  const [judgeAssignment] = await prisma.$transaction([
+    prisma.hackathonJudge.create({
+      data: {
+        hackathonId,
+        userId: judgeUserId,
+      },
 
-      userId: data.userId,
-
-      expertise: data.expertise,
-
-      bio: data.bio,
-
-      canEvaluateOwnTeam: false,
-    },
-
-    include: {
-      user: {
-        include: {
-          profile: true,
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
         },
       },
+    }),
 
-      hackathon: true,
-    },
-  });
-
-  //
-  // Increment judge count
-  //
-  await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      judgeCount: {
-        increment: 1,
+    prisma.hackathon.update({
+      where: {
+        id: hackathonId,
       },
-    },
-  });
 
-  //
-  // Activity
-  //
-  createActivity(
-    data.userId,
+      data: {
+        judgeCount: {
+          increment: 1,
+        },
+      },
+    }),
+  ]);
 
-    "HACKATHON_JUDGE_ASSIGNED",
+  void Promise.all([
+    createNotification({
+      userId: judgeUserId,
 
-    "Assigned as hackathon judge",
+      actorId: organizerId,
 
-    `Assigned as judge for "${hackathon.title}"`,
+      type: "SYSTEM",
 
-    {
-      hackathonId,
-    },
-  ).catch(console.error);
+      title: "Assigned as Hackathon Judge",
 
-  //
-  // Notification
-  //
-  const organizer = await prisma.user.findUnique({
-    where: {
-      id: organizerId,
-    },
+      message: `You were assigned as a judge for "${hackathon.title}"`,
+    }),
 
-    include: {
-      profile: true,
-    },
-  });
+    addReputation(
+      judgeUserId,
 
-  createNotification({
-    userId: data.userId,
+      "HACKATHON_JUDGE",
 
-    type: "HACKATHON_JUDGING",
+      20,
 
-    title: "Assigned As Judge",
+      "Assigned as hackathon judge",
 
-    message: `${organizer?.profile?.fullName || organizer?.username} assigned you as judge for "${hackathon.title}"`,
-  }).catch(console.error);
+      {
+        hackathonId,
+      },
+    ),
 
-  //
-  // Affinity
-  //
-  await calculateUserAffinity(organizerId, data.userId);
+    createActivity(
+      judgeUserId,
 
-  await calculateUserAffinity(data.userId, organizerId);
+      "HACKATHON_JUDGE",
 
-  return assignment;
+      "Assigned as judge",
+
+      `Assigned as judge for "${hackathon.title}"`,
+
+      {
+        hackathonId,
+      },
+    ),
+
+    calculateUserAffinity(organizerId, judgeUserId),
+
+    calculateUserAffinity(judgeUserId, organizerId),
+  ]).catch(console.error);
+
+  return judgeAssignment;
 };
 
 export const evaluateSubmission = async (
   judgeUserId: string,
   submissionId: string,
-  data: any,
+  data: {
+    innovationScore?: number;
+    technicalScore?: number;
+    scalabilityScore?: number;
+    designScore?: number;
+    businessScore?: number;
+    presentationScore?: number;
+    feedback?: string;
+  },
 ) => {
   //
-  // Fetch submission
+  // FETCH SUBMISSION + JUDGE RELATION
   //
   const submission = await prisma.hackathonSubmission.findUnique({
     where: {
       id: submissionId,
     },
 
-    include: {
-      hackathon: true,
-
+    select: {
+      hackathonId: true,
+      verifiedProject: true,
+      engineeringScore: true,
       project: {
-        include: {
-          members: true,
+        select: {
+          title: true,
+          verified: true,
+          contributorsCount: true,
+          starsCount: true,
         },
       },
-
       team: {
-        include: {
-          members: true,
+        select: {
+          members: {
+            select: {
+              userId: true,
+              role: true,
+            },
+          },
         },
       },
-
-      evaluations: true,
+      hackathon: {
+        select: {
+          title: true,
+          judges: {
+            where: {
+              userId: judgeUserId,
+            },
+            select: {
+              id: true,
+              canEvaluateOwnTeam: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -1649,25 +1441,14 @@ export const evaluateSubmission = async (
     throw new AppError("Submission not found", 404);
   }
 
-  //
-  // Judge validation
-  //
-  const judge = await prisma.hackathonJudge.findUnique({
-    where: {
-      hackathonId_userId: {
-        hackathonId: submission.hackathonId,
-
-        userId: judgeUserId,
-      },
-    },
-  });
+  const judge = submission.hackathon.judges[0];
 
   if (!judge) {
     throw new AppError("You are not a judge for this hackathon", 403);
   }
 
   //
-  // Prevent self judging
+  // SELF JUDGING PROTECTION
   //
   const isTeamMember = submission.team.members.some(
     (member) => member.userId === judgeUserId,
@@ -1678,24 +1459,10 @@ export const evaluateSubmission = async (
   }
 
   //
-  // Prevent duplicate evaluation
+  // DUPLICATE EVALUATION
   //
-  const existingEvaluation = await prisma.hackathonEvaluation.findUnique({
-    where: {
-      submissionId_judgeId: {
-        submissionId,
-
-        judgeId: judge.id,
-      },
-    },
-  });
-
-  if (existingEvaluation) {
-    throw new AppError("Submission already evaluated", 400);
-  }
-
   //
-  // Calculate total score
+  // SCORE NORMALIZATION
   //
   const innovationScore = data.innovationScore || 0;
 
@@ -1710,7 +1477,7 @@ export const evaluateSubmission = async (
   const presentationScore = data.presentationScore || 0;
 
   //
-  // Weighted scoring
+  // WEIGHTED TOTAL SCORE
   //
   let totalScore =
     (innovationScore * 1.5 +
@@ -1722,193 +1489,229 @@ export const evaluateSubmission = async (
     8;
 
   //
-  // Verified project boost
+  // VERIFIED PROJECT BOOST
   //
   if (submission.verifiedProject) {
     totalScore += 2;
   }
 
   //
-  // Engineering score boost
+  // ENGINEERING BOOST
   //
   totalScore += (submission.engineeringScore || 0) / 100;
 
-  //
-  // Create evaluation
-  //
-  const evaluation = await prisma.hackathonEvaluation.create({
-    data: {
-      hackathonId: submission.hackathonId,
-
-      submissionId,
-
-      judgeId: judge.id,
-
-      innovationScore,
-
-      technicalScore,
-
-      scalabilityScore,
-
-      designScore,
-
-      businessScore,
-
-      presentationScore,
-
-      totalScore,
-
-      feedback: data.feedback,
-    },
-  });
-
-  //
-  // Recalculate final score
-  //
-  const evaluations = await prisma.hackathonEvaluation.findMany({
+  const judgeUserPromise = prisma.user.findUnique({
     where: {
-      submissionId,
-    },
-  });
-
-  const averageScore =
-    evaluations.reduce(
-      (acc, item) => acc + (item.totalScore || 0),
-
-      0,
-    ) / evaluations.length;
-
-  //
-  // Engineering quality score
-  //
-  const engineeringScore = Math.min(
-    Math.round(
-      averageScore * 10 +
-        (submission.project.verified ? 15 : 0) +
-        Math.min(submission.project.contributorsCount * 2, 20) +
-        Math.min(submission.project.starsCount, 20),
-    ),
-    100,
-  );
-
-  //
-  // Update submission
-  //
-  await prisma.hackathonSubmission.update({
-    where: {
-      id: submissionId,
+      id: judgeUserId,
     },
 
-    data: {
-      finalScore: averageScore,
+    select: {
+      username: true,
 
-      score: averageScore,
-
-      engineeringScore,
-
-      status: "SCORED",
-
-      reviewedAt: new Date(),
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
     },
   });
 
   //
-  // Reward judge
+  // TRANSACTION:
+  // CREATE EVALUATION + RECALCULATE SCORE
   //
-  await addReputation(
-    judgeUserId,
+  let evaluation;
 
-    "HACKATHON_EVALUATED",
+  try {
+    evaluation = await prisma.$transaction(async (tx) => {
+      //
+      // CREATE EVALUATION
+      //
+      const createdEvaluation = await tx.hackathonEvaluation.create({
+        data: {
+          hackathonId: submission.hackathonId,
 
-    5,
+          submissionId,
 
-    "Evaluated hackathon submission",
+          judgeId: judge.id,
 
-    {
-      hackathonId: submission.hackathonId,
+          innovationScore,
 
-      submissionId,
-    },
-  );
+          technicalScore,
+
+          scalabilityScore,
+
+          designScore,
+
+          businessScore,
+
+          presentationScore,
+
+          totalScore,
+
+          feedback: data.feedback,
+        },
+      });
+
+      //
+      // AGGREGATE AVG SCORE
+      //
+      const aggregate = await tx.hackathonEvaluation.aggregate({
+        where: {
+          submissionId,
+        },
+
+        _avg: {
+          totalScore: true,
+        },
+      });
+
+      const averageScore = aggregate._avg.totalScore || 0;
+
+      //
+      // ENGINEERING QUALITY SCORE
+      //
+      const engineeringScore = Math.min(
+        Math.round(
+          averageScore * 10 +
+            (submission.project?.verified ? 15 : 0) +
+            Math.min((submission.project?.contributorsCount || 0) * 2, 20) +
+            Math.min(submission.project?.starsCount || 0, 20),
+        ),
+        100,
+      );
+
+      //
+      // UPDATE SUBMISSION
+      //
+      await tx.hackathonSubmission.update({
+        where: {
+          id: submissionId,
+        },
+
+        data: {
+          finalScore: averageScore,
+
+          score: averageScore,
+
+          engineeringScore,
+
+          status: "SCORED",
+
+          reviewedAt: new Date(),
+        },
+      });
+
+      return createdEvaluation;
+    });
+  } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      Array.isArray(error.meta?.target) &&
+      (error.meta.target as string[]).includes("submissionId_judgeId")
+    ) {
+      throw new AppError("Submission already evaluated", 400);
+    }
+
+    throw error;
+  }
 
   //
-  // Judge activity
-  //
-  createActivity(
-    judgeUserId,
-
-    "HACKATHON_SUBMISSION_REVIEWED",
-
-    "Reviewed hackathon submission",
-
-    `Reviewed submission for "${submission.hackathon.title}"`,
-
-    {
-      hackathonId: submission.hackathonId,
-
-      submissionId,
-    },
-  ).catch(console.error);
-
-  //
-  // Notify team owner
+  // TEAM OWNER
   //
   const owner = submission.team.members.find(
     (member) => member.role === "OWNER",
   );
 
-  const judgeUser = await prisma.user.findUnique({
-    where: {
-      id: judgeUserId,
-    },
-
-    include: {
-      profile: true,
-    },
-  });
-
-  if (owner) {
-    createNotification({
-      userId: owner.userId,
-
-      type: "HACKATHON_JUDGING",
-
-      title: "Submission Evaluated",
-
-      message: `${judgeUser?.profile?.fullName || judgeUser?.username} reviewed your submission for "${submission.hackathon.title}"`,
-    }).catch(console.error);
-  }
-
   //
-  // Recalculate member engineering scores
+  // NON BLOCKING SIDE EFFECTS
   //
-  await Promise.all(
-    submission.team.members.map(async (member) => {
-      await calculateEngineeringScore(member.userId);
-    }),
-  );
+  const judgeUser = await judgeUserPromise;
 
-  //
-  // Judge affinity with team
-  //
-  await Promise.all(
-    submission.team.members.map(async (member) => {
-      await calculateUserAffinity(judgeUserId, member.userId);
+  void Promise.all([
+    //
+    // JUDGE REWARD
+    //
+    addReputation(
+      judgeUserId,
 
-      await calculateUserAffinity(member.userId, judgeUserId);
-    }),
-  );
+      "HACKATHON_EVALUATED",
+
+      5,
+
+      "Evaluated hackathon submission",
+
+      {
+        hackathonId: submission.hackathonId,
+
+        submissionId,
+      },
+    ),
+
+    //
+    // ACTIVITY
+    //
+    createActivity(
+      judgeUserId,
+
+      "HACKATHON_SUBMISSION_REVIEWED",
+
+      "Reviewed hackathon submission",
+
+      `Reviewed submission for "${submission.hackathon.title}"`,
+
+      {
+        hackathonId: submission.hackathonId,
+
+        submissionId,
+      },
+    ),
+
+    //
+    // OWNER NOTIFICATION
+    //
+    ...(owner
+      ? [
+          createNotification({
+            userId: owner.userId,
+
+            type: "HACKATHON_JUDGING",
+
+            title: "Submission Evaluated",
+
+            message: `${judgeUser?.profile?.fullName || judgeUser?.username} reviewed your submission for "${submission.hackathon.title}"`,
+          }),
+        ]
+      : []),
+
+    //
+    // ENGINEERING SCORE RECALC
+    //
+    ...submission.team.members.map((member) =>
+      calculateEngineeringScore(member.userId),
+    ),
+
+    //
+    // AFFINITIES
+    //
+    ...submission.team.members.flatMap((member) => [
+      calculateUserAffinity(judgeUserId, member.userId),
+
+      calculateUserAffinity(member.userId, judgeUserId),
+    ]),
+  ]).catch(console.error);
 
   return evaluation;
 };
 
 export const getHackathonLeaderboard = async (hackathonId: string) => {
-  //
-  // Fetch hackathon
-  //
   const hackathon = await prisma.hackathon.findUnique({
     where: {
       id: hackathonId,
+    },
+    select: {
+      id: true,
     },
   });
 
@@ -1916,136 +1719,116 @@ export const getHackathonLeaderboard = async (hackathonId: string) => {
     throw new AppError("Hackathon not found", 404);
   }
 
-  //
-  // Fetch scored submissions
-  //
   const submissions = await prisma.hackathonSubmission.findMany({
     where: {
       hackathonId,
-
       status: "SCORED",
     },
-
-    include: {
-      team: {
-        include: {
-          members: {
-            include: {
-              user: {
-                include: {
-                  profile: true,
-                },
-              },
-            },
-          },
-        },
-      },
-
+    select: {
+      id: true,
+      teamId: true,
+      finalScore: true,
+      rankingPosition: true,
       project: {
-        include: {
+        select: {
+          id: true,
+          title: true,
+          verified: true,
+          status: true,
+          contributorsCount: true,
+          deploymentStatus: true,
           owner: {
-            include: {
-              profile: true,
+            select: {
+              id: true,
+              username: true,
+              profile: {
+                select: {
+                  fullName: true,
+                },
+              },
             },
           },
-
           members: {
-            include: {
+            select: {
               user: {
-                include: {
-                  profile: true,
+                select: {
+                  id: true,
+                  username: true,
+                  profile: {
+                    select: {
+                      fullName: true,
+                    },
+                  },
                 },
               },
             },
           },
         },
       },
-
-      evaluations: true,
+      team: {
+        select: {
+          id: true,
+          members: {
+            select: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  profile: {
+                    select: {
+                      fullName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      evaluations: {
+        select: {
+          id: true,
+        },
+      },
+    },
+    orderBy: {
+      finalScore: "desc",
     },
   });
 
-  //
-  // Ranking algorithm
-  //
   const rankedSubmissions = submissions
     .map((submission) => {
       let rankingScore = submission.finalScore || 0;
 
-      //
-      // Verified project boost
-      //
       if (submission.project.verified) {
         rankingScore += 2;
       }
 
-      //
-      // Completed project boost
-      //
       if (submission.project.status === "COMPLETED") {
         rankingScore += 1;
       }
 
-      //
-      // Contributors boost
-      //
       rankingScore +=
-        Math.min(
-          submission.project.contributorsCount || 0,
+        Math.min(submission.project.contributorsCount || 0, 5) * 0.2;
 
-          5,
-        ) * 0.2;
-
-      //
-      // Live deployment boost
-      //
       if (submission.project.deploymentStatus === "LIVE") {
         rankingScore += 1;
       }
 
       return {
         ...submission,
-
         rankingScore,
       };
     })
-
-    //
-    // Sort descending
-    //
     .sort((a, b) => b.rankingScore - a.rankingScore)
-
-    //
-    // Assign rank
-    //
     .map((submission, index) => ({
       rank: index + 1,
-
       ...submission,
     }));
 
-  //
-  // Persist ranking positions
-  //
-  await Promise.all(
-    rankedSubmissions.map((submission) =>
-      prisma.hackathonSubmission.update({
-        where: {
-          id: submission.id,
-        },
-
-        data: {
-          rankingPosition: submission.rank,
-        },
-      }),
-    ),
-  );
-
   return {
     hackathon,
-
     totalSubmissions: rankedSubmissions.length,
-
     leaderboard: rankedSubmissions,
   };
 };
@@ -2055,11 +1838,18 @@ export const declareHackathonWinners = async (
   hackathonId: string,
 ) => {
   //
-  // Fetch hackathon
+  // FETCH HACKATHON
   //
   const hackathon = await prisma.hackathon.findUnique({
     where: {
       id: hackathonId,
+    },
+
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdById: true,
     },
   });
 
@@ -2068,59 +1858,97 @@ export const declareHackathonWinners = async (
   }
 
   //
-  // Authorization
+  // AUTHORIZATION
   //
   if (hackathon.createdById !== organizerId) {
     throw new AppError("Unauthorized", 403);
   }
 
   //
-  // Prevent duplicate declaration
+  // PREVENT DUPLICATES
   //
   if (hackathon.status === "COMPLETED") {
     throw new AppError("Winners already declared", 400);
   }
 
   //
-  // Fetch leaderboard submissions
+  // FETCH LEADERBOARD
   //
   const submissions = await prisma.hackathonSubmission.findMany({
     where: {
       hackathonId,
-
       status: "SCORED",
     },
-
-    include: {
-      evaluations: true,
-
-      project: true,
-
-      team: {
-        include: {
-          members: true,
+    select: {
+      id: true,
+      teamId: true,
+      finalScore: true,
+      project: {
+        select: {
+          id: true,
+          title: true,
+          verified: true,
+          status: true,
+          contributorsCount: true,
+          deploymentStatus: true,
         },
       },
+      team: {
+        select: {
+          id: true,
+          members: {
+            select: {
+              userId: true,
+            },
+          },
+        },
+      },
+      evaluations: {
+        select: {
+          id: true,
+        },
+        take: 2,
+      },
     },
-
     orderBy: {
-      rankingPosition: "asc",
+      finalScore: "desc",
     },
   });
 
-  //
-  // Minimum submissions
-  //
   if (submissions.length < 1) {
     throw new AppError("No scored submissions found", 400);
   }
 
-  //
-  // Top 3 winners
-  //
-  const winners = submissions.slice(0, 3);
+  const rankedSubmissions = submissions
+    .map((submission) => {
+      let rankingScore = submission.finalScore || 0;
 
-  const positions = [1, 2, 3];
+      if (submission.project.verified) {
+        rankingScore += 2;
+      }
+
+      if (submission.project.status === "COMPLETED") {
+        rankingScore += 1;
+      }
+
+      rankingScore +=
+        Math.min(submission.project.contributorsCount || 0, 5) * 0.2;
+
+      if (submission.project.deploymentStatus === "LIVE") {
+        rankingScore += 1;
+      }
+
+      return {
+        ...submission,
+        rankingScore,
+      };
+    })
+    .sort((a, b) => b.rankingScore - a.rankingScore);
+
+  //
+  // TOP 3
+  //
+  const winners = rankedSubmissions.slice(0, 3);
 
   const rewards = {
     1: 150,
@@ -2129,98 +1957,132 @@ export const declareHackathonWinners = async (
   };
 
   //
-  // Declare winners
+  // ORGANIZER
   //
+  const organizer = await prisma.user.findUnique({
+    where: {
+      id: organizerId,
+    },
+
+    select: {
+      username: true,
+
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
+    },
+  });
+
+  //
+  // PREPARE WINNER ENTRIES
+  //
+  const winnerEntries: any[] = [];
+
   for (let index = 0; index < winners.length; index++) {
     const submission = winners[index];
 
-    const position = positions[index];
-
     //
-    // Minimum evaluation protection
+    // MINIMUM EVALUATIONS
     //
     if (submission.evaluations.length < 2) {
       continue;
     }
 
-    //
-    // Winner entry
-    //
-    await prisma.hackathonWinner.create({
-      data: {
-        hackathonId,
+    const position = index + 1;
 
-        submissionId: submission.id,
+    winnerEntries.push({
+      hackathonId,
 
-        teamId: submission.teamId,
+      submissionId: submission.id,
 
-        position,
+      teamId: submission.teamId,
 
-        score: submission.finalScore || 0,
-      },
+      position,
+
+      score: submission.finalScore || 0,
     });
+  }
 
-    //
-    // Team reputation
-    //
-    await addTeamReputation(
-      submission.teamId,
+  //
+  // TRANSACTION:
+  // CREATE WINNERS + COMPLETE HACKATHON
+  //
+  await prisma.$transaction([
+    prisma.hackathonWinner.createMany({
+      data: winnerEntries,
+    }),
 
-      rewards[position as 1 | 2 | 3],
-    );
-
-    //
-    // Reward members
-    //
-    const organizer = await prisma.user.findUnique({
+    prisma.hackathon.update({
       where: {
-        id: organizerId,
+        id: hackathonId,
       },
 
-      include: {
-        profile: true,
-      },
-    });
+      data: {
+        status: "COMPLETED",
 
-    await Promise.all(
-      submission.team.members.map(async (member) => {
-        //
-        // Reputation
-        //
-        await addReputation(
+        completedAt: new Date(),
+
+        winnerCount: winnerEntries.length,
+      },
+    }),
+  ]);
+
+  //
+  // SIDE EFFECTS
+  //
+  const sideEffects: Promise<any>[] = [];
+
+  for (let index = 0; index < winnerEntries.length; index++) {
+    const winner = winnerEntries[index];
+
+    const submission = winners[index];
+
+    const reward = rewards[winner.position as 1 | 2 | 3];
+
+    //
+    // TEAM REWARD
+    //
+    sideEffects.push(addTeamReputation(submission.teamId, reward));
+
+    //
+    // MEMBER REWARDS
+    //
+    for (const member of submission.team.members) {
+      sideEffects.push(
+        addReputation(
           member.userId,
 
           "HACKATHON_WON",
 
-          rewards[position as 1 | 2 | 3],
+          reward,
 
-          `Won ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"} place in hackathon`,
+          `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in hackathon`,
 
           {
             hackathonId,
           },
-        );
+        ),
+      );
 
-        //
-        // Activity
-        //
-        await createActivity(
+      sideEffects.push(
+        createActivity(
           member.userId,
 
           "HACKATHON_WON",
 
           "Won a hackathon",
 
-          `Won ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"} place in "${hackathon.title}"`,
+          `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in "${hackathon.title}"`,
 
           {
             hackathonId,
           },
-        );
+        ),
+      );
 
-        //
-        // Notification
-        //
+      sideEffects.push(
         createNotification({
           userId: member.userId,
 
@@ -2228,57 +2090,48 @@ export const declareHackathonWinners = async (
 
           title: "Hackathon Winner",
 
-          message: `${organizer?.profile?.fullName || organizer?.username} declared your team ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"} place winner in "${hackathon.title}"`,
-        }).catch(console.error);
+          message: `${organizer?.profile?.fullName || organizer?.username} declared your team ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place winner in "${hackathon.title}"`,
+        }),
+      );
 
-        //
-        // Winner badge
-        //
-        await awardBadge(
+      sideEffects.push(
+        awardBadge(
           member.userId,
 
-          position === 1 ? "hackathon-champion" : "hackathon-winner",
-        );
+          winner.position === 1 ? "hackathon-champion" : "hackathon-winner",
+        ),
+      );
 
-        // Recalculate engineering score
-        await calculateEngineeringScore(member.userId);
-        //
-        // Organizer affinity
-        //
-        await calculateUserAffinity(organizerId, member.userId);
+      sideEffects.push(calculateEngineeringScore(member.userId));
 
-        await calculateUserAffinity(member.userId, organizerId);
+      //
+      // ORGANIZER AFFINITY
+      //
+      sideEffects.push(calculateUserAffinity(organizerId, member.userId));
 
-        //
-        // Team affinity
-        //
-        await Promise.all(
-          submission.team.members.map(async (otherMember) => {
-            if (otherMember.userId !== member.userId) {
-              await calculateUserAffinity(member.userId, otherMember.userId);
-            }
-          }),
-        );
-      }),
-    );
+      sideEffects.push(calculateUserAffinity(member.userId, organizerId));
+
+      //
+      // TEAM AFFINITY
+      //
+      for (const otherMember of submission.team.members) {
+        if (otherMember.userId !== member.userId) {
+          sideEffects.push(
+            calculateUserAffinity(member.userId, otherMember.userId),
+          );
+        }
+      }
+    }
   }
 
   //
-  // Lock hackathon
+  // EXECUTE SIDE EFFECTS
   //
-  await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      status: "COMPLETED",
-    },
-  });
+  void Promise.all(sideEffects).catch(console.error);
 
   return {
     success: true,
 
-    winnersDeclared: winners.length,
+    winnersDeclared: winnerEntries.length,
   };
 };

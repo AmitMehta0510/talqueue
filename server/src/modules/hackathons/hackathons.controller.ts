@@ -28,278 +28,146 @@ import {
   evaluateSubmissionSchema,
 } from "./hackathons.validation";
 
-export const createHackathonHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+export const createHackathonHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = createHackathonSchema.parse(req.body);
 
-      const validatedData =
-        createHackathonSchema.parse(
-          req.body
-        );
+    const hackathon = await createHackathon(req.user.id, validatedData);
 
-      const hackathon =
-        await createHackathon(
-          req.user.id,
-          validatedData
-        );
+    res.status(201).json(successResponse(hackathon, "Hackathon created"));
+  },
+);
 
-      res.status(201).json(
-        successResponse(
-          hackathon,
-          "Hackathon created"
-        )
-      );
-    }
-  );
+export const registerTeamHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = registerTeamSchema.parse(req.body);
 
-export const registerTeamHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+    const registration = await registerTeamForHackathon(
+      req.user.id,
+      req.params.id,
+      validatedData.teamId,
+    );
 
-      const validatedData =
-        registerTeamSchema.parse(
-          req.body
-        );
+    res.status(201).json(successResponse(registration, "Team registered"));
+  },
+);
 
-      const registration =
-        await registerTeamForHackathon(
-          req.user.id,
-          req.params.id,
-          validatedData.teamId
-        );
+export const reviewRegistrationHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = reviewRegistrationSchema.parse(req.body);
 
-      res.status(201).json(
-        successResponse(
-          registration,
-          "Team registered"
-        )
-      );
-    }
-  );  
+    const result = await reviewRegistration(
+      req.user.id,
+      req.params.registrationId,
+      validatedData.status,
+    );
 
-export const reviewRegistrationHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+    res.json(successResponse(result, "Registration reviewed"));
+  },
+);
 
-      const validatedData =
-        reviewRegistrationSchema.parse(
-          req.body
-        );
+export const assignJudgeHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = assignJudgeSchema.parse(req.body);
 
-      const result =
-        await reviewRegistration(
-          req.user.id,
-          req.params.registrationId,
-          validatedData.status
-        );
+    const assignment = await assignJudgeToHackathon(
+      req.user.id,
+      req.params.hackathonId,
+      validatedData.userId,
+    );
 
-      res.json(
-        successResponse(
-          result,
-          "Registration reviewed"
-        )
-      );
-    }
-  );  
+    res
+      .status(201)
+      .json(successResponse(assignment, "Judge assigned successfully"));
+  },
+);
 
-export const assignJudgeHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+export const getHackathonsHandler = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const hackathons = await getHackathons();
 
-      const validatedData =
-        assignJudgeSchema.parse(
-          req.body
-        );
+    res.json(successResponse(hackathons));
+  },
+);
 
-      const assignment =
-        await assignJudgeToHackathon(
-          req.user.id,
-          req.params.hackathonId,
-          validatedData
-        );
+export const getHackathonHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const hackathon = await getHackathonById(
+      req.user?.id,
+      req.params.id as string,
+    );
 
-      res.status(201).json(
-        successResponse(
-          assignment,
-          "Judge assigned successfully"
-        )
-      );
-    }
-  );  
+    res.json(successResponse(hackathon));
+  },
+);
 
-export const getHackathonsHandler =  asyncHandler(
-    async (
-      _req: Request,
-      res: Response
-    ) => {
+export const submitProjectHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = submitProjectSchema.parse(req.body);
 
-      const hackathons =
-        await getHackathons();
+    const submission = await submitProjectToHackathon(
+      req.user.id,
+      req.params.id,
+      validatedData,
+    );
 
-      res.json(
-        successResponse(hackathons)
-      );
-    }
-  );
+    res.status(201).json(successResponse(submission, "Project submitted"));
+  },
+);
 
-export const getHackathonHandler =  asyncHandler(
-    async (
-      req: Request,
-      res: Response
-    ) => {
+export const evaluateSubmissionHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = evaluateSubmissionSchema.parse(req.body);
 
-      const hackathon =
-        await getHackathonById(
-          req.user?.id,
-          req.params.id as string
-        );
+    const evaluation = await evaluateSubmission(
+      req.user.id,
+      req.params.submissionId,
+      validatedData,
+    );
 
-      res.json(
-        successResponse(hackathon)
-      );
-    }
-  );
+    res.status(201).json(successResponse(evaluation, "Submission evaluated"));
+  },
+);
 
-export const submitProjectHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+export const declareHackathonWinnersHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await declareHackathonWinners(
+      req.user.id,
+      req.params.hackathonId,
+    );
 
-      const validatedData =
-        submitProjectSchema.parse(
-          req.body
-        );
+    res.json(successResponse(result, "Winners declared"));
+  },
+);
 
-      const submission =
-        await submitProjectToHackathon(
-          req.user.id,
-          req.params.id,
-          validatedData
-        );
+export const getHackathonLeaderboardHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const leaderboard = await getHackathonLeaderboard(
+      req.params.hackathonId as string,
+    );
 
-      res.status(201).json(
-        successResponse(
-          submission,
-          "Project submitted"
-        )
-      );
-    }
-  );
+    res.json(successResponse(leaderboard));
+  },
+);
 
-export const evaluateSubmissionHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+export const archiveHackathonHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const hackathon = await archiveHackathon(
+      req.user.id,
+      req.params.hackathonId,
+    );
 
-      const validatedData =
-        evaluateSubmissionSchema.parse(
-          req.body
-        );
+    res.json(successResponse(hackathon, "Hackathon archived"));
+  },
+);
 
-      const evaluation =
-        await evaluateSubmission(
-          req.user.id,
-          req.params.submissionId,
-          validatedData
-        );
+export const deleteHackathonHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const hackathon = await deleteHackathon(
+      req.user.id,
+      req.params.hackathonId,
+    );
 
-      res.status(201).json(
-        successResponse(
-          evaluation,
-          "Submission evaluated"
-        )
-      );
-    }
-  );  
-
-export const declareHackathonWinnersHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
-
-      const result =
-        await declareHackathonWinners(
-          req.user.id,
-          req.params.hackathonId
-        );
-
-      res.json(
-        successResponse(
-          result,
-          "Winners declared"
-        )
-      );
-    }
-  );  
-
-export const getHackathonLeaderboardHandler =  asyncHandler(
-    async (
-      req: Request,
-      res: Response
-    ) => {
-
-      const leaderboard =
-        await getHackathonLeaderboard(
-          req.params.hackathonId as string
-        );
-
-      res.json(
-        successResponse(
-          leaderboard
-        )
-      );
-    }
-  );  
-
-export const archiveHackathonHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
-
-      const hackathon =
-        await archiveHackathon(
-          req.user.id,
-          req.params.hackathonId
-        );
-
-      res.json(
-        successResponse(
-          hackathon,
-          "Hackathon archived"
-        )
-      );
-    }
-  );  
-
-export const deleteHackathonHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
-
-      const hackathon =
-        await deleteHackathon(
-          req.user.id,
-          req.params.hackathonId
-        );
-
-      res.json(
-        successResponse(
-          hackathon,
-          "Hackathon deleted"
-        )
-      );
-    }
-  );  
+    res.json(successResponse(hackathon, "Hackathon deleted"));
+  },
+);

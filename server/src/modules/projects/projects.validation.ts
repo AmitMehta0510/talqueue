@@ -1,41 +1,28 @@
 import { z } from "zod";
 
 export const createProjectSchema = z.object({
-    title: z.string().min(3),
-    teamId: z.string().uuid().optional(),
+  title: z.string().min(3),
+  teamId: z.string().uuid().optional(),
 
-    description: z.string().min(10),
+  description: z.string().min(10),
 
-    visibility: z.enum([
-      "PUBLIC",
-      "PRIVATE",
-    ]),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]),
 
-    lookingFor: z.string().optional(),
-  });
+  lookingFor: z.string().optional(),
+});
 
 export const joinProjectSchema = z.object({
-    message: z.string().optional(),
-  }).optional();
+  message: z.string().optional(),
+});
 
-  export const reviewJoinRequestSchema =
-  z.object({
-    status: z.enum([
-      "ACCEPTED",
-      "REJECTED",
-    ]),
-  });
+export const reviewJoinRequestSchema = z.object({
+  status: z.enum(["ACCEPTED", "REJECTED"]),
+});
 
-  export const inviteToProjectSchema =
-  z.object({
-    message:
-      z.string().optional(),
-  });
+export const inviteToProjectSchema = z.object({
+  message: z.string().optional(),
+});
 
-export const reviewProjectInviteSchema =
-  z.object({
-    status: z.enum([
-      "ACCEPTED",
-      "REJECTED",
-    ]),
-  });
+export const reviewProjectInviteSchema = z.object({
+  status: z.enum(["ACCEPTED", "REJECTED"]),
+});
