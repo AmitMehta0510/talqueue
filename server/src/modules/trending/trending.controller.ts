@@ -12,6 +12,8 @@ import {
 
 } from "./trending.service";
 
+import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";
+
 export const getTrendingFeedHandler =
   asyncHandler(
 
@@ -42,6 +44,28 @@ export const refreshTrendingHandler =
 
       res.json(
         successResponse(result)
+      );
+    }
+  );
+
+export const trackTrendingImpressionHandler =
+  asyncHandler(
+
+    async (
+      req: Request,
+      res: Response
+    ) => {
+
+      await trackRecommendationImpression(
+        req.user!.id,
+
+        req.body
+      );
+
+      res.json(
+        successResponse({
+          success: true,
+        })
       );
     }
   );

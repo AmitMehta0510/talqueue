@@ -4,13 +4,34 @@ import { applyFeedDiversity } from "./feed-diversity.service";
 
 import { applySmartReranking } from "./discovery-ranking.service";
 
-import { calculateFeedScore } from "modules/feed/feed-ranking.service";
+import {
+  buildRankedFeedItems,
+  RankedFeedItem,
+} from "modules/feed/feed-ranking.service";
 
 import { buildFeedContext } from "./feed-context.service";
 
-import { getRecommendationMemoryMap } from "./recommendation-memory.service";
+import {
+  applyMemoryScore,
+  getRecommendationMemoryMap,
+  RecommendationMemory,
+} from "./recommendation-memory.service";
 
-import prisma from "shared/database/prisma";
+const applyMemoryToItems = (
+  items: RankedFeedItem[],
+
+  memoryMap: Map<string, RecommendationMemory>,
+) => {
+  return items.map((item) => ({
+    ...item,
+
+    score: applyMemoryScore(
+      memoryMap.get(`${item.type}:${(item.data as any).id}`),
+
+      item.score,
+    ),
+  }));
+};
 
 export const getDiscoveryFeed = async (userId: string) => {
   //create context
@@ -23,100 +44,44 @@ export const getDiscoveryFeed = async (userId: string) => {
   const memoryMap = await getRecommendationMemoryMap(userId);
 
   // Unified feed
-  const feed = [
-    ...(await Promise.all(
-      candidates.posts.map(async (post) => {
-        let score = calculateFeedScore(post, "POST", context);
+  const feed: RankedFeedItem[] = [
+    ...buildRankedFeedItems(
+      candidates.posts,
 
-        const memory = memoryMap.get(`POST:${post.id}`);
+      "POST",
 
-        if (memory) {
-          score += memory.clicked * 12;
+      context,
+    ),
 
-          score -= memory.ignored * 8;
-        }
-        return {
-          type: "POST",
+    ...buildRankedFeedItems(
+      candidates.projects,
 
-          score,
+      "PROJECT",
 
-          reason: "Trending among engineers",
+      context,
+    ),
 
-          data: post,
-        };
-      }),
-    )),
+    ...buildRankedFeedItems(
+      candidates.jobs,
 
-    ...(await Promise.all(
-      candidates.projects.map(async (project) => {
-        let score = calculateFeedScore(project, "PROJECT", context);
+      "JOB",
 
-        const memory = memoryMap.get(`PROJECT:${project.id}`);
+      context,
+    ),
 
-        if (memory) {
-          score += memory.clicked * 12;
+    ...buildRankedFeedItems(
+      candidates.hackathons,
 
-          score -= memory.ignored * 8;
-        }
-        return {
-          type: "PROJECT",
+      "HACKATHON",
 
-          score,
-
-          reason: "Trending among engineers",
-
-          data: project,
-        };
-      }),
-    )),
-
-    ...(await Promise.all(
-      candidates.jobs.map(async (job) => {
-        let score = calculateFeedScore(job, "JOB", context);
-
-        const memory = memoryMap.get(`JOB:${job.id}`);
-
-        if (memory) {
-          score += memory.clicked * 12;
-          score -= memory.ignored * 8;
-        }
-        return {
-          type: "JOB",
-
-          score,
-
-          reason: "Trending among engineers",
-
-          data: job,
-        };
-      }),
-    )),
-
-    ...(await Promise.all(
-      candidates.hackathons.map(async (hackathon) => {
-        let score = calculateFeedScore(hackathon, "HACKATHON", context);
-
-        const memory = memoryMap.get(`HACKATHON:${hackathon.id}`);
-
-        if (memory) {
-          score += memory.clicked * 12;
-          score -= memory.ignored * 8;
-        }
-        return {
-          type: "HACKATHON",
-
-          score,
-
-          reason: "Trending among engineers",
-
-          data: hackathon,
-        };
-      }),
-    )),
+      context,
+    ),
   ];
 
+  const feedWithMemory = applyMemoryToItems(feed, memoryMap);
+
   // Ranking
-  const ranked = await applySmartReranking(userId, feed);
+  const ranked = await applySmartReranking(userId, feedWithMemory);
 
   // Diversity
   const diversified = await applyFeedDiversity(ranked);

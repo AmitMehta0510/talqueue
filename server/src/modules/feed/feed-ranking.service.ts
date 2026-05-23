@@ -1,458 +1,338 @@
-type FeedItemType =
+import { FEED_SCORE_WEIGHTS } from "./feed-score-config.service";
+
+export type FeedItemType =
   | "POST"
   | "PROJECT"
   | "HACKATHON"
   | "JOB"
-  | "COMPANY";
+  | "COMPANY"
+  | "COMMUNITY";
+
+export type FeedContext = {
+  followingIds: string[];
+  followingIdSet?: Set<string>;
+  skillNames: string[];
+  skillNameSet?: Set<string>;
+  isFresher: boolean;
+  interactionMap: Map<string, number>;
+  affinityMap: Map<string, number>;
+};
+
+export type RankedFeedItem<T = any> = {
+  type: FeedItemType;
+  score: number;
+  reason?: string;
+  data: T;
+};
+
+const HOURS_DIVISOR = 1000 * 60 * 60;
+const DAY_DIVISOR = HOURS_DIVISOR * 24;
+
+export const calculateHoursOld = (createdAt: Date | string) => {
+  return Math.max((Date.now() - new Date(createdAt).getTime()) / HOURS_DIVISOR, 1);
+};
+
+const calculateRecencyScore = (createdAt?: Date | string) => {
+  if (!createdAt) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    FEED_SCORE_WEIGHTS.recencyWindowHours - calculateHoursOld(createdAt),
+  );
+};
+
+const calculateTrustLevelScore = (trustLevel?: string) => {
+  switch (trustLevel) {
+    case "ELITE":
+      return FEED_SCORE_WEIGHTS.trust.elite;
+
+    case "ADVANCED":
+      return FEED_SCORE_WEIGHTS.trust.advanced;
+
+    case "VERIFIED":
+      return FEED_SCORE_WEIGHTS.trust.verified;
+
+    default:
+      return 0;
+  }
+};
+
+export const getCreatorId = (item: any) => {
+  return (
+    item?.authorId ||
+    item?.ownerId ||
+    item?.createdById ||
+    item?.postedById ||
+    item?.createdBy?.id ||
+    item?.owner?.id ||
+    item?.author?.id
+  );
+};
+
+const getFollowingIdSet = (context: FeedContext) => {
+  return context.followingIdSet || new Set(context.followingIds);
+};
+
+const getSkillNameSet = (context: FeedContext) => {
+  return context.skillNameSet || new Set(context.skillNames.map((skill) => skill.toLowerCase()));
+};
+
+const countTextSkillMatches = (value: unknown, context: FeedContext) => {
+  const text = typeof value === "string" ? value.toLowerCase() : "";
+  const skillNameSet = getSkillNameSet(context);
+
+  let matches = 0;
+
+  for (const skill of skillNameSet) {
+    if (text.includes(skill)) {
+      matches += 1;
+    }
+  }
+
+  return matches;
+};
+
+const countArraySkillMatches = (value: unknown, context: FeedContext) => {
+  const skillNameSet = getSkillNameSet(context);
+
+  return Array.isArray(value)
+    ? value.filter(
+        (item) =>
+          typeof item === "string" && skillNameSet.has(item.toLowerCase()),
+      ).length
+    : 0;
+};
+
+export const getFeedItemReason = (
+  item: any,
+
+  type: FeedItemType,
+
+  context: FeedContext,
+) => {
+  switch (type) {
+    case "POST":
+      if (getFollowingIdSet(context).has(item.authorId)) {
+        return "From someone you follow";
+      }
+
+      if (countTextSkillMatches(item.content, context) > 0) {
+        return "Matches your skills";
+      }
+
+      return "Popular with engineers";
+
+    case "PROJECT":
+      if (countArraySkillMatches(item.techStack, context) > 0) {
+        return "Uses your tech stack";
+      }
+
+      return item.verified ? "Verified project" : "Relevant project";
+
+    case "HACKATHON":
+      return item.featured ? "Featured hackathon" : "Open for registration";
+
+    case "JOB":
+      if (countArraySkillMatches(item.skillsRequired, context) > 0) {
+        return "Matches your skills";
+      }
+
+      return item.workMode === "REMOTE" ? "Remote opportunity" : "Relevant role";
+
+    case "COMPANY":
+      return item.hiringEnabled ? "Actively hiring" : "Recommended company";
+
+    case "COMMUNITY":
+      if (countArraySkillMatches(item.tags, context) > 0) {
+        return "Matches your interests";
+      }
+
+      return "Active community";
+  }
+};
+
+export const buildRankedFeedItems = <T>(
+  items: T[],
+
+  type: FeedItemType,
+
+  context: FeedContext,
+
+  reason?: string,
+): RankedFeedItem<T>[] => {
+  return items.map((item) => ({
+    type,
+    score: calculateFeedScore(item, type, context),
+    reason: reason || getFeedItemReason(item, type, context),
+    data: item,
+  }));
+};
 
 export const calculateFeedScore = (
   item: any,
 
   type: FeedItemType,
 
-  context: {
-    followingIds: string[];
-
-    skillNames: string[];
-
-    isFresher: boolean;
-
-    interactionMap: Map<
-      string,
-      number
-    >;
-
-    affinityMap: Map<
-      string,
-      number
-    >;
-  }
+  context: FeedContext,
 ) => {
-
-  let score = 0;
-
-  //
-  // RECENCY BOOST
-  //
-  if (item.createdAt) {
-
-    const hoursOld =
-      (
-        Date.now() -
-        new Date(
-          item.createdAt
-        ).getTime()
-      ) /
-      (
-        1000 *
-        60 *
-        60
-      );
-
-    score += Math.max(
-      0,
-      72 - hoursOld
-    );
-  }
+  let score = calculateRecencyScore(item.createdAt);
 
   switch (type) {
-
-    //
-    // POSTS
-    //
     case "POST":
-
-      //
-      // Following boost
-      //
-      if (
-        context.followingIds.includes(
-          item.authorId
-        )
-      ) {
-        score += 120;
+      if (getFollowingIdSet(context).has(item.authorId)) {
+        score += FEED_SCORE_WEIGHTS.posts.following;
       }
 
-      //
-      // Engagement
-      //
+      score += (item._count?.likes || item.likesCount || 0) * FEED_SCORE_WEIGHTS.posts.like;
       score +=
-        item._count.likes * 4;
-
+        (item._count?.comments || item.commentsCount || 0) *
+        FEED_SCORE_WEIGHTS.posts.comment;
       score +=
-        item._count.comments * 6;
-
-      //
-      // Engineering authority
-      //
+        (item.author?.engineeringScore || 0) *
+        FEED_SCORE_WEIGHTS.posts.authorEngineering;
+      score += calculateTrustLevelScore(item.author?.trustLevel);
       score +=
-        (
-          item.author
-            ?.engineeringScore ||
-          0
-        ) * 0.08;
-
-      //
-      // Trust level
-      //
-      switch (
-        item.author
-          ?.trustLevel
-      ) {
-
-        case "ELITE":
-          score += 100;
-          break;
-
-        case "ADVANCED":
-          score += 70;
-          break;
-
-        case "VERIFIED":
-          score += 40;
-          break;
-      }
-
-      //
-      // Skill overlap
-      //
-      const postContent =
-        item.content?.toLowerCase() ||
-        "";
-
-      for (
-        const skill of
-        context.skillNames
-      ) {
-
-        if (
-          postContent.includes(
-            skill.toLowerCase()
-          )
-        ) {
-          score += 15;
-        }
-      }
-
-      //
-      // Interaction memory
-      //
+        countTextSkillMatches(item.content, context) *
+        FEED_SCORE_WEIGHTS.posts.skillMatch;
       score +=
-        (
-          context.interactionMap.get(
-            `POST:${item.id}`
-          ) || 0
-        ) * 5;
-
-      //
-      // Affinity boost
-      //
-      score +=
-        context.affinityMap.get(
-          item.authorId
-        ) || 0;
-
+        (context.interactionMap.get(`POST:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.posts.interaction;
+      score += context.affinityMap.get(item.authorId) || 0;
       break;
 
-    //
-    // PROJECTS
-    //
     case "PROJECT":
-
-      //
-      // Verified project
-      //
       if (item.verified) {
-        score += 100;
+        score += FEED_SCORE_WEIGHTS.projects.verified;
       }
 
-      //
-      // Live project
-      //
       if (item.liveUrl) {
-        score += 60;
+        score += FEED_SCORE_WEIGHTS.projects.live;
       }
 
-      //
-      // Featured
-      //
       if (item.featured) {
-        score += 40;
+        score += FEED_SCORE_WEIGHTS.projects.featured;
       }
 
-      //
-      // GitHub quality
-      //
       score += Math.min(
-        item.starsCount * 2,
-        100
+        item.starsCount * FEED_SCORE_WEIGHTS.projects.starMultiplier,
+        FEED_SCORE_WEIGHTS.projects.starCap,
+      );
+      score += Math.min(item.forksCount, FEED_SCORE_WEIGHTS.projects.forkCap);
+      score += Math.min(
+        item.contributorsCount * FEED_SCORE_WEIGHTS.projects.contributorMultiplier,
+        FEED_SCORE_WEIGHTS.projects.contributorCap,
       );
 
-      score += Math.min(
-        item.forksCount,
-        40
-      );
-
-      score += Math.min(
-        item.contributorsCount * 5,
-        40
-      );
-
-      //
-      // Looking for relevance
-      //
-      if (
-        item.lookingFor
-      ) {
-
-        const lookingFor =
-          item.lookingFor.toLowerCase();
-
-        for (
-          const skill of
-          context.skillNames
-        ) {
-
-          if (
-            lookingFor.includes(
-              skill.toLowerCase()
-            )
-          ) {
-            score += 30;
-          }
-        }
+      if (item.lookingFor) {
+        score +=
+          countTextSkillMatches(item.lookingFor, context) *
+          FEED_SCORE_WEIGHTS.projects.lookingForSkillMatch;
       }
 
-      //
-      // Tech stack overlap
-      //
-      const techStack =
-        Array.isArray(
-          item.techStack
-        )
-          ? item.techStack
-          : [];
-
-      const overlap =
-        techStack.filter(
-          (tech: any) =>
-            typeof tech ===
-              "string" &&
-            context.skillNames.includes(
-              tech.toLowerCase()
-            )
-        );
-
       score +=
-        overlap.length * 35;
-
-      //
-      // Engineering strength
-      //
+        countArraySkillMatches(item.techStack, context) *
+        FEED_SCORE_WEIGHTS.projects.techStackSkillMatch;
       score +=
-        (
-          item.engineeringScore ||
-          0
-        ) * 0.3;
-
-      //
-      // Interaction memory
-      //
+        (item.engineeringScore || 0) *
+        FEED_SCORE_WEIGHTS.projects.engineeringScore;
       score +=
-        (
-          context.interactionMap.get(
-            `PROJECT:${item.id}`
-          ) || 0
-        ) * 6;
-
-      //
-      // Owner affinity
-      //
-      score +=
-        context.affinityMap.get(
-          item.ownerId
-        ) || 0;
-
+        (context.interactionMap.get(`PROJECT:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.projects.interaction;
+      score += context.affinityMap.get(item.ownerId) || 0;
       break;
 
-    //
-    // HACKATHONS
-    //
     case "HACKATHON":
+      score += FEED_SCORE_WEIGHTS.hackathons.base;
 
-      score += 80;
-
-      //
-      // Verified
-      //
       if (item.verified) {
-        score += 60;
+        score += FEED_SCORE_WEIGHTS.hackathons.verified;
       }
 
-      //
-      // Featured
-      //
       if (item.featured) {
-        score += 60;
+        score += FEED_SCORE_WEIGHTS.hackathons.featured;
       }
 
-      //
-      // Deadline urgency
-      //
-      const daysLeft =
-        (
-          new Date(
-            item.registrationDeadline
-          ).getTime() -
-          Date.now()
-        ) /
-        (
-          1000 *
-          60 *
-          60 *
-          24
+      if (item.registrationDeadline) {
+        const daysLeft =
+          (new Date(item.registrationDeadline).getTime() - Date.now()) / DAY_DIVISOR;
+
+        score += Math.max(
+          0,
+          FEED_SCORE_WEIGHTS.hackathons.deadlineWindowDays - daysLeft,
         );
+      }
 
-      score += Math.max(
-        0,
-        40 - daysLeft
-      );
-
-      //
-      // Organizer quality
-      //
       score +=
-        (
-          item.createdBy
-            ?.engineeringScore ||
-          0
-        ) * 0.05;
-
-      //
-      // Interaction memory
-      //
+        (item.createdBy?.engineeringScore || 0) *
+        FEED_SCORE_WEIGHTS.hackathons.organizerEngineering;
       score +=
-        (
-          context.interactionMap.get(
-            `HACKATHON:${item.id}`
-          ) || 0
-        ) * 5;
-
-      //
-      // Organizer affinity
-      //
-      score +=
-        context.affinityMap.get(
-          item.createdById
-        ) || 0;
-
+        (context.interactionMap.get(`HACKATHON:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.hackathons.interaction;
+      score += context.affinityMap.get(item.createdById) || 0;
       break;
 
-    //
-    // JOBS
-    //
     case "JOB":
-
-      //
-      // Featured jobs
-      //
       if (item.featured) {
-        score += 80;
+        score += FEED_SCORE_WEIGHTS.jobs.featured;
       }
 
-      //
-      // Skill overlap
-      //
-      const matchingSkills =
-        item.skillsRequired.filter(
-          (skill: string) =>
-            context.skillNames.includes(
-              skill.toLowerCase()
-            )
-        );
-
       score +=
-        matchingSkills.length * 30;
+        countArraySkillMatches(item.skillsRequired, context) *
+        FEED_SCORE_WEIGHTS.jobs.skillMatch;
 
-      //
-      // Internship boost
-      //
-      if (
-        item.type ===
-          "INTERNSHIP" &&
-        context.isFresher
-      ) {
-        score += 120;
+      if (item.type === "INTERNSHIP" && context.isFresher) {
+        score += FEED_SCORE_WEIGHTS.jobs.fresherInternship;
       }
 
-      //
-      // Application activity
-      //
-      score +=
-        item.applicationsCount * 0.5;
+      score += (item.applicationsCount || 0) * FEED_SCORE_WEIGHTS.jobs.application;
+      score += (item.views || 0) * FEED_SCORE_WEIGHTS.jobs.view;
 
-      //
-      // Views
-      //
-      score +=
-        item.views * 0.1;
-
-      //
-      // Remote boost
-      //
-      if (
-        item.workMode ===
-        "REMOTE"
-      ) {
-        score += 20;
+      if (item.workMode === "REMOTE") {
+        score += FEED_SCORE_WEIGHTS.jobs.remote;
       }
 
-      //
-      // Interaction memory
-      //
       score +=
-        (
-          context.interactionMap.get(
-            `JOB:${item.id}`
-          ) || 0
-        ) * 6;
-
+        (context.interactionMap.get(`JOB:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.jobs.interaction;
       break;
 
-    //
-    // COMPANIES
-    //
     case "COMPANY":
-
-      //
-      // Hiring companies
-      //
-      if (
-        item.hiringEnabled
-      ) {
-        score += 50;
+      if (item.hiringEnabled) {
+        score += FEED_SCORE_WEIGHTS.companies.hiring;
       }
 
-      //
-      // Ratings
-      //
+      score += item.totalRatings || 0;
       score +=
-        item.totalRatings || 0;
+        (context.interactionMap.get(`COMPANY:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.companies.interaction;
+      break;
 
-      //
-      // Interaction memory
-      //
+    case "COMMUNITY":
       score +=
-        (
-          context.interactionMap.get(
-            `COMPANY:${item.id}`
-          ) || 0
-        ) * 5;
+        (item.memberCount || item._count?.members || 0) *
+        FEED_SCORE_WEIGHTS.communities.member;
+      score += item.trendingScore || 0;
+      score += item.activityScore || 0;
 
+      if (item.verified) {
+        score += FEED_SCORE_WEIGHTS.communities.verified;
+      }
+
+      if (item.visibility === "PUBLIC") {
+        score += FEED_SCORE_WEIGHTS.communities.publicVisibility;
+      }
+
+      score +=
+        countArraySkillMatches(item.tags, context) *
+        FEED_SCORE_WEIGHTS.communities.skillMatch;
+      score +=
+        (context.interactionMap.get(`COMMUNITY:${item.id}`) || 0) *
+        FEED_SCORE_WEIGHTS.communities.interaction;
+      score += context.affinityMap.get(item.createdById) || 0;
       break;
   }
 
-  return Math.round(
-    score
-  );
+  return Math.round(score);
 };

@@ -62,6 +62,10 @@ export const buildFeedContext = async (userId: string) => {
 
   const skillNames = userSkills.map((s) => s.skill.name.toLowerCase());
 
+  const followingIdSet = new Set(followingIds);
+
+  const skillNameSet = new Set(skillNames);
+
   const interactionMap = new Map<string, number>();
 
   for (const interaction of interactions) {
@@ -82,7 +86,11 @@ export const buildFeedContext = async (userId: string) => {
   return {
     followingIds,
 
+    followingIdSet,
+
     skillNames,
+
+    skillNameSet,
 
     interactionMap,
 

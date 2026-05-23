@@ -1,38 +1,27 @@
-import prisma from "shared/database/prisma";
-
-type FeedItemType = "POST" | "PROJECT" | "HACKATHON" | "JOB" | "COMPANY";
-
-interface FeedItem {
-  type: FeedItemType;
-  score: number;
-  data: any;
-}
+import { FeedContext, getCreatorId, RankedFeedItem } from "./feed-ranking.service";
+import { FEED_SCORE_WEIGHTS } from "./feed-score-config.service";
 
 export const applyAiFeedRanking = async (
-  feed: FeedItem[],
+  feed: RankedFeedItem[],
 
-  context: {
-    affinityMap: Map<string, number>;
-
-    interactionMap: Map<string, number>;
-
-    skillNames: string[];
-  },
+  context: FeedContext,
 ) => {
+  const skillNameSet =
+    context.skillNameSet ||
+    new Set(context.skillNames.map((skill) => skill.toLowerCase()));
+
   // AI RE-RANKING
   const rankedFeed = feed.map((item) => {
     let score = item.score;
 
     // AUTHOR AFFINITY BOOST
 
-    const authorId =
-      item.data.authorId ||
-      item.data.ownerId ||
-      item.data.createdById ||
-      item.data.postedById;
+    const authorId = getCreatorId(item.data);
 
     if (authorId && context.affinityMap.has(authorId)) {
-      score += (context.affinityMap.get(authorId) || 0) * 1.5;
+      score +=
+        (context.affinityMap.get(authorId) || 0) *
+        FEED_SCORE_WEIGHTS.aiReranking.affinityMultiplier;
     }
 
     // INTERACTION MEMORY BOOST
@@ -40,22 +29,20 @@ export const applyAiFeedRanking = async (
 
     const interactionScore = context.interactionMap.get(interactionKey) || 0;
 
-    score += interactionScore * 4;
+    score += interactionScore * FEED_SCORE_WEIGHTS.aiReranking.interaction;
 
     // SKILL VECTOR BOOST
-    if (context.skillNames.length) {
-      const preferredSkills = context.skillNames;
-
+    if (skillNameSet.size) {
       // POSTS
       if (item.type === "POST") {
         const content = item.data.content?.toLowerCase() || "";
 
-        for (const skill of preferredSkills) {
+        for (const skill of skillNameSet) {
           if (
             typeof skill === "string" &&
-            content.includes(skill.toLowerCase())
+            content.includes(skill)
           ) {
-            score += 15;
+            score += FEED_SCORE_WEIGHTS.aiReranking.postSkillMatch;
           }
         }
       }
@@ -69,19 +56,24 @@ export const applyAiFeedRanking = async (
         const overlap = techStack.filter(
           (tech: any) =>
             typeof tech === "string" &&
-            preferredSkills.includes(tech.toLowerCase()),
+            skillNameSet.has(tech.toLowerCase()),
         );
 
-        score += overlap.length * 18;
+        score +=
+          overlap.length * FEED_SCORE_WEIGHTS.aiReranking.projectSkillMatch;
       }
 
       // JOBS
       if (item.type === "JOB") {
-        const overlap = item.data.skillsRequired.filter((skill: string) =>
-          preferredSkills.includes(skill.toLowerCase()),
+        const skillsRequired = Array.isArray(item.data.skillsRequired)
+          ? item.data.skillsRequired
+          : [];
+
+        const overlap = skillsRequired.filter((skill: string) =>
+          skillNameSet.has(skill.toLowerCase()),
         );
 
-        score += overlap.length * 20;
+        score += overlap.length * FEED_SCORE_WEIGHTS.aiReranking.jobSkillMatch;
       }
     }
 
@@ -92,11 +84,12 @@ export const applyAiFeedRanking = async (
       item.data.createdBy?.engineeringScore ||
       0;
 
-    score += creatorEngineeringScore * 0.04;
+    score +=
+      creatorEngineeringScore * FEED_SCORE_WEIGHTS.aiReranking.creatorEngineering;
 
     // DIVERSITY PENALTY
     if (item.type === "COMPANY") {
-      score -= 20;
+      score -= FEED_SCORE_WEIGHTS.aiReranking.companyDiversityPenalty;
     }
 
     // ELITE ENGINEERS BOOST
@@ -106,11 +99,11 @@ export const applyAiFeedRanking = async (
       item.data.createdBy?.trustLevel;
 
     if (creatorTrustLevel === "ELITE") {
-      score += 120;
+      score += FEED_SCORE_WEIGHTS.aiReranking.eliteCreator;
     }
 
     if (creatorTrustLevel === "ADVANCED") {
-      score += 70;
+      score += FEED_SCORE_WEIGHTS.aiReranking.advancedCreator;
     }
 
     return {

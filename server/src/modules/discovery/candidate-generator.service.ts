@@ -1,6 +1,18 @@
 import prisma from "shared/database/prisma";
 
-export const generateFeedCandidates = async (userId: string) => {
+type CandidateStrategy = "discovery" | "personalized";
+
+export const buildOr = (
+  conditions: Array<Record<string, unknown> | false | null | undefined>,
+) => {
+  return conditions.filter(Boolean) as Record<string, unknown>[];
+};
+
+export const generateFeedCandidates = async (
+  userId: string,
+
+  strategy: CandidateStrategy = "discovery",
+) => {
   // USER
   const user = await prisma.user.findUnique({
     where: {
@@ -26,6 +38,7 @@ export const generateFeedCandidates = async (userId: string) => {
       projects: [],
       hackathons: [],
       jobs: [],
+      companies: [],
     };
   }
 
@@ -65,47 +78,117 @@ export const generateFeedCandidates = async (userId: string) => {
   // SKILLS
   const skillNames = user.skills.map((s) => s.skill.name);
 
-  const [posts, projects, hackathons, jobs] = await Promise.all([
+  const postOr = buildOr([
+    strategy === "discovery" && {
+      authorId: {
+        in: followingIds,
+      },
+    },
+
+    strategy === "discovery" && {
+      authorId: {
+        in: affinityUserIds,
+      },
+    },
+
+    strategy === "discovery" && {
+      trendingScore: {
+        gte: 20,
+      },
+    },
+
+    strategy === "discovery" && {
+      featured: true,
+    },
+
+    strategy === "discovery" && user.profile?.collegeId
+      ? {
+          collegeId: user.profile.collegeId,
+        }
+      : null,
+
+    strategy === "discovery" && {
+      communityId: {
+        not: null,
+      },
+    },
+  ]);
+
+  const projectOr = buildOr([
+    strategy === "discovery" && {
+      ownerId: {
+        in: affinityUserIds,
+      },
+    },
+
+    {
+      featured: true,
+    },
+
+    strategy === "discovery" && {
+      trendingScore: {
+        gte: 20,
+      },
+    },
+
+    {
+      searchTags: {
+        hasSome: skillNames,
+      },
+    },
+  ]);
+
+  const hackathonOr = buildOr([
+    {
+      featured: true,
+    },
+
+    {
+      verified: true,
+    },
+
+    strategy === "discovery" && {
+      createdById: {
+        in: affinityUserIds,
+      },
+    },
+
+    strategy === "personalized" && {
+      tags: {
+        hasSome: skillNames,
+      },
+    },
+  ]);
+
+  const jobOr = buildOr([
+    {
+      featured: true,
+    },
+
+    {
+      skillsRequired: {
+        hasSome: skillNames,
+      },
+    },
+
+    {
+      company: {
+        verified: true,
+      },
+    },
+  ]);
+
+  const [posts, projects, hackathons, jobs, companies] = await Promise.all([
     // POSTS
     prisma.post.findMany({
       where: {
         deletedAt: null,
 
-        OR: [
-          {
-            authorId: {
-              in: followingIds,
-            },
-          },
+        discoverable: true,
 
-          {
-            authorId: {
-              in: affinityUserIds,
-            },
-          },
+        visibility: "PUBLIC",
 
-          {
-            trendingScore: {
-              gte: 20,
-            },
-          },
-
-          {
-            featured: true,
-          },
-
-          user.profile?.collegeId
-            ? {
-                collegeId: user.profile.collegeId,
-              }
-            : {},
-
-          {
-            companyCommunityId: {
-              not: null,
-            },
-          },
-        ],
+        ...(postOr.length ? { OR: postOr } : {}),
       },
 
       include: {
@@ -123,7 +206,11 @@ export const generateFeedCandidates = async (userId: string) => {
         },
       },
 
-      take: 150,
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      take: strategy === "discovery" ? 150 : 50,
     }),
 
     // PROJECTS
@@ -133,29 +220,7 @@ export const generateFeedCandidates = async (userId: string) => {
 
         deletedAt: null,
 
-        OR: [
-          {
-            ownerId: {
-              in: affinityUserIds,
-            },
-          },
-
-          {
-            featured: true,
-          },
-
-          {
-            trendingScore: {
-              gte: 20,
-            },
-          },
-
-          {
-            tags: {
-              hasSome: skillNames,
-            },
-          },
-        ],
+        ...(projectOr.length ? { OR: projectOr } : {}),
       },
 
       include: {
@@ -168,7 +233,11 @@ export const generateFeedCandidates = async (userId: string) => {
         members: true,
       },
 
-      take: 80,
+      orderBy: {
+        trendingScore: "desc",
+      },
+
+      take: strategy === "discovery" ? 80 : 30,
     }),
 
     // HACKATHONS
@@ -180,28 +249,18 @@ export const generateFeedCandidates = async (userId: string) => {
           gte: new Date(),
         },
 
-        OR: [
-          {
-            featured: true,
-          },
-
-          {
-            verified: true,
-          },
-
-          {
-            createdById: {
-              in: affinityUserIds,
-            },
-          },
-        ],
+        ...(hackathonOr.length ? { OR: hackathonOr } : {}),
       },
 
       include: {
         createdBy: true,
       },
 
-      take: 50,
+      orderBy: {
+        registrationDeadline: "asc",
+      },
+
+      take: strategy === "discovery" ? 50 : 20,
     }),
 
     // JOBS
@@ -211,30 +270,30 @@ export const generateFeedCandidates = async (userId: string) => {
 
         status: "OPEN",
 
-        OR: [
-          {
-            featured: true,
-          },
-
-          {
-            tags: {
-              hasSome: skillNames,
-            },
-          },
-
-          {
-            company: {
-              verified: true,
-            },
-          },
-        ],
+        ...(strategy === "discovery" && jobOr.length ? { OR: jobOr } : {}),
       },
 
       include: {
         company: true,
       },
 
-      take: 80,
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      take: strategy === "discovery" ? 80 : 30,
+    }),
+
+    prisma.company.findMany({
+      where: {
+        hiringEnabled: true,
+      },
+
+      orderBy: {
+        totalRatings: "desc",
+      },
+
+      take: strategy === "discovery" ? 0 : 10,
     }),
   ]);
 
@@ -246,5 +305,7 @@ export const generateFeedCandidates = async (userId: string) => {
     hackathons,
 
     jobs,
+
+    companies,
   };
 };

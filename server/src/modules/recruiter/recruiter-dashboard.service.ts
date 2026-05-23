@@ -2,329 +2,182 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import {
-  rankJobCandidates,
-} from "../analytics/candidate-ranking.service";
+import { rankJobCandidates } from "../analytics/candidate-ranking.service";
 
-import {
-  getFastestGrowingEngineers,
-} from "../analytics/leaderboard.service";
+import { getFastestGrowingEngineers } from "../analytics/leaderboard.service";
 
-export const getRecruiterDashboard =  async (
-    recruiterId: string
-  ) => {
+export const getRecruiterDashboard = async (recruiterId: string) => {
+  // Recruiter
+  const recruiter = await prisma.user.findUnique({
+    where: {
+      id: recruiterId,
+    },
 
-    //
-    // Recruiter
-    //
-    const recruiter =
-      await prisma.user.findUnique({
-        where: {
-          id: recruiterId,
-        },
+    include: {
+      profile: true,
+    },
+  });
 
-        include: {
-          profile: true,
-        },
-      });
+  if (!recruiter) {
+    throw new AppError("Recruiter not found", 404);
+  }
 
-    if (!recruiter) {
-      throw new AppError(
-        "Recruiter not found",
-        404
-      );
-    }
+  // Jobs
+  const jobs = await prisma.job.findMany({
+    where: {
+      postedById: recruiterId,
+    },
 
-    //
-    // Jobs
-    //
-    const jobs =
-      await prisma.job.findMany({
+    include: {
+      applications: true,
+    },
 
-        where: {
-          postedById:
-            recruiterId,
-        },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
-        include: {
+  // Analytics
+  let totalApplications = 0;
 
-          applications: true,
-        },
+  let totalShortlisted = 0;
 
-        orderBy: {
-          createdAt:
-            "desc",
-        },
-      });
+  let totalInterviews = 0;
 
-    //
-    // Analytics
-    //
-    let totalApplications = 0;
+  let totalHired = 0;
 
-    let totalShortlisted = 0;
+  for (const job of jobs) {
+    totalApplications += job.applications.length;
 
-    let totalInterviews = 0;
+    totalShortlisted += job.applications.filter(
+      (application) => application.status === "SHORTLISTED",
+    ).length;
 
-    let totalHired = 0;
+    totalInterviews += job.applications.filter(
+      (application) => application.status === "INTERVIEW",
+    ).length;
 
-    for (const job of jobs) {
+    totalHired += job.applications.filter(
+      (application) => application.status === "HIRED",
+    ).length;
+  }
 
-      totalApplications +=
-        job.applications.length;
+  // Candidate ranking
+  const rankedCandidates = [];
 
-      totalShortlisted +=
-        job.applications.filter(
-          (
-            application
-          ) =>
-            application.status ===
-            "SHORTLISTED"
-        ).length;
+  for (const job of jobs) {
+    const ranked = await rankJobCandidates(recruiterId, job.id);
 
-      totalInterviews +=
-        job.applications.filter(
-          (
-            application
-          ) =>
-            application.status ===
-            "INTERVIEW"
-        ).length;
+    rankedCandidates.push(...ranked);
+  }
 
-      totalHired +=
-        job.applications.filter(
-          (
-            application
-          ) =>
-            application.status ===
-            "HIRED"
-        ).length;
-    }
+  // Remove duplicates
+  const uniqueCandidates = new Map();
 
-    //
-    // Candidate ranking
-    //
-    const rankedCandidates =
-      [];
+  for (const candidate of rankedCandidates) {
+    const existing = uniqueCandidates.get(candidate.candidate.id);
 
-    for (const job of jobs) {
-
-      const ranked =
-        await rankJobCandidates(
-          recruiterId,
-          job.id
-        );
-
-      rankedCandidates.push(
-        ...ranked
-      );
-    }
-
-    //
-    // Remove duplicates
-    //
-    const uniqueCandidates =
-      new Map();
-
-    for (
-      const candidate of
-      rankedCandidates
+    if (
+      !existing ||
+      candidate.fitAnalysis.overallScore > existing.fitAnalysis.overallScore
     ) {
-
-      const existing =
-        uniqueCandidates.get(
-          candidate.candidate.id
-        );
-
-      if (
-        !existing ||
-        candidate.fitAnalysis
-          .overallScore >
-          existing.fitAnalysis
-            .overallScore
-      ) {
-
-        uniqueCandidates.set(
-          candidate.candidate.id,
-          candidate
-        );
-      }
+      uniqueCandidates.set(candidate.candidate.id, candidate);
     }
+  }
 
-    //
-    // Final top candidates
-    //
-    const topCandidates =
-      Array.from(
-        uniqueCandidates.values()
-      )
-        .sort(
-          (a, b) =>
-            b.fitAnalysis
-              .overallScore -
-            a.fitAnalysis
-              .overallScore
-        )
-        .slice(0, 10);
+  // Final top candidates
+  const topCandidates = Array.from(uniqueCandidates.values())
+    .sort((a, b) => b.fitAnalysis.overallScore - a.fitAnalysis.overallScore)
+    .slice(0, 10);
 
-    //
-    // Average candidate score
-    //
-    const averageCandidateScore =
-      topCandidates.length > 0
-        ? topCandidates.reduce(
-            (
-              acc,
-              candidate
-            ) =>
-              acc +
-              candidate
-                .fitAnalysis
-                .overallScore,
+  // Average candidate score
+  const averageCandidateScore =
+    topCandidates.length > 0
+      ? topCandidates.reduce(
+          (acc, candidate) => acc + candidate.fitAnalysis.overallScore,
 
-            0
-          ) /
-          topCandidates.length
-        : 0;
+          0,
+        ) / topCandidates.length
+      : 0;
 
-    //
-    // Most demanded skills
-    //
-    const skillMap =
-      new Map();
+  // Most demanded skills
+  const skillMap = new Map();
 
-    for (const job of jobs) {
+  for (const job of jobs) {
+    for (const skill of job.skillsRequired || []) {
+      const count = skillMap.get(skill) || 0;
 
-      for (
-        const skill of
-        (
-          job.skillsRequired ||
-          []
-        )
-      ) {
-
-        const count =
-          skillMap.get(
-            skill
-          ) || 0;
-
-        skillMap.set(
-          skill,
-          count + 1
-        );
-      }
+      skillMap.set(skill, count + 1);
     }
+  }
 
-    const mostDemandedSkills =
-      Array.from(
-        skillMap.entries()
-      )
-        .sort(
-          (a, b) =>
-            b[1] - a[1]
-        )
-        .slice(0, 5)
-        .map(
-          (
-            [skill]
-          ) => skill
-        );
+  const mostDemandedSkills = Array.from(skillMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([skill]) => skill);
 
-    //
-    // Fastest growing engineers
-    //
-    const fastestGrowingEngineers =
-      await getFastestGrowingEngineers(
-        5
-      );
+  // Fastest growing engineers
+  const fastestGrowingEngineers = await getFastestGrowingEngineers(5);
 
-    return {
+  return {
+    recruiter: {
+      id: recruiter.id,
 
-      recruiter: {
-        id:
-          recruiter.id,
+      username: recruiter.username,
 
-        username:
-          recruiter.username,
+      profile: recruiter.profile,
+    },
 
-        profile:
-          recruiter.profile,
-      },
+    analytics: {
+      totalJobs: jobs.length,
 
-      analytics: {
+      totalApplications,
 
-        totalJobs:
-          jobs.length,
+      totalShortlisted,
 
-        totalApplications,
+      totalInterviews,
 
-        totalShortlisted,
+      totalHired,
 
-        totalInterviews,
+      averageCandidateScore: Math.round(averageCandidateScore),
+    },
 
-        totalHired,
+    jobs: jobs.map((job) => ({
+      id: job.id,
 
-        averageCandidateScore:
-          Math.round(
-            averageCandidateScore
-          ),
-      },
+      title: job.title,
 
-      jobs: jobs.map(
-        (job) => ({
+      applicationsCount: job.applications.length,
 
-          id:
-            job.id,
+      shortlistedCount: job.applications.filter(
+        (application) => application.status === "SHORTLISTED",
+      ).length,
 
-          title:
-            job.title,
+      hiredCount: job.applications.filter(
+        (application) => application.status === "HIRED",
+      ).length,
+    })),
 
-          applicationsCount:
-            job.applications
-              .length,
+    topCandidates,
 
-          shortlistedCount:
-            job.applications.filter(
-              (
-                application
-              ) =>
-                application.status ===
-                "SHORTLISTED"
-            ).length,
+    fastestGrowingEngineers,
 
-          hiredCount:
-            job.applications.filter(
-              (
-                application
-              ) =>
-                application.status ===
-                "HIRED"
-            ).length,
-        })
-      ),
+    hiringInsights: {
+      mostDemandedSkills,
 
-      topCandidates,
+      verifiedCandidatePreference:
+        "Candidates with verified projects rank significantly higher",
 
-      fastestGrowingEngineers,
+      strongestSignal:
+        "Engineering score strongly correlates with recruiter shortlisting",
+    },
 
-      hiringInsights: {
+    recommendations: [
+      "Prioritize verified engineers for faster hiring",
 
-        mostDemandedSkills,
+      "Candidates with live deployments perform better in interviews",
 
-        verifiedCandidatePreference:
-          "Candidates with verified projects rank significantly higher",
-
-        strongestSignal:
-          "Engineering score strongly correlates with recruiter shortlisting",
-      },
-
-      recommendations: [
-
-        "Prioritize verified engineers for faster hiring",
-
-        "Candidates with live deployments perform better in interviews",
-
-        "Hackathon winners show strong execution ability",
-      ],
-    };
+      "Hackathon winners show strong execution ability",
+    ],
   };
+};

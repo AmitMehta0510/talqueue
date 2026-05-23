@@ -1,371 +1,377 @@
+import { FeedItemType } from "@prisma/client";
 import prisma from "shared/database/prisma";
+import { calculateHoursOld } from "modules/feed/feed-ranking.service";
 
-const HOURS_DIVISOR = 1000 * 60 * 60;
+type TrendingEntityType =
+  | "POST"
+  | "PROJECT"
+  | "HACKATHON"
+  | "COMMUNITY";
 
-const calculateHoursOld = (createdAt: Date) => {
-  return Math.max(
-    (Date.now() - new Date(createdAt).getTime()) / HOURS_DIVISOR,
-
-    1,
-  );
+type TrendingConfig<T> = {
+  entityType: TrendingEntityType;
+  findMany: () => Promise<T[]>;
+  batchSize?: number;
+  getId: (item: T) => string;
+  getCreatedAt: (item: T) => Date;
+  getEngagementScore: (item: T) => number;
+  getTrendingScore?: (item: T, velocityScore: number, engagementScore: number) => number;
+  updateEntity: (
+    item: T,
+    trendingScore: number,
+    engagementScore: number,
+  ) => Promise<unknown>;
 };
 
-// POSTS
-export const calculateTrendingPosts = async () => {
-  const posts = await prisma.post.findMany({
-    where: {
-      deletedAt: null,
+const DEFAULT_TRENDING_BATCH_SIZE = 25;
 
-      discoverable: true,
+const chunkItems = <T>(items: T[], size: number) => {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
+};
+
+const calculateDefaultTrendingScore = (
+  _item: unknown,
+
+  velocityScore: number,
+
+  engagementScore: number,
+) => {
+  return velocityScore + engagementScore * 0.4;
+};
+
+const upsertTrendingSnapshot = async (
+  entityId: string,
+
+  entityType: TrendingEntityType,
+
+  score: number,
+
+  velocityScore: number,
+
+  engagementDelta: number,
+) => {
+  const calculatedAt = new Date();
+
+  return prisma.trendingSnapshot.upsert({
+    where: {
+      entityId_entityType: {
+        entityId,
+
+        entityType: entityType as FeedItemType,
+      },
     },
 
-    take: 200,
+    update: {
+      score,
+
+      velocityScore,
+
+      engagementDelta,
+
+      calculatedAt,
+    },
+
+    create: {
+      entityId,
+
+      entityType: entityType as FeedItemType,
+
+      score,
+
+      velocityScore,
+
+      engagementDelta,
+
+      calculatedAt,
+    },
   });
+};
 
-  await Promise.all(
-    posts.map(async (post) => {
-      const hoursOld = calculateHoursOld(post.createdAt);
+const calculateTrendingEntities = async <T>(config: TrendingConfig<T>) => {
+  const items = await config.findMany();
 
-      const engagementScore =
-        post.likesCount * 2 +
-        post.commentsCount * 4 +
-        post.saveCount * 6 +
-        post.shareCount * 8;
+  for (const chunk of chunkItems(
+    items,
 
-      const velocityScore = engagementScore / (hoursOld + 2);
+    config.batchSize || DEFAULT_TRENDING_BATCH_SIZE,
+  )) {
+    await Promise.all(
+      chunk.map(async (item) => {
+      const engagementScore = config.getEngagementScore(item);
 
-      const trendingScore = velocityScore + (post.engagementScore || 0) * 0.3;
+      const velocityScore = engagementScore / (calculateHoursOld(config.getCreatedAt(item)) + 2);
 
-      // PARALLEL UPSERTS
+      const trendingScore = (
+        config.getTrendingScore || calculateDefaultTrendingScore
+      )(item, velocityScore, engagementScore);
+
+      const entityId = config.getId(item);
+
       await Promise.all([
-        prisma.post.update({
-          where: {
-            id: post.id,
-          },
+        config.updateEntity(item, trendingScore, engagementScore),
 
-          data: {
-            trendingScore,
-          },
-        }),
+        upsertTrendingSnapshot(
+          entityId,
 
-        prisma.trendingSnapshot.upsert({
-          where: {
-            entityId_entityType: {
-              entityId: post.id,
+          config.entityType,
 
-              entityType: "POST",
-            },
-          },
+          trendingScore,
 
-          update: {
-            score: trendingScore,
+          velocityScore,
 
-            velocityScore,
-
-            engagementDelta: engagementScore,
-
-            calculatedAt: new Date(),
-          },
-
-          create: {
-            entityId: post.id,
-
-            entityType: "POST",
-
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: engagementScore,
-          },
-        }),
+          engagementScore,
+        ),
       ]);
-    }),
-  );
+      }),
+    );
+  }
 };
 
-// PROJECTS
-export const calculateTrendingProjects = async () => {
-  const projects = await prisma.project.findMany({
-    where: {
-      deletedAt: null,
+export const calculateTrendingPosts = async () => {
+  return calculateTrendingEntities({
+    entityType: "POST",
 
-      visibility: "PUBLIC",
-    },
+    findMany: () =>
+      prisma.post.findMany({
+        where: {
+          deletedAt: null,
 
-    take: 100,
+          discoverable: true,
+
+          visibility: "PUBLIC",
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 200,
+      }),
+
+    getId: (post) => post.id,
+
+    getCreatedAt: (post) => post.createdAt,
+
+    getEngagementScore: (post) =>
+      post.likesCount * 2 +
+      post.commentsCount * 4 +
+      post.saveCount * 6 +
+      post.shareCount * 8,
+
+    getTrendingScore: (post, velocityScore) =>
+      velocityScore + (post.engagementScore || 0) * 0.3,
+
+    updateEntity: (post, trendingScore) =>
+      prisma.post.update({
+        where: {
+          id: post.id,
+        },
+
+        data: {
+          trendingScore,
+        },
+      }),
   });
+};
 
-  await Promise.all(
-    projects.map(async (project) => {
-      const hoursOld = calculateHoursOld(project.createdAt);
+export const calculateTrendingProjects = async () => {
+  return calculateTrendingEntities({
+    entityType: "PROJECT",
 
-      let qualityScore = 0;
+    findMany: () =>
+      prisma.project.findMany({
+        where: {
+          deletedAt: null,
+
+          visibility: "PUBLIC",
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 100,
+      }),
+
+    getId: (project) => project.id,
+
+    getCreatedAt: (project) => project.createdAt,
+
+    getEngagementScore: (project) => {
+      let score = 0;
 
       if (project.verified) {
-        qualityScore += 100;
+        score += 100;
       }
 
       if (project.liveUrl) {
-        qualityScore += 50;
+        score += 50;
       }
 
       if (project.githubUrl) {
-        qualityScore += 40;
+        score += 40;
       }
 
-      qualityScore += project.contributorsCount * 5;
+      score += project.contributorsCount * 5;
 
-      qualityScore += Math.min(project.starsCount, 100);
+      score += Math.min(project.starsCount, 100);
 
-      qualityScore += project.forksCount * 2;
+      score += project.forksCount * 2;
 
-      const velocityScore = qualityScore / (hoursOld + 2);
+      return score;
+    },
 
-      const trendingScore = velocityScore + qualityScore * 0.4;
+    updateEntity: (project, trendingScore) =>
+      prisma.project.update({
+        where: {
+          id: project.id,
+        },
 
-      await Promise.all([
-        prisma.project.update({
-          where: {
-            id: project.id,
-          },
+        data: {
+          trendingScore,
+        },
+      }),
+  });
+};
 
-          data: {
-            trendingScore,
-          },
-        }),
+export const calculateTrendingHackathons = async () => {
+  return calculateTrendingEntities({
+    entityType: "HACKATHON",
 
-        prisma.trendingSnapshot.upsert({
-          where: {
-            entityId_entityType: {
-              entityId: project.id,
+    findMany: () =>
+      prisma.hackathon.findMany({
+        where: {
+          deletedAt: null,
+        },
 
-              entityType: "PROJECT",
+        include: {
+          _count: {
+            select: {
+              registrations: true,
+
+              submissions: true,
             },
           },
-
-          update: {
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: qualityScore,
-
-            calculatedAt: new Date(),
-          },
-
-          create: {
-            entityId: project.id,
-
-            entityType: "PROJECT",
-
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: qualityScore,
-          },
-        }),
-      ]);
-    }),
-  );
-};
-// HACKATHONS
-export const calculateTrendingHackathons = async () => {
-  const hackathons = await prisma.hackathon.findMany({
-    where: {
-      deletedAt: null,
-    },
-
-    include: {
-      _count: {
-        select: {
-          registrations: true,
-
-          submissions: true,
         },
-      },
-    },
 
-    take: 100,
-  });
+        orderBy: {
+          createdAt: "desc",
+        },
 
-  await Promise.all(
-    hackathons.map(async (hackathon) => {
-      const hoursOld = calculateHoursOld(hackathon.createdAt);
+        take: 100,
+      }),
 
-      let engagement = 0;
+    getId: (hackathon) => hackathon.id,
 
-      engagement += hackathon._count.registrations * 3;
+    getCreatedAt: (hackathon) => hackathon.createdAt,
 
-      engagement += hackathon._count.submissions * 8;
+    getEngagementScore: (hackathon) => {
+      let score = 0;
+
+      score += hackathon._count.registrations * 3;
+
+      score += hackathon._count.submissions * 8;
 
       if (hackathon.featured) {
-        engagement += 80;
+        score += 80;
       }
 
       if (hackathon.verified) {
-        engagement += 100;
+        score += 100;
       }
 
-      const velocityScore = engagement / (hoursOld + 2);
-
-      const trendingScore = velocityScore + engagement * 0.4;
-
-      await Promise.all([
-        prisma.hackathon.update({
-          where: {
-            id: hackathon.id,
-          },
-
-          data: {
-            trendingScore,
-          },
-        }),
-
-        prisma.trendingSnapshot.upsert({
-          where: {
-            entityId_entityType: {
-              entityId: hackathon.id,
-
-              entityType: "HACKATHON",
-            },
-          },
-
-          update: {
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: engagement,
-
-            calculatedAt: new Date(),
-          },
-
-          create: {
-            entityId: hackathon.id,
-
-            entityType: "HACKATHON",
-
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: engagement,
-          },
-        }),
-      ]);
-    }),
-  );
-};
-
-// COMMUNITIES
-export const calculateTrendingCommunities = async () => {
-  const communities = await prisma.community.findMany({
-    where: {
-      archived: false,
+      return score;
     },
 
-    include: {
-      _count: {
-        select: {
-          members: true,
-
-          posts: true,
-
-          conversations: true,
+    updateEntity: (hackathon, trendingScore) =>
+      prisma.hackathon.update({
+        where: {
+          id: hackathon.id,
         },
-      },
-    },
 
-    take: 100,
+        data: {
+          trendingScore,
+        },
+      }),
   });
-
-  await Promise.all(
-    communities.map(async (community) => {
-      const hoursOld = calculateHoursOld(community.createdAt);
-
-      // ENGAGEMENT
-      let engagement = 0;
-
-      // Members
-      engagement += community._count.members * 4;
-
-      // Posts
-      engagement += community._count.posts * 6;
-
-      // Conversations
-      engagement += community._count.conversations * 8;
-
-      // Verified
-      if (community.verified) {
-        engagement += 100;
-      }
-
-      // Public boost
-      if (community.visibility === "PUBLIC") {
-        engagement += 30;
-      }
-
-      // Velocity
-      const velocityScore = engagement / (hoursOld + 2);
-
-      // Final trending
-      const trendingScore = velocityScore + engagement * 0.4;
-
-      // UPDATE + SNAPSHOT
-      await Promise.all([
-        prisma.community.update({
-          where: {
-            id: community.id,
-          },
-
-          data: {
-            trendingScore,
-
-            activityScore: engagement,
-
-            memberCount: community._count.members,
-          },
-        }),
-
-        prisma.trendingSnapshot.upsert({
-          where: {
-            entityId_entityType: {
-              entityId: community.id,
-
-              entityType: "COMMUNITY",
-            },
-          },
-
-          update: {
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: engagement,
-
-            calculatedAt: new Date(),
-          },
-
-          create: {
-            entityId: community.id,
-
-            entityType: "COMMUNITY",
-
-            score: trendingScore,
-
-            velocityScore,
-
-            engagementDelta: engagement,
-          },
-        }),
-      ]);
-    }),
-  );
 };
 
-// REFRESH
+export const calculateTrendingCommunities = async () => {
+  return calculateTrendingEntities({
+    entityType: "COMMUNITY",
+
+    findMany: () =>
+      prisma.community.findMany({
+        where: {
+          archived: false,
+        },
+
+        include: {
+          _count: {
+            select: {
+              members: true,
+
+              posts: true,
+
+              conversations: true,
+            },
+          },
+        },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 100,
+      }),
+
+    getId: (community) => community.id,
+
+    getCreatedAt: (community) => community.createdAt,
+
+    getEngagementScore: (community) => {
+      let score = 0;
+
+      score += community._count.members * 4;
+
+      score += community._count.posts * 6;
+
+      score += community._count.conversations * 8;
+
+      if (community.verified) {
+        score += 100;
+      }
+
+      if (community.visibility === "PUBLIC") {
+        score += 30;
+      }
+
+      return score;
+    },
+
+    updateEntity: (community, trendingScore, engagementScore) =>
+      prisma.community.update({
+        where: {
+          id: community.id,
+        },
+
+        data: {
+          trendingScore,
+
+          activityScore: engagementScore,
+
+          memberCount: community._count.members,
+        },
+      }),
+  });
+};
+
 export const refreshTrendingSnapshots = async () => {
   await Promise.all([
     calculateTrendingPosts(),
@@ -377,7 +383,6 @@ export const refreshTrendingSnapshots = async () => {
     calculateTrendingCommunities(),
   ]);
 
-  // CACHE CLEANUP
   await prisma.recommendationCache.deleteMany({
     where: {
       expiresAt: {
@@ -391,9 +396,22 @@ export const refreshTrendingSnapshots = async () => {
   };
 };
 
-// TRENDING FEED
 export const getTrendingFeed = async () => {
   const snapshots = await prisma.trendingSnapshot.findMany({
+    where: {
+      entityType: {
+        in: [
+          FeedItemType.POST,
+
+          FeedItemType.PROJECT,
+
+          FeedItemType.HACKATHON,
+
+          FeedItemType.COMMUNITY,
+        ],
+      },
+    },
+
     orderBy: {
       score: "desc",
     },
@@ -401,46 +419,31 @@ export const getTrendingFeed = async () => {
     take: 100,
   });
 
-  // GROUP IDS
-  const postIds: string[] = [];
-
-  const projectIds: string[] = [];
-
-  const hackathonIds: string[] = [];
-
-  const communityIds: string[] = [];
+  const idsByType = {
+    POST: [] as string[],
+    PROJECT: [] as string[],
+    HACKATHON: [] as string[],
+    COMMUNITY: [] as string[],
+  };
 
   for (const snapshot of snapshots) {
-    switch (snapshot.entityType) {
-      case "POST":
-        postIds.push(snapshot.entityId);
-
-        break;
-
-      case "PROJECT":
-        projectIds.push(snapshot.entityId);
-
-        break;
-
-      case "HACKATHON":
-        hackathonIds.push(snapshot.entityId);
-
-        break;
-
-      case "COMMUNITY":
-        communityIds.push(snapshot.entityId);
-
-        break;
+    if (snapshot.entityType in idsByType) {
+      idsByType[snapshot.entityType as TrendingEntityType].push(snapshot.entityId);
     }
   }
 
-  // PARALLEL FETCH
   const [posts, projects, hackathons, communities] = await Promise.all([
     prisma.post.findMany({
       where: {
         id: {
-          in: postIds,
+          in: idsByType.POST,
         },
+
+        deletedAt: null,
+
+        discoverable: true,
+
+        visibility: "PUBLIC",
       },
 
       include: {
@@ -463,8 +466,12 @@ export const getTrendingFeed = async () => {
     prisma.project.findMany({
       where: {
         id: {
-          in: projectIds,
+          in: idsByType.PROJECT,
         },
+
+        deletedAt: null,
+
+        visibility: "PUBLIC",
       },
 
       include: {
@@ -481,8 +488,10 @@ export const getTrendingFeed = async () => {
     prisma.hackathon.findMany({
       where: {
         id: {
-          in: hackathonIds,
+          in: idsByType.HACKATHON,
         },
+
+        deletedAt: null,
       },
 
       include: {
@@ -493,8 +502,12 @@ export const getTrendingFeed = async () => {
     prisma.community.findMany({
       where: {
         id: {
-          in: communityIds,
+          in: idsByType.COMMUNITY,
         },
+
+        archived: false,
+
+        searchable: true,
       },
 
       include: {
@@ -517,44 +530,23 @@ export const getTrendingFeed = async () => {
     }),
   ]);
 
-  // FAST LOOKUP MAPS
-  const postMap = new Map(posts.map((post) => [post.id, post]));
+  const entityMaps = {
+    POST: new Map(posts.map((post) => [post.id, post])),
+    PROJECT: new Map(projects.map((project) => [project.id, project])),
+    HACKATHON: new Map(hackathons.map((hackathon) => [hackathon.id, hackathon])),
+    COMMUNITY: new Map(communities.map((community) => [community.id, community])),
+  };
 
-  const projectMap = new Map(projects.map((project) => [project.id, project]));
+  const staleSnapshotIds: string[] = [];
 
-  const hackathonMap = new Map(
-    hackathons.map((hackathon) => [hackathon.id, hackathon]),
-  );
-
-  const communityMap = new Map(
-    communities.map((community) => [community.id, community]),
-  );
-
-  // BUILD FEED
-  return snapshots
+  const feed = snapshots
     .map((snapshot) => {
-      let data = null;
+      const entityType = snapshot.entityType as TrendingEntityType;
 
-      switch (snapshot.entityType) {
-        case "POST":
-          data = postMap.get(snapshot.entityId);
+      const data = entityMaps[entityType]?.get(snapshot.entityId) || null;
 
-          break;
-
-        case "PROJECT":
-          data = projectMap.get(snapshot.entityId);
-
-          break;
-
-        case "HACKATHON":
-          data = hackathonMap.get(snapshot.entityId);
-
-          break;
-
-        case "COMMUNITY":
-          data = communityMap.get(snapshot.entityId);
-
-          break;
+      if (!data) {
+        staleSnapshotIds.push(snapshot.id);
       }
 
       return {
@@ -570,4 +562,16 @@ export const getTrendingFeed = async () => {
       };
     })
     .filter((item) => item.data);
+
+  if (staleSnapshotIds.length) {
+    await prisma.trendingSnapshot.deleteMany({
+      where: {
+        id: {
+          in: staleSnapshotIds,
+        },
+      },
+    });
+  }
+
+  return feed;
 };

@@ -1,5 +1,22 @@
 import prisma from "shared/database/prisma";
 
+export type RecommendationMemory = {
+  clicked: number;
+  ignored: number;
+};
+
+export const applyMemoryScore = (
+  memory: RecommendationMemory | undefined,
+
+  score: number,
+) => {
+  if (!memory) {
+    return score;
+  }
+
+  return score + memory.clicked * 12 - memory.ignored * 8;
+};
+
 export const trackRecommendationImpression = async (
   userId: string,
 
@@ -99,13 +116,7 @@ export const getRecommendationMemoryMap = async (userId: string) => {
     take: 1000,
   });
 
-  const memoryMap = new Map<
-    string,
-    {
-      clicked: number;
-      ignored: number;
-    }
-  >();
+  const memoryMap = new Map<string, RecommendationMemory>();
 
   for (const impression of impressions) {
     const key = `${impression.entityType}:${impression.entityId}`;

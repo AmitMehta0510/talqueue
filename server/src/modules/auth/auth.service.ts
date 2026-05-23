@@ -10,121 +10,89 @@ const PUBLIC_SIGNUP_ROLES = new Set([
   "RECRUITER",
 ]);
 
-export const registerUser =  async (data: any) => {
+export const registerUser = async (data: any) => {
+  const { email, password, fullName, username, role } = data;
 
-    const {
-      email,
-      password,
-      fullName,
+  if (!PUBLIC_SIGNUP_ROLES.has(role)) {
+    throw new AppError(
+      "This role cannot be selected during public signup",
+      403,
+    );
+  }
+
+  // Check existing email
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    throw new AppError("User already exists", 400);
+  }
+
+  // Check existing username
+  const existingUsername = await prisma.user.findUnique({
+    where: {
       username,
-      role,
-    } = data;
+    },
+  });
 
-    if (!PUBLIC_SIGNUP_ROLES.has(role)) {
-      throw new AppError(
-        "This role cannot be selected during public signup",
-        403
-      );
-    }
+  if (existingUsername) {
+    throw new AppError("Username already taken", 400);
+  }
 
-    // Check existing email
-    const existingUser =
-      await prisma.user.findUnique({
-        where: { email },
-      });
+  // Validate role BEFORE creation
+  const foundRole = await prisma.role.findUnique({
+    where: {
+      name: role,
+    },
+  });
 
-    if (existingUser) {
-      throw new AppError(
-        "User already exists",
-        400
-      );
-    }
+  if (!foundRole) {
+    throw new AppError("Invalid role", 400);
+  }
 
-    // Check existing username
-    const existingUsername =
-      await prisma.user.findUnique({
-        where: {
-          username,
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Transaction
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        email,
+
+        username,
+
+        password: hashedPassword,
+
+        profile: {
+          create: {
+            fullName,
+          },
         },
-      });
+      },
 
-    if (existingUsername) {
-      throw new AppError(
-        "Username already taken",
-        400
-      );
-    }
+      include: {
+        profile: true,
+      },
+    });
 
-    // Validate role BEFORE creation
-    const foundRole =
-      await prisma.role.findUnique({
-        where: {
-          name: role,
-        },
-      });
+    await tx.userRole.create({
+      data: {
+        userId: createdUser.id,
 
-    if (!foundRole) {
-      throw new AppError(
-        "Invalid role",
-        400
-      );
-    }
+        roleId: foundRole.id,
+      },
+    });
 
-    const hashedPassword =
-      await bcrypt.hash(
-        password,
-        10
-      );
+    return createdUser;
+  });
 
-    // Transaction
-    const user =
-      await prisma.$transaction(
-        async (tx) => {
+  const token = generateToken(user.id);
 
-          const createdUser =
-            await tx.user.create({
-              data: {
-                email,
-
-                username,
-
-                password:
-                  hashedPassword,
-
-                profile: {
-                  create: {
-                    fullName,
-                  },
-                },
-              },
-
-              include: {
-                profile: true,
-              },
-            });
-
-          await tx.userRole.create({
-            data: {
-              userId:
-                createdUser.id,
-
-              roleId:
-                foundRole.id,
-            },
-          });
-
-          return createdUser;
-        }
-      );
-
-    const token =
-      generateToken(user.id);
-
-    return {
-      token,
-      user,
-    };
+  return {
+    token,
+    user,
   };
+};
 
 export const loginUser = async (data: any) => {
   const { email, password } = data;
@@ -145,10 +113,7 @@ export const loginUser = async (data: any) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const isMatch = await bcrypt.compare(
-    password,
-    user.password
-  );
+  const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
     throw new AppError("Invalid credentials", 401);

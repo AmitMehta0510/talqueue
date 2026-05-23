@@ -1,136 +1,26 @@
-import prisma from "shared/database/prisma";
-import AppError from "shared/errors/AppError";
-import { calculateFeedScore } from "./feed-ranking.service";
+import { buildRankedFeedItems } from "./feed-ranking.service";
 import { applyAiFeedRanking } from "./feed-ai-ranking.service";
 import { buildFeedContext } from "modules/discovery/feed-context.service";
+import { generateFeedCandidates } from "modules/discovery/candidate-generator.service";
 
 export const getPersonalizedFeedV2 = async (userId: string) => {
-  const context = await buildFeedContext(userId);
+  const [context, candidates] = await Promise.all([
+    buildFeedContext(userId),
 
-  // POSTS
-  const posts = await prisma.post.findMany({
-    include: {
-      author: {
-        include: {
-          profile: true,
-        },
-      },
-
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-        },
-      },
-    },
-
-    take: 50,
-  });
-
-  // PROJECTS
-  const projects = await prisma.project.findMany({
-    where: {
-      visibility: "PUBLIC",
-
-      deletedAt: null,
-    },
-
-    include: {
-      owner: {
-        include: {
-          profile: true,
-        },
-      },
-
-      members: true,
-    },
-
-    take: 30,
-  });
-
-  // HACKATHONS
-
-  const hackathons = await prisma.hackathon.findMany({
-    where: {
-      registrationDeadline: {
-        gte: new Date(),
-      },
-
-      deletedAt: null,
-    },
-
-    include: {
-      createdBy: true,
-    },
-
-    take: 20,
-  });
-
-  // JOB
-  const jobs = await prisma.job.findMany({
-    where: {
-      status: "OPEN",
-
-      deletedAt: null,
-    },
-
-    include: {
-      company: true,
-    },
-
-    take: 30,
-  });
-
-  // COMPANIES
-  const companies = await prisma.company.findMany({
-    where: {
-      hiringEnabled: true,
-    },
-
-    take: 10,
-  });
+    generateFeedCandidates(userId, "personalized"),
+  ]);
 
   // BUILD FEED
   const feed = [
-    ...posts.map((post) => ({
-      type: "POST" as const,
+    ...buildRankedFeedItems(candidates.posts, "POST", context),
 
-      score: calculateFeedScore(post, "POST", context),
+    ...buildRankedFeedItems(candidates.projects, "PROJECT", context),
 
-      data: post,
-    })),
+    ...buildRankedFeedItems(candidates.hackathons, "HACKATHON", context),
 
-    ...projects.map((project) => ({
-      type: "PROJECT" as const,
+    ...buildRankedFeedItems(candidates.jobs, "JOB", context),
 
-      score: calculateFeedScore(project, "PROJECT", context),
-
-      data: project,
-    })),
-
-    ...hackathons.map((hackathon) => ({
-      type: "HACKATHON" as const,
-
-      score: calculateFeedScore(hackathon, "HACKATHON", context),
-
-      data: hackathon,
-    })),
-
-    ...jobs.map((job) => ({
-      type: "JOB" as const,
-
-      score: calculateFeedScore(job, "JOB", context),
-
-      data: job,
-    })),
-
-    ...companies.map((company) => ({
-      type: "COMPANY" as const,
-
-      score: calculateFeedScore(company, "COMPANY", context),
-
-      data: company,
-    })),
+    ...buildRankedFeedItems(candidates.companies, "COMPANY", context),
   ];
 
   // FINAL SORT

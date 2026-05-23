@@ -6,6 +6,8 @@ import { successResponse,} from "shared/utils/apiResponse";
 
 import { getPersonalizedFeedV2,} from "./feed.service";
 
+import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";
+
 export const getPersonalizedFeedHandler =  asyncHandler(
     async (
       req: any,
@@ -22,3 +24,22 @@ export const getPersonalizedFeedHandler =  asyncHandler(
       );
     }
   );
+
+export const trackFeedImpressionHandler = asyncHandler(
+  async (
+    req: any,
+    res: Response
+  ) => {
+    await trackRecommendationImpression(
+      req.user.id,
+
+      req.body,
+    );
+
+    res.json(
+      successResponse({
+        success: true,
+      })
+    );
+  }
+);

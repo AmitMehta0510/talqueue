@@ -5,20 +5,10 @@ import { buildFeedContext } from "./feed-context.service";
 
 import { calculateFeedScore } from "modules/feed/feed-ranking.service";
 
-import { getRecommendationMemoryMap } from "./recommendation-memory.service";
-
-// COMMON MEMORY BOOST
-const applyMemoryScore = (memory: any, score: number) => {
-  if (!memory) {
-    return score;
-  }
-
-  score += memory.clicked * 12;
-
-  score -= memory.ignored * 8;
-
-  return score;
-};
+import {
+  applyMemoryScore,
+  getRecommendationMemoryMap,
+} from "./recommendation-memory.service";
 
 // PROJECTS
 export const getSuggestedProjects = async (userId: string) => {
@@ -422,21 +412,7 @@ export const getSuggestedCommunities = async (userId: string) => {
 
   // RANKING
   const ranked = communities.map((community) => {
-    let score = 0;
-
-    // MEMBER COUNT
-    score += community.memberCount * 0.4;
-
-    // TRENDING
-    score += community.trendingScore || 0;
-
-    // ACTIVITY
-    score += community.activityScore || 0;
-
-    // VERIFIED
-    if (community.verified) {
-      score += 80;
-    }
+    let score = calculateFeedScore(community, "COMMUNITY", context);
 
     // COLLEGE MATCH
     if (community.collegeId && collegeIds.includes(community.collegeId)) {
@@ -447,13 +423,6 @@ export const getSuggestedCommunities = async (userId: string) => {
     if (community.companyId && companyIds.includes(community.companyId)) {
       score += 100;
     }
-
-    // SKILL OVERLAP
-    const overlap = (community.tags || []).filter((tag) =>
-      context.skillNames.includes(tag.toLowerCase()),
-    );
-
-    score += overlap.length * 25;
 
     // MEMORY
     const memory = memoryMap.get(`COMMUNITY:${community.id}`);
