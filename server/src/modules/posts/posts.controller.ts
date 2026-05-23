@@ -26,6 +26,10 @@ import {
   updatePostSchema,
 
 } from "./posts.validation";
+import {
+  paginationQuerySchema,
+  postDetailQuerySchema,
+} from "shared/validation/query";
 
 // CREATE POST
 export const createPostHandler =  asyncHandler(
@@ -60,19 +64,15 @@ export const getFeedHandler =  asyncHandler(
       req: any,
       res: Response
     ) => {
+      const query = paginationQuerySchema.parse(req.query);
 
       const feed =
         await getFeed(
           req.user?.id,
           {
-            cursor:
-              (req.query.cursor as string) || undefined,
+            cursor: query.cursor,
 
-            limit:
-              Number.parseInt(
-                (req.query.limit as string) || "20",
-                10
-              ) || 20,
+            limit: query.limit,
           }
         );
 
@@ -88,23 +88,16 @@ export const getPostHandler =  asyncHandler(
       req: Request,
       res: Response
     ) => {
+      const query = postDetailQuerySchema.parse(req.query);
 
       const post =
         await getPostById(
           req.user?.id,
           req.params.id as string,
           {
-            commentsLimit:
-              Number.parseInt(
-                (req.query.commentsLimit as string) || "20",
-                10
-              ) || 20,
+            commentsLimit: query.commentsLimit,
 
-            repliesLimit:
-              Number.parseInt(
-                (req.query.repliesLimit as string) || "3",
-                10
-              ) || 3,
+            repliesLimit: query.repliesLimit,
           }
         );
 

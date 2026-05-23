@@ -13,6 +13,7 @@ import {
 } from "./trending.service";
 
 import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";
+import { trendingQuerySchema } from "shared/validation/query";
 
 export const getTrendingFeedHandler =
   asyncHandler(
@@ -21,9 +22,10 @@ export const getTrendingFeedHandler =
       req: Request,
       res: Response
     ) => {
+      const query = trendingQuerySchema.parse(req.query);
 
       const feed =
-        await getTrendingFeed();
+        await getTrendingFeed(query.limit);
 
       res.json(
         successResponse(feed)

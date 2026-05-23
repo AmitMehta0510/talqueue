@@ -33,6 +33,7 @@ import {
   inviteToProjectSchema,
   reviewProjectInviteSchema,
 } from "./projects.validation";
+import { paginationQuerySchema } from "shared/validation/query";
 
 export const createProjectHandler =  asyncHandler(
     async (req: any, res: Response) => {
@@ -60,9 +61,10 @@ export const getProjectsHandler = asyncHandler(
       req: Request,
       res: Response
     ) => {
+      const query = paginationQuerySchema.parse(req.query);
 
       const projects =
-        await getProjects();
+        await getProjects(query.page, query.limit);
 
       res.json(
         successResponse(projects)

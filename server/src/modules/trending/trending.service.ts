@@ -396,7 +396,7 @@ export const refreshTrendingSnapshots = async () => {
   };
 };
 
-export const getTrendingFeed = async () => {
+export const getTrendingFeed = async (limit = 100) => {
   const snapshots = await prisma.trendingSnapshot.findMany({
     where: {
       entityType: {
@@ -416,7 +416,7 @@ export const getTrendingFeed = async () => {
       score: "desc",
     },
 
-    take: 100,
+    take: limit,
   });
 
   const idsByType = {

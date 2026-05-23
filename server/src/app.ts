@@ -1,74 +1,29 @@
 import express from "express";
 import cors from "cors";
+
 import errorMiddleware from "shared/middleware/errorMiddleware";
-import authRoutes from "modules/auth/auth.routes";
-import userRoutes from "modules/users/users.routes";
-import collegeRoutes from "modules/colleges/colleges.routes";
-import postRoutes from "modules/posts/posts.routes";
-import notificationRoutes from "modules/notificatios/notifications.routes";
-import projectRoutes from "modules/projects/projects.routes";
-import teamRoutes from "modules/teams/teams.routes";
-import hackathonRoutes from "modules/hackathons/hackathons.routes";
-import chatRoutes from "modules/chat/chat.routes";
-import searchRoutes from "modules/search/search.routes";
-import socialRoutes from "modules/social/social.routes";
-import referralRoutes from "modules/referrals/referrals.routes";
-import companyRoutes from "modules/companies/companies.routes";
-import jobRoutes from "modules/jobs/jobs.routes";
-import jobApplicationRoutes from "modules/jobApplications/jobApplications.routes";
-import recommendationRoutes from "modules/recommendations/recommendations.routes";
-import feedRoutes from "modules/feed/feed.routes";
-import reputationRoutes from "modules/reputation/reputation.routes";
-import activityRoutes from "modules/activities/activity.routes";
-import recruiterDashboardRoutes from "modules/recruiter/recruiter-dashboard.routes";
-import leaderboardRoutes from "modules/analytics/leaderboard.routes";
-import interactionTrackingRoutes from "modules/interaction/interaction-tracking.routes";
-import affinityRoutes from "modules/affinity/affinity.routes";
-import candidateRankingRoutes from "modules/analytics/candidate-ranking.routes";
-import engineeringRoutes from "modules/engineering/engineering.routes";
-import discoveryRoutes from "modules/discovery/discovery.routes";
-import trendingRoutes from "modules/trending/trending.routes";
-import {startTrendingCron,} from "modules/trending/trending.cron";
-import communityRoutes from "modules/community/community.routes";
+import { successResponse } from "shared/utils/apiResponse";
+import { startTrendingCron } from "modules/trending/trending.cron";
+import { registerApiRoutes } from "./routes";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/colleges", collegeRoutes);
-app.use("/api/v1/posts", postRoutes);
-app.use("/api/v1/notifications",notificationRoutes);
 
-app.use("/api/v1/projects", projectRoutes);
-app.use("/api/v1/teams", teamRoutes);
-app.use("/api/v1/hackathons",hackathonRoutes);
-app.use("/api/v1/chat", chatRoutes);
-app.use("/api/v1/search", searchRoutes);
-app.use("/api/v1/social",socialRoutes);
-app.use("/api/v1/referrals",referralRoutes);
-app.use("/api/v1/companies",companyRoutes);
-app.use("/api/v1/jobs",jobRoutes);
-app.use("/api/v1/job-applications",jobApplicationRoutes);
-app.use("/api/v1/recommendations",recommendationRoutes);
-app.use("/api/v1/feed",feedRoutes);
-app.use("/api/v1/reputation",reputationRoutes);
-app.use("/api/v1/activities",activityRoutes);
-app.use("/api/v1/recruiter",recruiterDashboardRoutes);
-app.use("/api/v1/leaderboards",leaderboardRoutes);
-app.use("/api/v1/interactions",interactionTrackingRoutes);
-app.use("/api/v1/affinity",affinityRoutes);
-app.use("/api/v1/analytics",candidateRankingRoutes);
-app.use("/api/v1/engineering", engineeringRoutes);
-app.use("/api/v1/discovery",discoveryRoutes);
-app.use("/trending",trendingRoutes);
-app.use("/api/v1/communities", communityRoutes);
+registerApiRoutes(app);
 startTrendingCron();
 
 app.get("/", (req, res) => {
-  res.send("API Running Perfect!");
+  res.json(
+    successResponse({
+      name: "Engineering Platform API",
+      status: "ok",
+      api: "/api/v1",
+    }),
+  );
 });
 
 app.use(errorMiddleware);
+
 export default app;
