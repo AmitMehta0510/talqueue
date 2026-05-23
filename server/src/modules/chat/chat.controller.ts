@@ -1,11 +1,13 @@
+import {
+  Request,
+  Response
+} from "express";
+import type { AuthenticatedUser } from "modules/auth/auth.selectors";
+
 interface AuthRequest
   extends Request {
 
-  user: {
-    id: string;
-    email?: string;
-    username?: string;
-  };
+  user: AuthenticatedUser;
 
   body: any;
 
@@ -14,21 +16,20 @@ interface AuthRequest
   query: any;
 }
 
-import {
-  Request,
-  Response
-} from "express";
-
 import asyncHandler from "shared/utils/asyncHandler";
 
 import { successResponse } from "shared/utils/apiResponse";
 
 import {
+  addParticipant,
   createDirectConversation,
+  createGroupConversation,
+  uploadAttachments,
   getMyConversations,
   getConversationMessages,
   sendMessage,
   markConversationAsRead,
+  removeParticipant,
   reactToMessage,
   toggleArchiveConversation,
   toggleMuteConversation,
@@ -42,10 +43,12 @@ import {
 
 import {
   createDirectConversationSchema,
+  createGroupConversationSchema,
+  muteConversationSchema,
+  participantSchema,
   sendMessageSchema,
+  uploadAttachmentsSchema,
 } from "./chat.validation";
-
-import { getIO } from "./socket";
 
 export const createDirectConversationHandler =  asyncHandler(
     async (
@@ -72,6 +75,24 @@ export const createDirectConversationHandler =  asyncHandler(
       );
     }
   );
+
+export const createGroupConversationHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const validatedData = createGroupConversationSchema.parse(req.body);
+
+    const conversation = await createGroupConversation(
+      req.user.id,
+      validatedData,
+    );
+
+    res.status(201).json(
+      successResponse(
+        conversation,
+        "Group conversation created",
+      ),
+    );
+  },
+);
 
 export const getMyConversationsHandler =  asyncHandler(
     async (
@@ -101,7 +122,8 @@ export const getMessagesHandler =  asyncHandler(
       const messages =
         await getConversationMessages(
           req.user.id,
-          req.params.id
+          req.params.id,
+          req.query.cursor as string | undefined
         );
 
       res.json(
@@ -116,33 +138,32 @@ export const sendMessageHandler =  asyncHandler(
       req: Request,
       res: Response
     ) => {
+      const validatedData = sendMessageSchema.parse(req.body);
 
       const message =
         await sendMessage(
 
           req.user!.id,
 
-          req.params.conversationId as string,
+          req.params.id as string,
 
           {
 
             content:
-              req.body.content,
+              validatedData.content,
 
             type:
-              req.body.type,
+              validatedData.type,
 
             attachments:
-              req.body.attachments,
+              validatedData.attachments,
 
             replyToMessageId:
-              req.body.replyToMessageId,
+              validatedData.replyToMessageId,
           }
         );
 
-      res.json(
-        successResponse(message)
-      );
+      res.status(201).json(successResponse(message));
     }
   );
 
@@ -166,6 +187,50 @@ export const markConversationAsReadHandler =  asyncHandler(
       );
     }
   );  
+
+export const addParticipantHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const validatedData = participantSchema.parse(req.body);
+
+    const participant = await addParticipant(
+      req.user.id,
+      req.params.id,
+      validatedData.userId,
+    );
+
+    res.status(201).json(
+      successResponse(participant, "Participant added"),
+    );
+  },
+);
+
+export const removeParticipantHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const result = await removeParticipant(
+      req.user.id,
+      req.params.id,
+      req.params.userId,
+    );
+
+    res.json(successResponse(result, "Participant removed"));
+  },
+);
+
+export const uploadAttachmentsHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const validatedData = uploadAttachmentsSchema.parse(req.body);
+
+    const result = await uploadAttachments(
+      req.user.id,
+      req.params.id,
+      validatedData.attachments,
+    );
+
+    res.status(201).json(
+      successResponse(result, "Attachments uploaded"),
+    );
+  },
+);
 
   export const forwardMessageHandler =  asyncHandler(
 
@@ -313,7 +378,9 @@ export const toggleMuteConversationHandler =  asyncHandler(
 
           req.user!.id,
 
-          req.params.conversationId as string
+          req.params.conversationId as string,
+
+          muteConversationSchema.parse(req.body).muted
         );
 
       res.json(

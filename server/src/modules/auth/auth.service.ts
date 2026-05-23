@@ -1,16 +1,91 @@
 import prisma from "shared/database/prisma";
 import bcrypt from "bcryptjs";
+import { Prisma, UserStatus } from "@prisma/client";
+import { createHash } from "crypto";
 import AppError from "shared/errors/AppError";
-import { generateToken } from "shared/utils/jwt";
+import { generateToken, verifyToken } from "shared/utils/jwt";
+import { authUserSelect } from "./auth.selectors";
+import {
+  LoginInput,
+  publicSignupRoles,
+  RegisterInput,
+} from "./auth.validation";
 
-const PUBLIC_SIGNUP_ROLES = new Set([
-  "STUDENT",
-  "PROFESSOR",
-  "PROFESSIONAL",
-  "RECRUITER",
-]);
+const BCRYPT_ROUNDS = 12;
+const PUBLIC_SIGNUP_ROLES = new Set<string>(publicSignupRoles);
+const TOKEN_PRUNE_INTERVAL_MS = 60_000;
+const revokedTokenHashes = new Map<string, number>();
+let lastTokenPruneAt = 0;
 
-export const registerUser = async (data: any) => {
+const isUniqueConstraintError = (
+  error: unknown,
+): error is Prisma.PrismaClientKnownRequestError =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === "P2002";
+
+const getUniqueConflictMessage = (error: unknown) => {
+  if (!isUniqueConstraintError(error)) {
+    return "Could not create user";
+  }
+
+  const target = error.meta?.target;
+  const fields = Array.isArray(target) ? target : [target];
+
+  if (fields.includes("email")) {
+    return "User already exists";
+  }
+
+  if (fields.includes("username")) {
+    return "Username already taken";
+  }
+
+  return "User already exists";
+};
+
+const assertActiveUser = (status: UserStatus) => {
+  if (status !== UserStatus.ACTIVE) {
+    throw new AppError("User account is not active", 403);
+  }
+};
+
+const hashToken = (token: string) =>
+  createHash("sha256").update(token).digest("hex");
+
+const pruneExpiredRevokedTokens = (now = Date.now()) => {
+  if (now - lastTokenPruneAt < TOKEN_PRUNE_INTERVAL_MS) {
+    return;
+  }
+
+  for (const [tokenHash, expiresAt] of revokedTokenHashes) {
+    if (expiresAt <= now) {
+      revokedTokenHashes.delete(tokenHash);
+    }
+  }
+
+  lastTokenPruneAt = now;
+};
+
+export const isTokenRevoked = (token: string) => {
+  const now = Date.now();
+
+  pruneExpiredRevokedTokens(now);
+
+  const tokenHash = hashToken(token);
+  const expiresAt = revokedTokenHashes.get(tokenHash);
+
+  if (!expiresAt) {
+    return false;
+  }
+
+  if (expiresAt <= now) {
+    revokedTokenHashes.delete(tokenHash);
+    return false;
+  }
+
+  return true;
+};
+
+export const registerUser = async (data: RegisterInput) => {
   const { email, password, fullName, username, role } = data;
 
   if (!PUBLIC_SIGNUP_ROLES.has(role)) {
@@ -20,92 +95,84 @@ export const registerUser = async (data: any) => {
     );
   }
 
-  // Check existing email
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
+  const [existingUser, foundRole] = await Promise.all([
+    prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }],
+      },
+      select: {
+        email: true,
+        username: true,
+      },
+    }),
 
-  if (existingUser) {
+    prisma.role.findUnique({
+      where: {
+        name: role,
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
+
+  if (existingUser?.email === email) {
     throw new AppError("User already exists", 400);
   }
 
-  // Check existing username
-  const existingUsername = await prisma.user.findUnique({
-    where: {
-      username,
-    },
-  });
-
-  if (existingUsername) {
+  if (existingUser?.username === username) {
     throw new AppError("Username already taken", 400);
   }
-
-  // Validate role BEFORE creation
-  const foundRole = await prisma.role.findUnique({
-    where: {
-      name: role,
-    },
-  });
 
   if (!foundRole) {
     throw new AppError("Invalid role", 400);
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-  // Transaction
-  const user = await prisma.$transaction(async (tx) => {
-    const createdUser = await tx.user.create({
+  try {
+    const user = await prisma.user.create({
       data: {
         email,
-
         username,
-
         password: hashedPassword,
-
         profile: {
           create: {
             fullName,
           },
         },
+        roles: {
+          create: {
+            roleId: foundRole.id,
+          },
+        },
       },
-
-      include: {
-        profile: true,
-      },
+      select: authUserSelect,
     });
 
-    await tx.userRole.create({
-      data: {
-        userId: createdUser.id,
+    const token = generateToken(user.id);
 
-        roleId: foundRole.id,
-      },
-    });
+    return {
+      token,
+      user,
+    };
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new AppError(getUniqueConflictMessage(error), 400);
+    }
 
-    return createdUser;
-  });
-
-  const token = generateToken(user.id);
-
-  return {
-    token,
-    user,
-  };
+    throw error;
+  }
 };
 
-export const loginUser = async (data: any) => {
+export const loginUser = async (data: LoginInput) => {
   const { email, password } = data;
 
   const user = await prisma.user.findUnique({
     where: { email },
-    include: {
-      profile: true,
-      roles: {
-        include: {
-          role: true,
-        },
-      },
+    select: {
+      ...authUserSelect,
+      password: true,
     },
   });
 
@@ -113,16 +180,33 @@ export const loginUser = async (data: any) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const { password: hashedPassword, ...safeUser } = user;
+  const isMatch = await bcrypt.compare(password, hashedPassword);
 
   if (!isMatch) {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const token = generateToken(user.id);
+  assertActiveUser(safeUser.status);
+
+  const token = generateToken(safeUser.id);
 
   return {
     token,
-    user,
+    user: safeUser,
+  };
+};
+
+export const logoutUser = async (token: string) => {
+  const decoded = verifyToken(token);
+  const expiresAt = decoded.exp ? decoded.exp * 1000 : Date.now();
+
+  if (expiresAt > Date.now()) {
+    pruneExpiredRevokedTokens();
+    revokedTokenHashes.set(hashToken(token), expiresAt);
+  }
+
+  return {
+    loggedOut: true,
   };
 };

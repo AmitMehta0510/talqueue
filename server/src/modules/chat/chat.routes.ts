@@ -3,11 +3,15 @@ import { Router } from "express";
 import { protect } from "modules/auth/auth.middleware";
 
 import {
+  addParticipantHandler,
   createDirectConversationHandler,
+  createGroupConversationHandler,
   getMyConversationsHandler,
   getMessagesHandler,
   sendMessageHandler,
   markConversationAsReadHandler,
+  removeParticipantHandler,
+  uploadAttachmentsHandler,
   forwardMessageHandler,
   reactToMessageHandler,
   editMessageHandler,
@@ -24,6 +28,12 @@ router.post(
   "/direct",
   protect,
   createDirectConversationHandler
+);
+
+router.post(
+  "/group",
+  protect,
+  createGroupConversationHandler
 );
 
 router.get(
@@ -44,10 +54,28 @@ router.post(
   sendMessageHandler
 );
 
+router.post(
+  "/:id/attachments",
+  protect,
+  uploadAttachmentsHandler
+);
+
 router.patch(
   "/:id/read",
   protect,
   markConversationAsReadHandler
+);
+
+router.post(
+  "/:id/participants",
+  protect,
+  addParticipantHandler
+);
+
+router.delete(
+  "/:id/participants/:userId",
+  protect,
+  removeParticipantHandler
 );
 
 router.post(

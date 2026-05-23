@@ -3,6 +3,7 @@ import asyncHandler from "shared/utils/asyncHandler";
 
 import {
   loginUser,
+  logoutUser,
   registerUser,
 } from "./auth.service";
 
@@ -12,6 +13,10 @@ import {
 } from "./auth.validation";
 
 import { successResponse } from "shared/utils/apiResponse";
+import AppError from "shared/errors/AppError";
+
+const getBearerToken = (req: Request) =>
+  req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
 
 export const register = asyncHandler(
   async (req: Request, res: Response) => {
@@ -35,6 +40,22 @@ export const login = asyncHandler(
 
     res.json(
       successResponse(result, "Login successful")
+    );
+  }
+);
+
+export const logout = asyncHandler(
+  async (req: Request, res: Response) => {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const result = await logoutUser(token);
+
+    res.json(
+      successResponse(result, "Logout successful")
     );
   }
 );

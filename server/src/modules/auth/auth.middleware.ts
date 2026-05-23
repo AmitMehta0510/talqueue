@@ -1,58 +1,51 @@
 import { Request, Response, NextFunction } from "express";
 
-import jwt from "jsonwebtoken";
-
 import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import { env } from "shared/config/env";
+import { verifyToken } from "shared/utils/jwt";
 
-export interface AuthRequest extends Request {
-  user?: any;
-}
+import { authUserSelect } from "./auth.selectors";
+import { isTokenRevoked } from "./auth.service";
 
 export const protect = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
+  const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
 
-  if (
-    !authHeader ||
-    !authHeader.startsWith("Bearer ")
-  ) {
+  if (!token) {
     return next(
       new AppError("Unauthorized", 401)
     );
   }
 
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded: any = jwt.verify(
-      token,
-      env.JWT_SECRET
-    );
+    if (isTokenRevoked(token)) {
+      return next(new AppError("Invalid token", 401));
+    }
+
+    const decoded = verifyToken(token);
 
     const user = await prisma.user.findUnique({
       where: {
         id: decoded.userId,
       },
-      include: {
-        profile: true,
-        roles: {
-          include: {
-            role: true,
-          },
-        },
-      },
+      select: authUserSelect,
     });
 
     if (!user) {
       return next(
-        new AppError("User not found", 404)
+        new AppError("Invalid token", 401)
+      );
+    }
+
+    if (user.status !== "ACTIVE") {
+      return next(
+        new AppError("User account is not active", 403)
       );
     }
 

@@ -10,6 +10,136 @@ import { createActivity } from "modules/activities/activity.service";
 
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
+import { getIO } from "./socket";
+
+const GROUP_CONVERSATION_TYPES = [
+  "GROUP",
+  "TEAM",
+  "PROJECT",
+  "HACKATHON",
+  "COMMUNITY",
+];
+
+const getConversationRoom = (conversationId: string) => conversationId;
+
+const emitToConversation = (
+  conversationId: string,
+  event: string,
+  payload: unknown,
+) => {
+  try {
+    getIO().to(getConversationRoom(conversationId)).emit(event, payload);
+  } catch {
+    // Socket server is not available in tests or bootstrapping paths.
+  }
+};
+
+const emitToUser = (userId: string, event: string, payload: unknown) => {
+  try {
+    getIO().to(`user:${userId}`).emit(event, payload);
+  } catch {
+    // Socket server is not available in tests or bootstrapping paths.
+  }
+};
+
+const ensureParticipant = async (
+  userId: string,
+  conversationId: string,
+) => {
+  const participant = await prisma.conversationParticipant.findUnique({
+    where: {
+      conversationId_userId: {
+        conversationId,
+        userId,
+      },
+    },
+    include: {
+      conversation: true,
+    },
+  });
+
+  if (!participant) {
+    throw new AppError("Unauthorized", 403);
+  }
+
+  return participant;
+};
+
+const ensureParticipantExists = async (
+  userId: string,
+  conversationId: string,
+) => {
+  const participant = await prisma.conversationParticipant.findUnique({
+    where: {
+      conversationId_userId: {
+        conversationId,
+        userId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!participant) {
+    throw new AppError("Unauthorized", 403);
+  }
+};
+
+const normalizeAttachments = (attachments?: any[]) =>
+  (attachments || []).map((attachment) => ({
+    id: attachment.id,
+    name: attachment.name,
+    url: attachment.url,
+    dataUrl: attachment.dataUrl,
+    mimeType: attachment.mimeType,
+    size: attachment.size,
+    type: attachment.type,
+    width: attachment.width,
+    height: attachment.height,
+    duration: attachment.duration,
+  }));
+
+const notifyMessageRecipients = (
+  participants: Array<{ userId: string; muted: boolean }>,
+  senderId: string,
+  conversationId: string,
+  messageId: string,
+  content?: string,
+) => {
+  for (const participant of participants) {
+    if (participant.muted) {
+      continue;
+    }
+
+    createNotification({
+      userId: participant.userId,
+      actorId: senderId,
+      type: "MESSAGE",
+      title: "New Message",
+      message: content || "Sent an attachment",
+      entityId: conversationId,
+      entityType: "PROFILE",
+      metadata: {
+        conversationId,
+        messageId,
+      },
+    }).catch(console.error);
+  }
+};
+
+const updateMessageAffinities = (
+  senderId: string,
+  participants: Array<{ userId: string }>,
+) => {
+  Promise.all(
+    participants.flatMap((participant) => [
+      calculateUserAffinity(senderId, participant.userId),
+      calculateUserAffinity(participant.userId, senderId),
+    ]),
+  ).catch(console.error);
+};
+
 export const createDirectConversation = async (
   currentUserId: string,
   otherUserId: string,
@@ -68,12 +198,10 @@ export const createDirectConversation = async (
     },
   });
 
-  //
-  // Affinity
-  //
-  await calculateUserAffinity(currentUserId, otherUserId);
-
-  await calculateUserAffinity(otherUserId, currentUserId);
+  Promise.all([
+    calculateUserAffinity(currentUserId, otherUserId),
+    calculateUserAffinity(otherUserId, currentUserId),
+  ]).catch(console.error);
 
   //
   // Activity
@@ -95,14 +223,97 @@ export const createDirectConversation = async (
   return conversation;
 };
 
+export const createGroupConversation = async (
+  currentUserId: string,
+  data: {
+    title: string;
+    description?: string;
+    avatarUrl?: string;
+    participantIds: string[];
+  },
+) => {
+  const participantIds = Array.from(
+    new Set([currentUserId, ...data.participantIds]),
+  );
+
+  if (participantIds.length < 2) {
+    throw new AppError(
+      "Group conversation needs at least two participants",
+      400,
+    );
+  }
+
+  const usersCount = await prisma.user.count({
+    where: {
+      id: {
+        in: participantIds,
+      },
+    },
+  });
+
+  if (usersCount !== participantIds.length) {
+    throw new AppError("One or more participants were not found", 404);
+  }
+
+  const conversation = await prisma.conversation.create({
+    data: {
+      type: "GROUP",
+      title: data.title,
+      description: data.description,
+      avatarUrl: data.avatarUrl,
+      createdById: currentUserId,
+      participants: {
+        create: participantIds.map((userId) => ({
+          userId,
+        })),
+      },
+    },
+    include: {
+      participants: {
+        include: {
+          user: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  createActivity(
+    currentUserId,
+    "CONVERSATION_STARTED",
+    "Created group conversation",
+    `Created ${data.title}`,
+    {
+      conversationId: conversation.id,
+    },
+  ).catch(console.error);
+
+  emitToConversation(conversation.id, "conversation_created", {
+    conversation,
+  });
+
+  for (const participantId of participantIds) {
+    emitToUser(participantId, "conversation_created", {
+      conversation,
+    });
+  }
+
+  return conversation;
+};
+
 export const getMyConversations = async (userId: string) => {
   const conversations = await prisma.conversation.findMany({
     where: {
       participants: {
         some: {
           userId,
+          archived: false,
         },
       },
+      archived: false,
     },
 
     include: {
@@ -130,37 +341,17 @@ export const getMyConversations = async (userId: string) => {
     },
   });
 
-  return Promise.all(
-    conversations.map(async (conversation) => {
-      const participant = await prisma.conversationParticipant.findFirst({
-        where: {
-          conversationId: conversation.id,
+  return conversations.map((conversation) => {
+    const participant = conversation.participants.find(
+      (item) => item.userId === userId,
+    );
 
-          userId,
-        },
-      });
+    return {
+      ...conversation,
 
-      const unreadCount = await prisma.message.count({
-        where: {
-          conversationId: conversation.id,
-
-          createdAt: {
-            gt: participant?.lastReadAt || new Date(0),
-          },
-
-          NOT: {
-            senderId: userId,
-          },
-        },
-      });
-
-      return {
-        ...conversation,
-
-        unreadCount,
-      };
-    }),
-  );
+      unreadCount: participant?.unreadCount || 0,
+    };
+  });
 };
 
 export const getConversationMessages = async (
@@ -168,16 +359,7 @@ export const getConversationMessages = async (
   conversationId: string,
   cursor?: string,
 ) => {
-  const participant = await prisma.conversationParticipant.findFirst({
-    where: {
-      conversationId,
-      userId,
-    },
-  });
-
-  if (!participant) {
-    throw new AppError("Unauthorized", 403);
-  }
+  await ensureParticipantExists(userId, conversationId);
 
   const messages = await prisma.message.findMany({
     where: {
@@ -236,100 +418,117 @@ export const sendMessage = async (
     replyToMessageId?: string;
   },
 ) => {
-  const participant = await prisma.conversationParticipant.findFirst({
-    where: {
-      conversationId,
-      userId,
-    },
-  });
+  const now = new Date();
 
-  if (!participant) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  if (data.replyToMessageId) {
-    const replyMessage = await prisma.message.findUnique({
+  const { message, participants } = await prisma.$transaction(async (tx) => {
+    const participant = await tx.conversationParticipant.findUnique({
       where: {
-        id: data.replyToMessageId,
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      select: {
+        id: true,
       },
     });
 
-    if (!replyMessage || replyMessage.conversationId !== conversationId) {
-      throw new AppError("Invalid reply message", 400);
+    if (!participant) {
+      throw new AppError("Unauthorized", 403);
     }
-  }
 
-  const message = await prisma.message.create({
-    data: {
-      conversationId,
-      senderId: userId,
-      content: data.content,
-      type: data.type || "TEXT",
-      attachments: data.attachments,
-      replyToMessageId: data.replyToMessageId,
-      readByUsers: [userId],
-    },
-    include: {
-      sender: {
-        include: {
-          profile: true,
+    if (data.replyToMessageId) {
+      const replyMessage = await tx.message.findUnique({
+        where: {
+          id: data.replyToMessageId,
         },
+        select: {
+          conversationId: true,
+        },
+      });
+
+      if (!replyMessage || replyMessage.conversationId !== conversationId) {
+        throw new AppError("Invalid reply message", 400);
+      }
+    }
+
+    const createdMessage = await tx.message.create({
+      data: {
+        conversationId,
+        senderId: userId,
+        content: data.content,
+        type: data.type || "TEXT",
+        attachments: normalizeAttachments(data.attachments),
+        replyToMessageId: data.replyToMessageId,
+        readByUsers: [userId],
       },
-      replyToMessage: {
-        include: {
-          sender: {
-            include: {
-              profile: true,
+      include: {
+        sender: {
+          include: {
+            profile: true,
+          },
+        },
+        replyToMessage: {
+          include: {
+            sender: {
+              include: {
+                profile: true,
+              },
             },
           },
         },
       },
-    },
+    });
+
+    const otherParticipants = await tx.conversationParticipant.findMany({
+      where: {
+        conversationId,
+        NOT: {
+          userId,
+        },
+      },
+      select: {
+        userId: true,
+        muted: true,
+      },
+    });
+
+    await Promise.all([
+      tx.conversation.update({
+        where: {
+          id: conversationId,
+        },
+        data: {
+          updatedAt: now,
+          lastMessageAt: now,
+          messageCount: {
+            increment: 1,
+          },
+        },
+      }),
+      tx.conversationParticipant.updateMany({
+        where: {
+          conversationId,
+          NOT: {
+            userId,
+          },
+        },
+        data: {
+          unreadCount: {
+            increment: 1,
+          },
+          lastDeliveredAt: now,
+        },
+      }),
+    ]);
+
+    return {
+      message: createdMessage,
+      participants: otherParticipants,
+    };
   });
 
-  await prisma.conversation.update({
-    where: {
-      id: conversationId,
-    },
-    data: {
-      updatedAt: new Date(),
-      lastMessageAt: new Date(),
-      messageCount: {
-        increment: 1,
-      },
-    },
-  });
-
-  const participants = await prisma.conversationParticipant.findMany({
-    where: {
-      conversationId,
-      NOT: {
-        userId,
-      },
-    },
-  });
-
-  await prisma.conversationParticipant.updateMany({
-    where: {
-      conversationId,
-      NOT: {
-        userId,
-      },
-    },
-    data: {
-      unreadCount: {
-        increment: 1,
-      },
-      lastDeliveredAt: new Date(),
-    },
-  });
-
-  await Promise.all(
-    participants.map(async (p) => {
-      await calculateUserAffinity(userId, p.userId);
-      await calculateUserAffinity(p.userId, userId);
-    }),
-  );
+  updateMessageAffinities(userId, participants);
 
   createActivity(userId, "MESSAGE_SENT", "Sent a message", "Sent a message", {
     conversationId,
@@ -345,25 +544,18 @@ export const sendMessage = async (
     },
   }).catch(console.error);
 
-  for (const p of participants) {
-    if (p.muted) {
-      continue;
-    }
+  notifyMessageRecipients(
+    participants,
+    userId,
+    conversationId,
+    message.id,
+    data.content,
+  );
 
-    createNotification({
-      userId: p.userId,
-      actorId: userId,
-      type: "MESSAGE",
-      title: "New Message",
-      message: data.content || "Sent an attachment",
-      entityId: conversationId,
-      entityType: "PROFILE",
-      metadata: {
-        conversationId,
-        messageId: message.id,
-      },
-    }).catch(console.error);
-  }
+  emitToConversation(conversationId, "message_created", {
+    conversationId,
+    message,
+  });
 
   return message;
 };
@@ -372,58 +564,246 @@ export const markConversationAsRead = async (
   userId: string,
   conversationId: string,
 ) => {
-  const participant = await prisma.conversationParticipant.findFirst({
-    where: {
-      conversationId,
-      userId,
-    },
-  });
+  const readAt = new Date();
 
-  if (!participant) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  await prisma.conversationParticipant.update({
-    where: {
-      id: participant.id,
-    },
-    data: {
-      lastReadAt: new Date(),
-      unreadCount: 0,
-    },
-  });
-
-  const unreadMessages = await prisma.message.findMany({
-    where: {
-      conversationId,
-      senderId: {
-        not: userId,
-      },
-      deletedAt: null,
-    },
-  });
-
-  await Promise.all(
-    unreadMessages.map(async (message) => {
-      if (message.readByUsers.includes(userId)) {
-        return;
-      }
-
-      await prisma.message.update({
-        where: {
-          id: message.id,
+  const result = await prisma.$transaction(async (tx) => {
+    const participant = await tx.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
         },
-        data: {
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!participant) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    await tx.conversationParticipant.update({
+      where: {
+        id: participant.id,
+      },
+      data: {
+        lastReadAt: readAt,
+        unreadCount: 0,
+      },
+    });
+
+    const unreadMessages = await tx.message.findMany({
+      where: {
+        conversationId,
+        senderId: {
+          not: userId,
+        },
+        deletedAt: null,
+        NOT: {
           readByUsers: {
-            push: userId,
+            has: userId,
           },
         },
-      });
-    }),
-  );
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    await Promise.all(
+      unreadMessages.map((message) =>
+        tx.message.update({
+          where: {
+            id: message.id,
+          },
+          data: {
+            readByUsers: {
+              push: userId,
+            },
+          },
+        }),
+      ),
+    );
+
+    return {
+      success: true,
+      conversationId,
+      userId,
+      readAt,
+      messageIds: unreadMessages.map((message) => message.id),
+    };
+  });
+
+  emitToConversation(conversationId, "message_seen", result);
+
+  return result;
+};
+
+export const addParticipant = async (
+  currentUserId: string,
+  conversationId: string,
+  userId: string,
+) => {
+  const participant = await ensureParticipant(currentUserId, conversationId);
+
+  if (!GROUP_CONVERSATION_TYPES.includes(participant.conversation.type)) {
+    throw new AppError(
+      "Participants can only be added to group conversations",
+      400,
+    );
+  }
+
+  const addedParticipant = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const existing = await tx.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existing) {
+      throw new AppError("User is already a participant", 400);
+    }
+
+    const createdParticipant = await tx.conversationParticipant.create({
+      data: {
+        conversationId,
+        userId,
+      },
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
+        },
+      },
+    });
+
+    await tx.conversation.update({
+      where: {
+        id: conversationId,
+      },
+      data: {
+        updatedAt: new Date(),
+      },
+    });
+
+    return createdParticipant;
+  });
+
+  emitToConversation(conversationId, "participant_added", {
+    conversationId,
+    participant: addedParticipant,
+    addedById: currentUserId,
+  });
+
+  emitToUser(userId, "participant_added", {
+    conversationId,
+    participant: addedParticipant,
+    addedById: currentUserId,
+  });
+
+  return addedParticipant;
+};
+
+export const removeParticipant = async (
+  currentUserId: string,
+  conversationId: string,
+  userId: string,
+) => {
+  const participant = await ensureParticipant(currentUserId, conversationId);
+
+  if (!GROUP_CONVERSATION_TYPES.includes(participant.conversation.type)) {
+    throw new AppError(
+      "Participants can only be removed from group conversations",
+      400,
+    );
+  }
+
+  const canRemove =
+    currentUserId === userId ||
+    participant.conversation.createdById === currentUserId;
+
+  if (!canRemove) {
+    throw new AppError("Only the creator can remove other participants", 403);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const targetParticipant = await tx.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!targetParticipant) {
+      throw new AppError("Participant not found", 404);
+    }
+
+    await tx.conversationParticipant.delete({
+      where: {
+        id: targetParticipant.id,
+      },
+    });
+
+    await tx.conversation.update({
+      where: {
+        id: conversationId,
+      },
+      data: {
+        updatedAt: new Date(),
+      },
+    });
+  });
+
+  const payload = {
+    conversationId,
+    userId,
+    removedById: currentUserId,
+  };
+
+  emitToConversation(conversationId, "participant_removed", payload);
+  emitToUser(userId, "participant_removed", payload);
 
   return {
     success: true,
+    ...payload,
+  };
+};
+
+export const uploadAttachments = async (
+  userId: string,
+  conversationId: string,
+  attachments: any[],
+) => {
+  await ensureParticipantExists(userId, conversationId);
+
+  return {
+    attachments: normalizeAttachments(attachments),
   };
 };
 
@@ -806,6 +1186,7 @@ export const togglePinConversation = async (
 export const toggleMuteConversation = async (
   userId: string,
   conversationId: string,
+  muted?: boolean,
 ) => {
   const participant = await prisma.conversationParticipant.findFirst({
     where: {
@@ -824,7 +1205,7 @@ export const toggleMuteConversation = async (
     },
 
     data: {
-      muted: !participant.muted,
+      muted: muted ?? !participant.muted,
     },
   });
 };
