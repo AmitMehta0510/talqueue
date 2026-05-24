@@ -43,8 +43,20 @@ export const getMyNotifications =  async (
     limit = 20
   ) => {
 
+    const requestedLimit =
+      Number.isFinite(limit) ? limit : 20;
+
+    const requestedPage =
+      Number.isFinite(page) ? page : 1;
+
+    const safeLimit =
+      Math.min(Math.max(requestedLimit, 1), 50);
+
+    const safePage =
+      Math.max(requestedPage, 1);
+
     const skip =
-      (page - 1) * limit;
+      (safePage - 1) * safeLimit;
 
     const notifications =
       await prisma.notification.findMany({
@@ -69,7 +81,7 @@ export const getMyNotifications =  async (
         },
 
         skip,
-        take: limit,
+        take: safeLimit,
       });
 
     const unreadCount =
@@ -79,14 +91,16 @@ export const getMyNotifications =  async (
           userId,
 
           isRead: false,
+
+          archived: false,
         },
       });
 
     return {
       notifications,
       unreadCount,
-      page,
-      limit,
+      page: safePage,
+      limit: safeLimit,
     };
   };
 
@@ -122,6 +136,8 @@ export const markAllAsRead =  async (
         userId,
 
         isRead: false,
+
+        archived: false,
       },
 
       data: {

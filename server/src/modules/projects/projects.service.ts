@@ -250,11 +250,19 @@ export const getProjects = async (page = 1, limit = 20) => {
 export const getProjectById = async (
   userId: string | undefined,
 
-  projectId: string,
+  projectIdOrSlug: string,
 ) => {
-  const project = await prisma.project.findUnique({
+  const project = await prisma.project.findFirst({
     where: {
-      id: projectId,
+      OR: [
+        {
+          id: projectIdOrSlug,
+        },
+
+        {
+          slug: projectIdOrSlug,
+        },
+      ],
     },
 
     include: {
@@ -337,7 +345,7 @@ export const getProjectById = async (
   //
   if (userId) {
     trackInteraction(userId, {
-      targetId: projectId,
+      targetId: project.id,
 
       targetType: "PROJECT",
 

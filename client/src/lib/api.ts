@@ -20,6 +20,17 @@ export type User = {
     avatarUrl?: string | null;
     location?: string | null;
     bio?: string | null;
+    availabilityText?: string | null;
+    githubUrl?: string | null;
+    linkedinUrl?: string | null;
+    portfolioUrl?: string | null;
+    bannerUrl?: string | null;
+    resumeUrl?: string | null;
+    collegeId?: string | null;
+    departmentId?: string | null;
+    graduationYear?: number | null;
+    college?: College | null;
+    department?: Department | null;
   } | null;
   roles?: Array<{ role?: { name?: string } }>;
   followersCount?: number;
@@ -35,6 +46,85 @@ export type User = {
   openToInternship?: boolean;
   acceptingCollaborators?: boolean;
   acceptingReferrals?: boolean;
+  acceptingMentorship?: boolean;
+  _count?: {
+    skills?: number;
+    experiences?: number;
+    educations?: number;
+    roles?: number;
+  };
+  skills?: UserSkill[];
+  experiences?: Experience[];
+  educations?: Education[];
+};
+
+export type College = {
+  id: string;
+  name: string;
+  city?: string | null;
+  state?: string | null;
+  website?: string | null;
+  logoUrl?: string | null;
+  _count?: {
+    departments?: number;
+    profiles?: number;
+    educations?: number;
+  };
+};
+
+export type Department = {
+  id: string;
+  name: string;
+  collegeId: string;
+};
+
+export type UserSkill = {
+  id: string;
+  level?: string;
+  skill?: {
+    id: string;
+    name?: string;
+    normalizedName?: string;
+  };
+};
+
+export type Experience = {
+  id: string;
+  companyName?: string | null;
+  title?: string | null;
+  employmentType?: string | null;
+  startDate?: string;
+  endDate?: string | null;
+  isCurrent?: boolean;
+  description?: string | null;
+  verified?: boolean;
+  verificationScore?: number;
+  techStack?: string[];
+  skillsUsed?: string[];
+  teamSize?: number | null;
+  company?: {
+    name?: string;
+    logoUrl?: string | null;
+    verified?: boolean;
+  } | null;
+};
+
+export type Education = {
+  id: string;
+  degree?: string | null;
+  fieldOfStudy?: string | null;
+  startYear?: number | null;
+  endYear?: number | null;
+  current?: boolean;
+  college?: College | null;
+  department?: Department | null;
+};
+
+export type CollegePage = {
+  colleges: College[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
 };
 
 export type AuthPayload = {
@@ -64,6 +154,40 @@ export type FeedPost = {
   score?: number;
 };
 
+export type FeedItemType =
+  | "POST"
+  | "PROJECT"
+  | "HACKATHON"
+  | "JOB"
+  | "COMPANY"
+  | "COMMUNITY";
+
+export type FeedItem =
+  | {
+      type: "POST";
+      score: number;
+      reason?: string;
+      data: FeedPost;
+    }
+  | {
+      type: "PROJECT";
+      score: number;
+      reason?: string;
+      data: Project;
+    }
+  | {
+      type: "JOB";
+      score: number;
+      reason?: string;
+      data: Job;
+    }
+  | {
+      type: Exclude<FeedItemType, "POST" | "PROJECT" | "JOB">;
+      score: number;
+      reason?: string;
+      data: FeedPost | Project | Job | Record<string, unknown>;
+    };
+
 export type FeedPage = {
   posts: FeedPost[];
   nextCursor?: string | null;
@@ -89,6 +213,21 @@ export type Project = {
   difficultyLevel?: string | null;
   owner?: User;
   members?: unknown[];
+  joinRequests?: unknown[];
+  requiredRoles?: unknown[];
+  hackathonSubmissions?: unknown[];
+  liveUrl?: string | null;
+  githubUrl?: string | null;
+  starsCount?: number;
+  forksCount?: number;
+  contributorsCount?: number;
+  verificationScore?: number;
+  rankingScore?: number;
+  trustLevel?: string;
+  _count?: {
+    members?: number;
+    joinRequests?: number;
+  };
   createdAt?: string;
 };
 
@@ -124,13 +263,69 @@ export type SearchResults = {
   [key: string]: unknown;
 };
 
+export type NotificationType =
+  | "LIKE"
+  | "COMMENT"
+  | "FOLLOW"
+  | "PROJECT_INVITE"
+  | "TEAM_INVITE"
+  | "REFERRAL"
+  | "JOB_APPLIED"
+  | "JOB_APPLICATION_UPDATE"
+  | "JOB_HIRED"
+  | "HACKATHON_JUDGING"
+  | "HACKATHON_WINNER"
+  | "SYSTEM"
+  | "POST_SHARED"
+  | "POST_MENTION"
+  | "COMMENT_MENTION"
+  | "COMMENT_REPLY"
+  | "POST_SAVED"
+  | "CONNECTION_REQUEST"
+  | "CONNECTION_ACCEPTED"
+  | "MENTORSHIP"
+  | "MESSAGE"
+  | "COMMUNITY_JOINED"
+  | "PROJECT_JOIN_REQUEST"
+  | "PROJECT_JOIN_ACCEPTED"
+  | "PROJECT_JOIN_REJECTED";
+
+export type PlatformNotification = {
+  id: string;
+  userId: string;
+  actorId?: string | null;
+  actor?: User | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  actionUrl?: string | null;
+  metadata?: Record<string, unknown> | null;
+  isRead: boolean;
+  readAt?: string | null;
+  archived: boolean;
+  groupKey?: string | null;
+  createdAt: string;
+};
+
+export type NotificationsPage = {
+  notifications: PlatformNotification[];
+  unreadCount: number;
+  page: number;
+  limit: number;
+};
+
 const API_URL =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
   "http://localhost:5000/api/v1";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
+  timeoutMs?: number;
 };
+
+type EndpointOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
 
 const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
   const search = new URLSearchParams();
@@ -154,11 +349,34 @@ export class ApiError extends Error {
   }
 }
 
+const createRequestSignal = (signal?: AbortSignal | null, timeoutMs = 15000) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  const abort = () => controller.abort();
+
+  if (signal?.aborted) {
+    controller.abort();
+  } else {
+    signal?.addEventListener("abort", abort, { once: true });
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      window.clearTimeout(timeoutId);
+      signal?.removeEventListener("abort", abort);
+    },
+  };
+};
+
 async function request<T>(path: string, options: RequestOptions = {}) {
   const token = authStorage.getToken();
   const headers = new Headers(options.headers);
+  const { body, signal: requestSignal, timeoutMs, ...fetchOptions } = options;
+  const { signal, cleanup } = createRequestSignal(requestSignal, timeoutMs);
 
-  if (!headers.has("Content-Type") && options.body !== undefined) {
+  if (!headers.has("Content-Type") && body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -166,33 +384,38 @@ async function request<T>(path: string, options: RequestOptions = {}) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-    body:
-      options.body === undefined || typeof options.body === "string"
-        ? options.body
-        : JSON.stringify(options.body),
-  });
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...fetchOptions,
+      signal,
+      headers,
+      body:
+        body === undefined || typeof body === "string"
+          ? body
+          : JSON.stringify(body),
+    });
 
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json")
-    ? await response.json()
-    : null;
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+      ? await response.json()
+      : null;
 
-  if (!response.ok || payload?.success === false) {
-    throw new ApiError(
-      payload?.message || response.statusText || "Request failed",
-      response.status,
-    );
+    if (!response.ok || payload?.success === false) {
+      throw new ApiError(
+        payload?.message || response.statusText || "Request failed",
+        response.status,
+      );
+    }
+
+    return payload as ApiEnvelope<T>;
+  } finally {
+    cleanup();
   }
-
-  return payload as ApiEnvelope<T>;
 }
 
 export const api = {
   baseUrl: API_URL,
-  health: () => request<{ routes?: Record<string, string> }>(""),
+  health: (options?: EndpointOptions) => request<{ routes?: Record<string, string> }>("", options),
   login: (body: { email: string; password: string }) =>
     request<AuthPayload>("/auth/login", { method: "POST", body }),
   register: (body: {
@@ -202,15 +425,65 @@ export const api = {
     fullName: string;
     role: RoleName;
   }) => request<AuthPayload>("/auth/register", { method: "POST", body }),
-  me: () => request<User>("/auth/me"),
+  me: (options?: EndpointOptions) => request<User>("/auth/me", options),
   logout: () => request<{ loggedOut: boolean }>("/auth/logout", { method: "POST" }),
-  publicPosts: (limit = 12) => request<FeedPage>(`/posts/feed${toQuery({ limit })}`),
-  personalizedFeed: (limit = 12) => request<FeedPost[]>(`/feed${toQuery({ limit })}`),
+  myFullProfile: () => request<User>("/users/me/full"),
+  updateProfile: (body: {
+    fullName?: string;
+    username?: string;
+    bio?: string;
+    headline?: string;
+    location?: string;
+    avatarUrl?: string;
+    bannerUrl?: string;
+    resumeUrl?: string;
+    availabilityText?: string;
+    githubUrl?: string;
+    linkedinUrl?: string;
+    portfolioUrl?: string;
+    graduationYear?: number;
+    collegeId?: string;
+    departmentId?: string;
+  }) => request<User>("/users/me", { method: "PUT", body }),
+  addExperience: (body: {
+    companyName: string;
+    title: string;
+    employmentType: string;
+    startDate: string;
+    endDate?: string;
+    isCurrent?: boolean;
+    description?: string;
+    workEmail?: string;
+    managerName?: string;
+    managerEmail?: string;
+    managerLinkedinUrl?: string;
+    skillsUsed?: string[];
+    techStack?: string[];
+    teamSize?: number;
+  }) => request<Experience>("/users/me/experiences", { method: "POST", body }),
+  addEducation: (body: {
+    collegeId: string;
+    departmentId?: string;
+    degree?: string;
+    fieldOfStudy?: string;
+    startYear?: number;
+    endYear?: number;
+    current?: boolean;
+  }) => request<Education>("/users/me/educations", { method: "POST", body }),
+  searchColleges: (q: string) => request<College[]>(`/colleges/search${toQuery({ q })}`),
+  departments: (collegeId: string) => request<Department[]>(`/colleges/${collegeId}/departments`),
+  publicPosts: (limit = 12, options?: EndpointOptions) =>
+    request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
+  personalizedFeed: (limit = 12, options?: EndpointOptions) =>
+    request<FeedItem[]>(`/feed${toQuery({ limit })}`, options),
   createPost: (body: { content: string; type: string; tags?: string[] }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
   likePost: (id: string) => request<{ liked?: boolean }>(`/posts/${id}/like`, { method: "POST" }),
   savePost: (id: string) => request<{ saved?: boolean }>(`/posts/${id}/save`, { method: "POST" }),
-  projects: (limit = 12) => request<Project[]>(`/projects${toQuery({ limit })}`),
+  projects: (limit = 12, options?: EndpointOptions) =>
+    request<Project[]>(`/projects${toQuery({ limit })}`, options),
+  project: (idOrSlug: string, options?: EndpointOptions) =>
+    request<Project>(`/projects/${idOrSlug}`, options),
   createProject: (body: {
     title: string;
     description: string;
@@ -219,9 +492,28 @@ export const api = {
   }) => request<Project>("/projects", { method: "POST", body }),
   joinProject: (id: string, message?: string) =>
     request<unknown>(`/projects/${id}/join`, { method: "POST", body: { message } }),
-  jobs: () => request<Job[]>("/jobs"),
-  searchGlobal: (q: string) => request<SearchResults>(`/search/global${toQuery({ q })}`),
-  searchUsers: (q: string) => request<User[]>(`/search/users${toQuery({ q, limit: 12 })}`),
-  searchProjects: (q: string) =>
-    request<Project[]>(`/search/projects${toQuery({ q, limit: 12 })}`),
+  jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
+  searchGlobal: (q: string, options?: EndpointOptions) =>
+    request<SearchResults>(`/search/global${toQuery({ q })}`, options),
+  searchUsers: (q: string, options?: EndpointOptions) =>
+    request<User[]>(`/search/users${toQuery({ q, limit: 12 })}`, options),
+  searchProjects: (q: string, options?: EndpointOptions) =>
+    request<Project[]>(`/search/projects${toQuery({ q, limit: 12 })}`, options),
+  trackFeedImpression: (body: {
+    entityId: string;
+    entityType: FeedItemType;
+    position?: number;
+    clicked?: boolean;
+    hidden?: boolean;
+  }) => request<{ success: boolean }>("/feed/impressions", { method: "POST", body }),
+  notifications: (page = 1, limit = 20, options?: EndpointOptions) =>
+    request<NotificationsPage>(`/notifications${toQuery({ page, limit })}`, options),
+  markNotificationRead: (id: string) =>
+    request<null>(`/notifications/${id}/read`, { method: "PATCH" }),
+  markAllNotificationsRead: () =>
+    request<null>("/notifications/read-all", { method: "PATCH" }),
+  archiveNotification: (id: string) =>
+    request<null>(`/notifications/${id}/archive`, { method: "PATCH" }),
+  deleteNotification: (id: string) =>
+    request<null>(`/notifications/${id}`, { method: "DELETE" }),
 };
