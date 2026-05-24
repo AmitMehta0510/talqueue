@@ -3,6 +3,14 @@ export const queryKeys = {
   auth: {
     me: ["auth", "me"] as const,
   },
+  users: {
+    me: ["users", "me"] as const,
+    full: ["users", "me", "full"] as const,
+    skills: ["users", "me", "skills"] as const,
+    experiences: ["users", "me", "experiences"] as const,
+    educations: ["users", "me", "educations"] as const,
+    skillSearch: (query: string) => ["users", "skills", "search", query] as const,
+  },
   feed: {
     all: ["feed"] as const,
     list: (viewer: string, limit: number) => ["feed", viewer, limit] as const,

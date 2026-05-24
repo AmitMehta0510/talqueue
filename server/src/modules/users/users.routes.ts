@@ -11,6 +11,7 @@ import {
   getMeExperiences,
   getMeFull,
   getMeSkills,
+  searchSkillsHandler,
   updateMe,
 } from "./users.controller";
 
@@ -25,6 +26,8 @@ router.get("/me/skills", protect, getMeSkills);
 router.get("/me/experiences", protect, getMeExperiences);
 
 router.get("/me/educations", protect, getMeEducations);
+
+router.get("/skills/search", protect, searchSkillsHandler);
 
 router.put("/me", protect, updateMe);
 

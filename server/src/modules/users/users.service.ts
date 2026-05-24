@@ -601,6 +601,40 @@ export const getMyEducations = async (
   };
 };
 
+export const searchSkills = async (query: string, limit = 12) => {
+  const normalizedQuery = normalizeSearchText(query);
+  const safeLimit = Math.min(MAX_SECTION_LIMIT, Math.max(1, limit || 12));
+
+  if (normalizedQuery.length < 2) {
+    return [];
+  }
+
+  return prisma.skill.findMany({
+    where: {
+      name: {
+        contains: normalizedQuery,
+        mode: "insensitive",
+      },
+    },
+
+    orderBy: [
+      {
+        verified: "desc",
+      },
+
+      {
+        searchScore: "desc",
+      },
+
+      {
+        name: "asc",
+      },
+    ],
+
+    take: safeLimit,
+  });
+};
+
 export const updateProfile = async (
   userId: string,
   data: UpdateProfileData,

@@ -13,6 +13,7 @@ import {
   getMyFullProfile,
   getMyProfile,
   getMySkills,
+  searchSkills,
   updateProfile,
 } from "./users.service";
 
@@ -94,6 +95,19 @@ export const getMeEducations = asyncHandler(
 
     res.json(
       successResponse(educations)
+    );
+  }
+);
+
+export const searchSkillsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const skills = await searchSkills(
+      req.query.q?.toString() || "",
+      req.query.limit ? Number(req.query.limit) : 12,
+    );
+
+    res.json(
+      successResponse(skills)
     );
   }
 );

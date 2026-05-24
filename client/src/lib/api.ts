@@ -13,6 +13,7 @@ export type User = {
   email: string;
   username: string;
   status?: string;
+  availabilityStatus?: string;
   primaryRole?: string | null;
   profile?: {
     fullName?: string | null;
@@ -56,6 +57,8 @@ export type User = {
   skills?: UserSkill[];
   experiences?: Experience[];
   educations?: Education[];
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type College = {
@@ -86,6 +89,16 @@ export type UserSkill = {
     name?: string;
     normalizedName?: string;
   };
+  createdAt?: string;
+};
+
+export type Skill = {
+  id: string;
+  name: string;
+  category?: string | null;
+  searchScore?: number;
+  verified?: boolean;
+  createdAt?: string;
 };
 
 export type Experience = {
@@ -111,6 +124,8 @@ export type Experience = {
 
 export type Education = {
   id: string;
+  collegeId?: string;
+  departmentId?: string;
   degree?: string | null;
   fieldOfStudy?: string | null;
   startYear?: number | null;
@@ -122,6 +137,27 @@ export type Education = {
 
 export type CollegePage = {
   colleges: College[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type SkillsPage = {
+  skills: UserSkill[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type ExperiencesPage = {
+  experiences: Experience[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type EducationsPage = {
+  educations: Education[];
   nextCursor?: string | null;
   hasNextPage?: boolean;
   limit?: number;
@@ -415,6 +451,10 @@ const toQuery = (params: Record<string, string | number | boolean | undefined>) 
   return query ? `?${query}` : "";
 };
 
+type CursorOptions = EndpointOptions & {
+  cursor?: string;
+};
+
 export class ApiError extends Error {
   status: number;
 
@@ -502,7 +542,29 @@ export const api = {
   }) => request<AuthPayload>("/auth/register", { method: "POST", body }),
   me: (options?: EndpointOptions) => request<User>("/auth/me", options),
   logout: () => request<{ loggedOut: boolean }>("/auth/logout", { method: "POST" }),
-  myFullProfile: () => request<User>("/users/me/full"),
+  myProfile: (options?: EndpointOptions) => request<User>("/users/me", options),
+  myFullProfile: (options?: EndpointOptions) => request<User>("/users/me/full", options),
+  mySkills: (limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<SkillsPage>(
+      `/users/me/skills${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  myExperiences: (limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<ExperiencesPage>(
+      `/users/me/experiences${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  myEducations: (limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<EducationsPage>(
+      `/users/me/educations${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
   updateProfile: (body: {
     fullName?: string;
     username?: string;
@@ -545,6 +607,10 @@ export const api = {
     endYear?: number;
     current?: boolean;
   }) => request<Education>("/users/me/educations", { method: "POST", body }),
+  addSkill: (body: { skillId: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" }) =>
+    request<UserSkill>("/users/me/skills", { method: "POST", body }),
+  searchSkills: (q: string, options?: EndpointOptions) =>
+    request<Skill[]>(`/users/skills/search${toQuery({ q, limit: 12 })}`, options),
   searchColleges: (q: string) => request<College[]>(`/colleges/search${toQuery({ q })}`),
   departments: (collegeId: string) => request<Department[]>(`/colleges/${collegeId}/departments`),
   publicPosts: (limit = 12, options?: EndpointOptions) =>
