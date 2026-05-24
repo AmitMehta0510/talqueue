@@ -353,8 +353,25 @@ export const getProjectById = async (
     }).catch(console.error);
   }
 
+  const isOwner =
+    !!userId && project.ownerId === userId;
+
   return {
     ...project,
+
+    joinRequests:
+      isOwner
+        ? project.joinRequests
+        : [],
+
+    _count: {
+      ...project._count,
+
+      joinRequests:
+        isOwner
+          ? project._count.joinRequests
+          : 0,
+    },
 
     engineeringScore,
 
@@ -528,7 +545,7 @@ export const requestToJoinProject = async (
 
       actorId: userId,
 
-      type: "PROJECT_INVITE",
+      type: "PROJECT_JOIN_REQUEST",
 
       title: "New Project Join Request",
 
@@ -748,7 +765,10 @@ export const reviewJoinRequest = async (
 
       actorId: ownerId,
 
-      type: "PROJECT_INVITE",
+      type:
+        status === "ACCEPTED"
+          ? "PROJECT_JOIN_ACCEPTED"
+          : "PROJECT_JOIN_REJECTED",
 
       title:
         status === "ACCEPTED"

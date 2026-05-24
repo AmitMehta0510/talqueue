@@ -197,6 +197,7 @@ export type FeedPage = {
 
 export type Project = {
   id: string;
+  ownerId?: string;
   title?: string;
   slug?: string;
   description?: string;
@@ -212,15 +213,27 @@ export type Project = {
   domain?: string | null;
   difficultyLevel?: string | null;
   owner?: User;
-  members?: unknown[];
-  joinRequests?: unknown[];
-  requiredRoles?: unknown[];
-  hackathonSubmissions?: unknown[];
+  members?: ProjectMember[];
+  joinRequests?: ProjectJoinRequest[];
+  requiredRoles?: ProjectRoleRequirement[];
+  hackathonSubmissions?: Array<Record<string, unknown>>;
   liveUrl?: string | null;
   githubUrl?: string | null;
+  videoDemoUrl?: string | null;
+  screenshots?: unknown;
   starsCount?: number;
   forksCount?: number;
+  commitCount?: number;
   contributorsCount?: number;
+  openIssuesCount?: number;
+  pullRequestsCount?: number;
+  primaryLanguage?: string | null;
+  languages?: Record<string, number> | string[] | null;
+  repoVisibility?: string | null;
+  repoCreatedAt?: string | null;
+  repoUpdatedAt?: string | null;
+  lastGithubSyncAt?: string | null;
+  deploymentStatus?: string | null;
   verificationScore?: number;
   rankingScore?: number;
   trustLevel?: string;
@@ -229,6 +242,68 @@ export type Project = {
     joinRequests?: number;
   };
   createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string | null;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+};
+
+export type ProjectMember = {
+  id: string;
+  projectId: string;
+  userId: string;
+  role?: string;
+  joinedAt?: string;
+  user?: User;
+};
+
+export type ProjectRoleRequirement = {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string | null;
+  slots?: number;
+  filledSlots?: number;
+  createdAt?: string;
+};
+
+export type ProjectJoinRequest = {
+  id: string;
+  projectId: string;
+  userId: string;
+  message?: string | null;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
+  reviewedAt?: string | null;
+  withdrawnAt?: string | null;
+  createdAt?: string;
+  user?: User;
+};
+
+export type ProjectInvite = {
+  id: string;
+  projectId: string;
+  invitedUserId: string;
+  invitedById: string;
+  message?: string | null;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  reviewedAt?: string | null;
+  createdAt?: string;
+  project?: Project;
+  invitedUser?: User;
+  invitedBy?: User;
+};
+
+export type ProjectMutationPayload = {
+  title?: string;
+  description?: string;
+  shortDescription?: string;
+  githubUrl?: string;
+  liveUrl?: string;
+  videoDemoUrl?: string;
+  techStack?: string[];
+  deploymentStatus?: string;
+  visibility?: "PUBLIC" | "PRIVATE";
+  lookingFor?: string;
 };
 
 export type Job = {
@@ -487,11 +562,60 @@ export const api = {
   createProject: (body: {
     title: string;
     description: string;
+    shortDescription?: string;
+    githubUrl?: string;
+    liveUrl?: string;
+    videoDemoUrl?: string;
+    techStack?: string[];
+    deploymentStatus?: string;
     visibility: "PUBLIC" | "PRIVATE";
     lookingFor?: string;
   }) => request<Project>("/projects", { method: "POST", body }),
   joinProject: (id: string, message?: string) =>
     request<unknown>(`/projects/${id}/join`, { method: "POST", body: { message } }),
+  projectJoinRequests: (id: string, options?: EndpointOptions) =>
+    request<ProjectJoinRequest[]>(`/projects/${id}/requests`, options),
+  reviewProjectJoinRequest: (requestId: string, status: "ACCEPTED" | "REJECTED") =>
+    request<ProjectJoinRequest>(`/projects/requests/${requestId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  withdrawProjectJoinRequest: (requestId: string) =>
+    request<ProjectJoinRequest>(`/projects/requests/${requestId}/withdraw`, {
+      method: "PATCH",
+    }),
+  inviteUserToProject: (projectId: string, userId: string, message?: string) =>
+    request<ProjectInvite>(`/projects/${projectId}/invite/${userId}`, {
+      method: "POST",
+      body: { message },
+    }),
+  reviewProjectInvite: (inviteId: string, status: "ACCEPTED" | "REJECTED") =>
+    request<ProjectInvite>(`/projects/invites/${inviteId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  leaveProject: (projectId: string) =>
+    request<{ success: boolean }>(`/projects/${projectId}/leave`, { method: "DELETE" }),
+  removeProjectMember: (projectId: string, memberId: string) =>
+    request<{ success: boolean }>(`/projects/${projectId}/members/${memberId}`, {
+      method: "DELETE",
+    }),
+  receivedProjectInvites: (options?: EndpointOptions) =>
+    request<ProjectInvite[]>("/projects/invites/received", options),
+  sentProjectInvites: (projectId: string, options?: EndpointOptions) =>
+    request<ProjectInvite[]>(`/projects/${projectId}/invites`, options),
+  completeProject: (projectId: string) =>
+    request<Project>(`/projects/${projectId}/complete`, { method: "PATCH" }),
+  archiveProject: (projectId: string) =>
+    request<Project>(`/projects/${projectId}/archive`, { method: "PATCH" }),
+  restoreProject: (projectId: string) =>
+    request<Project>(`/projects/${projectId}/restore`, { method: "PATCH" }),
+  deleteProject: (projectId: string) =>
+    request<Project>(`/projects/${projectId}`, { method: "DELETE" }),
+  updateProject: (projectId: string, body: ProjectMutationPayload) =>
+    request<Project>(`/projects/${projectId}`, { method: "PATCH", body }),
+  syncGithubProject: (projectId: string) =>
+    request<Project>(`/projects/${projectId}/sync-github`, { method: "POST" }),
   jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),

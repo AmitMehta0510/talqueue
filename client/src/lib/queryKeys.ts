@@ -11,6 +11,9 @@ export const queryKeys = {
     all: ["projects"] as const,
     list: (limit: number) => ["projects", "list", limit] as const,
     detail: (idOrSlug: string) => ["projects", "detail", idOrSlug] as const,
+    requests: (projectId: string) => ["projects", projectId, "requests"] as const,
+    sentInvites: (projectId: string) => ["projects", projectId, "sent-invites"] as const,
+    receivedInvites: () => ["projects", "received-invites"] as const,
   },
   jobs: {
     all: ["jobs"] as const,

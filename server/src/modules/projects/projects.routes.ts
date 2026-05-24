@@ -37,23 +37,6 @@ router.get(
   getProjectsHandler
 );
 
-router.get(
-  "/:id",
-  getProjectHandler
-);
-
-router.post(
-  "/:id/join",
-  protect,
-  joinProjectHandler
-);
-
-router.get(
-  "/:id/requests",
-  protect,
-  getProjectJoinRequestsHandler
-);
-
 router.patch(
   "/requests/:requestId/review",
   protect,
@@ -78,6 +61,24 @@ router.patch(
   reviewProjectInviteHandler
 );
 
+router.get(
+  "/invites/received",
+  protect,
+  receivedProjectInvitesHandler
+);
+
+router.post(
+  "/:id/join",
+  protect,
+  joinProjectHandler
+);
+
+router.get(
+  "/:id/requests",
+  protect,
+  getProjectJoinRequestsHandler
+);
+
 router.delete(
   "/:projectId/leave",
   protect,
@@ -88,12 +89,6 @@ router.delete(
   "/:projectId/members/:memberId",
   protect,
   removeProjectMemberHandler
-);
-
-router.get(
-  "/invites/received",
-  protect,
-  receivedProjectInvitesHandler
 );
 
 router.get(
@@ -136,6 +131,11 @@ router.post(
   "/:projectId/sync-github",
   protect,
   syncGithubProjectHandler
+);
+
+router.get(
+  "/:id",
+  getProjectHandler
 );
 
 export default router;

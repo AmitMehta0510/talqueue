@@ -6,6 +6,20 @@ export const createProjectSchema = z.object({
 
   description: z.string().min(10),
 
+  shortDescription: z.string().optional(),
+
+  githubUrl: z.string().url().optional(),
+
+  liveUrl: z.string().url().optional(),
+
+  videoDemoUrl: z.string().url().optional(),
+
+  screenshots: z.any().optional(),
+
+  techStack: z.any().optional(),
+
+  deploymentStatus: z.enum(["LIVE", "DEVELOPMENT", "ARCHIVED"]).optional(),
+
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
 
   lookingFor: z.string().optional(),
