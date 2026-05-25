@@ -68,6 +68,8 @@ export type College = {
   state?: string | null;
   website?: string | null;
   logoUrl?: string | null;
+  normalizedKey?: string;
+  createdAt?: string;
   _count?: {
     departments?: number;
     profiles?: number;
@@ -79,6 +81,7 @@ export type Department = {
   id: string;
   name: string;
   collegeId: string;
+  createdAt?: string;
 };
 
 export type UserSkill = {
@@ -112,9 +115,11 @@ export type Experience = {
   description?: string | null;
   verified?: boolean;
   verificationScore?: number;
+  workEmailVerified?: boolean;
   techStack?: string[];
   skillsUsed?: string[];
   teamSize?: number | null;
+  user?: User;
   company?: {
     name?: string;
     logoUrl?: string | null;
@@ -140,6 +145,19 @@ export type CollegePage = {
   nextCursor?: string | null;
   hasNextPage?: boolean;
   limit?: number;
+};
+
+export type CollegeMutationPayload = {
+  name: string;
+  state?: string;
+  city?: string;
+  website?: string;
+  logoUrl?: string;
+};
+
+export type DepartmentMutationPayload = {
+  name: string;
+  collegeId: string;
 };
 
 export type SkillsPage = {
@@ -329,6 +347,109 @@ export type ProjectInvite = {
   invitedBy?: User;
 };
 
+export type Team = {
+  id: string;
+  name: string;
+  description?: string | null;
+  ownerId?: string;
+  owner?: User;
+  status?: string;
+  reputationScore?: number;
+  completedProjectsCount?: number;
+  hackathonWinsCount?: number;
+  members?: Array<{
+    id?: string;
+    userId: string;
+    role?: string;
+    joinedAt?: string;
+    user?: User;
+  }>;
+  _count?: {
+    members?: number;
+  };
+  invites?: TeamInvite[];
+  createdAt?: string;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+};
+
+export type TeamInvite = {
+  id: string;
+  teamId: string;
+  invitedUserId: string;
+  invitedById: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
+  message?: string | null;
+  reviewedAt?: string | null;
+  withdrawnAt?: string | null;
+  createdAt?: string;
+  team?: Team;
+  invitedUser?: User;
+  invitedBy?: User;
+};
+
+export type SocialFollow = {
+  id: string;
+  createdAt?: string;
+  follower?: User;
+  following?: User;
+};
+
+export type SocialConnection = {
+  id: string;
+  senderId?: string;
+  receiverId?: string;
+  status?: "PENDING" | "ACCEPTED" | "REJECTED";
+  createdAt?: string;
+  reviewedAt?: string | null;
+  sender?: User;
+  receiver?: User;
+  user?: User;
+};
+
+export type SuggestedUser = User & {
+  affinityScore?: number;
+  interactionCount?: number;
+  collaborationScore?: number;
+  skillSimilarityScore?: number;
+  socialScore?: number;
+};
+
+export type FollowersPage = {
+  followers: SocialFollow[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type FollowingPage = {
+  following: SocialFollow[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type ConnectionsPage = {
+  connections: SocialConnection[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type SuggestedConnectionsPage = {
+  users: SuggestedUser[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type MutualConnectionsPage = {
+  users: User[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
 export type ProjectMutationPayload = {
   title?: string;
   description?: string;
@@ -366,11 +487,361 @@ export type Job = {
   createdAt?: string;
 };
 
+export type CompanyType =
+  | "STARTUP"
+  | "PRODUCT_BASED"
+  | "SERVICE_BASED"
+  | "ENTERPRISE"
+  | "MNC"
+  | "OTHER";
+
+export type CompanySize = "SOLO" | "SMALL" | "MEDIUM" | "LARGE" | "ENTERPRISE";
+
+export type Company = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+  coverImageUrl?: string | null;
+  websiteUrl?: string | null;
+  linkedinUrl?: string | null;
+  twitterUrl?: string | null;
+  githubUrl?: string | null;
+  description?: string | null;
+  tagline?: string | null;
+  headquarters?: string | null;
+  industry?: string | null;
+  foundedYear?: number | null;
+  type?: CompanyType | null;
+  size?: CompanySize | null;
+  verified?: boolean;
+  careersPageUrl?: string | null;
+  hiringEnabled?: boolean;
+  referralEnabled?: boolean;
+  rating?: number | null;
+  totalRatings?: number;
+  recommendationScore?: number;
+  jobs?: Array<Pick<Job, "id" | "title" | "slug" | "location" | "type" | "workMode" | "experienceLevel" | "createdAt">>;
+  experiences?: Experience[];
+  _count?: {
+    jobs?: number;
+    experiences?: number;
+    referralRequests?: number;
+  };
+  createdAt?: string;
+};
+
+export type CompanyPage = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  companies: Company[];
+};
+
+export type CompanyEmployee = Pick<
+  Experience,
+  "id" | "title" | "verified" | "verificationScore" | "teamSize"
+> & {
+  workEmailVerified?: boolean;
+  user?: User;
+};
+
+export type CompanyEmployeesPage = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  employees: CompanyEmployee[];
+};
+
+export type CompanyMutationPayload = {
+  name: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  websiteUrl?: string;
+  linkedinUrl?: string;
+  twitterUrl?: string;
+  githubUrl?: string;
+  careersPageUrl?: string;
+  description?: string;
+  tagline?: string;
+  headquarters?: string;
+  industry?: string;
+  foundedYear?: number;
+  type?: CompanyType;
+  size?: CompanySize;
+  hiringEnabled?: boolean;
+  referralEnabled?: boolean;
+};
+
+export type CommunityType = "COLLEGE" | "COMPANY" | "GENERAL";
+
+export type CommunityCategory =
+  | "GENERAL"
+  | "CODING"
+  | "PLACEMENTS"
+  | "INTERNSHIPS"
+  | "REFERRALS"
+  | "INTERVIEWS"
+  | "SALARIES"
+  | "ANNOUNCEMENTS"
+  | "RESOURCES"
+  | "EVENTS";
+
+export type CommunityMember = {
+  id: string;
+  userId: string;
+  communityId: string;
+  role?: "MEMBER" | "MODERATOR" | "ADMIN" | "OWNER";
+  active?: boolean;
+  autoJoined?: boolean;
+  joinedAt?: string;
+  user?: User;
+};
+
+export type CommunityConversation = {
+  id: string;
+  title?: string | null;
+  category?: string | null;
+  updatedAt?: string;
+  public?: boolean;
+};
+
+export type Community = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  shortDescription?: string | null;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  type: CommunityType;
+  category: CommunityCategory;
+  visibility?: "PUBLIC" | "PRIVATE" | "RESTRICTED";
+  verified?: boolean;
+  archived?: boolean;
+  searchable?: boolean;
+  featured?: boolean;
+  memberCount?: number;
+  postCount?: number;
+  conversationCount?: number;
+  activityScore?: number;
+  trendingScore?: number;
+  recommendationScore?: number;
+  collegeId?: string | null;
+  departmentId?: string | null;
+  companyId?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  tags?: string[];
+  searchKeywords?: string[];
+  autoJoinEligible?: boolean;
+  joinApprovalRequired?: boolean;
+  college?: College | null;
+  department?: Department | null;
+  company?: Company | null;
+  members?: CommunityMember[];
+  conversations?: CommunityConversation[];
+  posts?: FeedPost[];
+  createdById?: string;
+  createdBy?: User;
+  _count?: {
+    members?: number;
+    posts?: number;
+    conversations?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CommunityMutationPayload = {
+  name: string;
+  description?: string;
+  type: CommunityType;
+  category: CommunityCategory;
+  tags?: string[];
+  searchKeywords?: string[];
+  companyId?: string;
+  collegeId?: string;
+  departmentId?: string;
+  city?: string;
+  autoJoinEligible?: boolean;
+};
+
+export type Hackathon = {
+  id: string;
+  title: string;
+  slug?: string | null;
+  description?: string;
+  shortDescription?: string | null;
+  bannerUrl?: string | null;
+  logoUrl?: string | null;
+  startDate?: string;
+  endDate?: string;
+  registrationDeadline?: string;
+  maxTeamSize?: number;
+  tracks?: unknown;
+  rules?: unknown;
+  prizes?: unknown;
+  judgingCriteria?: unknown;
+  organizerName?: string | null;
+  organizerWebsite?: string | null;
+  organizerType?: string | null;
+  sponsorName?: string | null;
+  sponsorWebsite?: string | null;
+  mode?: string | null;
+  location?: string | null;
+  verified?: boolean;
+  featured?: boolean;
+  isExternal?: boolean;
+  sourcePlatform?: string | null;
+  externalUrl?: string | null;
+  registrationCount?: number;
+  submissionCount?: number;
+  judgeCount?: number;
+  winnerCount?: number;
+  viewCount?: number;
+  status?: string;
+  createdById?: string;
+  createdBy?: User;
+  searchScore?: number;
+  trendingScore?: number;
+  rankingScore?: number;
+  tags?: string[];
+  difficultyLevel?: string | null;
+  registrations?: HackathonRegistration[];
+  submissions?: HackathonSubmission[];
+  judges?: HackathonJudge[];
+  winners?: HackathonWinner[];
+  analytics?: {
+    averageEngineeringScore?: number;
+    verifiedSubmissionCount?: number;
+    totalProjects?: number;
+    totalTeams?: number;
+    totalJudges?: number;
+    totalWinners?: number;
+  };
+  _count?: {
+    registrations?: number;
+    submissions?: number;
+    judges?: number;
+    winners?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  completedAt?: string | null;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+};
+
+export type HackathonRegistration = {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt?: string;
+  reviewedAt?: string | null;
+  team?: Team;
+};
+
+export type HackathonSubmission = {
+  id: string;
+  hackathonId?: string;
+  teamId?: string;
+  projectId?: string;
+  githubUrl?: string | null;
+  demoUrl?: string | null;
+  videoUrl?: string | null;
+  presentationUrl?: string | null;
+  description?: string | null;
+  techStack?: unknown;
+  status?: string;
+  score?: number | null;
+  finalScore?: number | null;
+  rankingPosition?: number | null;
+  engineeringScore?: number | null;
+  verifiedProject?: boolean;
+  submittedAt?: string;
+  reviewedAt?: string | null;
+  project?: Project;
+  team?: Team;
+  evaluations?: Array<{
+    id: string;
+    judge?: HackathonJudge;
+  }>;
+  winners?: Array<{
+    id: string;
+    position: number;
+    score: number;
+  }>;
+  rank?: number;
+  rankingScore?: number;
+};
+
+export type HackathonJudge = {
+  id: string;
+  hackathonId?: string;
+  userId?: string;
+  expertise?: unknown;
+  bio?: string | null;
+  canEvaluateOwnTeam?: boolean;
+  active?: boolean;
+  user?: User;
+  createdAt?: string;
+};
+
+export type HackathonWinner = {
+  id: string;
+  position: number;
+  score: number;
+  prize?: string | null;
+  submission?: HackathonSubmission;
+  team?: Team;
+};
+
+export type HackathonLeaderboard = {
+  hackathon?: Pick<Hackathon, "id">;
+  totalSubmissions?: number;
+  leaderboard: HackathonSubmission[];
+};
+
+export type HackathonMutationPayload = {
+  title: string;
+  description: string;
+  bannerUrl?: string;
+  startDate: string;
+  endDate: string;
+  registrationDeadline: string;
+  maxTeamSize: number;
+};
+
+export type HackathonSubmissionPayload = {
+  teamId: string;
+  projectId: string;
+  githubUrl?: string;
+  demoUrl?: string;
+  presentationUrl?: string;
+  description?: string;
+};
+
+export type HackathonEvaluationPayload = {
+  innovationScore: number;
+  technicalScore: number;
+  scalabilityScore: number;
+  designScore: number;
+  businessScore: number;
+  presentationScore: number;
+  feedback?: string;
+};
+
 export type SearchResults = {
   users?: User[];
   projects?: Project[];
-  hackathons?: Array<Record<string, unknown>>;
+  hackathons?: Hackathon[];
   jobs?: Job[];
+  companies?: Company[];
+  communities?: Community[];
+  colleges?: College[];
   [key: string]: unknown;
 };
 
@@ -612,7 +1083,52 @@ export const api = {
   searchSkills: (q: string, options?: EndpointOptions) =>
     request<Skill[]>(`/users/skills/search${toQuery({ q, limit: 12 })}`, options),
   searchColleges: (q: string) => request<College[]>(`/colleges/search${toQuery({ q })}`),
-  departments: (collegeId: string) => request<Department[]>(`/colleges/${collegeId}/departments`),
+  colleges: (limit = 50, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<CollegePage>(
+      `/colleges${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  createCollege: (body: CollegeMutationPayload) =>
+    request<College>("/colleges", { method: "POST", body }),
+  createDepartment: (body: DepartmentMutationPayload) =>
+    request<Department>("/colleges/departments", { method: "POST", body }),
+  departments: (collegeId: string, options?: EndpointOptions) =>
+    request<Department[]>(`/colleges/${collegeId}/departments`, options),
+  companies: (
+    params: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      industry?: string;
+      location?: string;
+      type?: CompanyType;
+      size?: CompanySize;
+      verified?: boolean;
+      hiringEnabled?: boolean;
+    } = {},
+    options?: EndpointOptions,
+  ) => request<CompanyPage>(`/companies${toQuery(params)}`, options),
+  company: (slug: string, options?: EndpointOptions) =>
+    request<Company>(`/companies/${slug}`, options),
+  createCompany: (body: CompanyMutationPayload) =>
+    request<Company>("/companies", { method: "POST", body }),
+  companyEmployees: (companyId: string, page = 1, limit = 20, options?: EndpointOptions) =>
+    request<CompanyEmployeesPage>(
+      `/companies/${companyId}/employees${toQuery({ page, limit })}`,
+      options,
+    ),
+  suggestedCompanies: (options?: EndpointOptions) =>
+    request<Company[]>("/discovery/suggested-companies", options),
+  createCommunity: (body: CommunityMutationPayload) =>
+    request<Community>("/communities", { method: "POST", body }),
+  community: (slug: string, options?: EndpointOptions) =>
+    request<Community>(`/communities/${slug}`, options),
+  archiveCommunity: (communityId: string) =>
+    request<{ success: boolean }>(`/communities/${communityId}/archive`, { method: "PATCH" }),
+  suggestedCommunities: (options?: EndpointOptions) =>
+    request<Community[]>("/discovery/suggested-communities", options),
   publicPosts: (limit = 12, options?: EndpointOptions) =>
     request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
   personalizedFeed: (limit = 12, options?: EndpointOptions) =>
@@ -682,6 +1198,124 @@ export const api = {
     request<Project>(`/projects/${projectId}`, { method: "PATCH", body }),
   syncGithubProject: (projectId: string) =>
     request<Project>(`/projects/${projectId}/sync-github`, { method: "POST" }),
+  myTeams: (options?: EndpointOptions) => request<Team[]>("/teams/me", options),
+  team: (teamId: string, options?: EndpointOptions) =>
+    request<Team>(`/teams/${teamId}`, options),
+  createTeam: (body: { name: string; description?: string; members?: string[] }) =>
+    request<Team>("/teams", { method: "POST", body }),
+  inviteTeamMember: (teamId: string, invitedUserId: string, message?: string) =>
+    request<TeamInvite>(`/teams/${teamId}/invite`, {
+      method: "POST",
+      body: { invitedUserId, message },
+    }),
+  reviewTeamInvite: (inviteId: string, status: "ACCEPTED" | "REJECTED") =>
+    request<TeamInvite>(`/teams/invites/${inviteId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  withdrawTeamInvite: (inviteId: string) =>
+    request<TeamInvite>(`/teams/invites/${inviteId}/withdraw`, { method: "PATCH" }),
+  removeTeamMember: (teamId: string, memberUserId: string) =>
+    request<{ success: boolean }>(`/teams/${teamId}/members/${memberUserId}`, {
+      method: "DELETE",
+    }),
+  leaveTeam: (teamId: string) =>
+    request<{ success: boolean }>(`/teams/${teamId}/leave`, { method: "DELETE" }),
+  deleteTeam: (teamId: string) =>
+    request<Team>(`/teams/${teamId}/delete`, { method: "DELETE" }),
+  followUser: (userId: string) =>
+    request<SocialFollow>(`/social/follow/${userId}`, { method: "POST" }),
+  unfollowUser: (userId: string) =>
+    request<{ success: boolean }>(`/social/follow/${userId}`, { method: "DELETE" }),
+  connectUser: (userId: string) =>
+    request<SocialConnection>(`/social/connect/${userId}`, { method: "POST" }),
+  reviewConnection: (connectionId: string, status: "ACCEPTED" | "REJECTED") =>
+    request<SocialConnection>(`/social/connections/${connectionId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  followers: (userId: string, limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<FollowersPage>(
+      `/social/followers/${userId}${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  following: (userId: string, limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<FollowingPage>(
+      `/social/following/${userId}${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  connections: (userId: string, limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<ConnectionsPage>(
+      `/social/connections/${userId}${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  suggestedConnections: (limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<SuggestedConnectionsPage>(
+      `/social/suggested${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  mutualConnections: (userId: string, limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<MutualConnectionsPage>(
+      `/social/mutual/${userId}${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  hackathons: (options?: EndpointOptions) => request<Hackathon[]>("/hackathons", options),
+  hackathon: (id: string, options?: EndpointOptions) =>
+    request<Hackathon>(`/hackathons/${id}`, options),
+  createHackathon: (body: HackathonMutationPayload) =>
+    request<Hackathon>("/hackathons", { method: "POST", body }),
+  registerHackathonTeam: (hackathonId: string, teamId: string) =>
+    request<HackathonRegistration>(`/hackathons/${hackathonId}/register`, {
+      method: "POST",
+      body: { teamId },
+    }),
+  submitHackathonProject: (hackathonId: string, body: HackathonSubmissionPayload) =>
+    request<HackathonSubmission>(`/hackathons/${hackathonId}/submit`, {
+      method: "POST",
+      body,
+    }),
+  reviewHackathonRegistration: (
+    registrationId: string,
+    status: "APPROVED" | "REJECTED",
+  ) =>
+    request<HackathonRegistration>(`/hackathons/registrations/${registrationId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  assignHackathonJudge: (hackathonId: string, userId: string) =>
+    request<HackathonJudge>(`/hackathons/${hackathonId}/judges`, {
+      method: "POST",
+      body: { userId },
+    }),
+  evaluateHackathonSubmission: (
+    submissionId: string,
+    body: HackathonEvaluationPayload,
+  ) =>
+    request<unknown>(`/hackathons/submissions/${submissionId}/evaluate`, {
+      method: "POST",
+      body,
+    }),
+  declareHackathonWinners: (hackathonId: string) =>
+    request<{ success: boolean; winnersDeclared: number }>(
+      `/hackathons/${hackathonId}/declare-winners`,
+      { method: "POST" },
+    ),
+  hackathonLeaderboard: (hackathonId: string, options?: EndpointOptions) =>
+    request<HackathonLeaderboard>(`/hackathons/${hackathonId}/leaderboard`, options),
+  archiveHackathon: (hackathonId: string) =>
+    request<Hackathon>(`/hackathons/${hackathonId}/archive`, { method: "PATCH" }),
+  deleteHackathon: (hackathonId: string) =>
+    request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
   jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),

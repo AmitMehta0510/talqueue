@@ -1,14 +1,21 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   api,
+  CollegeMutationPayload,
+  CompanyMutationPayload,
+  CompanyType,
+  CompanySize,
+  CommunityMutationPayload,
   Education,
   FeedItem,
   FeedPost,
+  HackathonEvaluationPayload,
+  HackathonMutationPayload,
+  HackathonSubmissionPayload,
   Experience,
   NotificationsPage,
   Project,
   ProjectInvite,
-  ProjectJoinRequest,
   ProjectMutationPayload,
   SearchResults,
   User,
@@ -44,6 +51,221 @@ export const useFeedQuery = (limit = 16) => {
   });
 };
 
+export const useCollegesQuery = (limit = 50) =>
+  useInfiniteQuery({
+    queryKey: queryKeys.colleges.list(limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.colleges(limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+export const useDepartmentsQuery = (collegeId?: string) =>
+  useQuery({
+    queryKey: queryKeys.colleges.departments(collegeId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.departments(collegeId || "", { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(collegeId),
+  });
+
+export const useCreateCollegeMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: CollegeMutationPayload) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.createCollege(payload);
+    },
+    onSuccess: () => showToast("success", "College saved"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+    },
+  });
+};
+
+export const useCreateDepartmentMutation = (collegeId?: string) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (name: string) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+      if (!collegeId) {
+        throw new Error("College missing");
+      }
+
+      return api.createDepartment({ name, collegeId });
+    },
+    onSuccess: () => showToast("success", "Department saved"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.colleges.departments(collegeId) });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+    },
+  });
+};
+
+export const useCompaniesQuery = (
+  params: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    industry?: string;
+    location?: string;
+    type?: CompanyType;
+    size?: CompanySize;
+    verified?: boolean;
+    hiringEnabled?: boolean;
+  } = {},
+) =>
+  useQuery({
+    queryKey: queryKeys.companies.list(params),
+    queryFn: async ({ signal }) => {
+      const result = await api.companies(params, { signal });
+      return result.data;
+    },
+  });
+
+export const useCompanyQuery = (slug?: string) =>
+  useQuery({
+    queryKey: queryKeys.companies.detail(slug || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.company(slug || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(slug),
+  });
+
+export const useCompanyEmployeesQuery = (companyId?: string, page = 1, limit = 20) =>
+  useQuery({
+    queryKey: queryKeys.companies.employees(companyId || "", page, limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.companyEmployees(companyId || "", page, limit, { signal });
+      return result.data;
+    },
+    enabled: Boolean(companyId),
+  });
+
+export const useSuggestedCompaniesQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.companies.suggested(),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedCompanies({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useCreateCompanyMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: CompanyMutationPayload) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.createCompany(payload);
+    },
+    onSuccess: () => showToast("success", "Company saved"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+    },
+  });
+};
+
+export const useSuggestedCommunitiesQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.communities.suggested(),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedCommunities({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useCommunityQuery = (slug?: string) =>
+  useQuery({
+    queryKey: queryKeys.communities.detail(slug || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.community(slug || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(slug),
+  });
+
+const invalidateCommunity = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  slug?: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+
+  if (slug) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.communities.detail(slug) });
+  }
+};
+
+export const useCreateCommunityMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: CommunityMutationPayload) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.createCommunity(payload);
+    },
+    onSuccess: () => showToast("success", "Community created"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (result) => invalidateCommunity(queryClient, result?.data.slug),
+  });
+};
+
+export const useArchiveCommunityMutation = (slug?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (communityId: string) => api.archiveCommunity(communityId),
+    onSuccess: () => showToast("success", "Community archived"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateCommunity(queryClient, slug),
+  });
+};
+
 export const useProjectsQuery = (limit = 12) =>
   useQuery({
     queryKey: queryKeys.projects.list(limit),
@@ -61,6 +283,168 @@ export const useProjectQuery = (idOrSlug?: string) =>
       return result.data;
     },
     enabled: Boolean(idOrSlug),
+  });
+
+export const useMyTeamsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.teams.mine(),
+    queryFn: async ({ signal }) => {
+      const result = await api.myTeams({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useTeamQuery = (teamId?: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.teams.detail(teamId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.team(teamId || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && teamId),
+  });
+};
+
+export const useCreateTeamMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: { name: string; description?: string; members?: string[] }) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.createTeam(payload);
+    },
+    onSuccess: () => {
+      showToast("success", "Team created");
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+const invalidateTeams = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  teamId?: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+
+  if (teamId) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.teams.detail(teamId) });
+  }
+};
+
+export const useInviteTeamMemberMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, message }: { userId: string; message?: string }) => {
+      if (!teamId) throw new Error("Team missing");
+      return api.inviteTeamMember(teamId, userId, message);
+    },
+    onSuccess: () => showToast("success", "Team invite sent"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useReviewTeamInviteMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ inviteId, status }: { inviteId: string; status: "ACCEPTED" | "REJECTED" }) =>
+      api.reviewTeamInvite(inviteId, status),
+    onSuccess: (_result, variables) => {
+      showToast("success", variables.status === "ACCEPTED" ? "Team invite accepted" : "Team invite rejected");
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient),
+  });
+};
+
+export const useWithdrawTeamInviteMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (inviteId: string) => api.withdrawTeamInvite(inviteId),
+    onSuccess: () => showToast("success", "Invite withdrawn"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useRemoveTeamMemberMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (memberUserId: string) => {
+      if (!teamId) throw new Error("Team missing");
+      return api.removeTeamMember(teamId, memberUserId);
+    },
+    onSuccess: () => showToast("success", "Member removed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useTeamLifecycleMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation<unknown, Error, "leave" | "delete">({
+    mutationFn: async (action) => {
+      if (!teamId) throw new Error("Team missing");
+      return action === "leave" ? api.leaveTeam(teamId) : api.deleteTeam(teamId);
+    },
+    onSuccess: (_result, action) => {
+      showToast("success", action === "leave" ? "Left team" : "Team deleted");
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useHackathonsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.hackathons.list(),
+    queryFn: async ({ signal }) => {
+      const result = await api.hackathons({ signal });
+      return result.data || [];
+    },
+  });
+
+export const useHackathonQuery = (id?: string) =>
+  useQuery({
+    queryKey: queryKeys.hackathons.detail(id || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.hackathon(id || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(id),
+  });
+
+export const useHackathonLeaderboardQuery = (id?: string, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.hackathons.leaderboard(id || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.hackathonLeaderboard(id || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(id) && enabled,
   });
 
 export const useProjectJoinRequestsQuery = (projectId?: string, enabled = true) =>
@@ -93,6 +477,181 @@ export const useReceivedProjectInvitesQuery = () => {
       return result.data || [];
     },
     enabled: Boolean(user),
+  });
+};
+
+const invalidateHackathon = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  hackathonId?: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.hackathons.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+
+  if (hackathonId) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.hackathons.detail(hackathonId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.hackathons.leaderboard(hackathonId) });
+  }
+};
+
+export const useCreateHackathonMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: HackathonMutationPayload) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.createHackathon(payload);
+    },
+    onSuccess: () => showToast("success", "Hackathon created"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient),
+  });
+};
+
+export const useRegisterHackathonTeamMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (teamId: string) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+      if (!hackathonId) {
+        throw new Error("Hackathon missing");
+      }
+
+      return api.registerHackathonTeam(hackathonId, teamId);
+    },
+    onSuccess: () => showToast("success", "Team registered"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useSubmitHackathonProjectMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: HackathonSubmissionPayload) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+      if (!hackathonId) {
+        throw new Error("Hackathon missing");
+      }
+
+      return api.submitHackathonProject(hackathonId, payload);
+    },
+    onSuccess: () => showToast("success", "Project submitted"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useReviewHackathonRegistrationMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      registrationId,
+      status,
+    }: {
+      registrationId: string;
+      status: "APPROVED" | "REJECTED";
+    }) => api.reviewHackathonRegistration(registrationId, status),
+    onSuccess: (_result, variables) => {
+      showToast(
+        "success",
+        variables.status === "APPROVED" ? "Registration approved" : "Registration rejected",
+      );
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useAssignHackathonJudgeMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => {
+      if (!hackathonId) throw new Error("Hackathon missing");
+      return api.assignHackathonJudge(hackathonId, userId);
+    },
+    onSuccess: () => showToast("success", "Judge assigned"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useEvaluateHackathonSubmissionMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      submissionId,
+      payload,
+    }: {
+      submissionId: string;
+      payload: HackathonEvaluationPayload;
+    }) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.evaluateHackathonSubmission(submissionId, payload);
+    },
+    onSuccess: () => showToast("success", "Submission evaluated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useDeclareHackathonWinnersMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!hackathonId) throw new Error("Hackathon missing");
+      return api.declareHackathonWinners(hackathonId);
+    },
+    onSuccess: (result) => {
+      showToast("success", `${result.data.winnersDeclared || 0} winners declared`);
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
+  });
+};
+
+export const useHackathonLifecycleMutation = (hackathonId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (action: "archive" | "delete") => {
+      if (!hackathonId) throw new Error("Hackathon missing");
+      return action === "archive"
+        ? api.archiveHackathon(hackathonId)
+        : api.deleteHackathon(hackathonId);
+    },
+    onSuccess: (_result, action) => {
+      showToast("success", action === "archive" ? "Hackathon archived" : "Hackathon deleted");
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateHackathon(queryClient, hackathonId),
   });
 };
 
@@ -661,6 +1220,162 @@ export const useProjectLifecycleMutation = (projectId?: string) => {
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateProject(queryClient, projectId),
+  });
+};
+
+const invalidateSocial = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  userId?: string,
+) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.social.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.users.full });
+  queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+
+  if (userId) {
+    queryClient.invalidateQueries({ queryKey: queryKeys.social.followers(userId, 20) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.social.following(userId, 20) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.social.connections(userId, 20) });
+  }
+};
+
+export const useFollowersQuery = (userId?: string, limit = 20) =>
+  useInfiniteQuery({
+    queryKey: queryKeys.social.followers(userId || "", limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.followers(userId || "", limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    enabled: Boolean(userId),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+export const useFollowingQuery = (userId?: string, limit = 20) =>
+  useInfiniteQuery({
+    queryKey: queryKeys.social.following(userId || "", limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.following(userId || "", limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    enabled: Boolean(userId),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+export const useConnectionsQuery = (userId?: string, limit = 20) =>
+  useInfiniteQuery({
+    queryKey: queryKeys.social.connections(userId || "", limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.connections(userId || "", limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    enabled: Boolean(userId),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+export const useSuggestedConnectionsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.social.suggested(limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.suggestedConnections(limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    enabled: Boolean(user),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    staleTime: 60_000,
+  });
+};
+
+export const useMutualConnectionsQuery = (userId?: string, limit = 12) => {
+  const { user } = useAuth();
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.social.mutual(userId || "", limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.mutualConnections(userId || "", limit, { cursor: pageParam, signal });
+      return result.data;
+    },
+    enabled: Boolean(user && userId),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+};
+
+export const useFollowUserMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.followUser(userId);
+    },
+    onSuccess: () => showToast("success", "User followed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (_data, _error, userId) => {
+      invalidateSocial(queryClient, user?.id);
+      invalidateSocial(queryClient, userId);
+    },
+  });
+};
+
+export const useUnfollowUserMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.unfollowUser(userId);
+    },
+    onSuccess: () => showToast("success", "User unfollowed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (_data, _error, userId) => {
+      invalidateSocial(queryClient, user?.id);
+      invalidateSocial(queryClient, userId);
+    },
+  });
+};
+
+export const useConnectUserMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.connectUser(userId);
+    },
+    onSuccess: () => showToast("success", "Connection request sent"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (_data, _error, userId) => {
+      invalidateSocial(queryClient, user?.id);
+      invalidateSocial(queryClient, userId);
+    },
+  });
+};
+
+export const useReviewConnectionMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ connectionId, status }: { connectionId: string; status: "ACCEPTED" | "REJECTED" }) =>
+      api.reviewConnection(connectionId, status),
+    onSuccess: (_result, variables) => {
+      showToast("success", variables.status === "ACCEPTED" ? "Connection accepted" : "Connection rejected");
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateSocial(queryClient, user?.id),
   });
 };
 

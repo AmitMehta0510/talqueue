@@ -20,18 +20,20 @@ import {
 } from "../../hooks/usePlatformQueries";
 import { Avatar, EmptyState } from "../ui";
 
-const notificationIcon = (type: PlatformNotification["type"]) => {
-  if (type.includes("PROJECT")) return Rocket;
-  if (type.includes("INVITE") || type.includes("CONNECTION") || type === "FOLLOW") return UserPlus;
+function NotificationGlyph({ type }: { type: PlatformNotification["type"] }) {
+  if (type.includes("PROJECT")) return <Rocket size={15} />;
+  if (type.includes("INVITE") || type.includes("CONNECTION") || type === "FOLLOW") {
+    return <UserPlus size={15} />;
+  }
   if (type.includes("MESSAGE") || type.includes("COMMENT") || type.includes("MENTION")) {
-    return MessageSquare;
+    return <MessageSquare size={15} />;
   }
   if (type.includes("JOB") || type.includes("HACKATHON") || type.includes("REFERRAL")) {
-    return ShieldCheck;
+    return <ShieldCheck size={15} />;
   }
 
-  return Bell;
-};
+  return <Bell size={15} />;
+}
 
 const notificationTarget = (notification: PlatformNotification) =>
   notification.actionUrl && notification.actionUrl.startsWith("/")
@@ -45,7 +47,6 @@ function NotificationItem({
   notification: PlatformNotification;
   compact?: boolean;
 }) {
-  const Icon = notificationIcon(notification.type);
   const markRead = useMarkNotificationReadMutation();
   const archive = useArchiveNotificationMutation();
 
@@ -69,7 +70,7 @@ function NotificationItem({
             <Avatar user={notification.actor} size="sm" />
           ) : (
             <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-              <Icon size={15} />
+              <NotificationGlyph type={notification.type} />
             </div>
           )}
           {!notification.isRead && (

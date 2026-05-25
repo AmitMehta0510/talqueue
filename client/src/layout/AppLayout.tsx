@@ -1,11 +1,16 @@
 import {
   Bell,
   BriefcaseBusiness,
+  Building2,
   Code2,
   Compass,
+  Gavel,
+  GraduationCap,
+  Hash,
   LogOut,
   Rocket,
   Search,
+  Users,
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +27,13 @@ const sections = [
   { to: "/feed", label: "Feed", icon: Compass },
   { to: "/profile", label: "Profile", icon: UserRound },
   { to: "/discover", label: "Discover", icon: Search },
+  { to: "/colleges", label: "Colleges", icon: GraduationCap },
+  { to: "/companies", label: "Companies", icon: Building2 },
+  { to: "/communities", label: "Communities", icon: Hash },
   { to: "/projects", label: "Projects", icon: Rocket },
+  { to: "/teams", label: "Teams", icon: Users },
+  { to: "/social", label: "Social", icon: UserRound },
+  { to: "/hackathons", label: "Hackathons", icon: Gavel },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
   { to: "/notifications", label: "Notifications", icon: Bell },
 ];
