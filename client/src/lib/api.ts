@@ -670,6 +670,119 @@ export type CommunityMutationPayload = {
   autoJoinEligible?: boolean;
 };
 
+export type ConversationType =
+  | "DIRECT"
+  | "GROUP"
+  | "TEAM"
+  | "COLLEGE"
+  | "DEPARTMENT"
+  | "PROJECT"
+  | "HACKATHON"
+  | "COMMUNITY";
+
+export type MessageType = "TEXT" | "IMAGE" | "VIDEO" | "FILE" | "SYSTEM";
+
+export type ChatAttachmentType = "IMAGE" | "VIDEO" | "FILE";
+
+export type ChatAttachment = {
+  id?: string;
+  name: string;
+  url?: string;
+  dataUrl?: string;
+  mimeType: string;
+  size: number;
+  type?: ChatAttachmentType;
+  width?: number;
+  height?: number;
+  duration?: number;
+};
+
+export type MessageReaction = {
+  id: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  createdAt?: string;
+  user?: User;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content?: string | null;
+  type?: MessageType;
+  attachments?: ChatAttachment[] | null;
+  replyToMessageId?: string | null;
+  forwardedFromMessageId?: string | null;
+  readByUsers?: string[];
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  reactionCount?: number;
+  sender?: User;
+  replyToMessage?: ChatMessage | null;
+  reactions?: MessageReaction[];
+  createdAt?: string;
+};
+
+export type ConversationParticipant = {
+  id: string;
+  conversationId: string;
+  userId: string;
+  pinned?: boolean;
+  muted?: boolean;
+  archived?: boolean;
+  unreadCount?: number;
+  lastDeliveredAt?: string | null;
+  lastReadAt?: string | null;
+  joinedAt?: string;
+  user?: User;
+};
+
+export type Conversation = {
+  id: string;
+  type: ConversationType;
+  category?: CommunityCategory | null;
+  title?: string | null;
+  description?: string | null;
+  avatarUrl?: string | null;
+  public?: boolean;
+  archived?: boolean;
+  createdById?: string | null;
+  teamId?: string | null;
+  collegeId?: string | null;
+  departmentId?: string | null;
+  projectId?: string | null;
+  hackathonId?: string | null;
+  communityId?: string | null;
+  participants?: ConversationParticipant[];
+  messages?: ChatMessage[];
+  unreadCount?: number;
+  lastMessageAt?: string | null;
+  messageCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ChatMessagesPage = {
+  messages: ChatMessage[];
+  nextCursor?: string | null;
+};
+
+export type SendMessagePayload = {
+  content?: string;
+  type?: MessageType;
+  attachments?: ChatAttachment[];
+  replyToMessageId?: string;
+};
+
+export type CreateGroupConversationPayload = {
+  title: string;
+  description?: string;
+  avatarUrl?: string;
+  participantIds: string[];
+};
+
 export type Hackathon = {
   id: string;
   title: string;
@@ -1129,6 +1242,74 @@ export const api = {
     request<{ success: boolean }>(`/communities/${communityId}/archive`, { method: "PATCH" }),
   suggestedCommunities: (options?: EndpointOptions) =>
     request<Community[]>("/discovery/suggested-communities", options),
+  conversations: (options?: EndpointOptions) => request<Conversation[]>("/chat", options),
+  createDirectConversation: (userId: string) =>
+    request<Conversation>("/chat/direct", { method: "POST", body: { userId } }),
+  createGroupConversation: (body: CreateGroupConversationPayload) =>
+    request<Conversation>("/chat/group", { method: "POST", body }),
+  conversationMessages: (conversationId: string, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<ChatMessagesPage>(
+      `/chat/${conversationId}/messages${toQuery({ cursor })}`,
+      requestOptions,
+    );
+  },
+  sendMessage: (conversationId: string, body: SendMessagePayload) =>
+    request<ChatMessage>(`/chat/${conversationId}/messages`, { method: "POST", body }),
+  uploadChatAttachments: (conversationId: string, attachments: ChatAttachment[]) =>
+    request<{ attachments: ChatAttachment[] }>(`/chat/${conversationId}/attachments`, {
+      method: "POST",
+      body: { attachments },
+    }),
+  markConversationRead: (conversationId: string) =>
+    request<{ success: boolean; conversationId: string; userId: string; readAt: string; messageIds: string[] }>(
+      `/chat/${conversationId}/read`,
+      { method: "PATCH" },
+    ),
+  addConversationParticipant: (conversationId: string, userId: string) =>
+    request<ConversationParticipant>(`/chat/${conversationId}/participants`, {
+      method: "POST",
+      body: { userId },
+    }),
+  removeConversationParticipant: (conversationId: string, userId: string) =>
+    request<{ success: boolean }>(`/chat/${conversationId}/participants/${userId}`, {
+      method: "DELETE",
+    }),
+  forwardMessage: (messageId: string, targetConversationId: string) =>
+    request<ChatMessage>("/chat/message/forward", {
+      method: "POST",
+      body: { messageId, targetConversationId },
+    }),
+  reactToMessage: (messageId: string, emoji: string) =>
+    request<{ reacted: boolean }>(`/chat/message/${messageId}/react`, {
+      method: "POST",
+      body: { emoji },
+    }),
+  editMessage: (messageId: string, content: string) =>
+    request<ChatMessage>(`/chat/message/${messageId}/edit`, {
+      method: "PATCH",
+      body: { content },
+    }),
+  deleteMessage: (messageId: string) =>
+    request<ChatMessage>(`/chat/message/${messageId}`, { method: "DELETE" }),
+  searchMessages: (conversationId: string, q: string, options?: EndpointOptions) =>
+    request<ChatMessage[]>(
+      `/chat/conversation/${conversationId}/search${toQuery({ q })}`,
+      options,
+    ),
+  togglePinConversation: (conversationId: string) =>
+    request<ConversationParticipant>(`/chat/conversation/${conversationId}/pin`, {
+      method: "PATCH",
+    }),
+  toggleMuteConversation: (conversationId: string, muted?: boolean) =>
+    request<ConversationParticipant>(`/chat/conversation/${conversationId}/mute`, {
+      method: "PATCH",
+      body: { muted },
+    }),
+  toggleArchiveConversation: (conversationId: string) =>
+    request<ConversationParticipant>(`/chat/conversation/${conversationId}/archive`, {
+      method: "PATCH",
+    }),
   publicPosts: (limit = 12, options?: EndpointOptions) =>
     request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
   personalizedFeed: (limit = 12, options?: EndpointOptions) =>

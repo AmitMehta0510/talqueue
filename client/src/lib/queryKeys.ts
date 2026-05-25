@@ -29,6 +29,13 @@ export const queryKeys = {
     detail: (slug: string) => ["communities", "detail", slug] as const,
     suggested: () => ["communities", "suggested"] as const,
   },
+  chat: {
+    all: ["chat"] as const,
+    conversations: () => ["chat", "conversations"] as const,
+    messages: (conversationId: string) => ["chat", "messages", conversationId] as const,
+    search: (conversationId: string, query: string) =>
+      ["chat", "messages", conversationId, "search", query] as const,
+  },
   feed: {
     all: ["feed"] as const,
     list: (viewer: string, limit: number) => ["feed", viewer, limit] as const,

@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { AppLayout } from "./layout/AppLayout";
 import { AuthPage } from "./pages/AuthPage";
+import { ChatPage } from "./pages/ChatPage";
 import { CollegesPage } from "./pages/CollegesPage";
 import { CommunitiesPage } from "./pages/CommunitiesPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
@@ -56,6 +57,8 @@ function AppRoutes() {
         <Route path="/companies/:companySlug" element={<CompaniesPage />} />
         <Route path="/communities" element={<CommunitiesPage />} />
         <Route path="/communities/:communitySlug" element={<CommunitiesPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:conversationId" element={<ChatPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:projectId" element={<ProjectsPage />} />
         <Route path="/teams" element={<TeamsPage />} />
