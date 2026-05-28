@@ -1,12 +1,7 @@
-import {
-  Request,
-  Response
-} from "express";
+import { Request, Response } from "express";
 import type { AuthenticatedUser } from "modules/auth/auth.selectors";
 
-interface AuthRequest
-  extends Request {
-
+interface AuthRequest extends Request {
   user: AuthenticatedUser;
 
   body: any;
@@ -38,7 +33,8 @@ import {
   forwardMessage,
   deleteMessage,
   editMessage,
-
+  deleteConversation,
+  getArchivedConversations,
 } from "./chat.service";
 
 import {
@@ -50,31 +46,18 @@ import {
   uploadAttachmentsSchema,
 } from "./chat.validation";
 
-export const createDirectConversationHandler =  asyncHandler(
-    async (
-      req: AuthRequest,
-      res: Response
-    ) => {
+export const createDirectConversationHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const validatedData = createDirectConversationSchema.parse(req.body);
 
-      const validatedData =
-        createDirectConversationSchema.parse(
-          req.body
-        );
+    const conversation = await createDirectConversation(
+      req.user.id,
+      validatedData.userId,
+    );
 
-      const conversation =
-        await createDirectConversation(
-          req.user.id,
-          validatedData.userId
-        );
-
-      res.status(201).json(
-        successResponse(
-          conversation,
-          "Conversation created"
-        )
-      );
-    }
-  );
+    res.status(201).json(successResponse(conversation, "Conversation created"));
+  },
+);
 
 export const createGroupConversationHandler = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -85,108 +68,63 @@ export const createGroupConversationHandler = asyncHandler(
       validatedData,
     );
 
-    res.status(201).json(
-      successResponse(
-        conversation,
-        "Group conversation created",
-      ),
-    );
+    res
+      .status(201)
+      .json(successResponse(conversation, "Group conversation created"));
   },
 );
 
-export const getMyConversationsHandler =  asyncHandler(
-    async (
-      req: AuthRequest,
-      res: Response
-    ) => {
+export const getMyConversationsHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const conversations = await getMyConversations(req.user.id);
 
-      const conversations =
-        await getMyConversations(
-          req.user.id
-        );
+    res.json(successResponse(conversations));
+  },
+);
 
-      res.json(
-        successResponse(
-          conversations
-        )
-      );
-    }
-  );
+export const getMessagesHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const messages = await getConversationMessages(
+      req.user.id,
+      req.params.id,
+      req.query.cursor as string | undefined,
+    );
 
-export const getMessagesHandler =  asyncHandler(
-    async (
-      req: AuthRequest,
-      res: Response
-    ) => {
+    res.json(successResponse(messages));
+  },
+);
 
-      const messages =
-        await getConversationMessages(
-          req.user.id,
-          req.params.id,
-          req.query.cursor as string | undefined
-        );
+export const sendMessageHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const validatedData = sendMessageSchema.parse(req.body);
 
-      res.json(
-        successResponse(messages)
-      );
-    }
-  );
+    const message = await sendMessage(
+      req.user!.id,
 
-export const sendMessageHandler =  asyncHandler(
+      req.params.id as string,
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
-      const validatedData = sendMessageSchema.parse(req.body);
+      {
+        content: validatedData.content,
 
-      const message =
-        await sendMessage(
+        type: validatedData.type,
 
-          req.user!.id,
+        attachments: validatedData.attachments,
 
-          req.params.id as string,
+        replyToMessageId: validatedData.replyToMessageId,
+      },
+    );
 
-          {
+    res.status(201).json(successResponse(message));
+  },
+);
 
-            content:
-              validatedData.content,
+export const markConversationAsReadHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const result = await markConversationAsRead(req.user.id, req.params.id);
 
-            type:
-              validatedData.type,
-
-            attachments:
-              validatedData.attachments,
-
-            replyToMessageId:
-              validatedData.replyToMessageId,
-          }
-        );
-
-      res.status(201).json(successResponse(message));
-    }
-  );
-
-export const markConversationAsReadHandler =  asyncHandler(
-    async (
-      req: AuthRequest,
-      res: Response
-    ) => {
-
-      const result =
-        await markConversationAsRead(
-          req.user.id,
-          req.params.id
-        );
-
-      res.json(
-        successResponse(
-          result,
-          "Conversation marked as read"
-        )
-      );
-    }
-  );  
+    res.json(successResponse(result, "Conversation marked as read"));
+  },
+);
 
 export const addParticipantHandler = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -198,9 +136,7 @@ export const addParticipantHandler = asyncHandler(
       validatedData.userId,
     );
 
-    res.status(201).json(
-      successResponse(participant, "Participant added"),
-    );
+    res.status(201).json(successResponse(participant, "Participant added"));
   },
 );
 
@@ -226,187 +162,128 @@ export const uploadAttachmentsHandler = asyncHandler(
       validatedData.attachments,
     );
 
-    res.status(201).json(
-      successResponse(result, "Attachments uploaded"),
-    );
+    res.status(201).json(successResponse(result, "Attachments uploaded"));
   },
 );
 
-  export const forwardMessageHandler =  asyncHandler(
+export const forwardMessageHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await forwardMessage(
+      req.user!.id,
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
+      req.body.messageId,
 
-      const result =
-        await forwardMessage(
+      req.body.targetConversationId,
+    );
 
-          req.user!.id,
+    res.json(successResponse(result));
+  },
+);
 
-          req.body.messageId,
+export const reactToMessageHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await reactToMessage(
+      req.user!.id,
 
-          req.body.targetConversationId
-        );
+      req.params.messageId as string,
 
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
+      req.body.emoji,
+    );
 
-export const reactToMessageHandler =  asyncHandler(
+    res.json(successResponse(result));
+  },
+);
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
+export const editMessageHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await editMessage(
+      req.user!.id,
 
-      const result =
-        await reactToMessage(
+      req.params.messageId as string,
 
-          req.user!.id,
+      req.body.content,
+    );
 
-          req.params.messageId as string,
+    res.json(successResponse(result));
+  },
+);
 
-          req.body.emoji
-        );
+export const deleteMessageHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await deleteMessage(
+      req.user!.id,
 
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
+      req.params.messageId as string,
+    );
 
-export const editMessageHandler =  asyncHandler(
+    res.json(successResponse(result));
+  },
+);
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
+export const searchMessagesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await searchMessages(
+      req.user!.id,
 
-      const result =
-        await editMessage(
+      req.params.conversationId as string,
 
-          req.user!.id,
+      req.query.q as string,
+    );
 
-          req.params.messageId as string,
+    res.json(successResponse(result));
+  },
+);
 
-          req.body.content
-        );
+export const togglePinConversationHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await togglePinConversation(
+      req.user!.id,
 
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
+      req.params.conversationId as string,
+    );
 
-export const deleteMessageHandler =  asyncHandler(
+    res.json(successResponse(result));
+  },
+);
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
+export const toggleMuteConversationHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await toggleMuteConversation(
+      req.user!.id,
 
-      const result =
-        await deleteMessage(
+      req.params.conversationId as string,
 
-          req.user!.id,
+      muteConversationSchema.parse(req.body).muted,
+    );
 
-          req.params.messageId as string
-        );
+    res.json(successResponse(result));
+  },
+);
 
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
+export const toggleArchiveConversationHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await toggleArchiveConversation(
+      req.user!.id,
 
-export const searchMessagesHandler =  asyncHandler(
+      req.params.conversationId as string,
+    );
 
-    async (
-      req: Request,
-      res: Response
-    ) => {
+    res.json(successResponse(result));
+  },
+);
 
-      const result =
-        await searchMessages(
+export const deleteConversationHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const result = await deleteConversation(req.user.id, req.params.id);
 
-          req.user!.id,
+    res.json(successResponse(result, "Conversation deleted"));
+  },
+);
 
-          req.params.conversationId as string,
+export const getArchivedConversationsHandler = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const conversations = await getArchivedConversations(req.user.id);
 
-          req.query.q as string
-        );
-
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
-
-export const togglePinConversationHandler =  asyncHandler(
-
-    async (
-      req: Request,
-      res: Response
-    ) => {
-
-      const result =
-        await togglePinConversation(
-
-          req.user!.id,
-
-          req.params.conversationId as string
-        );
-
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
-
-export const toggleMuteConversationHandler =  asyncHandler(
-
-    async (
-      req: Request,
-      res: Response
-    ) => {
-
-      const result =
-        await toggleMuteConversation(
-
-          req.user!.id,
-
-          req.params.conversationId as string,
-
-          muteConversationSchema.parse(req.body).muted
-        );
-
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
-
-export const toggleArchiveConversationHandler =  asyncHandler(
-
-    async (
-      req: Request,
-      res: Response
-    ) => {
-
-      const result =
-        await toggleArchiveConversation(
-
-          req.user!.id,
-
-          req.params.conversationId as string
-        );
-
-      res.json(
-        successResponse(result)
-      );
-    }
-  );
-
+    res.json(successResponse(conversations));
+  },
+);

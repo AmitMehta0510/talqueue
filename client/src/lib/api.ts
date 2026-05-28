@@ -10,7 +10,7 @@ export type RoleName = "STUDENT" | "PROFESSOR" | "PROFESSIONAL" | "RECRUITER";
 
 export type User = {
   id: string;
-  email: string;
+  email?: string;
   username: string;
   status?: string;
   availabilityStatus?: string;
@@ -521,7 +521,19 @@ export type Company = {
   rating?: number | null;
   totalRatings?: number;
   recommendationScore?: number;
-  jobs?: Array<Pick<Job, "id" | "title" | "slug" | "location" | "type" | "workMode" | "experienceLevel" | "createdAt">>;
+  jobs?: Array<
+    Pick<
+      Job,
+      | "id"
+      | "title"
+      | "slug"
+      | "location"
+      | "type"
+      | "workMode"
+      | "experienceLevel"
+      | "createdAt"
+    >
+  >;
   experiences?: Experience[];
   _count?: {
     jobs?: number;
@@ -732,6 +744,7 @@ export type ConversationParticipant = {
   pinned?: boolean;
   muted?: boolean;
   archived?: boolean;
+  deletedAt?: string | null;
   unreadCount?: number;
   lastDeliveredAt?: string | null;
   lastReadAt?: string | null;
@@ -1022,7 +1035,9 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 
 type EndpointOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
 
-const toQuery = (params: Record<string, string | number | boolean | undefined>) => {
+const toQuery = (
+  params: Record<string, string | number | boolean | undefined>,
+) => {
   const search = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
@@ -1048,7 +1063,10 @@ export class ApiError extends Error {
   }
 }
 
-const createRequestSignal = (signal?: AbortSignal | null, timeoutMs = 15000) => {
+const createRequestSignal = (
+  signal?: AbortSignal | null,
+  timeoutMs = 15000,
+) => {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
@@ -1114,7 +1132,8 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 
 export const api = {
   baseUrl: API_URL,
-  health: (options?: EndpointOptions) => request<{ routes?: Record<string, string> }>("", options),
+  health: (options?: EndpointOptions) =>
+    request<{ routes?: Record<string, string> }>("", options),
   login: (body: { email: string; password: string }) =>
     request<AuthPayload>("/auth/login", { method: "POST", body }),
   register: (body: {
@@ -1125,9 +1144,13 @@ export const api = {
     role: RoleName;
   }) => request<AuthPayload>("/auth/register", { method: "POST", body }),
   me: (options?: EndpointOptions) => request<User>("/auth/me", options),
-  logout: () => request<{ loggedOut: boolean }>("/auth/logout", { method: "POST" }),
+  logout: () =>
+    request<{ loggedOut: boolean }>("/auth/logout", { method: "POST" }),
   myProfile: (options?: EndpointOptions) => request<User>("/users/me", options),
-  myFullProfile: (options?: EndpointOptions) => request<User>("/users/me/full", options),
+  myFullProfile: (options?: EndpointOptions) =>
+    request<User>("/users/me/full", options),
+  userProfile: (userId: string, options?: EndpointOptions) =>
+    request<User>(`/users/${userId}`, options),
   mySkills: (limit = 20, options?: CursorOptions) => {
     const { cursor, ...requestOptions } = options || {};
     return request<SkillsPage>(
@@ -1191,11 +1214,17 @@ export const api = {
     endYear?: number;
     current?: boolean;
   }) => request<Education>("/users/me/educations", { method: "POST", body }),
-  addSkill: (body: { skillId: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" }) =>
-    request<UserSkill>("/users/me/skills", { method: "POST", body }),
+  addSkill: (body: {
+    skillId: string;
+    level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
+  }) => request<UserSkill>("/users/me/skills", { method: "POST", body }),
   searchSkills: (q: string, options?: EndpointOptions) =>
-    request<Skill[]>(`/users/skills/search${toQuery({ q, limit: 12 })}`, options),
-  searchColleges: (q: string) => request<College[]>(`/colleges/search${toQuery({ q })}`),
+    request<Skill[]>(
+      `/users/skills/search${toQuery({ q, limit: 12 })}`,
+      options,
+    ),
+  searchColleges: (q: string) =>
+    request<College[]>(`/colleges/search${toQuery({ q })}`),
   colleges: (limit = 50, options?: CursorOptions) => {
     const { cursor, ...requestOptions } = options || {};
     return request<CollegePage>(
@@ -1227,22 +1256,26 @@ export const api = {
     request<Company>(`/companies/${slug}`, options),
   createCompany: (body: CompanyMutationPayload) =>
     request<Company>("/companies", { method: "POST", body }),
-  companyEmployees: (companyId: string, page = 1, limit = 20, options?: EndpointOptions) =>
+  companyEmployees: (
+    companyId: string,
+    page = 1,
+    limit = 20,
+    options?: EndpointOptions,
+  ) =>
     request<CompanyEmployeesPage>(
       `/companies/${companyId}/employees${toQuery({ page, limit })}`,
       options,
     ),
-  suggestedCompanies: (options?: EndpointOptions) =>
-    request<Company[]>("/discovery/suggested-companies", options),
   createCommunity: (body: CommunityMutationPayload) =>
     request<Community>("/communities", { method: "POST", body }),
   community: (slug: string, options?: EndpointOptions) =>
     request<Community>(`/communities/${slug}`, options),
   archiveCommunity: (communityId: string) =>
-    request<{ success: boolean }>(`/communities/${communityId}/archive`, { method: "PATCH" }),
-  suggestedCommunities: (options?: EndpointOptions) =>
-    request<Community[]>("/discovery/suggested-communities", options),
-  conversations: (options?: EndpointOptions) => request<Conversation[]>("/chat", options),
+    request<{ success: boolean }>(`/communities/${communityId}/archive`, {
+      method: "PATCH",
+    }),
+  conversations: (options?: EndpointOptions) =>
+    request<Conversation[]>("/chat", options),
   createDirectConversation: (userId: string) =>
     request<Conversation>("/chat/direct", { method: "POST", body: { userId } }),
   createGroupConversation: (body: CreateGroupConversationPayload) =>
@@ -1255,26 +1288,41 @@ export const api = {
     );
   },
   sendMessage: (conversationId: string, body: SendMessagePayload) =>
-    request<ChatMessage>(`/chat/${conversationId}/messages`, { method: "POST", body }),
-  uploadChatAttachments: (conversationId: string, attachments: ChatAttachment[]) =>
-    request<{ attachments: ChatAttachment[] }>(`/chat/${conversationId}/attachments`, {
+    request<ChatMessage>(`/chat/${conversationId}/messages`, {
       method: "POST",
-      body: { attachments },
+      body,
     }),
-  markConversationRead: (conversationId: string) =>
-    request<{ success: boolean; conversationId: string; userId: string; readAt: string; messageIds: string[] }>(
-      `/chat/${conversationId}/read`,
-      { method: "PATCH" },
+  uploadChatAttachments: (
+    conversationId: string,
+    attachments: ChatAttachment[],
+  ) =>
+    request<{ attachments: ChatAttachment[] }>(
+      `/chat/${conversationId}/attachments`,
+      {
+        method: "POST",
+        body: { attachments },
+      },
     ),
+  markConversationRead: (conversationId: string) =>
+    request<{
+      success: boolean;
+      conversationId: string;
+      userId: string;
+      readAt: string;
+      messageIds: string[];
+    }>(`/chat/${conversationId}/read`, { method: "PATCH" }),
   addConversationParticipant: (conversationId: string, userId: string) =>
     request<ConversationParticipant>(`/chat/${conversationId}/participants`, {
       method: "POST",
       body: { userId },
     }),
   removeConversationParticipant: (conversationId: string, userId: string) =>
-    request<{ success: boolean }>(`/chat/${conversationId}/participants/${userId}`, {
-      method: "DELETE",
-    }),
+    request<{ success: boolean }>(
+      `/chat/${conversationId}/participants/${userId}`,
+      {
+        method: "DELETE",
+      },
+    ),
   forwardMessage: (messageId: string, targetConversationId: string) =>
     request<ChatMessage>("/chat/message/forward", {
       method: "POST",
@@ -1292,32 +1340,53 @@ export const api = {
     }),
   deleteMessage: (messageId: string) =>
     request<ChatMessage>(`/chat/message/${messageId}`, { method: "DELETE" }),
-  searchMessages: (conversationId: string, q: string, options?: EndpointOptions) =>
+  searchMessages: (
+    conversationId: string,
+    q: string,
+    options?: EndpointOptions,
+  ) =>
     request<ChatMessage[]>(
       `/chat/conversation/${conversationId}/search${toQuery({ q })}`,
       options,
     ),
   togglePinConversation: (conversationId: string) =>
-    request<ConversationParticipant>(`/chat/conversation/${conversationId}/pin`, {
-      method: "PATCH",
-    }),
+    request<ConversationParticipant>(
+      `/chat/conversation/${conversationId}/pin`,
+      {
+        method: "PATCH",
+      },
+    ),
   toggleMuteConversation: (conversationId: string, muted?: boolean) =>
-    request<ConversationParticipant>(`/chat/conversation/${conversationId}/mute`, {
-      method: "PATCH",
-      body: { muted },
-    }),
+    request<ConversationParticipant>(
+      `/chat/conversation/${conversationId}/mute`,
+      {
+        method: "PATCH",
+        body: { muted },
+      },
+    ),
   toggleArchiveConversation: (conversationId: string) =>
-    request<ConversationParticipant>(`/chat/conversation/${conversationId}/archive`, {
-      method: "PATCH",
+    request<ConversationParticipant>(
+      `/chat/conversation/${conversationId}/archive`,
+      {
+        method: "PATCH",
+      },
+    ),
+  deleteConversation: (conversationId: string) =>
+    request<ConversationParticipant>(`/chat/${conversationId}`, {
+      method: "DELETE",
     }),
+  getArchivedConversations: (options?: EndpointOptions) =>
+    request<Conversation[]>(`/chat/archived`, options),
   publicPosts: (limit = 12, options?: EndpointOptions) =>
     request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
   personalizedFeed: (limit = 12, options?: EndpointOptions) =>
     request<FeedItem[]>(`/feed${toQuery({ limit })}`, options),
   createPost: (body: { content: string; type: string; tags?: string[] }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
-  likePost: (id: string) => request<{ liked?: boolean }>(`/posts/${id}/like`, { method: "POST" }),
-  savePost: (id: string) => request<{ saved?: boolean }>(`/posts/${id}/save`, { method: "POST" }),
+  likePost: (id: string) =>
+    request<{ liked?: boolean }>(`/posts/${id}/like`, { method: "POST" }),
+  savePost: (id: string) =>
+    request<{ saved?: boolean }>(`/posts/${id}/save`, { method: "POST" }),
   projects: (limit = 12, options?: EndpointOptions) =>
     request<Project[]>(`/projects${toQuery({ limit })}`, options),
   project: (idOrSlug: string, options?: EndpointOptions) =>
@@ -1335,10 +1404,16 @@ export const api = {
     lookingFor?: string;
   }) => request<Project>("/projects", { method: "POST", body }),
   joinProject: (id: string, message?: string) =>
-    request<unknown>(`/projects/${id}/join`, { method: "POST", body: { message } }),
+    request<unknown>(`/projects/${id}/join`, {
+      method: "POST",
+      body: { message },
+    }),
   projectJoinRequests: (id: string, options?: EndpointOptions) =>
     request<ProjectJoinRequest[]>(`/projects/${id}/requests`, options),
-  reviewProjectJoinRequest: (requestId: string, status: "ACCEPTED" | "REJECTED") =>
+  reviewProjectJoinRequest: (
+    requestId: string,
+    status: "ACCEPTED" | "REJECTED",
+  ) =>
     request<ProjectJoinRequest>(`/projects/requests/${requestId}/review`, {
       method: "PATCH",
       body: { status },
@@ -1358,11 +1433,16 @@ export const api = {
       body: { status },
     }),
   leaveProject: (projectId: string) =>
-    request<{ success: boolean }>(`/projects/${projectId}/leave`, { method: "DELETE" }),
-  removeProjectMember: (projectId: string, memberId: string) =>
-    request<{ success: boolean }>(`/projects/${projectId}/members/${memberId}`, {
+    request<{ success: boolean }>(`/projects/${projectId}/leave`, {
       method: "DELETE",
     }),
+  removeProjectMember: (projectId: string, memberId: string) =>
+    request<{ success: boolean }>(
+      `/projects/${projectId}/members/${memberId}`,
+      {
+        method: "DELETE",
+      },
+    ),
   receivedProjectInvites: (options?: EndpointOptions) =>
     request<ProjectInvite[]>("/projects/invites/received", options),
   sentProjectInvites: (projectId: string, options?: EndpointOptions) =>
@@ -1382,8 +1462,11 @@ export const api = {
   myTeams: (options?: EndpointOptions) => request<Team[]>("/teams/me", options),
   team: (teamId: string, options?: EndpointOptions) =>
     request<Team>(`/teams/${teamId}`, options),
-  createTeam: (body: { name: string; description?: string; members?: string[] }) =>
-    request<Team>("/teams", { method: "POST", body }),
+  createTeam: (body: {
+    name: string;
+    description?: string;
+    members?: string[];
+  }) => request<Team>("/teams", { method: "POST", body }),
   inviteTeamMember: (teamId: string, invitedUserId: string, message?: string) =>
     request<TeamInvite>(`/teams/${teamId}/invite`, {
       method: "POST",
@@ -1395,19 +1478,25 @@ export const api = {
       body: { status },
     }),
   withdrawTeamInvite: (inviteId: string) =>
-    request<TeamInvite>(`/teams/invites/${inviteId}/withdraw`, { method: "PATCH" }),
+    request<TeamInvite>(`/teams/invites/${inviteId}/withdraw`, {
+      method: "PATCH",
+    }),
   removeTeamMember: (teamId: string, memberUserId: string) =>
     request<{ success: boolean }>(`/teams/${teamId}/members/${memberUserId}`, {
       method: "DELETE",
     }),
   leaveTeam: (teamId: string) =>
-    request<{ success: boolean }>(`/teams/${teamId}/leave`, { method: "DELETE" }),
+    request<{ success: boolean }>(`/teams/${teamId}/leave`, {
+      method: "DELETE",
+    }),
   deleteTeam: (teamId: string) =>
     request<Team>(`/teams/${teamId}/delete`, { method: "DELETE" }),
   followUser: (userId: string) =>
     request<SocialFollow>(`/social/follow/${userId}`, { method: "POST" }),
   unfollowUser: (userId: string) =>
-    request<{ success: boolean }>(`/social/follow/${userId}`, { method: "DELETE" }),
+    request<{ success: boolean }>(`/social/follow/${userId}`, {
+      method: "DELETE",
+    }),
   connectUser: (userId: string) =>
     request<SocialConnection>(`/social/connect/${userId}`, { method: "POST" }),
   reviewConnection: (connectionId: string, status: "ACCEPTED" | "REJECTED") =>
@@ -1450,7 +1539,8 @@ export const api = {
       requestOptions,
     );
   },
-  hackathons: (options?: EndpointOptions) => request<Hackathon[]>("/hackathons", options),
+  hackathons: (options?: EndpointOptions) =>
+    request<Hackathon[]>("/hackathons", options),
   hackathon: (id: string, options?: EndpointOptions) =>
     request<Hackathon>(`/hackathons/${id}`, options),
   createHackathon: (body: HackathonMutationPayload) =>
@@ -1460,7 +1550,10 @@ export const api = {
       method: "POST",
       body: { teamId },
     }),
-  submitHackathonProject: (hackathonId: string, body: HackathonSubmissionPayload) =>
+  submitHackathonProject: (
+    hackathonId: string,
+    body: HackathonSubmissionPayload,
+  ) =>
     request<HackathonSubmission>(`/hackathons/${hackathonId}/submit`, {
       method: "POST",
       body,
@@ -1469,10 +1562,13 @@ export const api = {
     registrationId: string,
     status: "APPROVED" | "REJECTED",
   ) =>
-    request<HackathonRegistration>(`/hackathons/registrations/${registrationId}/review`, {
-      method: "PATCH",
-      body: { status },
-    }),
+    request<HackathonRegistration>(
+      `/hackathons/registrations/${registrationId}/review`,
+      {
+        method: "PATCH",
+        body: { status },
+      },
+    ),
   assignHackathonJudge: (hackathonId: string, userId: string) =>
     request<HackathonJudge>(`/hackathons/${hackathonId}/judges`, {
       method: "POST",
@@ -1492,9 +1588,14 @@ export const api = {
       { method: "POST" },
     ),
   hackathonLeaderboard: (hackathonId: string, options?: EndpointOptions) =>
-    request<HackathonLeaderboard>(`/hackathons/${hackathonId}/leaderboard`, options),
+    request<HackathonLeaderboard>(
+      `/hackathons/${hackathonId}/leaderboard`,
+      options,
+    ),
   archiveHackathon: (hackathonId: string) =>
-    request<Hackathon>(`/hackathons/${hackathonId}/archive`, { method: "PATCH" }),
+    request<Hackathon>(`/hackathons/${hackathonId}/archive`, {
+      method: "PATCH",
+    }),
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
   jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
@@ -1510,9 +1611,16 @@ export const api = {
     position?: number;
     clicked?: boolean;
     hidden?: boolean;
-  }) => request<{ success: boolean }>("/feed/impressions", { method: "POST", body }),
+  }) =>
+    request<{ success: boolean }>("/feed/impressions", {
+      method: "POST",
+      body,
+    }),
   notifications: (page = 1, limit = 20, options?: EndpointOptions) =>
-    request<NotificationsPage>(`/notifications${toQuery({ page, limit })}`, options),
+    request<NotificationsPage>(
+      `/notifications${toQuery({ page, limit })}`,
+      options,
+    ),
   markNotificationRead: (id: string) =>
     request<null>(`/notifications/${id}/read`, { method: "PATCH" }),
   markAllNotificationsRead: () =>
@@ -1521,4 +1629,83 @@ export const api = {
     request<null>(`/notifications/${id}/archive`, { method: "PATCH" }),
   deleteNotification: (id: string) =>
     request<null>(`/notifications/${id}`, { method: "DELETE" }),
+
+  // Discovery & Recommendations
+  discoveryFeed: (options?: EndpointOptions) =>
+    request<FeedItem[]>("/discovery/feed", options),
+  suggestedEngineers: (limit = 20, options?: EndpointOptions) =>
+    request<User[]>(
+      `/discovery/suggested/engineers${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedMentors: (limit = 20, options?: EndpointOptions) =>
+    request<User[]>(
+      `/discovery/suggested/mentors${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedRecruiters: (limit = 20, options?: EndpointOptions) =>
+    request<User[]>(
+      `/discovery/suggested/recruiters${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedCollaborators: (limit = 20, options?: EndpointOptions) =>
+    request<User[]>(
+      `/discovery/suggested/collaborators${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedTeammates: (limit = 20, options?: EndpointOptions) =>
+    request<User[]>(
+      `/discovery/suggested/teammates${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedProjects: (limit = 20, options?: EndpointOptions) =>
+    request<Project[]>(
+      `/discovery/suggested/projects${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedJobs: (limit = 20, options?: EndpointOptions) =>
+    request<Job[]>(`/discovery/suggested/jobs${toQuery({ limit })}`, options),
+  suggestedHackathons: (limit = 20, options?: EndpointOptions) =>
+    request<Hackathon[]>(
+      `/discovery/suggested/hackathons${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedCompanies: (limit = 20, options?: EndpointOptions) =>
+    request<Company[]>(
+      `/discovery/suggested/companies${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedPosts: (limit = 20, options?: EndpointOptions) =>
+    request<FeedPost[]>(
+      `/discovery/suggested/posts${toQuery({ limit })}`,
+      options,
+    ),
+  suggestedCommunities: (limit = 20, options?: EndpointOptions) =>
+    request<Community[]>(
+      `/discovery/suggested/communities${toQuery({ limit })}`,
+      options,
+    ),
+  trendingCommunities: (options?: EndpointOptions) =>
+    request<Community[]>("/communities/trending", options),
+  communityBySlug: (
+    slug: string,
+    page = 1,
+    limit = 10,
+    options?: EndpointOptions,
+  ) =>
+    request<Community>(
+      `/communities/${slug}${toQuery({ page, limit })}`,
+      options,
+    ),
+  trackRecommendationImpression: (body: {
+    entityId: string;
+    entityType: string;
+    position?: number;
+    clicked?: boolean;
+    hidden?: boolean;
+  }) =>
+    request<{ success: boolean }>("/discovery/impression", {
+      method: "POST",
+      body,
+    }),
 };

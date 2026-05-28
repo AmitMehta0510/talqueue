@@ -30,9 +30,11 @@ import {
   useChatMessageActionMutation,
   useConversationMessagesQuery,
   useConversationsQuery,
+  useArchivedConversationsQuery,
   useConversationSettingsMutation,
   useCreateDirectConversationMutation,
   useCreateGroupConversationMutation,
+  useDeleteConversationMutation,
   useMarkConversationReadMutation,
   usePlatformSearchMutation,
   useSearchMessagesQuery,
@@ -143,10 +145,12 @@ function ConversationRow({
   conversation,
   currentUserId,
   active,
+  isArchived,
 }: {
   conversation: Conversation;
   currentUserId?: string;
   active?: boolean;
+  isArchived?: boolean;
 }) {
   const participant = participantForUser(conversation, currentUserId);
   const unread = conversation.unreadCount || participant?.unreadCount || 0;
@@ -169,6 +173,7 @@ function ConversationRow({
             </h3>
             {participant?.pinned && <Pin className="shrink-0 text-emerald-700" size={13} />}
             {participant?.muted && <VolumeX className="shrink-0 text-slate-400" size={13} />}
+            {isArchived && <Archive className="shrink-0 text-slate-400" size={13} />}
           </div>
           <p className="mt-1 truncate text-xs text-slate-500">
             {conversationSubtitle(conversation, currentUserId)}
@@ -557,13 +562,25 @@ function ConversationSettings({
   currentUserId?: string;
 }) {
   const settings = useConversationSettingsMutation(conversation.id);
+  const deleteConversation = useDeleteConversationMutation();
   const participant = participantForUser(conversation, currentUserId);
   const search = usePlatformSearchMutation();
   const [query, setQuery] = useState("");
+  const navigate = useNavigate();
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     search.mutate(query);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm("Delete this conversation? It will be removed from your list. You can still view archived conversations.")) {
+      deleteConversation.mutate(conversation.id, {
+        onSuccess: () => {
+          navigate("/chat");
+        },
+      });
+    }
   };
 
   return (
@@ -598,7 +615,16 @@ function ConversationSettings({
             }}
           >
             <Archive size={16} />
-            Archive
+            {participant?.archived ? "Unarchive" : "Archive"}
+          </button>
+          <button
+            className="btn-secondary justify-start text-red-600 hover:bg-red-50"
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteConversation.isPending}
+          >
+            <Trash2 size={16} />
+            {deleteConversation.isPending ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
@@ -924,11 +950,15 @@ export function ChatPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const conversationsQuery = useConversationsQuery();
   const [filter, setFilter] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const conversationsQuery = useConversationsQuery();
+  const archivedConversationsQuery = useArchivedConversationsQuery(showArchived);
   const chatSocket = useChatSocket(conversationId);
 
-  const conversations = conversationsQuery.data || [];
+  const conversations = showArchived
+    ? (archivedConversationsQuery.data || [])
+    : (conversationsQuery.data || []);
   const activeConversation = conversations.find((conversation) => conversation.id === conversationId);
   const filteredConversations = useMemo(() => {
     const normalized = filter.trim().toLowerCase();
@@ -973,7 +1003,7 @@ export function ChatPage() {
             />
           </div>
           <div className="mt-4 space-y-2">
-            {conversationsQuery.isLoading ? (
+            {showArchived ? archivedConversationsQuery.isLoading : conversationsQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 className="animate-spin" size={16} />
                 Loading conversations
@@ -985,15 +1015,38 @@ export function ChatPage() {
                   conversation={conversation}
                   currentUserId={user.id}
                   key={conversation.id}
+                  isArchived={showArchived}
                 />
               ))
             ) : (
               <div className="rounded-md border border-slate-100 p-4 text-sm text-slate-500">
-                No conversations yet.
+                {showArchived ? "No archived conversations." : "No conversations yet."}
               </div>
             )}
           </div>
         </div>
+
+        {!showArchived && (
+          <div className="panel px-4 py-3">
+            <button
+              onClick={() => setShowArchived(true)}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              View Archived
+            </button>
+          </div>
+        )}
+
+        {showArchived && (
+          <div className="panel px-4 py-3">
+            <button
+              onClick={() => setShowArchived(false)}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              View Active
+            </button>
+          </div>
+        )}
       </aside>
 
       {activeConversation ? (

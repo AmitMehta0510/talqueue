@@ -9,16 +9,20 @@ export const queryKeys = {
     skills: ["users", "me", "skills"] as const,
     experiences: ["users", "me", "experiences"] as const,
     educations: ["users", "me", "educations"] as const,
-    skillSearch: (query: string) => ["users", "skills", "search", query] as const,
+    publicProfile: (userId: string) => ["users", "profile", userId] as const,
+    skillSearch: (query: string) =>
+      ["users", "skills", "search", query] as const,
   },
   colleges: {
     all: ["colleges"] as const,
     list: (limit: number) => ["colleges", "list", limit] as const,
-    departments: (collegeId: string) => ["colleges", collegeId, "departments"] as const,
+    departments: (collegeId: string) =>
+      ["colleges", collegeId, "departments"] as const,
   },
   companies: {
     all: ["companies"] as const,
-    list: (params: Record<string, unknown>) => ["companies", "list", params] as const,
+    list: (params: Record<string, unknown>) =>
+      ["companies", "list", params] as const,
     detail: (slug: string) => ["companies", "detail", slug] as const,
     employees: (companyId: string, page: number, limit: number) =>
       ["companies", companyId, "employees", page, limit] as const,
@@ -32,7 +36,9 @@ export const queryKeys = {
   chat: {
     all: ["chat"] as const,
     conversations: () => ["chat", "conversations"] as const,
-    messages: (conversationId: string) => ["chat", "messages", conversationId] as const,
+    archived: () => ["chat", "archived"] as const,
+    messages: (conversationId: string) =>
+      ["chat", "messages", conversationId] as const,
     search: (conversationId: string, query: string) =>
       ["chat", "messages", conversationId, "search", query] as const,
   },
@@ -44,8 +50,10 @@ export const queryKeys = {
     all: ["projects"] as const,
     list: (limit: number) => ["projects", "list", limit] as const,
     detail: (idOrSlug: string) => ["projects", "detail", idOrSlug] as const,
-    requests: (projectId: string) => ["projects", projectId, "requests"] as const,
-    sentInvites: (projectId: string) => ["projects", projectId, "sent-invites"] as const,
+    requests: (projectId: string) =>
+      ["projects", projectId, "requests"] as const,
+    sentInvites: (projectId: string) =>
+      ["projects", projectId, "sent-invites"] as const,
     receivedInvites: () => ["projects", "received-invites"] as const,
   },
   teams: {
@@ -55,11 +63,15 @@ export const queryKeys = {
   },
   social: {
     all: ["social"] as const,
-    followers: (userId: string, limit: number) => ["social", userId, "followers", limit] as const,
-    following: (userId: string, limit: number) => ["social", userId, "following", limit] as const,
-    connections: (userId: string, limit: number) => ["social", userId, "connections", limit] as const,
+    followers: (userId: string, limit: number) =>
+      ["social", userId, "followers", limit] as const,
+    following: (userId: string, limit: number) =>
+      ["social", userId, "following", limit] as const,
+    connections: (userId: string, limit: number) =>
+      ["social", userId, "connections", limit] as const,
     suggested: (limit: number) => ["social", "suggested", limit] as const,
-    mutual: (userId: string, limit: number) => ["social", userId, "mutual", limit] as const,
+    mutual: (userId: string, limit: number) =>
+      ["social", userId, "mutual", limit] as const,
   },
   hackathons: {
     all: ["hackathons"] as const,
@@ -77,6 +89,38 @@ export const queryKeys = {
   },
   notifications: {
     all: ["notifications"] as const,
-    list: (page: number, limit: number) => ["notifications", "list", page, limit] as const,
+    list: (page: number, limit: number) =>
+      ["notifications", "list", page, limit] as const,
+  },
+  discovery: {
+    all: ["discovery"] as const,
+    feed: () => ["discovery", "feed"] as const,
+    suggested: {
+      engineers: (limit: number) =>
+        ["discovery", "suggested", "engineers", limit] as const,
+      mentors: (limit: number) =>
+        ["discovery", "suggested", "mentors", limit] as const,
+      recruiters: (limit: number) =>
+        ["discovery", "suggested", "recruiters", limit] as const,
+      collaborators: (limit: number) =>
+        ["discovery", "suggested", "collaborators", limit] as const,
+      teammates: (limit: number) =>
+        ["discovery", "suggested", "teammates", limit] as const,
+      projects: (limit: number) =>
+        ["discovery", "suggested", "projects", limit] as const,
+      jobs: (limit: number) =>
+        ["discovery", "suggested", "jobs", limit] as const,
+      hackathons: (limit: number) =>
+        ["discovery", "suggested", "hackathons", limit] as const,
+      companies: (limit: number) =>
+        ["discovery", "suggested", "companies", limit] as const,
+      posts: (limit: number) =>
+        ["discovery", "suggested", "posts", limit] as const,
+      communities: (limit: number) =>
+        ["discovery", "suggested", "communities", limit] as const,
+    },
+    trending: {
+      communities: () => ["discovery", "trending", "communities"] as const,
+    },
   },
 };

@@ -28,6 +28,7 @@ const socketUrl = api.baseUrl.replace(/\/api\/v1\/?$/, "");
 const upsertMessage = (
   data: InfiniteMessagesCache | undefined,
   message: ChatMessage,
+  currentUserId?: string,
 ) => {
   if (!data?.pages?.length) return data;
 
@@ -39,12 +40,27 @@ const upsertMessage = (
         return message;
       }
 
+      if (
+        currentUserId &&
+        item.id.startsWith("pending-") &&
+        item.senderId === currentUserId &&
+        message.senderId === currentUserId &&
+        item.content === message.content &&
+        item.replyToMessageId === message.replyToMessageId
+      ) {
+        exists = true;
+        return message;
+      }
+
       return item;
     });
 
     return {
       ...page,
-      messages,
+      messages: messages.filter(
+        (item, index, allMessages) =>
+          allMessages.findIndex((candidate) => candidate.id === item.id) === index,
+      ),
     };
   });
 
@@ -104,7 +120,7 @@ export function useChatSocket(activeConversationId?: string) {
     socket.on("message_created", (payload: MessageCreatedPayload) => {
       queryClient.setQueryData<InfiniteMessagesCache>(
         queryKeys.chat.messages(payload.conversationId),
-        (data) => upsertMessage(data, payload.message),
+        (data) => upsertMessage(data, payload.message, user.id),
       );
 
       queryClient.setQueryData<Conversation[]>(

@@ -1728,6 +1728,7 @@ model ConversationParticipant {
   muted Boolean @default(false)
 
   archived    Boolean @default(false)
+  deletedAt   DateTime?
   unreadCount Int     @default(0)
 
   lastDeliveredAt DateTime?

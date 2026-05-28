@@ -1,11 +1,13 @@
 import { FormEvent, useState } from "react";
 import { Loader2, Rocket, Search, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { Avatar, EmptyState } from "../components/ui";
 import { useJoinProjectMutation, usePlatformSearchMutation } from "../hooks/usePlatformQueries";
 import { userHeadline, userName } from "../lib/format";
 
 export function DiscoverPage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const search = usePlatformSearchMutation();
   const joinProject = useJoinProjectMutation();
@@ -43,7 +45,19 @@ export function DiscoverPage() {
             <h3 className="text-sm font-semibold text-slate-600">Engineers</h3>
             {(searchResults.users || []).length ? (
               (searchResults.users || []).map((foundUser) => (
-                <article className="panel p-5" key={foundUser.id}>
+                <article
+                  className="panel cursor-pointer p-5 transition hover:border-emerald-300"
+                  key={foundUser.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/users/${foundUser.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/users/${foundUser.id}`);
+                    }
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <Avatar user={foundUser} />
                     <div className="min-w-0">

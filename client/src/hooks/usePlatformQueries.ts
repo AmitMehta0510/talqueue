@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   api,
   ChatMessage,
@@ -62,7 +67,10 @@ const upsertMessageInCache = (
   let found = false;
   const pages = data.pages.map((page, pageIndex) => {
     const messages = page.messages.map((item) => {
-      if (item.id === message.id || item.id.startsWith(`pending-${message.id}`)) {
+      if (
+        item.id === message.id ||
+        item.id.startsWith(`pending-${message.id}`)
+      ) {
         found = true;
         return message;
       }
@@ -99,7 +107,9 @@ const updateMessageInCache = (
     ...data,
     pages: data.pages.map((page) => ({
       ...page,
-      messages: page.messages.map((item) => (item.id === message.id ? message : item)),
+      messages: page.messages.map((item) =>
+        item.id === message.id ? message : item,
+      ),
     })),
   };
 };
@@ -169,6 +179,19 @@ export const useConversationsQuery = () => {
   });
 };
 
+export const useArchivedConversationsQuery = (enabled = false) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.chat.archived(),
+    queryFn: async ({ signal }) => {
+      const result = await api.getArchivedConversations({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && enabled),
+  });
+};
+
 export const useConversationMessagesQuery = (conversationId?: string) => {
   const { user } = useAuth();
 
@@ -194,7 +217,9 @@ export const useSearchMessagesQuery = (conversationId?: string, query = "") => {
   return useQuery({
     queryKey: queryKeys.chat.search(conversationId || "", trimmed),
     queryFn: async ({ signal }) => {
-      const result = await api.searchMessages(conversationId || "", trimmed, { signal });
+      const result = await api.searchMessages(conversationId || "", trimmed, {
+        signal,
+      });
       return result.data || [];
     },
     enabled: Boolean(conversationId && trimmed.length >= 2),
@@ -209,7 +234,9 @@ const invalidateChat = (
   queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
 
   if (conversationId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(conversationId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.chat.messages(conversationId),
+    });
   }
 };
 
@@ -270,7 +297,9 @@ export const useSendMessageMutation = (conversationId?: string) => {
     onMutate: async (payload) => {
       if (!conversationId || !user) return undefined;
 
-      await queryClient.cancelQueries({ queryKey: queryKeys.chat.messages(conversationId) });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.chat.messages(conversationId),
+      });
       const previous = queryClient.getQueryData<InfiniteMessagesCache>(
         queryKeys.chat.messages(conversationId),
       );
@@ -309,7 +338,11 @@ export const useSendMessageMutation = (conversationId?: string) => {
         (conversations) =>
           conversations?.map((conversation) =>
             conversation.id === conversationId
-              ? addConversationMessagePreview(conversation, optimisticMessage, user.id)
+              ? addConversationMessagePreview(
+                  conversation,
+                  optimisticMessage,
+                  user.id,
+                )
               : conversation,
           ),
       );
@@ -318,7 +351,10 @@ export const useSendMessageMutation = (conversationId?: string) => {
     },
     onError: (error, _payload, context) => {
       if (conversationId && context?.previous) {
-        queryClient.setQueryData(queryKeys.chat.messages(conversationId), context.previous);
+        queryClient.setQueryData(
+          queryKeys.chat.messages(conversationId),
+          context.previous,
+        );
       }
       showToast("error", getErrorMessage(error));
     },
@@ -334,16 +370,24 @@ export const useSendMessageMutation = (conversationId?: string) => {
             ...data,
             pages: data.pages.map((page) => ({
               ...page,
-              messages: page.messages.map((message) =>
-                message.id === context?.optimisticId ? result.data : message,
-              ),
+              messages: page.messages
+                .map((message) =>
+                  message.id === context?.optimisticId ? result.data : message,
+                )
+                .filter(
+                  (message, index, messages) =>
+                    messages.findIndex((item) => item.id === message.id) ===
+                    index,
+                ),
             })),
           };
         },
       );
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chat.conversations(),
+      });
     },
   });
 };
@@ -409,10 +453,16 @@ export const useChatMessageActionMutation = (conversationId?: string) => {
         | { action: "react"; messageId: string; emoji: string }
         | { action: "edit"; messageId: string; content: string }
         | { action: "delete"; messageId: string }
-        | { action: "forward"; messageId: string; targetConversationId: string },
+        | {
+            action: "forward";
+            messageId: string;
+            targetConversationId: string;
+          },
     ) => {
-      if (input.action === "react") return api.reactToMessage(input.messageId, input.emoji);
-      if (input.action === "edit") return api.editMessage(input.messageId, input.content);
+      if (input.action === "react")
+        return api.reactToMessage(input.messageId, input.emoji);
+      if (input.action === "edit")
+        return api.editMessage(input.messageId, input.content);
       if (input.action === "delete") return api.deleteMessage(input.messageId);
       return api.forwardMessage(input.messageId, input.targetConversationId);
     },
@@ -440,9 +490,13 @@ export const useChatMessageActionMutation = (conversationId?: string) => {
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => {
       if (conversationId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(conversationId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.chat.messages(conversationId),
+        });
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chat.conversations(),
+      });
     },
   });
 };
@@ -455,9 +509,12 @@ export const useConversationSettingsMutation = (conversationId?: string) => {
     mutationFn: (input) => {
       if (!conversationId) throw new Error("Conversation missing");
 
-      if (input.action === "pin") return api.togglePinConversation(conversationId);
-      if (input.action === "mute") return api.toggleMuteConversation(conversationId, input.muted);
-      if (input.action === "archive") return api.toggleArchiveConversation(conversationId);
+      if (input.action === "pin")
+        return api.togglePinConversation(conversationId);
+      if (input.action === "mute")
+        return api.toggleMuteConversation(conversationId, input.muted);
+      if (input.action === "archive")
+        return api.toggleArchiveConversation(conversationId);
       if (input.action === "add-participant") {
         return api.addConversationParticipant(conversationId, input.userId);
       }
@@ -492,6 +549,26 @@ export const useConversationSettingsMutation = (conversationId?: string) => {
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateChat(queryClient, conversationId),
+  });
+};
+
+export const useDeleteConversationMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (conversationId: string) => {
+      if (!conversationId) throw new Error("Conversation missing");
+      return api.deleteConversation(conversationId);
+    },
+    onSuccess: () => {
+      showToast("success", "Conversation deleted");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chat.conversations(),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.archived() });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
 
@@ -559,7 +636,9 @@ export const useCreateDepartmentMutation = (collegeId?: string) => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
       if (collegeId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.colleges.departments(collegeId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.colleges.departments(collegeId),
+        });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
     },
@@ -597,23 +676,29 @@ export const useCompanyQuery = (slug?: string) =>
     enabled: Boolean(slug),
   });
 
-export const useCompanyEmployeesQuery = (companyId?: string, page = 1, limit = 20) =>
+export const useCompanyEmployeesQuery = (
+  companyId?: string,
+  page = 1,
+  limit = 20,
+) =>
   useQuery({
     queryKey: queryKeys.companies.employees(companyId || "", page, limit),
     queryFn: async ({ signal }) => {
-      const result = await api.companyEmployees(companyId || "", page, limit, { signal });
+      const result = await api.companyEmployees(companyId || "", page, limit, {
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(companyId),
   });
 
-export const useSuggestedCompaniesQuery = () => {
+export const useSuggestedCompaniesQuery = (limit = 20) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: queryKeys.companies.suggested(),
+    queryKey: queryKeys.discovery.suggested.companies(limit),
     queryFn: async ({ signal }) => {
-      const result = await api.suggestedCompanies({ signal });
+      const result = await api.suggestedCompanies(limit, { signal });
       return result.data || [];
     },
     enabled: Boolean(user),
@@ -643,13 +728,13 @@ export const useCreateCompanyMutation = () => {
   });
 };
 
-export const useSuggestedCommunitiesQuery = () => {
+export const useSuggestedCommunitiesQuery = (limit = 20) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: queryKeys.communities.suggested(),
+    queryKey: queryKeys.discovery.suggested.communities(limit),
     queryFn: async ({ signal }) => {
-      const result = await api.suggestedCommunities({ signal });
+      const result = await api.suggestedCommunities(limit, { signal });
       return result.data || [];
     },
     enabled: Boolean(user),
@@ -675,7 +760,9 @@ const invalidateCommunity = (
   queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
 
   if (slug) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.communities.detail(slug) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.communities.detail(slug),
+    });
   }
 };
 
@@ -761,7 +848,11 @@ export const useCreateTeamMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: { name: string; description?: string; members?: string[] }) => {
+    mutationFn: (payload: {
+      name: string;
+      description?: string;
+      members?: string[];
+    }) => {
       if (!user) {
         throw new Error("Login required");
       }
@@ -808,10 +899,20 @@ export const useReviewTeamInviteMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ inviteId, status }: { inviteId: string; status: "ACCEPTED" | "REJECTED" }) =>
-      api.reviewTeamInvite(inviteId, status),
+    mutationFn: ({
+      inviteId,
+      status,
+    }: {
+      inviteId: string;
+      status: "ACCEPTED" | "REJECTED";
+    }) => api.reviewTeamInvite(inviteId, status),
     onSuccess: (_result, variables) => {
-      showToast("success", variables.status === "ACCEPTED" ? "Team invite accepted" : "Team invite rejected");
+      showToast(
+        "success",
+        variables.status === "ACCEPTED"
+          ? "Team invite accepted"
+          : "Team invite rejected",
+      );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateTeams(queryClient),
@@ -852,7 +953,9 @@ export const useTeamLifecycleMutation = (teamId?: string) => {
   return useMutation<unknown, Error, "leave" | "delete">({
     mutationFn: async (action) => {
       if (!teamId) throw new Error("Team missing");
-      return action === "leave" ? api.leaveTeam(teamId) : api.deleteTeam(teamId);
+      return action === "leave"
+        ? api.leaveTeam(teamId)
+        : api.deleteTeam(teamId);
     },
     onSuccess: (_result, action) => {
       showToast("success", action === "leave" ? "Left team" : "Team deleted");
@@ -891,7 +994,10 @@ export const useHackathonLeaderboardQuery = (id?: string, enabled = true) =>
     enabled: Boolean(id) && enabled,
   });
 
-export const useProjectJoinRequestsQuery = (projectId?: string, enabled = true) =>
+export const useProjectJoinRequestsQuery = (
+  projectId?: string,
+  enabled = true,
+) =>
   useQuery({
     queryKey: queryKeys.projects.requests(projectId || ""),
     queryFn: async ({ signal }) => {
@@ -901,7 +1007,10 @@ export const useProjectJoinRequestsQuery = (projectId?: string, enabled = true) 
     enabled: Boolean(projectId) && enabled,
   });
 
-export const useSentProjectInvitesQuery = (projectId?: string, enabled = true) =>
+export const useSentProjectInvitesQuery = (
+  projectId?: string,
+  enabled = true,
+) =>
   useQuery({
     queryKey: queryKeys.projects.sentInvites(projectId || ""),
     queryFn: async ({ signal }) => {
@@ -932,8 +1041,12 @@ const invalidateHackathon = (
   queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
 
   if (hackathonId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.hackathons.detail(hackathonId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.hackathons.leaderboard(hackathonId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.hackathons.detail(hackathonId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.hackathons.leaderboard(hackathonId),
+    });
   }
 };
 
@@ -1000,7 +1113,9 @@ export const useSubmitHackathonProjectMutation = (hackathonId?: string) => {
   });
 };
 
-export const useReviewHackathonRegistrationMutation = (hackathonId?: string) => {
+export const useReviewHackathonRegistrationMutation = (
+  hackathonId?: string,
+) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
@@ -1015,7 +1130,9 @@ export const useReviewHackathonRegistrationMutation = (hackathonId?: string) => 
     onSuccess: (_result, variables) => {
       showToast(
         "success",
-        variables.status === "APPROVED" ? "Registration approved" : "Registration rejected",
+        variables.status === "APPROVED"
+          ? "Registration approved"
+          : "Registration rejected",
       );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
@@ -1038,7 +1155,9 @@ export const useAssignHackathonJudgeMutation = (hackathonId?: string) => {
   });
 };
 
-export const useEvaluateHackathonSubmissionMutation = (hackathonId?: string) => {
+export const useEvaluateHackathonSubmissionMutation = (
+  hackathonId?: string,
+) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -1073,7 +1192,10 @@ export const useDeclareHackathonWinnersMutation = (hackathonId?: string) => {
       return api.declareHackathonWinners(hackathonId);
     },
     onSuccess: (result) => {
-      showToast("success", `${result.data.winnersDeclared || 0} winners declared`);
+      showToast(
+        "success",
+        `${result.data.winnersDeclared || 0} winners declared`,
+      );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateHackathon(queryClient, hackathonId),
@@ -1092,7 +1214,10 @@ export const useHackathonLifecycleMutation = (hackathonId?: string) => {
         : api.deleteHackathon(hackathonId);
     },
     onSuccess: (_result, action) => {
-      showToast("success", action === "archive" ? "Hackathon archived" : "Hackathon deleted");
+      showToast(
+        "success",
+        action === "archive" ? "Hackathon archived" : "Hackathon deleted",
+      );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateHackathon(queryClient, hackathonId),
@@ -1121,6 +1246,19 @@ export const useMyFullProfileQuery = () => {
   });
 };
 
+export const useUserProfileQuery = (userId?: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.users.publicProfile(userId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.userProfile(userId || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && userId),
+  });
+};
+
 export const useMySkillsQuery = (limit = 12) => {
   const { user } = useAuth();
 
@@ -1142,7 +1280,10 @@ export const useMyExperiencesQuery = (limit = 8) => {
   return useInfiniteQuery({
     queryKey: queryKeys.users.experiences,
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.myExperiences(limit, { cursor: pageParam, signal });
+      const result = await api.myExperiences(limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(user),
@@ -1157,7 +1298,10 @@ export const useMyEducationsQuery = (limit = 8) => {
   return useInfiniteQuery({
     queryKey: queryKeys.users.educations,
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.myEducations(limit, { cursor: pageParam, signal });
+      const result = await api.myEducations(limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(user),
@@ -1185,7 +1329,8 @@ export const useUpdateProfileMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: Parameters<typeof api.updateProfile>[0]) => api.updateProfile(payload),
+    mutationFn: (payload: Parameters<typeof api.updateProfile>[0]) =>
+      api.updateProfile(payload),
     onSuccess: (result) => {
       setUser(result.data);
       queryClient.setQueryData(queryKeys.users.full, result.data);
@@ -1202,33 +1347,42 @@ export const useAddSkillMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: Parameters<typeof api.addSkill>[0]) => api.addSkill(payload),
+    mutationFn: (payload: Parameters<typeof api.addSkill>[0]) =>
+      api.addSkill(payload),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.users.skills });
       const previous = queryClient.getQueryData<{
-        pages: Array<{ skills: UserSkill[]; nextCursor?: string | null; hasNextPage?: boolean; limit?: number }>;
+        pages: Array<{
+          skills: UserSkill[];
+          nextCursor?: string | null;
+          hasNextPage?: boolean;
+          limit?: number;
+        }>;
         pageParams: unknown[];
       }>(queryKeys.users.skills);
 
-      queryClient.setQueryData<typeof previous>(queryKeys.users.skills, (data) => {
-        if (!data?.pages?.[0]) return data;
+      queryClient.setQueryData<typeof previous>(
+        queryKeys.users.skills,
+        (data) => {
+          if (!data?.pages?.[0]) return data;
 
-        return {
-          ...data,
-          pages: data.pages.map((page, index) =>
-            index === 0
-              ? {
-                  ...page,
-                  skills: page.skills.map((skill) =>
-                    skill.skill?.id === payload.skillId
-                      ? { ...skill, level: payload.level }
-                      : skill,
-                  ),
-                }
-              : page,
-          ),
-        };
-      });
+          return {
+            ...data,
+            pages: data.pages.map((page, index) =>
+              index === 0
+                ? {
+                    ...page,
+                    skills: page.skills.map((skill) =>
+                      skill.skill?.id === payload.skillId
+                        ? { ...skill, level: payload.level }
+                        : skill,
+                    ),
+                  }
+                : page,
+            ),
+          };
+        },
+      );
 
       return { previous };
     },
@@ -1250,11 +1404,19 @@ export const useAddExperienceMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: Parameters<typeof api.addExperience>[0]) => api.addExperience(payload),
+    mutationFn: (payload: Parameters<typeof api.addExperience>[0]) =>
+      api.addExperience(payload),
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.users.experiences });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.users.experiences,
+      });
       const previous = queryClient.getQueryData<{
-        pages: Array<{ experiences: Experience[]; nextCursor?: string | null; hasNextPage?: boolean; limit?: number }>;
+        pages: Array<{
+          experiences: Experience[];
+          nextCursor?: string | null;
+          hasNextPage?: boolean;
+          limit?: number;
+        }>;
         pageParams: unknown[];
       }>(queryKeys.users.experiences);
 
@@ -1272,18 +1434,24 @@ export const useAddExperienceMutation = () => {
         teamSize: payload.teamSize,
       };
 
-      queryClient.setQueryData<typeof previous>(queryKeys.users.experiences, (data) => {
-        if (!data?.pages?.[0]) return data;
+      queryClient.setQueryData<typeof previous>(
+        queryKeys.users.experiences,
+        (data) => {
+          if (!data?.pages?.[0]) return data;
 
-        return {
-          ...data,
-          pages: data.pages.map((page, index) =>
-            index === 0
-              ? { ...page, experiences: [optimisticExperience, ...page.experiences] }
-              : page,
-          ),
-        };
-      });
+          return {
+            ...data,
+            pages: data.pages.map((page, index) =>
+              index === 0
+                ? {
+                    ...page,
+                    experiences: [optimisticExperience, ...page.experiences],
+                  }
+                : page,
+            ),
+          };
+        },
+      );
 
       return { previous };
     },
@@ -1305,11 +1473,17 @@ export const useAddEducationMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: Parameters<typeof api.addEducation>[0]) => api.addEducation(payload),
+    mutationFn: (payload: Parameters<typeof api.addEducation>[0]) =>
+      api.addEducation(payload),
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.users.educations });
       const previous = queryClient.getQueryData<{
-        pages: Array<{ educations: Education[]; nextCursor?: string | null; hasNextPage?: boolean; limit?: number }>;
+        pages: Array<{
+          educations: Education[];
+          nextCursor?: string | null;
+          hasNextPage?: boolean;
+          limit?: number;
+        }>;
         pageParams: unknown[];
       }>(queryKeys.users.educations);
 
@@ -1324,18 +1498,24 @@ export const useAddEducationMutation = () => {
         current: payload.current,
       };
 
-      queryClient.setQueryData<typeof previous>(queryKeys.users.educations, (data) => {
-        if (!data?.pages?.[0]) return data;
+      queryClient.setQueryData<typeof previous>(
+        queryKeys.users.educations,
+        (data) => {
+          if (!data?.pages?.[0]) return data;
 
-        return {
-          ...data,
-          pages: data.pages.map((page, index) =>
-            index === 0
-              ? { ...page, educations: [optimisticEducation, ...page.educations] }
-              : page,
-          ),
-        };
-      });
+          return {
+            ...data,
+            pages: data.pages.map((page, index) =>
+              index === 0
+                ? {
+                    ...page,
+                    educations: [optimisticEducation, ...page.educations],
+                  }
+                : page,
+            ),
+          };
+        },
+      );
 
       return { previous };
     },
@@ -1368,7 +1548,11 @@ export const useCreatePostMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: { content: string; type: string; tags?: string[] }) => {
+    mutationFn: (payload: {
+      content: string;
+      type: string;
+      tags?: string[];
+    }) => {
       if (!user) {
         throw new Error("Login required");
       }
@@ -1392,7 +1576,13 @@ export const usePostReactionMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: "like" | "save" }) => {
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: "like" | "save";
+    }) => {
       if (!user) {
         throw new Error("Login required");
       }
@@ -1406,18 +1596,20 @@ export const usePostReactionMutation = () => {
       });
 
       if (action === "like") {
-        queryClient.setQueriesData<FeedItem[]>({ queryKey: queryKeys.feed.all }, (items) =>
-          items?.map((item) =>
-            item.type === "POST" && item.data.id === id
-              ? {
-                  ...item,
-                  data: {
-                    ...item.data,
-                    likesCount: (item.data.likesCount || 0) + 1,
-                  },
-                }
-              : item,
-          ),
+        queryClient.setQueriesData<FeedItem[]>(
+          { queryKey: queryKeys.feed.all },
+          (items) =>
+            items?.map((item) =>
+              item.type === "POST" && item.data.id === id
+                ? {
+                    ...item,
+                    data: {
+                      ...item.data,
+                      likesCount: (item.data.likesCount || 0) + 1,
+                    },
+                  }
+                : item,
+            ),
         );
       }
 
@@ -1430,7 +1622,10 @@ export const usePostReactionMutation = () => {
       showToast("error", getErrorMessage(error));
     },
     onSuccess: (_data, variables) => {
-      showToast("success", variables.action === "like" ? "Post liked" : "Post saved");
+      showToast(
+        "success",
+        variables.action === "like" ? "Post liked" : "Post saved",
+      );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
@@ -1493,10 +1688,13 @@ export const useJoinProjectMutation = () => {
     onSuccess: () => showToast("success", "Join request sent"),
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: (_data, _error, variables) => {
-      const project = variables && ("project" in variables ? variables.project : variables);
+      const project =
+        variables && ("project" in variables ? variables.project : variables);
 
       if (project) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(project.id) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.detail(project.id),
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
@@ -1511,9 +1709,15 @@ const invalidateProject = (
   queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
 
   if (projectId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.projects.requests(projectId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.projects.sentInvites(projectId) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.detail(projectId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.requests(projectId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.sentInvites(projectId),
+    });
   }
 };
 
@@ -1522,10 +1726,20 @@ export const useReviewProjectJoinRequestMutation = (projectId?: string) => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ requestId, status }: { requestId: string; status: "ACCEPTED" | "REJECTED" }) =>
-      api.reviewProjectJoinRequest(requestId, status),
+    mutationFn: ({
+      requestId,
+      status,
+    }: {
+      requestId: string;
+      status: "ACCEPTED" | "REJECTED";
+    }) => api.reviewProjectJoinRequest(requestId, status),
     onSuccess: (_result, variables) => {
-      showToast("success", variables.status === "ACCEPTED" ? "Request accepted" : "Request rejected");
+      showToast(
+        "success",
+        variables.status === "ACCEPTED"
+          ? "Request accepted"
+          : "Request rejected",
+      );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => {
@@ -1558,10 +1772,17 @@ export const useReviewProjectInviteMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ inviteId, status }: { inviteId: string; status: "ACCEPTED" | "REJECTED" }) =>
-      api.reviewProjectInvite(inviteId, status),
+    mutationFn: ({
+      inviteId,
+      status,
+    }: {
+      inviteId: string;
+      status: "ACCEPTED" | "REJECTED";
+    }) => api.reviewProjectInvite(inviteId, status),
     onMutate: async ({ inviteId, status }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.projects.receivedInvites() });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.projects.receivedInvites(),
+      });
       const previous = queryClient.getQueryData<ProjectInvite[]>(
         queryKeys.projects.receivedInvites(),
       );
@@ -1579,15 +1800,23 @@ export const useReviewProjectInviteMutation = () => {
       return { previous };
     },
     onError: (error, _variables, context) => {
-      queryClient.setQueryData(queryKeys.projects.receivedInvites(), context?.previous);
+      queryClient.setQueryData(
+        queryKeys.projects.receivedInvites(),
+        context?.previous,
+      );
       showToast("error", getErrorMessage(error));
     },
     onSuccess: (_result, variables) => {
-      showToast("success", variables.status === "ACCEPTED" ? "Invite accepted" : "Invite rejected");
+      showToast(
+        "success",
+        variables.status === "ACCEPTED" ? "Invite accepted" : "Invite rejected",
+      );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.projects.receivedInvites() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.receivedInvites(),
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
@@ -1643,7 +1872,9 @@ export const useProjectLifecycleMutation = (projectId?: string) => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (action: "complete" | "archive" | "restore" | "delete" | "sync") => {
+    mutationFn: (
+      action: "complete" | "archive" | "restore" | "delete" | "sync",
+    ) => {
       if (!projectId) throw new Error("Project missing");
 
       if (action === "complete") return api.completeProject(projectId);
@@ -1677,9 +1908,15 @@ const invalidateSocial = (
   queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
 
   if (userId) {
-    queryClient.invalidateQueries({ queryKey: queryKeys.social.followers(userId, 20) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.social.following(userId, 20) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.social.connections(userId, 20) });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.social.followers(userId, 20),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.social.following(userId, 20),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.social.connections(userId, 20),
+    });
   }
 };
 
@@ -1687,7 +1924,10 @@ export const useFollowersQuery = (userId?: string, limit = 20) =>
   useInfiniteQuery({
     queryKey: queryKeys.social.followers(userId || "", limit),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.followers(userId || "", limit, { cursor: pageParam, signal });
+      const result = await api.followers(userId || "", limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(userId),
@@ -1699,7 +1939,10 @@ export const useFollowingQuery = (userId?: string, limit = 20) =>
   useInfiniteQuery({
     queryKey: queryKeys.social.following(userId || "", limit),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.following(userId || "", limit, { cursor: pageParam, signal });
+      const result = await api.following(userId || "", limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(userId),
@@ -1711,7 +1954,10 @@ export const useConnectionsQuery = (userId?: string, limit = 20) =>
   useInfiniteQuery({
     queryKey: queryKeys.social.connections(userId || "", limit),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.connections(userId || "", limit, { cursor: pageParam, signal });
+      const result = await api.connections(userId || "", limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(userId),
@@ -1725,7 +1971,10 @@ export const useSuggestedConnectionsQuery = (limit = 20) => {
   return useInfiniteQuery({
     queryKey: queryKeys.social.suggested(limit),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.suggestedConnections(limit, { cursor: pageParam, signal });
+      const result = await api.suggestedConnections(limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(user),
@@ -1741,7 +1990,10 @@ export const useMutualConnectionsQuery = (userId?: string, limit = 12) => {
   return useInfiniteQuery({
     queryKey: queryKeys.social.mutual(userId || "", limit),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.mutualConnections(userId || "", limit, { cursor: pageParam, signal });
+      const result = await api.mutualConnections(userId || "", limit, {
+        cursor: pageParam,
+        signal,
+      });
       return result.data;
     },
     enabled: Boolean(user && userId),
@@ -1813,10 +2065,20 @@ export const useReviewConnectionMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ connectionId, status }: { connectionId: string; status: "ACCEPTED" | "REJECTED" }) =>
-      api.reviewConnection(connectionId, status),
+    mutationFn: ({
+      connectionId,
+      status,
+    }: {
+      connectionId: string;
+      status: "ACCEPTED" | "REJECTED";
+    }) => api.reviewConnection(connectionId, status),
     onSuccess: (_result, variables) => {
-      showToast("success", variables.status === "ACCEPTED" ? "Connection accepted" : "Connection rejected");
+      showToast(
+        "success",
+        variables.status === "ACCEPTED"
+          ? "Connection accepted"
+          : "Connection rejected",
+      );
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateSocial(queryClient, user?.id),
@@ -1870,7 +2132,9 @@ export const useMarkNotificationReadMutation = () => {
   return useMutation({
     mutationFn: api.markNotificationRead,
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.all });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.notifications.all,
+      });
       const snapshots = queryClient.getQueriesData<NotificationsPage>({
         queryKey: queryKeys.notifications.all,
       });
@@ -1896,7 +2160,9 @@ export const useMarkNotificationReadMutation = () => {
                 readAt: new Date().toISOString(),
               };
             }),
-            unreadCount: changedUnread ? Math.max(page.unreadCount - 1, 0) : page.unreadCount,
+            unreadCount: changedUnread
+              ? Math.max(page.unreadCount - 1, 0)
+              : page.unreadCount,
           };
         },
       );
@@ -1920,7 +2186,9 @@ export const useMarkAllNotificationsReadMutation = () => {
   return useMutation({
     mutationFn: api.markAllNotificationsRead,
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.all });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.notifications.all,
+      });
       const snapshots = queryClient.getQueriesData<NotificationsPage>({
         queryKey: queryKeys.notifications.all,
       });
@@ -1960,7 +2228,9 @@ export const useArchiveNotificationMutation = () => {
   return useMutation({
     mutationFn: api.archiveNotification,
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.all });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.notifications.all,
+      });
       const snapshots = queryClient.getQueriesData<NotificationsPage>({
         queryKey: queryKeys.notifications.all,
       });
@@ -1970,11 +2240,15 @@ export const useArchiveNotificationMutation = () => {
         (page) => {
           if (!page) return page;
 
-          const archived = page.notifications.find((notification) => notification.id === id);
+          const archived = page.notifications.find(
+            (notification) => notification.id === id,
+          );
 
           return {
             ...page,
-            notifications: page.notifications.filter((notification) => notification.id !== id),
+            notifications: page.notifications.filter(
+              (notification) => notification.id !== id,
+            ),
             unreadCount:
               archived && !archived.isRead
                 ? Math.max(page.unreadCount - 1, 0)
@@ -1993,5 +2267,190 @@ export const useArchiveNotificationMutation = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
+  });
+};
+
+// Discovery & Recommendations
+export const useDiscoveryFeedQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.feed(),
+    queryFn: async ({ signal }) => {
+      const result = await api.discoveryFeed({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedEngineersQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.engineers(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedEngineers(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedMentorsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.mentors(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedMentors(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedRecruitersQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.recruiters(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedRecruiters(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedCollaboratorsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.collaborators(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedCollaborators(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedTeammatesQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.teammates(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedTeammates(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedProjectsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.projects(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedProjects(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedJobsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.jobs(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedJobs(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedHackathonsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.hackathons(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedHackathons(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSuggestedPostsQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.discovery.suggested.posts(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.suggestedPosts(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useTrendingCommunitiesQuery = () => {
+  return useQuery({
+    queryKey: queryKeys.discovery.trending.communities(),
+    queryFn: async ({ signal }) => {
+      const result = await api.trendingCommunities({ signal });
+      return result.data || [];
+    },
+    staleTime: 300_000, // 5 minutes
+  });
+};
+
+export const useCommunityBySlugQuery = (
+  slug?: string,
+  page = 1,
+  limit = 10,
+) => {
+  return useQuery({
+    queryKey: queryKeys.communities.detail(slug || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.communityBySlug(slug || "", page, limit, {
+        signal,
+      });
+      return result.data;
+    },
+    enabled: Boolean(slug),
+    staleTime: 60_000,
+  });
+};
+
+export const useTrackRecommendationImpressionMutation = () => {
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: {
+      entityId: string;
+      entityType: string;
+      position?: number;
+      clicked?: boolean;
+      hidden?: boolean;
+    }) => api.trackRecommendationImpression(body),
+    onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };

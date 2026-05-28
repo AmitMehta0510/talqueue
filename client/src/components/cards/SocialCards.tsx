@@ -1,4 +1,4 @@
-import { Check, Link as LinkIcon, UserPlus, Users } from "lucide-react";
+import { Check, Link as LinkIcon, MessageSquare, UserPlus, UserRound, Users } from "lucide-react";
 import { SuggestedUser, User } from "../../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../../lib/format";
 import { Avatar } from "../ui";
@@ -7,14 +7,20 @@ export function EngineerCard({
   user,
   context,
   disabled,
+  isFollowing,
   onConnect,
   onFollow,
+  onMessage,
+  onOpenProfile,
 }: {
   user: User | SuggestedUser;
   context?: string;
   disabled?: boolean;
+  isFollowing?: boolean;
   onConnect?: (user: User | SuggestedUser) => void;
   onFollow?: (user: User | SuggestedUser) => void;
+  onMessage?: (user: User | SuggestedUser) => void;
+  onOpenProfile?: (user: User | SuggestedUser) => void;
 }) {
   const suggested = user as SuggestedUser;
   const skills = (user.skills || [])
@@ -23,7 +29,19 @@ export function EngineerCard({
     .slice(0, 4) as string[];
 
   return (
-    <article className="panel p-5">
+    <article
+      className={`panel p-5 ${onOpenProfile ? "cursor-pointer transition hover:border-emerald-300" : ""}`}
+      role={onOpenProfile ? "button" : undefined}
+      tabIndex={onOpenProfile ? 0 : undefined}
+      onClick={() => onOpenProfile?.(user)}
+      onKeyDown={(event) => {
+        if (!onOpenProfile) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenProfile(user);
+        }
+      }}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar user={user} />
@@ -83,23 +101,61 @@ export function EngineerCard({
       </div>
 
       <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
-        {onFollow && (
+        {onOpenProfile && (
+          <button
+            className="btn-secondary px-3 py-1.5"
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenProfile(user);
+            }}
+          >
+            <UserRound size={15} />
+            Profile
+          </button>
+        )}
+        {onMessage && (
+          <button
+            className="btn-primary px-3 py-1.5"
+            type="button"
+            disabled={disabled}
+            onClick={(event) => {
+              event.stopPropagation();
+              onMessage(user);
+            }}
+          >
+            <MessageSquare size={15} />
+            Message
+          </button>
+        )}
+        {isFollowing ? (
+          <button className="btn-secondary px-3 py-1.5" type="button" disabled>
+            <Check size={15} />
+            Following
+          </button>
+        ) : onFollow ? (
           <button
             className="btn-secondary px-3 py-1.5"
             type="button"
             disabled={disabled}
-            onClick={() => onFollow(user)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onFollow(user);
+            }}
           >
             <UserPlus size={15} />
             Follow
           </button>
-        )}
+        ) : null}
         {onConnect && (
           <button
             className="btn-primary px-3 py-1.5"
             type="button"
             disabled={disabled}
-            onClick={() => onConnect(user)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onConnect(user);
+            }}
           >
             <LinkIcon size={15} />
             Connect

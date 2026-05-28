@@ -42,10 +42,7 @@ const emitToUser = (userId: string, event: string, payload: unknown) => {
   }
 };
 
-const ensureParticipant = async (
-  userId: string,
-  conversationId: string,
-) => {
+const ensureParticipant = async (userId: string, conversationId: string) => {
   const participant = await prisma.conversationParticipant.findUnique({
     where: {
       conversationId_userId: {
@@ -311,6 +308,7 @@ export const getMyConversations = async (userId: string) => {
         some: {
           userId,
           archived: false,
+          deletedAt: null,
         },
       },
       archived: false,
@@ -1233,5 +1231,82 @@ export const toggleArchiveConversation = async (
     data: {
       archived: !participant.archived,
     },
+  });
+};
+
+export const deleteConversation = async (
+  userId: string,
+  conversationId: string,
+) => {
+  const participant = await prisma.conversationParticipant.findFirst({
+    where: {
+      conversationId,
+      userId,
+    },
+  });
+
+  if (!participant) {
+    throw new AppError("Unauthorized", 403);
+  }
+
+  return prisma.conversationParticipant.update({
+    where: {
+      id: participant.id,
+    },
+
+    data: {
+      deletedAt: new Date(),
+    },
+  });
+};
+
+export const getArchivedConversations = async (userId: string) => {
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      participants: {
+        some: {
+          userId,
+          archived: true,
+          deletedAt: null,
+        },
+      },
+      archived: false,
+    },
+
+    include: {
+      participants: {
+        include: {
+          user: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      },
+
+      messages: {
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 1,
+      },
+    },
+
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+
+  return conversations.map((conversation) => {
+    const participant = conversation.participants.find(
+      (item) => item.userId === userId,
+    );
+
+    return {
+      ...conversation,
+
+      unreadCount: participant?.unreadCount || 0,
+    };
   });
 };

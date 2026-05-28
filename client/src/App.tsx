@@ -18,6 +18,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TeamsPage } from "./pages/TeamsPage";
+import { UserProfilePage } from "./pages/UserProfilePage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -47,6 +48,14 @@ function AppRoutes() {
           element={
             <RequireAuth>
               <ProfilePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/users/:userId"
+          element={
+            <RequireAuth>
+              <UserProfilePage />
             </RequireAuth>
           }
         />

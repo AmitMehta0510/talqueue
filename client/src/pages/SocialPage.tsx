@@ -1,10 +1,12 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Check, Inbox, Loader2, Search, UserCheck, Users, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { EngineerCard } from "../components/cards/SocialCards";
 import { Avatar, EmptyState } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useConnectUserMutation,
+  useCreateDirectConversationMutation,
   useConnectionsQuery,
   useFollowUserMutation,
   useFollowersQuery,
@@ -98,11 +100,25 @@ function ConnectionRequestPanel() {
 
 function SearchPanel() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const search = usePlatformSearchMutation();
   const followUser = useFollowUserMutation();
   const connectUser = useConnectUserMutation();
+  const followingQuery = useFollowingQuery(user?.id, 20);
   const users = (search.data?.users || []).filter((foundUser) => foundUser.id !== user?.id);
+  const followingIds = useMemo(
+    () =>
+      new Set(
+        flattenPages<FollowingPage["following"][number], "following">(
+          followingQuery.data?.pages || [],
+          "following",
+        )
+          .map((item) => item.following?.id)
+          .filter(Boolean) as string[],
+      ),
+    [followingQuery.data?.pages],
+  );
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -130,10 +146,12 @@ function SearchPanel() {
             users.map((foundUser) => (
               <EngineerCard
                 disabled={followUser.isPending || connectUser.isPending}
+                isFollowing={followingIds.has(foundUser.id)}
                 key={foundUser.id}
                 user={foundUser}
                 onConnect={(item) => connectUser.mutate(item.id)}
                 onFollow={(item) => followUser.mutate(item.id)}
+                onOpenProfile={(item) => navigate(`/users/${item.id}`)}
               />
             ))
           ) : (
@@ -147,8 +165,10 @@ function SearchPanel() {
 
 function NetworkList({ activeTab }: { activeTab: SocialTab }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const followUser = useFollowUserMutation();
   const connectUser = useConnectUserMutation();
+  const createDirectConversation = useCreateDirectConversationMutation();
   const suggestedQuery = useSuggestedConnectionsQuery(12);
   const connectionsQuery = useConnectionsQuery(user?.id, 16);
   const followersQuery = useFollowersQuery(user?.id, 16);
@@ -179,6 +199,13 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
     ),
     [followingQuery.data?.pages],
   );
+  const followingIds = useMemo(
+    () =>
+      new Set(
+        following.map((item) => item.following?.id).filter(Boolean) as string[],
+      ),
+    [following],
+  );
 
   const users: Array<{ user?: User; context?: string; key: string }> =
     activeTab === "suggested"
@@ -201,6 +228,11 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
   const loading = query.isLoading;
   const fetchingNext = query.isFetchingNextPage;
 
+  const startConversation = async (target: User) => {
+    const result = await createDirectConversation.mutateAsync(target.id);
+    navigate(`/chat/${result.data.id}`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -219,11 +251,19 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
             .map((item) => (
               <EngineerCard
                 context={item.context}
-                disabled={followUser.isPending || connectUser.isPending || item.user.id === user?.id}
+                disabled={
+                  followUser.isPending ||
+                  connectUser.isPending ||
+                  createDirectConversation.isPending ||
+                  item.user.id === user?.id
+                }
+                isFollowing={followingIds.has(item.user.id)}
                 key={item.key}
                 user={item.user}
                 onConnect={activeTab === "connections" ? undefined : (target) => connectUser.mutate(target.id)}
                 onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
+                onMessage={activeTab === "connections" ? startConversation : undefined}
+                onOpenProfile={(target) => navigate(`/users/${target.id}`)}
               />
             ))
         ) : (

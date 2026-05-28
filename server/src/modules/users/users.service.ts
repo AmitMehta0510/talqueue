@@ -456,6 +456,24 @@ export const getMyFullProfile = async (userId: string) => {
   return user;
 };
 
+export const getUserFullProfile = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+
+    select: userFullProfileSelect,
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const { email: _email, ...publicUser } = user;
+
+  return publicUser;
+};
+
 export const getMySkills = async (
   userId: string,
 

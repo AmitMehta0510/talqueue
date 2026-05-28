@@ -11,6 +11,7 @@ import {
   getMeExperiences,
   getMeFull,
   getMeSkills,
+  getUserFull,
   searchSkillsHandler,
   updateMe,
 } from "./users.controller";
@@ -36,5 +37,7 @@ router.post("/me/skills", protect, createSkill);
 router.post("/me/experiences", protect, createExperience);
 
 router.post("/me/educations", protect, createEducation);
+
+router.get("/:userId", protect, getUserFull);
 
 export default router;

@@ -13,6 +13,7 @@ import {
   getMyFullProfile,
   getMyProfile,
   getMySkills,
+  getUserFullProfile,
   searchSkills,
   updateProfile,
 } from "./users.service";
@@ -52,6 +53,18 @@ export const getMeFull = asyncHandler(
   async (req: any, res: Response) => {
     const profile = await getMyFullProfile(
       req.user.id
+    );
+
+    res.json(
+      successResponse(profile)
+    );
+  }
+);
+
+export const getUserFull = asyncHandler(
+  async (req: any, res: Response) => {
+    const profile = await getUserFullProfile(
+      req.params.userId,
     );
 
     res.json(
