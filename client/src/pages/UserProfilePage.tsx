@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   Building2,
   GraduationCap,
+  ExternalLink,
   Link as LinkIcon,
   Loader2,
   MapPin,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { EducationCard, ExperienceCard, SkillPill } from "../components/cards/ProfileCards";
-import { Avatar, EmptyState, Metric } from "../components/ui";
+import { Avatar, EmptyState, ErrorState, InlineLoader, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useCreateDirectConversationMutation,
@@ -60,12 +61,15 @@ export function UserProfilePage() {
     return <Navigate to="/profile" replace />;
   }
 
-  if (profileQuery.isLoading) {
+  if (profileQuery.isLoading) return <InlineLoader label="Loading profile" />;
+
+  if (profileQuery.isError) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Loader2 className="animate-spin" size={16} />
-        Loading profile
-      </div>
+      <ErrorState
+        title="Profile could not load"
+        text="This profile may be private, unavailable, or temporarily unreachable."
+        onRetry={() => profileQuery.refetch()}
+      />
     );
   }
 
@@ -77,6 +81,12 @@ export function UserProfilePage() {
     const result = await createDirectConversation.mutateAsync(profile.id);
     navigate(`/chat/${result.data.id}`);
   };
+  const profileLinks = [
+    { label: "GitHub", href: profile.profile?.githubUrl },
+    { label: "LinkedIn", href: profile.profile?.linkedinUrl },
+    { label: "Portfolio", href: profile.profile?.portfolioUrl },
+    { label: "Resume", href: profile.profile?.resumeUrl },
+  ].flatMap((link) => (link.href ? [{ ...link, href: link.href }] : []));
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_24rem]">
@@ -136,6 +146,23 @@ export function UserProfilePage() {
 
             {profile.profile?.bio && (
               <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600">{profile.profile.bio}</p>
+            )}
+
+            {profileLinks.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {profileLinks.map((link) => (
+                  <a
+                    className="btn-secondary px-3 py-1.5"
+                    href={link.href}
+                    key={link.label}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <ExternalLink size={15} />
+                    {link.label}
+                  </a>
+                ))}
+              </div>
             )}
 
             <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-4">
