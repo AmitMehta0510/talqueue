@@ -188,11 +188,14 @@ export type AuthPayload = {
 
 export type FeedPost = {
   id: string;
+  authorId?: string;
   title?: string;
   content?: string;
   description?: string;
   type?: string;
+  visibility?: string;
   createdAt?: string;
+  updatedAt?: string;
   author?: User;
   user?: User;
   tags?: Array<string | { tag?: string }>;
@@ -200,6 +203,9 @@ export type FeedPost = {
   commentsCount?: number;
   saveCount?: number;
   shareCount?: number;
+  isLiked?: boolean;
+  isSaved?: boolean;
+  comments?: PostComment[];
   project?: Project;
   hackathon?: Record<string, unknown>;
   item?: FeedPost | Project | Job | Record<string, unknown>;
@@ -247,6 +253,23 @@ export type FeedPage = {
   nextCursor?: string | null;
   hasNextPage?: boolean;
   limit?: number;
+};
+
+export type PostComment = {
+  id: string;
+  postId: string;
+  authorId?: string;
+  content?: string;
+  attachments?: unknown;
+  mentions?: string[];
+  parentCommentId?: string | null;
+  createdAt?: string;
+  editedAt?: string | null;
+  author?: User;
+  replies?: PostComment[];
+  _count?: {
+    replies?: number;
+  };
 };
 
 export type Project = {
@@ -1566,24 +1589,35 @@ export const api = {
     request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
   personalizedFeed: (limit = 12, options?: EndpointOptions) =>
     request<FeedItem[]>(`/feed${toQuery({ limit })}`, options),
-  createPost: (body: { content: string; type: string; tags?: string[] }) =>
+  createPost: (body: {
+    content: string;
+    type: string;
+    tags?: string[];
+    visibility?: string;
+  }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
-  post: (id: string, options?: EndpointOptions) =>
-    request<FeedPost>(`/posts/${id}`, options),
+  post: (
+    id: string,
+    params: { commentsLimit?: number; repliesLimit?: number } = {},
+    options?: EndpointOptions,
+  ) => request<FeedPost>(`/posts/${id}${toQuery(params)}`, options),
   updatePost: (
     id: string,
     body: { title?: string; content?: string; type?: string; tags?: string[] },
   ) => request<FeedPost>(`/posts/${id}`, { method: "PATCH", body }),
   deletePost: (id: string) =>
     request<{ success: boolean }>(`/posts/${id}`, { method: "DELETE" }),
-  commentOnPost: (id: string, body: { content: string; parentId?: string }) =>
+  commentOnPost: (
+    id: string,
+    body: { content: string; parentCommentId?: string },
+  ) =>
     request<unknown>(`/posts/${id}/comments`, { method: "POST", body }),
   likePost: (id: string) =>
     request<{ liked?: boolean }>(`/posts/${id}/like`, { method: "POST" }),
   savePost: (id: string) =>
     request<{ saved?: boolean }>(`/posts/${id}/save`, { method: "POST" }),
-  repostPost: (id: string, body?: { content?: string }) =>
-    request<FeedPost>(`/posts/${id}/repost`, { method: "POST", body }),
+  repostPost: (id: string, body?: { caption?: string }) =>
+    request<unknown>(`/posts/${id}/repost`, { method: "POST", body }),
   deleteComment: (commentId: string) =>
     request<{ success: boolean }>(`/posts/comments/${commentId}`, {
       method: "DELETE",

@@ -1,14 +1,16 @@
-import { Compass, Loader2 } from "lucide-react";
+import { Compass, Loader2, RefreshCcw } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
 import { ComposePost } from "../components/forms/ComposePost";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useCreatePostMutation,
+  useCommentOnPostMutation,
   useFeedQuery,
   useJobsQuery,
   usePostReactionMutation,
   useProjectsQuery,
+  useRepostMutation,
 } from "../hooks/usePlatformQueries";
 import { titleCase } from "../lib/format";
 import { NavLink } from "react-router-dom";
@@ -20,6 +22,8 @@ export function FeedPage() {
   const jobsQuery = useJobsQuery();
   const createPost = useCreatePostMutation();
   const postReaction = usePostReactionMutation();
+  const commentOnPost = useCommentOnPostMutation();
+  const repost = useRepostMutation();
   const feed = feedQuery.data || [];
   const projects = projectsQuery.data || [];
   const jobs = jobsQuery.data || [];
@@ -28,6 +32,26 @@ export function FeedPage() {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
       <section className="space-y-5">
+        <div className="panel flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <h1 className="text-xl font-bold text-slate-950">Feed</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {user
+                ? "Personalized posts, projects, jobs, and platform updates."
+                : "Public posts are shown until you log in."}
+            </p>
+          </div>
+          <button
+            className="btn-secondary"
+            type="button"
+            disabled={refreshing}
+            onClick={() => feedQuery.refetch()}
+          >
+            {refreshing ? <Loader2 className="animate-spin" size={16} /> : <RefreshCcw size={16} />}
+            Refresh
+          </button>
+        </div>
+
         <ComposePost
           onCreate={async (payload) => {
             try {
@@ -52,8 +76,25 @@ export function FeedPage() {
               item={item}
               position={index}
               trackImpression={Boolean(user)}
+              canInteract={Boolean(user)}
               onLike={(id) => postReaction.mutate({ id, action: "like" })}
               onSave={(id) => postReaction.mutate({ id, action: "save" })}
+              onComment={async (id, content, parentCommentId) => {
+                try {
+                  await commentOnPost.mutateAsync({ id, content, parentCommentId });
+                  return true;
+                } catch {
+                  return false;
+                }
+              }}
+              onRepost={async (id, caption) => {
+                try {
+                  await repost.mutateAsync({ id, caption });
+                  return true;
+                } catch {
+                  return false;
+                }
+              }}
             />
           ))
         ) : (

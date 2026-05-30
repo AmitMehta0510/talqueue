@@ -10,15 +10,28 @@ const postTypes = [
   "ACHIEVEMENT",
 ];
 
+const visibilityOptions = [
+  "PUBLIC",
+  "CONNECTIONS",
+  "COLLEGE_ONLY",
+  "TEAM_ONLY",
+];
+
 export function ComposePost({
   onCreate,
   disabled,
 }: {
-  onCreate: (payload: { content: string; type: string; tags?: string[] }) => Promise<boolean>;
+  onCreate: (payload: {
+    content: string;
+    type: string;
+    tags?: string[];
+    visibility?: string;
+  }) => Promise<boolean>;
   disabled: boolean;
 }) {
   const [content, setContent] = useState("");
   const [type, setType] = useState(postTypes[0]);
+  const [visibility, setVisibility] = useState(visibilityOptions[0]);
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +43,7 @@ export function ComposePost({
     const created = await onCreate({
       content: content.trim(),
       type,
+      visibility,
       tags: tags
         .split(",")
         .map((tag) => tag.trim())
@@ -60,7 +74,7 @@ export function ComposePost({
         />
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[0.8fr_1fr_auto]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[0.8fr_0.8fr_1fr_auto]">
         <select
           className="field"
           value={type}
@@ -70,6 +84,18 @@ export function ComposePost({
           {postTypes.map((postType) => (
             <option key={postType} value={postType}>
               {titleCase(postType)}
+            </option>
+          ))}
+        </select>
+        <select
+          className="field"
+          value={visibility}
+          onChange={(event) => setVisibility(event.target.value)}
+          disabled={disabled}
+        >
+          {visibilityOptions.map((option) => (
+            <option key={option} value={option}>
+              {titleCase(option)}
             </option>
           ))}
         </select>

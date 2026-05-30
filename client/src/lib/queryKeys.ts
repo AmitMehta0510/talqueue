@@ -45,6 +45,7 @@ export const queryKeys = {
   feed: {
     all: ["feed"] as const,
     list: (viewer: string, limit: number) => ["feed", viewer, limit] as const,
+    post: (postId: string) => ["feed", "post", postId] as const,
   },
   projects: {
     all: ["projects"] as const,

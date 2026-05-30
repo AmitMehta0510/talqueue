@@ -1557,6 +1557,7 @@ export const useCreatePostMutation = () => {
       content: string;
       type: string;
       tags?: string[];
+      visibility?: string;
     }) => {
       if (!user) {
         throw new Error("Login required");
@@ -1634,6 +1635,58 @@ export const usePostReactionMutation = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+    },
+  });
+};
+
+export const useCommentOnPostMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      content,
+      parentCommentId,
+    }: {
+      id: string;
+      content: string;
+      parentCommentId?: string;
+    }) => {
+      if (!user) throw new Error("Login required");
+      return api.commentOnPost(id, { content, parentCommentId });
+    },
+    onSuccess: () => showToast("success", "Comment added"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (_data, _error, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.feed.post(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
+  });
+};
+
+export const useRepostMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, caption }: { id: string; caption?: string }) => {
+      if (!user) throw new Error("Login required");
+      return api.repostPost(id, caption ? { caption } : undefined);
+    },
+    onSuccess: () => showToast("success", "Post reposted"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (_data, _error, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.feed.post(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 };
@@ -2459,6 +2512,20 @@ export const useTrackRecommendationImpressionMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
+export const usePostQuery = (postId?: string, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.feed.post(postId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.post(
+        postId || "",
+        { commentsLimit: 20, repliesLimit: 5 },
+        { signal },
+      );
+      return result.data;
+    },
+    enabled: Boolean(postId && enabled),
+  });
 
 export const useJobQuery = (slug?: string) =>
   useQuery({

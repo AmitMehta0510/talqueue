@@ -65,6 +65,7 @@ export type {
   NotificationType,
   NotificationsPage,
   PlatformNotification,
+  PostComment,
   Project,
   ProjectInvite,
   ProjectJoinRequest,
