@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
@@ -39,12 +39,16 @@ export function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo =
-    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || "/feed";
+  const redirectTarget =
+    (location.state as { from?: { pathname?: string; search?: string } } | null)
+      ?.from || { pathname: "/feed", search: "" };
+  const redirectTo = `${redirectTarget.pathname || "/feed"}${redirectTarget.search || ""}`;
 
-  if (user) {
-    navigate(redirectTo, { replace: true });
-  }
+  useEffect(() => {
+    if (user) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [navigate, redirectTo, user]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

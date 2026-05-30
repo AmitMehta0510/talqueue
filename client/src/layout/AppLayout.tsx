@@ -7,15 +7,18 @@ import {
   Gavel,
   GraduationCap,
   Hash,
+  LogIn,
   LogOut,
+  LockKeyhole,
   MessageSquare,
   Rocket,
   Search,
   Users,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   NotificationBellButton,
   NotificationPreview,
@@ -24,28 +27,46 @@ import { useAuth } from "../contexts/AuthContext";
 import { formatCount, userHeadline, userName } from "../lib/format";
 import { Avatar, Metric } from "../components/ui";
 
-const sections = [
+type NavSection = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  requiresAuth?: boolean;
+};
+
+const sections: NavSection[] = [
   { to: "/feed", label: "Feed", icon: Compass },
-  { to: "/profile", label: "Profile", icon: UserRound },
+  { to: "/profile", label: "Profile", icon: UserRound, requiresAuth: true },
   { to: "/discover", label: "Discover", icon: Search },
   { to: "/colleges", label: "Colleges", icon: GraduationCap },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/communities", label: "Communities", icon: Hash },
-  { to: "/chat", label: "Chat", icon: MessageSquare },
+  { to: "/chat", label: "Chat", icon: MessageSquare, requiresAuth: true },
   { to: "/projects", label: "Projects", icon: Rocket },
-  { to: "/teams", label: "Teams", icon: Users },
-  { to: "/social", label: "Social", icon: UserRound },
+  { to: "/teams", label: "Teams", icon: Users, requiresAuth: true },
+  { to: "/social", label: "Social", icon: UserRound, requiresAuth: true },
   { to: "/hackathons", label: "Hackathons", icon: Gavel },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
-  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/notifications", label: "Notifications", icon: Bell, requiresAuth: true },
 ];
 
 export function AppLayout() {
-  const { user, apiOnline, logout } = useAuth();
+  const { user, apiOnline, apiStatus, logout } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setNotificationsOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+        <a
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-slate-950 focus:shadow-panel"
+          href="#main-content"
+        >
+          Skip to content
+        </a>
         <aside className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:h-screen lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-3 lg:block">
             <div className="flex items-center gap-3">
@@ -68,7 +89,7 @@ export function AppLayout() {
                 }`}
               />
               <span className="hidden text-xs text-slate-500 sm:inline">
-                {apiOnline === null ? "Checking API" : apiOnline ? "API online" : "API offline"}
+                {apiStatus === "checking" ? "Checking API" : apiOnline ? "API online" : "API offline"}
               </span>
             </div>
           </div>
@@ -76,6 +97,7 @@ export function AppLayout() {
           <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:mt-8 lg:block lg:space-y-1">
             {sections.map((section) => {
               const Icon = section.icon;
+              const locked = section.requiresAuth && !user;
 
               return (
                 <NavLink
@@ -87,10 +109,13 @@ export function AppLayout() {
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
                     }`
                   }
-                  to={section.to}
+                  title={locked ? `${section.label} requires login` : section.label}
+                  to={locked ? "/auth" : section.to}
+                  state={locked ? { from: { pathname: section.to } } : undefined}
                 >
                   <Icon size={18} />
-                  {section.label}
+                  <span>{section.label}</span>
+                  {locked && <LockKeyhole className="ml-auto" size={14} />}
                 </NavLink>
               );
             })}
@@ -122,6 +147,7 @@ export function AppLayout() {
             </button>
           ) : (
             <NavLink className="btn-primary mt-6 hidden w-full lg:flex" to="/auth">
+              <LogIn size={16} />
               Login
             </NavLink>
           )}
@@ -157,7 +183,7 @@ export function AppLayout() {
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+          <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <Outlet />
           </main>
         </div>

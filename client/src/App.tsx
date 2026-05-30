@@ -1,6 +1,12 @@
 import { ReactNode } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { PageLoader } from "./components/ui";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+import { AppErrorBoundary, PageLoader } from "./components/ui";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { AppLayout } from "./layout/AppLayout";
@@ -21,10 +27,38 @@ import { TeamsPage } from "./pages/TeamsPage";
 import { UserProfilePage } from "./pages/UserProfilePage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+
+  if (authStatus === "checking") {
+    return <PageLoader />;
+  }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/auth" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function PublicOnly({ children }: { children: ReactNode }) {
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+  const redirectTo =
+    (location.state as { from?: { pathname?: string; search?: string } } | null)
+      ?.from || { pathname: "/feed", search: "" };
+
+  if (authStatus === "checking") {
+    return <PageLoader />;
+  }
+
+  if (user) {
+    return (
+      <Navigate
+        to={`${redirectTo.pathname || "/feed"}${redirectTo.search || ""}`}
+        replace
+      />
+    );
   }
 
   return children;
@@ -38,55 +72,106 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route element={<AppLayout />}>
-        <Route index element={<Navigate to="/feed" replace />} />
-        <Route path="/feed" element={<FeedPage />} />
+    <AppErrorBoundary>
+      <Routes>
         <Route
-          path="/profile"
+          path="/auth"
           element={
-            <RequireAuth>
-              <ProfilePage />
-            </RequireAuth>
+            <PublicOnly>
+              <AuthPage />
+            </PublicOnly>
           }
         />
-        <Route
-          path="/users/:userId"
-          element={
-            <RequireAuth>
-              <UserProfilePage />
-            </RequireAuth>
-          }
-        />
-        <Route path="/discover" element={<DiscoverPage />} />
-        <Route path="/colleges" element={<CollegesPage />} />
-        <Route path="/colleges/:collegeId" element={<CollegesPage />} />
-        <Route path="/companies" element={<CompaniesPage />} />
-        <Route path="/companies/:companySlug" element={<CompaniesPage />} />
-        <Route path="/communities" element={<CommunitiesPage />} />
-        <Route path="/communities/:communitySlug" element={<CommunitiesPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/chat/:conversationId" element={<ChatPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/projects/:projectId" element={<ProjectsPage />} />
-        <Route path="/teams" element={<TeamsPage />} />
-        <Route path="/teams/:teamId" element={<TeamsPage />} />
-        <Route path="/social" element={<SocialPage />} />
-        <Route path="/hackathons" element={<HackathonsPage />} />
-        <Route path="/hackathons/:hackathonId" element={<HackathonsPage />} />
-        <Route path="/jobs" element={<JobsPage />} />
-        <Route
-          path="/notifications"
-          element={
-            <RequireAuth>
-              <NotificationsPage />
-            </RequireAuth>
-          }
-        />
-      </Route>
-      <Route path="*" element={<Navigate to="/feed" replace />} />
-    </Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<Navigate to="/feed" replace />} />
+          <Route path="/feed" element={<FeedPage />} />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <ProfilePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/users/:userId"
+            element={
+              <RequireAuth>
+                <UserProfilePage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/discover" element={<DiscoverPage />} />
+          <Route path="/colleges" element={<CollegesPage />} />
+          <Route path="/colleges/:collegeId" element={<CollegesPage />} />
+          <Route path="/companies" element={<CompaniesPage />} />
+          <Route path="/companies/:companySlug" element={<CompaniesPage />} />
+          <Route path="/communities" element={<CommunitiesPage />} />
+          <Route
+            path="/communities/:communitySlug"
+            element={
+              <RequireAuth>
+                <CommunitiesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat"
+            element={
+              <RequireAuth>
+                <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat/:conversationId"
+            element={
+              <RequireAuth>
+                <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId" element={<ProjectsPage />} />
+          <Route
+            path="/teams"
+            element={
+              <RequireAuth>
+                <TeamsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/teams/:teamId"
+            element={
+              <RequireAuth>
+                <TeamsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/social"
+            element={
+              <RequireAuth>
+                <SocialPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/hackathons" element={<HackathonsPage />} />
+          <Route path="/hackathons/:hackathonId" element={<HackathonsPage />} />
+          <Route path="/jobs" element={<JobsPage />} />
+          <Route
+            path="/notifications"
+            element={
+              <RequireAuth>
+                <NotificationsPage />
+              </RequireAuth>
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/feed" replace />} />
+      </Routes>
+    </AppErrorBoundary>
   );
 }
 

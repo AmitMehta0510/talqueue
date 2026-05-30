@@ -1,4 +1,12 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, RoleName, User } from "../lib/api";
 import { getErrorMessage } from "../lib/format";
@@ -6,10 +14,17 @@ import { queryKeys } from "../lib/queryKeys";
 import { authStorage } from "../lib/storage";
 import { useToast } from "./ToastContext";
 
+type AuthStatus = "checking" | "authenticated" | "anonymous";
+type ApiStatus = "checking" | "online" | "offline";
+
 type AuthContextValue = {
   user: User | null;
   apiOnline: boolean | null;
+  apiStatus: ApiStatus;
+  authStatus: AuthStatus;
   loading: boolean;
+  authError: string | null;
+  isAuthenticated: boolean;
   login: (body: { email: string; password: string }) => Promise<void>;
   register: (body: {
     email: string;
@@ -27,51 +42,108 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
+  const clearSession = useCallback(() => {
+    authStorage.clearToken();
+    setUser(null);
+    setAuthStatus("anonymous");
+    queryClient.clear();
+  }, [queryClient]);
+
+  const setAuthUser = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    setAuthStatus(nextUser ? "authenticated" : "anonymous");
+  }, []);
+
   const refreshUser = useCallback(async () => {
     if (!authStorage.getToken()) {
       setUser(null);
+      setAuthStatus("anonymous");
       return null;
     }
 
-    const result = await api.me();
-    setUser(result.data);
-    return result.data;
+    try {
+      const result = await api.me();
+
+      setUser(result.data);
+      setAuthStatus("authenticated");
+      setAuthError(null);
+      return result.data;
+    } catch (error) {
+      authStorage.clearToken();
+      setUser(null);
+      setAuthStatus("anonymous");
+      setAuthError(getErrorMessage(error));
+      throw error;
+    }
   }, []);
 
   useEffect(() => {
+    let active = true;
+
     const boot = async () => {
       try {
         await api.health();
-        setApiOnline(true);
+        if (active) setApiStatus("online");
       } catch {
-        setApiOnline(false);
+        if (active) setApiStatus("offline");
       }
 
       if (authStorage.getToken()) {
         try {
           await refreshUser();
         } catch {
-          authStorage.clearToken();
-          setUser(null);
+          if (active) {
+            setUser(null);
+            setAuthStatus("anonymous");
+          }
         }
+      } else if (active) {
+        setAuthStatus("anonymous");
       }
 
-      setLoading(false);
+      if (active) setLoading(false);
     };
 
     boot();
+
+    return () => {
+      active = false;
+    };
   }, [refreshUser]);
+
+  useEffect(
+    () =>
+      authStorage.subscribe((token) => {
+        if (!token) {
+          setUser(null);
+          setAuthStatus("anonymous");
+          queryClient.clear();
+          return;
+        }
+
+        refreshUser().catch(() => {
+          setUser(null);
+          setAuthStatus("anonymous");
+        });
+      }),
+    [queryClient, refreshUser],
+  );
 
   const login = useCallback(
     async (body: { email: string; password: string }) => {
       const result = await api.login(body);
+
       authStorage.setToken(result.data.token);
       setUser(result.data.user);
+      setAuthStatus("authenticated");
+      setAuthError(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
     },
     [queryClient],
@@ -80,8 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (body: Parameters<typeof api.register>[0]) => {
       const result = await api.register(body);
+
       authStorage.setToken(result.data.token);
       setUser(result.data.user);
+      setAuthStatus("authenticated");
+      setAuthError(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
     },
     [queryClient],
@@ -95,24 +170,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       showToast("error", getErrorMessage(error));
     } finally {
-      authStorage.clearToken();
-      setUser(null);
-      queryClient.clear();
+      clearSession();
     }
-  }, [queryClient, showToast]);
+  }, [clearSession, showToast]);
+
+  const apiOnline =
+    apiStatus === "checking" ? null : apiStatus === "online";
 
   const value = useMemo(
     () => ({
       user,
       apiOnline,
+      apiStatus,
+      authStatus,
       loading,
+      authError,
+      isAuthenticated: Boolean(user),
       login,
       register,
       logout,
       refreshUser,
-      setUser,
+      setUser: setAuthUser,
     }),
-    [apiOnline, loading, login, logout, refreshUser, register, user],
+    [
+      apiOnline,
+      apiStatus,
+      authError,
+      authStatus,
+      loading,
+      login,
+      logout,
+      refreshUser,
+      register,
+      setAuthUser,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
