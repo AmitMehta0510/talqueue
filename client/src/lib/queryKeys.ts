@@ -82,10 +82,72 @@ export const queryKeys = {
   jobs: {
     all: ["jobs"] as const,
     list: () => ["jobs", "list"] as const,
+    detail: (slug: string) => ["jobs", "detail", slug] as const,
+    company: (companyId: string) => ["jobs", "company", companyId] as const,
+    recruiter: () => ["jobs", "recruiter"] as const,
+  },
+  jobApplications: {
+    all: ["job-applications"] as const,
+    mine: () => ["job-applications", "mine"] as const,
+    byJob: (jobId: string) => ["job-applications", "job", jobId] as const,
+  },
+  recommendations: {
+    all: ["recommendations"] as const,
+    savedJobs: () => ["recommendations", "saved-jobs"] as const,
+    jobs: () => ["recommendations", "jobs"] as const,
+    internships: () => ["recommendations", "internships"] as const,
+    trendingJobs: () => ["recommendations", "trending-jobs"] as const,
+    advancedJobs: () => ["recommendations", "advanced-jobs"] as const,
+    collaborators: () => ["recommendations", "collaborators"] as const,
+    projects: () => ["recommendations", "projects"] as const,
+  },
+  referrals: {
+    all: ["referrals"] as const,
+    received: () => ["referrals", "received"] as const,
+    sent: () => ["referrals", "sent"] as const,
+  },
+  reputation: {
+    all: ["reputation"] as const,
+    leaderboard: () => ["reputation", "leaderboard"] as const,
+    me: () => ["reputation", "me"] as const,
+    user: (username: string) => ["reputation", "user", username] as const,
+    history: () => ["reputation", "history"] as const,
+    badges: () => ["reputation", "badges"] as const,
+    topBadges: () => ["reputation", "top-badges"] as const,
+  },
+  leaderboards: {
+    all: ["leaderboards"] as const,
+    engineers: () => ["leaderboards", "engineers"] as const,
+    projects: () => ["leaderboards", "projects"] as const,
+    hackathonEngineers: () => ["leaderboards", "hackathon-engineers"] as const,
+    teams: () => ["leaderboards", "teams"] as const,
+    fastestGrowing: () => ["leaderboards", "fastest-growing"] as const,
+  },
+  recruiter: {
+    dashboard: () => ["recruiter", "dashboard"] as const,
+  },
+  analytics: {
+    candidates: (jobId: string) => ["analytics", "candidates", jobId] as const,
+    recruiterInsights: () => ["analytics", "recruiter-insights"] as const,
+  },
+  engineering: {
+    portfolio: (username: string) => ["engineering", "portfolio", username] as const,
+  },
+  activities: {
+    timeline: (limit: number) => ["activities", "timeline", limit] as const,
+  },
+  affinity: {
+    all: ["affinity"] as const,
+  },
+  trending: {
+    feed: (limit: number) => ["trending", "feed", limit] as const,
   },
   search: {
     all: ["search"] as const,
     global: (query: string) => ["search", "global", query] as const,
+    users: (query: string) => ["search", "users", query] as const,
+    projects: (query: string) => ["search", "projects", query] as const,
+    hackathons: (query: string) => ["search", "hackathons", query] as const,
   },
   notifications: {
     all: ["notifications"] as const,

@@ -22,11 +22,16 @@ import {
   HackathonEvaluationPayload,
   HackathonMutationPayload,
   HackathonSubmissionPayload,
+  InteractionPayload,
+  JobApplicationPayload,
+  JobApplicationStatusPayload,
   Experience,
   NotificationsPage,
   Project,
   ProjectInvite,
   ProjectMutationPayload,
+  ReferralRequestPayload,
+  ReferralRequestStatus,
   SearchResults,
   SendMessagePayload,
   User,
@@ -2454,3 +2459,590 @@ export const useTrackRecommendationImpressionMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
+export const useJobQuery = (slug?: string) =>
+  useQuery({
+    queryKey: queryKeys.jobs.detail(slug || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.job(slug || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(slug),
+  });
+
+export const useCompanyJobsQuery = (companyId?: string) =>
+  useQuery({
+    queryKey: queryKeys.jobs.company(companyId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.companyJobs(companyId || "", { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(companyId),
+  });
+
+export const useRecruiterJobsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.jobs.recruiter(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recruiterJobs({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useCreateJobMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof api.createJob>[0]) => {
+      if (!user) throw new Error("Login required");
+      return api.createJob(payload);
+    },
+    onSuccess: () => showToast("success", "Job created"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.recommendations.all,
+      });
+    },
+  });
+};
+
+export const useApplyToJobMutation = (jobId?: string) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: JobApplicationPayload) => {
+      if (!user) throw new Error("Login required");
+      if (!jobId) throw new Error("Job missing");
+      return api.applyToJob(jobId, payload);
+    },
+    onSuccess: () => showToast("success", "Application submitted"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobApplications.all,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+    },
+  });
+};
+
+export const useMyJobApplicationsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.jobApplications.mine(),
+    queryFn: async ({ signal }) => {
+      const result = await api.myJobApplications({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useJobApplicationsQuery = (jobId?: string, enabled = true) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.jobApplications.byJob(jobId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.jobApplications(jobId || "", { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && jobId && enabled),
+  });
+};
+
+export const useUpdateJobApplicationStatusMutation = (jobId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: JobApplicationStatusPayload;
+    }) => api.updateJobApplicationStatus(applicationId, payload),
+    onSuccess: () => showToast("success", "Application updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobApplications.all,
+      });
+      if (jobId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.jobApplications.byJob(jobId),
+        });
+      }
+    },
+  });
+};
+
+export const useMarkJobApplicationViewedMutation = (jobId?: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.markJobApplicationViewed,
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobApplications.all,
+      });
+      if (jobId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.jobApplications.byJob(jobId),
+        });
+      }
+    },
+  });
+};
+
+export const useSavedJobsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.savedJobs(),
+    queryFn: async ({ signal }) => {
+      const result = await api.savedJobs({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useRecommendedJobsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.jobs(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recommendedJobs({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useInternshipRecommendationsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.internships(),
+    queryFn: async ({ signal }) => {
+      const result = await api.internshipRecommendations({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useTrendingJobsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.recommendations.trendingJobs(),
+    queryFn: async ({ signal }) => {
+      const result = await api.trendingJobs({ signal });
+      return result.data || [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useAdvancedRecommendedJobsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.advancedJobs(),
+    queryFn: async ({ signal }) => {
+      const result = await api.advancedRecommendedJobs({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useRecommendedCollaboratorsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.collaborators(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recommendedCollaborators({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useRecommendedProjectsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recommendations.projects(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recommendedProjects({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useSaveJobMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (jobId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.saveJob(jobId);
+    },
+    onSuccess: () => showToast("success", "Saved jobs updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.recommendations.savedJobs(),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+    },
+  });
+};
+
+export const useReceivedReferralRequestsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.referrals.received(),
+    queryFn: async ({ signal }) => {
+      const result = await api.receivedReferralRequests({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useSentReferralRequestsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.referrals.sent(),
+    queryFn: async ({ signal }) => {
+      const result = await api.sentReferralRequests({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useCreateReferralRequestMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: string;
+      payload: ReferralRequestPayload;
+    }) => {
+      if (!user) throw new Error("Login required");
+      return api.createReferralRequest(userId, payload);
+    },
+    onSuccess: () => showToast("success", "Referral request sent"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.referrals.all }),
+  });
+};
+
+export const useReviewReferralRequestMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      status,
+    }: {
+      requestId: string;
+      status: Exclude<ReferralRequestStatus, "PENDING">;
+    }) => api.reviewReferralRequest(requestId, status),
+    onSuccess: () => showToast("success", "Referral request updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.referrals.all }),
+  });
+};
+
+export const useMyReputationQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.reputation.me(),
+    queryFn: async ({ signal }) => {
+      const result = await api.myReputation({ signal });
+      return result.data;
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useUserReputationQuery = (username?: string) =>
+  useQuery({
+    queryKey: queryKeys.reputation.user(username || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.userReputation(username || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(username),
+  });
+
+export const useReputationLeaderboardQuery = () =>
+  useQuery({
+    queryKey: queryKeys.reputation.leaderboard(),
+    queryFn: async ({ signal }) => {
+      const result = await api.reputationLeaderboard({ signal });
+      return result.data || [];
+    },
+    staleTime: 60_000,
+  });
+
+export const useMyReputationHistoryQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.reputation.history(),
+    queryFn: async ({ signal }) => {
+      const result = await api.myReputationHistory({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useBadgesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.reputation.badges(),
+    queryFn: async ({ signal }) => {
+      const result = await api.badges({ signal });
+      return result.data || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+export const useTopBadgesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.reputation.topBadges(),
+    queryFn: async ({ signal }) => {
+      const result = await api.topBadges({ signal });
+      return result.data || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+export const useTopEngineersQuery = () =>
+  useQuery({
+    queryKey: queryKeys.leaderboards.engineers(),
+    queryFn: async ({ signal }) => {
+      const result = await api.topEngineers({ signal });
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+export const useTopProjectsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.leaderboards.projects(),
+    queryFn: async ({ signal }) => {
+      const result = await api.topProjects({ signal });
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+export const useTopHackathonEngineersQuery = () =>
+  useQuery({
+    queryKey: queryKeys.leaderboards.hackathonEngineers(),
+    queryFn: async ({ signal }) => {
+      const result = await api.topHackathonEngineers({ signal });
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+export const useTopTeamsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.leaderboards.teams(),
+    queryFn: async ({ signal }) => {
+      const result = await api.topTeams({ signal });
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+export const useFastestGrowingEngineersQuery = () =>
+  useQuery({
+    queryKey: queryKeys.leaderboards.fastestGrowing(),
+    queryFn: async ({ signal }) => {
+      const result = await api.fastestGrowingEngineers({ signal });
+      return result.data;
+    },
+    staleTime: 60_000,
+  });
+
+export const useRecruiterDashboardQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recruiter.dashboard(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recruiterDashboard({ signal });
+      return result.data;
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useRankJobCandidatesQuery = (jobId?: string, enabled = true) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.analytics.candidates(jobId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.rankJobCandidates(jobId || "", { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && jobId && enabled),
+  });
+};
+
+export const useRecruiterInsightsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.analytics.recruiterInsights(),
+    queryFn: async ({ signal }) => {
+      const result = await api.recruiterInsights({ signal });
+      return result.data;
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useEngineeringPortfolioQuery = (username?: string) =>
+  useQuery({
+    queryKey: queryKeys.engineering.portfolio(username || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.engineeringPortfolio(username || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(username),
+  });
+
+export const useMyActivityTimelineQuery = (limit = 20) => {
+  const { user } = useAuth();
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.activities.timeline(limit),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.myActivityTimeline(limit, {
+        cursor: pageParam,
+        signal,
+      });
+      return result.data;
+    },
+    enabled: Boolean(user),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+};
+
+export const useTrackInteractionMutation = () =>
+  useMutation({
+    mutationFn: (payload: InteractionPayload) => api.trackInteraction(payload),
+  });
+
+export const useRebuildAffinitiesMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!user) throw new Error("Login required");
+      return api.rebuildAffinities();
+    },
+    onSuccess: () => showToast("success", "Affinities rebuilt"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.affinity.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.discovery.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.recommendations.all,
+      });
+    },
+  });
+};
+
+export const useTrendingFeedQuery = (limit = 100) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.trending.feed(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.trendingFeed(limit, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+};
+
+export const useTrackTrendingImpressionMutation = () =>
+  useMutation({
+    mutationFn: (payload: InteractionPayload) =>
+      api.trackTrendingImpression(payload),
+  });
+
+export const useRefreshTrendingMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!user) throw new Error("Login required");
+      return api.refreshTrending();
+    },
+    onSuccess: () => showToast("success", "Trending refreshed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.trending.feed(100) }),
+  });
+};
+
+export const useHackathonSearchQuery = (query: string) =>
+  useQuery({
+    queryKey: queryKeys.search.hackathons(query.trim()),
+    queryFn: async ({ signal }) => {
+      const result = await api.searchHackathons(query.trim(), { signal });
+      return result.data || [];
+    },
+    enabled: query.trim().length >= 2,
+    staleTime: 60_000,
+  });

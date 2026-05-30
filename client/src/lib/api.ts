@@ -1024,6 +1024,191 @@ export type NotificationsPage = {
   limit: number;
 };
 
+export type JobApplicationStatus =
+  | "APPLIED"
+  | "VIEWED"
+  | "SHORTLISTED"
+  | "INTERVIEW"
+  | "REJECTED"
+  | "HIRED";
+
+export type JobApplication = {
+  id: string;
+  jobId: string;
+  applicantId?: string;
+  status?: JobApplicationStatus;
+  resumeUrl?: string | null;
+  coverLetter?: string | null;
+  githubUrl?: string | null;
+  portfolioUrl?: string | null;
+  linkedinUrl?: string | null;
+  recruiterNotes?: string | null;
+  viewedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  job?: Job;
+  applicant?: User;
+};
+
+export type JobApplicationPayload = {
+  resumeUrl?: string;
+  coverLetter?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+  linkedinUrl?: string;
+};
+
+export type JobApplicationStatusPayload = {
+  status: Exclude<JobApplicationStatus, "APPLIED" | "VIEWED">;
+  recruiterNotes?: string;
+};
+
+export type ReferralRequestStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "REFERRED";
+
+export type ReferralRequest = {
+  id: string;
+  requesterId?: string;
+  referrerId?: string;
+  companyId?: string | null;
+  companySlug?: string | null;
+  companyName?: string | null;
+  jobRole?: string;
+  jobId?: string | null;
+  jobUrl?: string | null;
+  message?: string | null;
+  status?: ReferralRequestStatus;
+  githubUrl?: string | null;
+  codingProfileUrl?: string | null;
+  resumeUrl?: string | null;
+  linkedinUrl?: string | null;
+  portfolioUrl?: string | null;
+  reviewedAt?: string | null;
+  createdAt?: string;
+  requester?: User;
+  referrer?: User;
+  company?: Company;
+  job?: Job;
+};
+
+export type ReferralRequestPayload = {
+  companyId?: string;
+  companySlug?: string;
+  companyName?: string;
+  jobRole: string;
+  jobId?: string;
+  jobUrl?: string;
+  message?: string;
+  githubUrl?: string;
+  codingProfileUrl?: string;
+  resumeUrl?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+};
+
+export type Badge = {
+  id: string;
+  name: string;
+  description?: string | null;
+  iconUrl?: string | null;
+  category?: string | null;
+  rarity?: string | null;
+  points?: number;
+};
+
+export type ReputationSummary = {
+  userId?: string;
+  username?: string;
+  reputationScore?: number;
+  engineeringScore?: number;
+  trustLevel?: string;
+  badges?: Badge[];
+  history?: ReputationHistoryItem[];
+  user?: User;
+  [key: string]: unknown;
+};
+
+export type ReputationHistoryItem = {
+  id: string;
+  type?: string;
+  points?: number;
+  reason?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+};
+
+export type ActivityItem = {
+  id: string;
+  userId?: string;
+  type?: string;
+  title?: string;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+  user?: User;
+};
+
+export type ActivityPage = {
+  activities: ActivityItem[];
+  nextCursor?: string | null;
+  hasNextPage?: boolean;
+  limit?: number;
+};
+
+export type InteractionPayload = {
+  entityId: string;
+  entityType: string;
+  interactionType?: string;
+  action?: string;
+  position?: number;
+  clicked?: boolean;
+  hidden?: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+export type LeaderboardResult<T> = T[] | { items?: T[]; leaderboard?: T[] };
+
+export type CandidateRanking = {
+  user?: User;
+  userId?: string;
+  fitScore?: number;
+  score?: number;
+  reasons?: string[];
+  application?: JobApplication;
+  [key: string]: unknown;
+};
+
+export type RecruiterInsights = {
+  jobs?: Job[];
+  applications?: JobApplication[];
+  candidates?: CandidateRanking[];
+  [key: string]: unknown;
+};
+
+export type RecruiterDashboard = {
+  jobs?: Job[];
+  applications?: JobApplication[];
+  insights?: RecruiterInsights;
+  [key: string]: unknown;
+};
+
+export type EngineeringPortfolio = {
+  user?: User;
+  projects?: Project[];
+  experiences?: Experience[];
+  skills?: UserSkill[];
+  reputation?: ReputationSummary;
+  [key: string]: unknown;
+};
+
+export type TrendingFeedItem = FeedItem & {
+  entityId?: string;
+  entityType?: FeedItemType;
+};
+
 const API_URL =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
   "http://localhost:5000/api/v1";
@@ -1383,10 +1568,26 @@ export const api = {
     request<FeedItem[]>(`/feed${toQuery({ limit })}`, options),
   createPost: (body: { content: string; type: string; tags?: string[] }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
+  post: (id: string, options?: EndpointOptions) =>
+    request<FeedPost>(`/posts/${id}`, options),
+  updatePost: (
+    id: string,
+    body: { title?: string; content?: string; type?: string; tags?: string[] },
+  ) => request<FeedPost>(`/posts/${id}`, { method: "PATCH", body }),
+  deletePost: (id: string) =>
+    request<{ success: boolean }>(`/posts/${id}`, { method: "DELETE" }),
+  commentOnPost: (id: string, body: { content: string; parentId?: string }) =>
+    request<unknown>(`/posts/${id}/comments`, { method: "POST", body }),
   likePost: (id: string) =>
     request<{ liked?: boolean }>(`/posts/${id}/like`, { method: "POST" }),
   savePost: (id: string) =>
     request<{ saved?: boolean }>(`/posts/${id}/save`, { method: "POST" }),
+  repostPost: (id: string, body?: { content?: string }) =>
+    request<FeedPost>(`/posts/${id}/repost`, { method: "POST", body }),
+  deleteComment: (commentId: string) =>
+    request<{ success: boolean }>(`/posts/comments/${commentId}`, {
+      method: "DELETE",
+    }),
   projects: (limit = 12, options?: EndpointOptions) =>
     request<Project[]>(`/projects${toQuery({ limit })}`, options),
   project: (idOrSlug: string, options?: EndpointOptions) =>
@@ -1599,12 +1800,81 @@ export const api = {
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
   jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
+  createJob: (body: Partial<Job>) =>
+    request<Job>("/jobs", { method: "POST", body }),
+  job: (slug: string, options?: EndpointOptions) =>
+    request<Job>(`/jobs/${slug}`, options),
+  companyJobs: (companyId: string, options?: EndpointOptions) =>
+    request<Job[]>(`/jobs/company/${companyId}`, options),
+  recruiterJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/jobs/my/jobs", options),
+  applyToJob: (jobId: string, body: JobApplicationPayload) =>
+    request<JobApplication>(`/job-applications/jobs/${jobId}/apply`, {
+      method: "POST",
+      body,
+    }),
+  myJobApplications: (options?: EndpointOptions) =>
+    request<JobApplication[]>("/job-applications/my", options),
+  jobApplications: (jobId: string, options?: EndpointOptions) =>
+    request<JobApplication[]>(`/job-applications/jobs/${jobId}`, options),
+  updateJobApplicationStatus: (
+    applicationId: string,
+    body: JobApplicationStatusPayload,
+  ) =>
+    request<JobApplication>(`/job-applications/${applicationId}/status`, {
+      method: "PATCH",
+      body,
+    }),
+  markJobApplicationViewed: (applicationId: string) =>
+    request<JobApplication>(`/job-applications/${applicationId}/view`, {
+      method: "PATCH",
+    }),
+  saveJob: (jobId: string) =>
+    request<{ saved?: boolean }>(`/recommendations/jobs/${jobId}/save`, {
+      method: "POST",
+    }),
+  savedJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/recommendations/saved-jobs", options),
+  recommendedJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/recommendations/recommended-jobs", options),
+  internshipRecommendations: (options?: EndpointOptions) =>
+    request<Job[]>("/recommendations/internships", options),
+  trendingJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/recommendations/trending-jobs", options),
+  advancedRecommendedJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/recommendations/advanced-jobs", options),
+  recommendedCollaborators: (options?: EndpointOptions) =>
+    request<User[]>("/recommendations/collaborators", options),
+  recommendedProjects: (options?: EndpointOptions) =>
+    request<Project[]>("/recommendations/projects", options),
+  createReferralRequest: (userId: string, body: ReferralRequestPayload) =>
+    request<ReferralRequest>(`/referrals/request/${userId}`, {
+      method: "POST",
+      body,
+    }),
+  reviewReferralRequest: (
+    requestId: string,
+    status: Exclude<ReferralRequestStatus, "PENDING">,
+  ) =>
+    request<ReferralRequest>(`/referrals/${requestId}/review`, {
+      method: "PATCH",
+      body: { status },
+    }),
+  receivedReferralRequests: (options?: EndpointOptions) =>
+    request<ReferralRequest[]>("/referrals/received", options),
+  sentReferralRequests: (options?: EndpointOptions) =>
+    request<ReferralRequest[]>("/referrals/sent", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),
   searchUsers: (q: string, options?: EndpointOptions) =>
     request<User[]>(`/search/users${toQuery({ q, limit: 12 })}`, options),
   searchProjects: (q: string, options?: EndpointOptions) =>
     request<Project[]>(`/search/projects${toQuery({ q, limit: 12 })}`, options),
+  searchHackathons: (q: string, options?: EndpointOptions) =>
+    request<Hackathon[]>(
+      `/search/hackathons${toQuery({ q, limit: 12 })}`,
+      options,
+    ),
   trackFeedImpression: (body: {
     entityId: string;
     entityType: FeedItemType;
@@ -1629,64 +1899,123 @@ export const api = {
     request<null>(`/notifications/${id}/archive`, { method: "PATCH" }),
   deleteNotification: (id: string) =>
     request<null>(`/notifications/${id}`, { method: "DELETE" }),
+  reputationLeaderboard: (options?: EndpointOptions) =>
+    request<ReputationSummary[]>("/reputation/leaderboard", options),
+  myReputation: (options?: EndpointOptions) =>
+    request<ReputationSummary>("/reputation/me", options),
+  userReputation: (username: string, options?: EndpointOptions) =>
+    request<ReputationSummary>(`/reputation/users/${username}`, options),
+  myReputationHistory: (options?: EndpointOptions) =>
+    request<ReputationHistoryItem[]>("/reputation/me/history", options),
+  badges: (options?: EndpointOptions) =>
+    request<Badge[]>("/reputation/badges", options),
+  topBadges: (options?: EndpointOptions) =>
+    request<Badge[]>("/reputation/top-badges", options),
+  topEngineers: (options?: EndpointOptions) =>
+    request<LeaderboardResult<User>>("/leaderboards/engineers", options),
+  topProjects: (options?: EndpointOptions) =>
+    request<LeaderboardResult<Project>>("/leaderboards/projects", options),
+  topHackathonEngineers: (options?: EndpointOptions) =>
+    request<LeaderboardResult<User>>(
+      "/leaderboards/hackathon-engineers",
+      options,
+    ),
+  topTeams: (options?: EndpointOptions) =>
+    request<LeaderboardResult<Team>>("/leaderboards/teams", options),
+  fastestGrowingEngineers: (options?: EndpointOptions) =>
+    request<LeaderboardResult<User>>("/leaderboards/fastest-growing", options),
+  recruiterDashboard: (options?: EndpointOptions) =>
+    request<RecruiterDashboard>("/recruiter/dashboard", options),
+  rankJobCandidates: (jobId: string, options?: EndpointOptions) =>
+    request<CandidateRanking[]>(`/analytics/jobs/${jobId}/rankings`, options),
+  recruiterInsights: (options?: EndpointOptions) =>
+    request<RecruiterInsights>("/analytics/recruiter-insights", options),
+  engineeringPortfolio: (username: string, options?: EndpointOptions) =>
+    request<EngineeringPortfolio>(`/engineering/portfolio/${username}`, options),
+  myActivityTimeline: (limit = 20, options?: CursorOptions) => {
+    const { cursor, ...requestOptions } = options || {};
+    return request<ActivityPage>(
+      `/activities/me${toQuery({ limit, cursor })}`,
+      requestOptions,
+    );
+  },
+  trackInteraction: (body: InteractionPayload) =>
+    request<{ success?: boolean }>("/interactions/track", {
+      method: "POST",
+      body,
+    }),
+  rebuildAffinities: () =>
+    request<{ success?: boolean }>("/affinity/rebuild", { method: "POST" }),
+  trendingFeed: (limit = 100, options?: EndpointOptions) =>
+    request<TrendingFeedItem[]>(
+      `/trending/feed${toQuery({ limit })}`,
+      options,
+    ),
+  trackTrendingImpression: (body: InteractionPayload) =>
+    request<{ success: boolean }>("/trending/impressions", {
+      method: "POST",
+      body,
+    }),
+  refreshTrending: () =>
+    request<{ success?: boolean }>("/trending/refresh", { method: "POST" }),
 
   // Discovery & Recommendations
   discoveryFeed: (options?: EndpointOptions) =>
     request<FeedItem[]>("/discovery/feed", options),
   suggestedEngineers: (limit = 20, options?: EndpointOptions) =>
     request<User[]>(
-      `/discovery/suggested/engineers${toQuery({ limit })}`,
+      `/discovery/suggested-engineers${toQuery({ limit })}`,
       options,
     ),
   suggestedMentors: (limit = 20, options?: EndpointOptions) =>
     request<User[]>(
-      `/discovery/suggested/mentors${toQuery({ limit })}`,
+      `/discovery/suggested-mentors${toQuery({ limit })}`,
       options,
     ),
   suggestedRecruiters: (limit = 20, options?: EndpointOptions) =>
     request<User[]>(
-      `/discovery/suggested/recruiters${toQuery({ limit })}`,
+      `/discovery/suggested-recruiters${toQuery({ limit })}`,
       options,
     ),
   suggestedCollaborators: (limit = 20, options?: EndpointOptions) =>
     request<User[]>(
-      `/discovery/suggested/collaborators${toQuery({ limit })}`,
+      `/discovery/suggested-collaborators${toQuery({ limit })}`,
       options,
     ),
   suggestedTeammates: (limit = 20, options?: EndpointOptions) =>
     request<User[]>(
-      `/discovery/suggested/teammates${toQuery({ limit })}`,
+      `/discovery/suggested-teammates${toQuery({ limit })}`,
       options,
     ),
   suggestedProjects: (limit = 20, options?: EndpointOptions) =>
     request<Project[]>(
-      `/discovery/suggested/projects${toQuery({ limit })}`,
+      `/discovery/suggested-projects${toQuery({ limit })}`,
       options,
     ),
   suggestedJobs: (limit = 20, options?: EndpointOptions) =>
-    request<Job[]>(`/discovery/suggested/jobs${toQuery({ limit })}`, options),
+    request<Job[]>(`/discovery/suggested-jobs${toQuery({ limit })}`, options),
   suggestedHackathons: (limit = 20, options?: EndpointOptions) =>
     request<Hackathon[]>(
-      `/discovery/suggested/hackathons${toQuery({ limit })}`,
+      `/discovery/suggested-hackathons${toQuery({ limit })}`,
       options,
     ),
   suggestedCompanies: (limit = 20, options?: EndpointOptions) =>
     request<Company[]>(
-      `/discovery/suggested/companies${toQuery({ limit })}`,
+      `/discovery/suggested-companies${toQuery({ limit })}`,
       options,
     ),
   suggestedPosts: (limit = 20, options?: EndpointOptions) =>
     request<FeedPost[]>(
-      `/discovery/suggested/posts${toQuery({ limit })}`,
+      `/discovery/suggested-posts${toQuery({ limit })}`,
       options,
     ),
   suggestedCommunities: (limit = 20, options?: EndpointOptions) =>
     request<Community[]>(
-      `/discovery/suggested/communities${toQuery({ limit })}`,
+      `/discovery/suggested-communities${toQuery({ limit })}`,
       options,
     ),
   trendingCommunities: (options?: EndpointOptions) =>
-    request<Community[]>("/communities/trending", options),
+    request<Community[]>("/discovery/suggested-communities", options),
   communityBySlug: (
     slug: string,
     page = 1,
@@ -1704,7 +2033,7 @@ export const api = {
     clicked?: boolean;
     hidden?: boolean;
   }) =>
-    request<{ success: boolean }>("/discovery/impression", {
+    request<{ success: boolean }>("/trending/impressions", {
       method: "POST",
       body,
     }),
