@@ -261,285 +261,238 @@ export const recommendJobsForUserAdvanced =  async (
     );
   };
   
-export const recommendCollaborators =  async (
-    userId: string,
-    limit = 20
-  ) => {
+const SKILL_CATEGORIES: Record<string, string[]> = {
+  frontend: [
+    "react", "vue", "angular", "html", "css", "javascript", "typescript",
+    "next.js", "nextjs", "frontend", "tailwind", "sass", "webpack", "vite", "svelte"
+  ],
+  backend: [
+    "node.js", "nodejs", "node", "express", "nest.js", "nestjs", "python", "django",
+    "flask", "go", "golang", "java", "spring", "ruby", "rails", "php", "laravel",
+    "c#", ".net", "backend", "apis", "graphql", "rest", "fastapi"
+  ],
+  database: [
+    "sql", "postgresql", "postgres", "mysql", "mongodb", "redis", "prisma", "mongoose",
+    "cassandra", "dynamodb", "mariadb", "database", "elasticsearch", "neo4j"
+  ],
+  devops: [
+    "aws", "docker", "kubernetes", "ci/cd", "gcp", "azure", "devops", "terraform",
+    "nginx", "linux", "github actions", "jenkins", "ansible", "cloud"
+  ],
+  mobile: [
+    "react native", "reactnative", "flutter", "swift", "kotlin", "android", "ios",
+    "mobile", "objective-c"
+  ],
+  design: [
+    "figma", "ui/ux", "ui", "ux", "photoshop", "illustrator", "design", "wireframing"
+  ]
+};
 
-    //
-    // Current user
-    //
-    const currentUser =
-      await prisma.user.findUnique({
+export const calculateCosineSimilarity = (tagsA: string[], tagsB: string[]): number => {
+  const cleanA = tagsA.map(t => t.toLowerCase().trim()).filter(Boolean);
+  const cleanB = tagsB.map(t => t.toLowerCase().trim()).filter(Boolean);
 
-        where: {
-          id: userId,
-        },
+  if (cleanA.length === 0 || cleanB.length === 0) return 0;
 
-        include: {
+  const allTags = Array.from(new Set([...cleanA, ...cleanB]));
 
-          skills: {
-            include: {
-              skill: true,
-            },
-          },
-        },
-      });
+  const vectorA = allTags.map(tag => cleanA.includes(tag) ? 1 : 0);
+  const vectorB = allTags.map(tag => cleanB.includes(tag) ? 1 : 0);
 
-    if (!currentUser) {
-      return [];
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+
+  for (let i = 0; i < allTags.length; i++) {
+    dotProduct += vectorA[i] * vectorB[i];
+    magnitudeA += vectorA[i] * vectorA[i];
+    magnitudeB += vectorB[i] * vectorB[i];
+  }
+
+  magnitudeA = Math.sqrt(magnitudeA);
+  magnitudeB = Math.sqrt(magnitudeB);
+
+  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+
+  return dotProduct / (magnitudeA * magnitudeB);
+};
+
+export const getSkillCategories = (skills: string[]): Set<string> => {
+  const categories = new Set<string>();
+  const cleanSkills = skills.map(s => s.toLowerCase().trim());
+
+  for (const skill of cleanSkills) {
+    for (const [category, keywords] of Object.entries(SKILL_CATEGORIES)) {
+      if (keywords.includes(skill) || skill.includes(category)) {
+        categories.add(category);
+      }
     }
+  }
 
-    const currentSkills =
-      currentUser.skills.map(
-        (s) =>
-          s.skill.name
-            .toLowerCase()
-      );
+  return categories;
+};
 
-    //
-    // Other engineers
-    //
-    const engineers =
-      await prisma.user.findMany({
+export const calculateComplementarity = (skillsA: string[], skillsB: string[]): number => {
+  const catA = getSkillCategories(skillsA);
+  const catB = getSkillCategories(skillsB);
 
-        where: {
-          id: {
-            not: userId,
-          },
-        },
+  if (catA.size === 0 || catB.size === 0) return 0;
 
-        include: {
+  const diff = new Set([...catB].filter(x => !catA.has(x)));
+  const totalCategories = Object.keys(SKILL_CATEGORIES).length;
 
-          profile: true,
+  return diff.size / totalCategories;
+};
 
-          skills: {
-            include: {
-              skill: true,
-            },
-          },
-        },
+export const matchLookingForSkills = (userSkills: string[], lookingForText?: string): number => {
+  if (!lookingForText) return 0;
+  const cleanText = lookingForText.toLowerCase();
+  let matches = 0;
+  for (const skill of userSkills) {
+    if (cleanText.includes(skill.toLowerCase())) {
+      matches++;
+    }
+  }
+  return matches;
+};
 
-        take: 200,
-      });
-
-    //
-    // Compatibility ranking
-    //
-    const ranked =
-      engineers.map(
-        (engineer) => {
-
-          const skills =
-            engineer.skills.map(
-              (s) =>
-                s.skill.name.toLowerCase()
-            );
-
-          //
-          // Shared skills
-          //
-          const sharedSkills =
-            skills.filter(
-              (skill) =>
-                currentSkills.includes(
-                  skill
-                )
-            );
-
-          let score = 0;
-
-          //
-          // Shared skills
-          //
-          score +=
-            sharedSkills.length *
-            15;
-
-          //
-          // Engineering strength
-          //
-          score +=
-            engineer.engineeringScore *
-            0.05;
-
-          //
-          // Trust
-          //
-          if (
-            engineer.trustLevel ===
-            "ELITE"
-          ) {
-            score += 50;
-          }
-
-          if (
-            engineer.trustLevel ===
-            "ADVANCED"
-          ) {
-            score += 30;
-          }
-
-          return {
-
-            engineer,
-
-            compatibilityScore:
-              Math.round(
-                score
-              ),
-
-            sharedSkills,
-          };
-        }
-      );
-
-    ranked.sort(
-      (a, b) =>
-        b.compatibilityScore -
-        a.compatibilityScore
-    );
-
-    return ranked.slice(
-      0,
-      limit
-    );
-  };
-  
-export const recommendProjectsForUser =  async (
-    userId: string,
-    limit = 20
-  ) => {
-
-    //
-    // User skills
-    //
-    const userSkills =
-      await prisma.userSkill.findMany({
-
-        where: {
-          userId,
-        },
-
+export const recommendCollaborators = async (
+  userId: string,
+  limit = 20
+) => {
+  const currentUser = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    include: {
+      skills: {
         include: {
           skill: true,
         },
-      });
+      },
+    },
+  });
 
-    const skillNames =
-      userSkills.map(
-        (s) =>
-          s.skill.name
-            .toLowerCase()
-      );
+  if (!currentUser) {
+    return [];
+  }
 
-    //
-    // Projects
-    //
-    const projects =
-      await prisma.project.findMany({
+  const currentSkills = currentUser.skills.map((s) => s.skill.name.toLowerCase());
 
-        where: {
-          deletedAt: null,
-
-          visibility:
-            "PUBLIC",
-        },
-
+  const engineers = await prisma.user.findMany({
+    where: {
+      id: {
+        not: userId,
+      },
+    },
+    include: {
+      profile: true,
+      skills: {
         include: {
-
-          owner: {
-            include: {
-              profile: true,
-            },
-          },
+          skill: true,
         },
+      },
+    },
+    take: 200,
+  });
 
-        take: 200,
-      });
+  const ranked = engineers.map((engineer) => {
+    const skills = engineer.skills.map((s) => s.skill.name.toLowerCase());
+    const sharedSkills = skills.filter((skill) => currentSkills.includes(skill));
 
-    //
-    // Ranking
-    //
-    const ranked =
-      projects.map(
-        (project) => {
+    const similarity = calculateCosineSimilarity(currentSkills, skills);
+    const complementarity = calculateComplementarity(currentSkills, skills);
 
-          let score = 0;
+    let score = 0;
+    score += similarity * 80;
+    score += complementarity * 120;
+    score += engineer.engineeringScore * 0.05;
 
-          //
-          // Verified
-          //
-          if (project.verified) {
-            score += 50;
-          }
+    if (engineer.trustLevel === "ELITE") {
+      score += 50;
+    }
+    if (engineer.trustLevel === "ADVANCED") {
+      score += 30;
+    }
 
-          //
-          // Live deployment
-          //
-          if (project.liveUrl) {
-            score += 30;
-          }
+    return {
+      engineer,
+      compatibilityScore: Math.round(score),
+      sharedSkills,
+      similarityScore: Math.round(similarity * 100) / 100,
+      complementarityScore: Math.round(complementarity * 100) / 100,
+    };
+  });
 
-          //
-          // GitHub metrics
-          //
-          score +=
-            project.starsCount;
+  ranked.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
-          score +=
-            project.forksCount *
-            0.5;
+  return ranked.slice(0, limit);
+};
 
-          //
-          // Tech stack overlap
-          //
-          const techStack =
-  Array.isArray(
-    project.techStack
-  )
-    ? project.techStack.filter(
-        (
-          tech
-        ): tech is string =>
-          typeof tech ===
-          "string"
-      )
-    : [];
+export const recommendProjectsForUser = async (
+  userId: string,
+  limit = 20
+) => {
+  const userSkills = await prisma.userSkill.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      skill: true,
+    },
+  });
 
-const overlap =
-  techStack.filter(
-    (tech) =>
-      skillNames.includes(
-        tech.toLowerCase()
-      )
-  );
+  const skillNames = userSkills.map((s) => s.skill.name.toLowerCase());
 
-          score +=
-            overlap.length * 15;
+  const projects = await prisma.project.findMany({
+    where: {
+      deletedAt: null,
+      visibility: "PUBLIC",
+    },
+    include: {
+      owner: {
+        include: {
+          profile: true,
+        },
+      },
+    },
+    take: 200,
+  });
 
-          return {
+  const ranked = projects.map((project) => {
+    let score = 0;
 
-            ...project,
+    if (project.verified) {
+      score += 50;
+    }
+    if (project.liveUrl) {
+      score += 30;
+    }
 
-            recommendationScore:
-              Math.round(
-                score
-              ),
-          };
-        }
-      );
+    score += project.starsCount;
+    score += project.forksCount * 0.5;
 
-    ranked.sort(
-      (a, b) =>
-        b.recommendationScore -
-        a.recommendationScore
-    );
+    const techStack = Array.isArray(project.techStack)
+      ? project.techStack.filter((tech): tech is string => typeof tech === "string")
+      : [];
 
-    return ranked.slice(
-      0,
-      limit
-    );
-  };
+    const similarity = calculateCosineSimilarity(skillNames, techStack);
+    score += similarity * 100;
+
+    const lookingForMatches = matchLookingForSkills(skillNames, project.lookingFor || undefined);
+    score += lookingForMatches * 30;
+
+    return {
+      ...project,
+      recommendationScore: Math.round(score),
+      similarityScore: Math.round(similarity * 100) / 100,
+      lookingForMatches,
+    };
+  });
+
+  ranked.sort((a, b) => b.recommendationScore - a.recommendationScore);
+
+  return ranked.slice(0, limit);
+};
   
   

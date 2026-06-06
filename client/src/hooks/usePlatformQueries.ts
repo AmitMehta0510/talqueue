@@ -62,47 +62,6 @@ type ChatSettingsInput =
   | { action: "add-participant"; userId: string }
   | { action: "remove-participant"; userId: string };
 
-const upsertMessageInCache = (
-  data: InfiniteMessagesCache | undefined,
-  message: ChatMessage,
-) => {
-  if (!data?.pages?.length) {
-    return data;
-  }
-
-  let found = false;
-  const pages = data.pages.map((page, pageIndex) => {
-    const messages = page.messages.map((item) => {
-      if (
-        item.id === message.id ||
-        item.id.startsWith(`pending-${message.id}`)
-      ) {
-        found = true;
-        return message;
-      }
-
-      return item;
-    });
-
-    if (!found && pageIndex === data.pages.length - 1) {
-      return {
-        ...page,
-        messages: [...messages, message],
-      };
-    }
-
-    return {
-      ...page,
-      messages,
-    };
-  });
-
-  return {
-    ...data,
-    pages,
-  };
-};
-
 const updateMessageInCache = (
   data: InfiniteMessagesCache | undefined,
   message: ChatMessage,
@@ -3001,6 +2960,19 @@ export const useRecruiterDashboardQuery = () => {
       return result.data;
     },
     enabled: Boolean(user),
+  });
+};
+
+export const useRecruiterJobPipelineQuery = (jobId?: string, enabled = true) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.recruiter.pipeline(jobId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.recruiterJobPipeline(jobId || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && jobId && enabled),
   });
 };
 

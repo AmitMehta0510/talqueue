@@ -181,3 +181,146 @@ export const getRecruiterDashboard = async (recruiterId: string) => {
     ],
   };
 };
+
+export const getJobPipeline = async (recruiterId: string, jobId: string) => {
+  const job = await prisma.job.findFirst({
+    where: {
+      id: jobId,
+      postedById: recruiterId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      skillsRequired: true,
+    },
+  });
+
+  if (!job) {
+    throw new AppError("Job not found or unauthorized", 404);
+  }
+
+  const applications = await prisma.jobApplication.findMany({
+    where: {
+      jobId,
+    },
+    include: {
+      applicant: {
+        include: {
+          profile: true,
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+          badges: {
+            include: {
+              badge: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  const allApplicantsIds = applications.map((app) => app.applicantId);
+  const experiences = allApplicantsIds.length
+    ? await prisma.experience.findMany({
+        where: {
+          userId: { in: allApplicantsIds },
+        },
+      })
+    : [];
+
+  const experienceMap = new Map<string, typeof experiences>();
+  for (const exp of experiences) {
+    const list = experienceMap.get(exp.userId) || [];
+    list.push(exp);
+    experienceMap.set(exp.userId, list);
+  }
+
+  const columns: Record<string, any[]> = {
+    APPLIED: [],
+    VIEWED: [],
+    SHORTLISTED: [],
+    INTERVIEW: [],
+    HIRED: [],
+    REJECTED: [],
+  };
+
+  const jobSkills = (job.skillsRequired || []).map((s: string) => s.toLowerCase());
+
+  for (const app of applications) {
+    const applicant = app.applicant;
+    const profile = applicant.profile;
+    const applicantSkills = applicant.skills.map((s) => s.skill.name.toLowerCase());
+    const matchedSkills = applicantSkills.filter((s) => jobSkills.includes(s));
+
+    const userExps = experienceMap.get(applicant.id) || [];
+    const totalExps = userExps.length;
+    const verifiedExps = userExps.filter((e) => e.verified).length;
+    const suspiciousExps = userExps.filter((e) => e.suspicious).length;
+
+    let totalVerificationScore = 0;
+    for (const e of userExps) {
+      totalVerificationScore += e.verificationScore || 0;
+    }
+    const avgVerificationScore = totalExps > 0 ? Math.round(totalVerificationScore / totalExps) : 0;
+
+    const trustBadges = applicant.badges.map((b) => ({
+      name: b.badge.name,
+      rarity: b.badge.rarity,
+      category: b.badge.category,
+    }));
+
+    const card = {
+      id: app.id,
+      status: app.status,
+      appliedAt: app.createdAt,
+      resumeUrl: app.resumeUrl,
+      coverLetter: app.coverLetter,
+      recruiterNotes: app.recruiterNotes,
+      candidate: {
+        id: applicant.id,
+        fullName: profile?.fullName || applicant.username,
+        username: applicant.username,
+        avatarUrl: profile?.avatarUrl,
+        headline: profile?.headline,
+        engineeringScore: applicant.engineeringScore,
+        trustLevel: applicant.trustLevel,
+        reputationScore: applicant.reputationScore,
+      },
+      skillsMatch: {
+        matched: matchedSkills,
+        totalRequired: jobSkills.length,
+        matchPercentage: jobSkills.length > 0 ? Math.round((matchedSkills.length / jobSkills.length) * 100) : 0,
+      },
+      verificationMetrics: {
+        totalExperiences: totalExps,
+        verifiedExperiences: verifiedExps,
+        suspiciousExperiences: suspiciousExps,
+        averageVerificationScore: avgVerificationScore,
+        isVerifiedEngineer: applicant.verifiedEngineer,
+      },
+      badges: trustBadges,
+    };
+
+    if (app.status in columns) {
+      columns[app.status].push(card);
+    } else {
+      columns.APPLIED.push(card);
+    }
+  }
+
+  return {
+    job: {
+      id: job.id,
+      title: job.title,
+    },
+    pipeline: columns,
+  };
+};
+

@@ -11,6 +11,7 @@ import {
 
 import {
   getRecruiterDashboard,
+  getJobPipeline,
 } from "./recruiter-dashboard.service";
 
 export const getRecruiterDashboardHandler =
@@ -28,6 +29,26 @@ export const getRecruiterDashboardHandler =
       res.json(
         successResponse(
           dashboard
+        )
+      );
+    }
+  );
+
+export const getJobPipelineHandler =
+  asyncHandler(
+    async (
+      req: any,
+      res: Response
+    ) => {
+      const pipeline =
+        await getJobPipeline(
+          req.user.id,
+          req.params.jobId
+        );
+
+      res.json(
+        successResponse(
+          pipeline
         )
       );
     }

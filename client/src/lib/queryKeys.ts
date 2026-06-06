@@ -126,6 +126,7 @@ export const queryKeys = {
   },
   recruiter: {
     dashboard: () => ["recruiter", "dashboard"] as const,
+    pipeline: (jobId: string) => ["recruiter", "pipeline", jobId] as const,
   },
   analytics: {
     candidates: (jobId: string) => ["analytics", "candidates", jobId] as const,

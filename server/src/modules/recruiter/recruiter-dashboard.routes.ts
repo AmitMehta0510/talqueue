@@ -6,6 +6,7 @@ from "modules/auth/auth.middleware";
 
 import {
   getRecruiterDashboardHandler,
+  getJobPipelineHandler,
 } from "./recruiter-dashboard.controller";
 
 const router =
@@ -15,6 +16,12 @@ router.get(
   "/dashboard",
   protect,
   getRecruiterDashboardHandler
+);
+
+router.get(
+  "/jobs/:jobId/pipeline",
+  protect,
+  getJobPipelineHandler
 );
 
 export default router;

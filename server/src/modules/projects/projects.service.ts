@@ -2217,3 +2217,129 @@ export const syncGithubProject = async (userId: string, projectId: string) => {
 
   return updatedProject;
 };
+
+export const syncOutdatedProjectsGithub = async () => {
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const projects = await prisma.project.findMany({
+    where: {
+      deletedAt: null,
+      NOT: {
+        githubUrl: null,
+      },
+      OR: [
+        {
+          lastGithubSyncAt: null,
+        },
+        {
+          lastGithubSyncAt: {
+            lt: oneDayAgo,
+          },
+        },
+      ],
+    },
+    include: {
+      members: true,
+    },
+    take: 50,
+  });
+
+  console.log(`[GitHub Sync Cron] Found ${projects.length} outdated projects to sync`);
+
+  const results = {
+    total: projects.length,
+    success: 0,
+    failed: 0,
+  };
+
+  for (const project of projects) {
+    if (!project.githubUrl) continue;
+
+    try {
+      console.log(`[GitHub Sync Cron] Syncing project: ${project.title} (${project.githubUrl})`);
+      const githubData = await fetchGithubRepository(project.githubUrl);
+
+      const verificationScore = calculateProjectVerificationScore({
+        ...project,
+        ...githubData,
+      });
+
+      const engineeringScore = calculateProjectEngineeringScore({
+        ...project,
+        ...githubData,
+      });
+
+      const verified = verificationScore >= 60;
+      const becameVerified = !project.verified && verified;
+
+      await prisma.project.update({
+        where: {
+          id: project.id,
+        },
+        data: {
+          ...githubData,
+          verified,
+          engineeringScore,
+          lastGithubSyncAt: new Date(),
+        },
+      });
+
+      const sideEffects: Promise<any>[] = [
+        createActivity(
+          project.ownerId,
+          "PROJECT_SYNCED",
+          "Synced GitHub project",
+          `Synced GitHub metadata for "${project.title}"`,
+          {
+            projectId: project.id,
+          },
+        ),
+        recalculateProjectAffinities(project.id),
+      ];
+
+      for (const member of project.members) {
+        sideEffects.push(calculateEngineeringScore(member.userId));
+      }
+
+      if (becameVerified) {
+        sideEffects.push(
+          addReputation(
+            project.ownerId,
+            "PROJECT_VERIFIED",
+            40,
+            "Verified engineering project",
+            {
+              projectId: project.id,
+            },
+          ),
+          createActivity(
+            project.ownerId,
+            "PROJECT_VERIFIED",
+            "Verified a project",
+            `Project "${project.title}" became verified`,
+            {
+              projectId: project.id,
+            },
+          ),
+        );
+      }
+
+      await Promise.all(sideEffects);
+      results.success++;
+    } catch (error: any) {
+      console.error(`[GitHub Sync Cron] Failed syncing project ${project.id}:`, error.message || error);
+      results.failed++;
+      await prisma.project.update({
+        where: {
+          id: project.id,
+        },
+        data: {
+          lastGithubSyncAt: new Date(),
+        },
+      }).catch(console.error);
+    }
+  }
+
+  return results;
+};
+

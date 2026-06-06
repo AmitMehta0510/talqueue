@@ -1218,6 +1218,50 @@ export type RecruiterDashboard = {
   [key: string]: unknown;
 };
 
+export type RecruiterJobPipelineCard = {
+  id: string;
+  status: string;
+  appliedAt: string;
+  resumeUrl?: string | null;
+  coverLetter?: string | null;
+  recruiterNotes?: string | null;
+  candidate: {
+    id: string;
+    fullName: string;
+    username: string;
+    avatarUrl?: string | null;
+    headline?: string | null;
+    engineeringScore?: number | null;
+    trustLevel?: string | null;
+    reputationScore?: number | null;
+  };
+  skillsMatch: {
+    matched: string[];
+    totalRequired: number;
+    matchPercentage: number;
+  };
+  verificationMetrics: {
+    totalExperiences: number;
+    verifiedExperiences: number;
+    suspiciousExperiences: number;
+    averageVerificationScore: number;
+    isVerifiedEngineer?: boolean | null;
+  };
+  badges: Array<{
+    name: string;
+    rarity?: string | null;
+    category?: string | null;
+  }>;
+};
+
+export type RecruiterJobPipeline = {
+  job: {
+    id: string;
+    title?: string | null;
+  };
+  pipeline: Record<string, RecruiterJobPipelineCard[]>;
+};
+
 export type EngineeringPortfolio = {
   user?: User;
   projects?: Project[];
@@ -1960,6 +2004,8 @@ export const api = {
     request<LeaderboardResult<User>>("/leaderboards/fastest-growing", options),
   recruiterDashboard: (options?: EndpointOptions) =>
     request<RecruiterDashboard>("/recruiter/dashboard", options),
+  recruiterJobPipeline: (jobId: string, options?: EndpointOptions) =>
+    request<RecruiterJobPipeline>(`/recruiter/jobs/${jobId}/pipeline`, options),
   rankJobCandidates: (jobId: string, options?: EndpointOptions) =>
     request<CandidateRanking[]>(`/analytics/jobs/${jobId}/rankings`, options),
   recruiterInsights: (options?: EndpointOptions) =>
