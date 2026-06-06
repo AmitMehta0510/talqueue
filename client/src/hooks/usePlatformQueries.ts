@@ -2306,6 +2306,55 @@ export const useArchiveNotificationMutation = () => {
   });
 };
 
+export const useDeleteNotificationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.deleteNotification,
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.notifications.all,
+      });
+      const snapshots = queryClient.getQueriesData<NotificationsPage>({
+        queryKey: queryKeys.notifications.all,
+      });
+
+      queryClient.setQueriesData<NotificationsPage>(
+        { queryKey: queryKeys.notifications.all },
+        (page) => {
+          if (!page) return page;
+
+          const deleted = page.notifications.find(
+            (notification) => notification.id === id,
+          );
+
+          return {
+            ...page,
+            notifications: page.notifications.filter(
+              (notification) => notification.id !== id,
+            ),
+            unreadCount:
+              deleted && !deleted.isRead
+                ? Math.max(page.unreadCount - 1, 0)
+                : page.unreadCount,
+          };
+        },
+      );
+
+      return { snapshots };
+    },
+    onError: (_error, _id, context) => {
+      context?.snapshots.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
+  });
+};
+
+
 // Discovery & Recommendations
 export const useDiscoveryFeedQuery = () => {
   const { user } = useAuth();

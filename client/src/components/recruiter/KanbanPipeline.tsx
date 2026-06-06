@@ -353,7 +353,7 @@ function RankingCard({
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {(user.skills || []).map((s: UserSkill) => (
                   <span key={s.id} className="chip bg-white">
-                    {s.skill?.name || s.name}
+                    {s.skill?.name || s.skill?.normalizedName || "Skill"}
                   </span>
                 ))}
               </div>
