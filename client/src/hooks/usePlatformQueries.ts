@@ -29,6 +29,7 @@ import {
   NotificationsPage,
   Project,
   ProjectInvite,
+  ProjectJoinRequest,
   ProjectMutationPayload,
   ReferralRequestPayload,
   ReferralRequestStatus,
@@ -1799,6 +1800,24 @@ export const useReviewProjectJoinRequestMutation = (projectId?: string) => {
           : "Request rejected",
       );
     },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      invalidateProject(queryClient, projectId);
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
+  });
+};
+
+export const useWithdrawProjectJoinRequestMutation = (projectId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation<ProjectJoinRequest, Error, string>({
+    mutationFn: async (requestId) => {
+      const result = await api.withdrawProjectJoinRequest(requestId);
+      return result.data;
+    },
+    onSuccess: () => showToast("success", "Join request withdrawn"),
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => {
       invalidateProject(queryClient, projectId);

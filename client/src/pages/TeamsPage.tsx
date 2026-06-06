@@ -428,6 +428,29 @@ function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: bool
   );
 }
 
+function TeamOwnerPanel({ team }: { team: Team }) {
+  const owner =
+    team.owner ||
+    team.members?.find((member) => member.userId === team.ownerId || member.role === "OWNER")?.user;
+
+  return (
+    <div className="panel p-5">
+      <h3 className="text-sm font-semibold text-slate-950">Owner</h3>
+      <div className="mt-4 flex items-center gap-3">
+        <Avatar user={owner} />
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-slate-950">
+            {userName(owner)}
+          </div>
+          <div className="truncate text-xs text-slate-500">
+            {userHeadline(owner) || owner?.username || "Team owner"}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TeamDetail({ teamId }: { teamId: string }) {
   const { user } = useAuth();
   const teamQuery = useTeamQuery(teamId);
@@ -480,6 +503,7 @@ function TeamDetail({ teamId }: { teamId: string }) {
           <TeamInvitesPanel canManage={canManage} currentUserId={user?.id} team={team} />
         </div>
         <aside className="space-y-5">
+          <TeamOwnerPanel team={team} />
           {canManage && <InviteMemberPanel team={team} />}
           <TeamActions canManage={canManage} isOwner={isOwner} team={team} />
         </aside>
@@ -493,13 +517,28 @@ export function TeamsPage() {
   const { user } = useAuth();
   const teamsQuery = useMyTeamsQuery();
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("ALL");
   const filteredTeams = useMemo(() => {
     const teams = teamsQuery.data || [];
     const normalized = query.trim().toLowerCase();
-    return teams.filter((team) =>
-      [team.name, team.description, team.status].filter(Boolean).join(" ").toLowerCase().includes(normalized),
-    );
-  }, [query, teamsQuery.data]);
+    return teams.filter((team) => {
+      const matchesQuery = [team.name, team.description, team.status]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized);
+      const matchesStatus = status === "ALL" || team.status === status;
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [query, status, teamsQuery.data]);
+  const visibleStatuses = useMemo(
+    () =>
+      Array.from(
+        new Set((teamsQuery.data || []).map((team) => team.status || "ACTIVE").filter(Boolean)),
+      ),
+    [teamsQuery.data],
+  );
 
   if (!user) {
     return <EmptyState icon={Users} title="Login required" text="Sign in to create and manage teams." />;
@@ -513,15 +552,37 @@ export function TeamsPage() {
     <section className="space-y-5">
       <CreateTeamPanel disabled={!user} />
 
-      <div className="panel p-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            className="field pl-9"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search your teams"
-          />
+      <div className="panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <Metric label="Teams" value={formatCount(teamsQuery.data?.length || 0)} />
+            <Metric label="Visible" value={formatCount(filteredTeams.length)} />
+            <Metric
+              label="Members"
+              value={formatCount(
+                (teamsQuery.data || []).reduce((total, team) => total + teamMemberCount(team), 0),
+              )}
+            />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              className="field pl-9"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search your teams"
+            />
+          </div>
+          <select className="field" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="ALL">All status</option>
+            {visibleStatuses.map((item) => (
+              <option key={item} value={item}>
+                {titleCase(item)}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

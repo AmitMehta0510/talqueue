@@ -36,6 +36,7 @@ import {
   useReviewProjectJoinRequestMutation,
   useSentProjectInvitesQuery,
   useUpdateProjectMutation,
+  useWithdrawProjectJoinRequestMutation,
 } from "../hooks/usePlatformQueries";
 import { Project, ProjectInvite, ProjectJoinRequest, ProjectMutationPayload, User } from "../lib/api";
 import { compactPayload, formatCount, formatDate, splitCsv, titleCase, userHeadline, userName } from "../lib/format";
@@ -478,6 +479,86 @@ function SentInvitesPanel({ project }: { project: Project }) {
   );
 }
 
+function ProjectJoinPanel({ project }: { project: Project }) {
+  const { user } = useAuth();
+  const joinProject = useJoinProjectMutation();
+  const withdrawRequest = useWithdrawProjectJoinRequestMutation(project.id);
+  const [message, setMessage] = useState("");
+  const [pendingRequest, setPendingRequest] = useState<ProjectJoinRequest | null>(() =>
+    (project.joinRequests || []).find(
+      (request) => request.userId === user?.id && request.status === "PENDING",
+    ) || null,
+  );
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const result = await joinProject.mutateAsync({ project, message });
+    setPendingRequest(result.data);
+    setMessage("");
+  };
+
+  const withdraw = async () => {
+    if (!pendingRequest) return;
+    await withdrawRequest.mutateAsync(pendingRequest.id);
+    setPendingRequest(null);
+  };
+
+  if (!user) {
+    return (
+      <div className="panel p-5">
+        <h3 className="text-sm font-semibold text-slate-950">Join project</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Sign in to request access and collaborate with this team.
+        </p>
+        <Link className="btn-primary mt-4" to="/auth">
+          Login
+        </Link>
+      </div>
+    );
+  }
+
+  if (pendingRequest) {
+    return (
+      <div className="panel border-emerald-100 bg-emerald-50/40 p-5">
+        <h3 className="text-sm font-semibold text-slate-950">Join request pending</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          The owner can review your request from their project workspace.
+        </p>
+        {pendingRequest.message && (
+          <p className="mt-3 rounded-md border border-emerald-100 bg-white p-3 text-sm text-slate-600">
+            {pendingRequest.message}
+          </p>
+        )}
+        <button
+          className="btn-secondary mt-4"
+          type="button"
+          disabled={withdrawRequest.isPending}
+          onClick={withdraw}
+        >
+          {withdrawRequest.isPending ? <Loader2 className="animate-spin" size={16} /> : <X size={16} />}
+          Withdraw request
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="panel p-5" onSubmit={submit}>
+      <h3 className="text-sm font-semibold text-slate-950">Request to join</h3>
+      <textarea
+        className="field mt-4 min-h-24"
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
+        placeholder="Tell the owner how you can help"
+      />
+      <button className="btn-primary mt-3" type="submit" disabled={joinProject.isPending}>
+        {joinProject.isPending ? <Loader2 className="animate-spin" size={16} /> : <Users size={16} />}
+        Send request
+      </button>
+    </form>
+  );
+}
+
 function MembersPanel({
   project,
   isOwner,
@@ -533,14 +614,13 @@ function MembersPanel({
 function ProjectDetail({ projectId }: { projectId: string }) {
   const { user } = useAuth();
   const projectQuery = useProjectQuery(projectId);
-  const joinProject = useJoinProjectMutation();
   const leaveProject = useLeaveProjectMutation(projectQuery.data?.id);
   const project = projectQuery.data;
 
   const techStack = projectStack(project);
   const owner = Boolean(project && user && (project.ownerId === user.id || project.owner?.id === user.id));
   const member = Boolean(project && isMember(project, user?.id));
-  const canRequestJoin = Boolean(user && project && !owner && !member);
+  const canRequestJoin = Boolean(project && !owner && !member);
   const languageEntries = useMemo(() => {
     if (!project?.languages || Array.isArray(project.languages)) return [];
     return Object.entries(project.languages).slice(0, 5);
@@ -595,17 +675,6 @@ function ProjectDetail({ projectId }: { projectId: string }) {
                 <ExternalLink size={16} />
                 Live
               </a>
-            )}
-            {canRequestJoin && (
-              <button
-                className="btn-primary"
-                type="button"
-                disabled={joinProject.isPending}
-                onClick={() => joinProject.mutate(project)}
-              >
-                {joinProject.isPending ? <Loader2 className="animate-spin" size={16} /> : <Users size={16} />}
-                Request to join
-              </button>
             )}
             {member && !owner && (
               <button
@@ -689,6 +758,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
           </div>
 
           {owner && <ProjectOwnerActions project={project} />}
+          {canRequestJoin && <ProjectJoinPanel project={project} />}
           {owner && <InviteUserPanel project={project} />}
           {owner && <SentInvitesPanel project={project} />}
 
@@ -722,7 +792,37 @@ export function ProjectsPage() {
   const projectsQuery = useProjectsQuery(24);
   const createProject = useCreateProjectMutation();
   const joinProject = useJoinProjectMutation();
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("ALL");
   const projects = projectsQuery.data || [];
+  const filteredProjects = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      const haystack = [
+        project.title,
+        project.shortDescription,
+        project.description,
+        project.owner?.username,
+        project.primaryLanguage,
+        ...projectStack(project),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const matchesQuery = !normalized || haystack.includes(normalized);
+      const matchesStatus = status === "ALL" || project.status === status;
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [projects, query, status]);
+  const visibleStatuses = useMemo(
+    () =>
+      Array.from(
+        new Set(projects.map((project) => project.status || "OPEN").filter(Boolean)),
+      ),
+    [projects],
+  );
 
   if (projectId) {
     return <ProjectDetail projectId={projectId} />;
@@ -742,6 +842,49 @@ export function ProjectsPage() {
         }}
         disabled={!user || createProject.isPending}
       />
+      <div className="panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-950">Project workspace</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Browse public builds, open detail views, request access, and manage owned projects.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-right">
+            <Metric label="Listed" value={formatCount(projects.length)} />
+            <Metric label="Visible" value={formatCount(filteredProjects.length)} />
+            <Metric
+              label="Open"
+              value={formatCount(
+                projects.filter((project) => (project.status || "OPEN") !== "DELETED").length,
+              )}
+            />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              className="field pl-9"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search projects, stack, owner, language"
+            />
+          </div>
+          <select
+            className="field"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="ALL">All status</option>
+            {visibleStatuses.map((item) => (
+              <option key={item} value={item}>
+                {titleCase(item)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       {projectsQuery.isFetching && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="animate-spin" size={16} />
@@ -749,8 +892,8 @@ export function ProjectsPage() {
         </div>
       )}
       <div className="grid gap-5 xl:grid-cols-2">
-        {projects.length ? (
-          projects.map((project) => (
+        {filteredProjects.length ? (
+          filteredProjects.map((project) => (
             <ProjectCard
               currentUserId={user?.id}
               key={project.id}
@@ -761,8 +904,8 @@ export function ProjectsPage() {
         ) : (
           <EmptyState
             icon={Rocket}
-            title="No public projects yet"
-            text="Create the first project once your backend has data."
+            title={projects.length ? "No matching projects" : "No public projects yet"}
+            text={projects.length ? "Try another search or status." : "Create the first project once your backend has data."}
           />
         )}
       </div>

@@ -1639,7 +1639,7 @@ export const api = {
     lookingFor?: string;
   }) => request<Project>("/projects", { method: "POST", body }),
   joinProject: (id: string, message?: string) =>
-    request<unknown>(`/projects/${id}/join`, {
+    request<ProjectJoinRequest>(`/projects/${id}/join`, {
       method: "POST",
       body: { message },
     }),
