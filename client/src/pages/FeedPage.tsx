@@ -14,6 +14,10 @@ import {
   Briefcase,
   User as UserIcon,
   CheckCircle,
+  X,
+  Send,
+  Users,
+  History,
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
 import { ComposePost } from "../components/forms/ComposePost";
@@ -38,9 +42,13 @@ export function FeedPage() {
   const { user, apiOnline } = useAuth();
   const [activeCategory, setActiveCategory] = useState<FeedCategory>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Compose modal states
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [composePostType, setComposePostType] = useState("GENERAL");
 
   // API Queries & Mutations
-  const feedQuery = useFeedQuery(30); // Request larger batch for client filtering
+  const feedQuery = useFeedQuery(30);
   const projectsQuery = useProjectsQuery(12);
   const jobsQuery = useJobsQuery();
   const leaderboardQuery = useReputationLeaderboardQuery();
@@ -63,7 +71,6 @@ export function FeedPage() {
     leaderboardQuery.isFetching ||
     myReputationQuery.isFetching;
 
-  // Refresh clock every minute for dynamic greetings
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
@@ -76,7 +83,6 @@ export function FeedPage() {
     return "Good evening";
   };
 
-  // Filter feed items by selected category
   const filteredFeed = useMemo(() => {
     return feed.filter((item) => {
       if (activeCategory === "recommended") {
@@ -91,7 +97,7 @@ export function FeedPage() {
       if (activeCategory === "jobs") {
         return item.type === "JOB" || item.type === "HACKATHON";
       }
-      return true; // "all"
+      return true;
     });
   }, [feed, activeCategory]);
 
@@ -105,112 +111,78 @@ export function FeedPage() {
     }
   };
 
-  // Calculate user display metrics
   const displayReputation = myReputationQuery.data?.reputationScore ?? user?.reputationScore ?? 0;
   const displayEngineering = myReputationQuery.data?.engineeringScore ?? user?.engineeringScore ?? 0;
   const displayBadgeCount = myReputationQuery.data?.badges?.length ?? user?.skills?.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* 1. Header Banner Dashboard */}
-      <div className="mb-6 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-6 text-white shadow-xl relative overflow-hidden">
-        {/* Decorative background gradients */}
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-16 -ml-16 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs tracking-wider uppercase mb-1">
-              <Sparkles size={14} className="animate-spin-slow" />
-              <span>Developer Central Workspace</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {getGreeting()}, {user ? userName(user) : "Engineer"}!
-            </h1>
-            <p className="mt-1.5 text-sm text-emerald-100/70 max-w-2xl leading-relaxed">
-              Collaborate on open projects, apply for vetted jobs, and participate in community hackathons.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Quick dashboard metrics */}
-            {user && (
-              <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl px-4 py-2.5">
-                <div className="text-center px-1">
-                  <div className="text-base font-bold text-white">{formatCount(displayReputation)}</div>
-                  <div className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">Reputation</div>
-                </div>
-                <div className="h-8 w-px bg-white/10" />
-                <div className="text-center px-1">
-                  <div className="text-base font-bold text-white">{formatCount(displayEngineering)}</div>
-                  <div className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">Eng Score</div>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={handleRefreshAll}
-              disabled={refreshing}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 active:scale-95 disabled:opacity-50"
-              type="button"
-            >
-              {refreshing ? (
-                <Loader2 className="animate-spin text-emerald-300" size={16} />
-              ) : (
-                <RefreshCcw size={16} className="text-emerald-300" />
-              )}
-              <span>Refresh Hub</span>
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* Greeting Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/70 border border-slate-200/50 rounded-xl p-4 shadow-sm">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 leading-tight">
+            {getGreeting()}, {user ? userName(user) : "Engineer"}!
+          </h2>
+          <p className="text-xxs text-slate-500 mt-0.5">Welcome to your collaborative dev feed workspace.</p>
         </div>
+        <button
+          onClick={handleRefreshAll}
+          disabled={refreshing}
+          className="btn-secondary py-1 px-3 text-xxs font-semibold flex items-center gap-1.5"
+          type="button"
+        >
+          {refreshing ? (
+            <Loader2 className="animate-spin text-emerald-700" size={13} />
+          ) : (
+            <RefreshCcw size={13} className="text-emerald-750" />
+          )}
+          Refresh Feed
+        </button>
       </div>
 
-      {/* 2. Main Responsive Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* LEFT COLUMN - USER SNAPSHOT & LEADERBOARD (lg:col-span-3) */}
+      {/* THREE-COLUMN RESPONSIVE LAYOUT */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+        
+        {/* LEFT COLUMN - USER CARD & QUICK LINKS */}
         <aside className="lg:col-span-3 space-y-6">
-          {/* Profile Snapshot Card */}
+          {/* User Profile Snapshot Card */}
           {user ? (
-            <div className="panel overflow-hidden border-slate-200 bg-white/95 shadow-panel">
-              {/* Cover gradient */}
+            <div className="panel overflow-hidden">
               <div className="h-16 w-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800" />
               <div className="p-4 relative">
-                {/* Overlapping Avatar */}
-                <div className="absolute -top-10 left-4 rounded-full border-4 border-white shadow">
+                <div className="absolute -top-9 left-4 rounded-full border-4 border-white shadow-md">
                   <Avatar user={user} size="md" />
                 </div>
                 
-                <div className="pt-6">
+                <div className="pt-7">
                   <Link to="/profile" className="block group">
                     <h2 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition line-clamp-1">
                       {userName(user)}
                     </h2>
                   </Link>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                    @{user.username}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                    {userHeadline(user) || "Software Engineer"}
+                  <p className="text-[10px] text-slate-400 font-bold mt-0.5">@{user.username}</p>
+                  <p className="mt-2 text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
+                    {userHeadline(user) || "Professional Software Developer"}
                   </p>
 
-                  <div className="mt-4 border-t border-slate-100/80 pt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="mt-4 border-t border-slate-100/80 pt-3 grid grid-cols-3 gap-1.5 text-center text-xs">
                     <div>
-                      <span className="block text-slate-800 font-bold">{formatCount(displayReputation)}</span>
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Rep</span>
+                      <span className="block text-slate-800 font-bold text-xxs">{formatCount(displayReputation)}</span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Rep</span>
                     </div>
                     <div>
-                      <span className="block text-slate-800 font-bold">{formatCount(displayEngineering)}</span>
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Score</span>
+                      <span className="block text-slate-800 font-bold text-xxs">{Math.round(displayEngineering)}</span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Score</span>
                     </div>
                     <div>
-                      <span className="block text-slate-800 font-bold">{displayBadgeCount}</span>
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Skills</span>
+                      <span className="block text-slate-800 font-bold text-xxs">{displayBadgeCount}</span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Badges</span>
                     </div>
                   </div>
                   
                   <Link
                     to="/profile"
-                    className="mt-4 flex items-center justify-center gap-1 w-full rounded-md border border-slate-150 bg-slate-50/70 hover:bg-slate-100 py-1.5 text-[11px] font-semibold text-slate-700 transition"
+                    className="mt-4 flex items-center justify-center gap-1.5 w-full rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 py-1.5 text-xxs font-bold text-slate-700 transition"
                   >
                     <span>View full profile</span>
                     <ArrowUpRight size={12} />
@@ -219,21 +191,179 @@ export function FeedPage() {
               </div>
             </div>
           ) : (
-            <div className="panel p-5 text-center bg-white border-slate-200">
-              <UserIcon className="mx-auto text-slate-300 mb-2" size={28} />
-              <h2 className="text-sm font-bold text-slate-800">Developer Profile</h2>
-              <p className="mt-1 text-xs text-slate-500">Sign in to track your personal engineering scores and project credentials.</p>
-              <Link to="/auth" className="mt-3.5 btn-primary text-xs py-1.5 px-3 block">
-                Log In
+            <div className="panel p-5 text-center">
+              <UserIcon className="mx-auto text-slate-350 mb-2.5" size={28} />
+              <h2 className="text-xs font-bold text-slate-900">Developer Profile Snapshot</h2>
+              <p className="mt-1.5 text-xxs text-slate-500 leading-normal">
+                Sign in to view and publish updates, check your engineering standing, and track open referral cards.
+              </p>
+              <Link to="/auth" className="mt-4 btn-primary text-xxs py-1.5 px-3 block">
+                Sign In
               </Link>
             </div>
           )}
 
-          {/* Reputation Leaderboard Widget */}
+          {/* Quick Shortcuts Panel */}
+          {user && (
+            <div className="panel p-4 space-y-3.5">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+                Developer Shortcuts
+              </h3>
+              <div className="space-y-2.5 text-xs font-semibold text-slate-700">
+                <Link to="/teams" className="flex items-center gap-2 hover:text-emerald-700 transition">
+                  <Users size={14} className="text-slate-400" />
+                  <span>My Teams</span>
+                </Link>
+                <Link to="/jobs" className="flex items-center gap-2 hover:text-emerald-700 transition">
+                  <Briefcase size={14} className="text-slate-400" />
+                  <span>Saved Opportunity Cards</span>
+                </Link>
+                <Link to="/referrals" className="flex items-center gap-2 hover:text-emerald-700 transition">
+                  <Send size={14} className="text-slate-400" />
+                  <span>Referrals Console</span>
+                </Link>
+                <Link to="/reputation" className="flex items-center gap-2 hover:text-emerald-700 transition">
+                  <History size={14} className="text-slate-400" />
+                  <span>Points & Badges Log</span>
+                </Link>
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* MIDDLE COLUMN - POST TRIGGER, CATEGORY TABS & FEED LIST */}
+        <section className="lg:col-span-6 space-y-6">
+          {/* Start a Post Card (LinkedIn trigger style) */}
+          {user && (
+            <div className="panel p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Avatar user={user} size="sm" />
+                <button
+                  onClick={() => { setComposePostType("GENERAL"); setShowComposeModal(true); }}
+                  className="flex-1 text-left bg-slate-100 hover:bg-slate-200/80 rounded-full px-4 py-2 text-xs font-semibold text-slate-500 transition border border-slate-200/50 outline-none"
+                >
+                  Start an engineering update...
+                </button>
+              </div>
+              <div className="flex items-center justify-around border-t border-slate-100 pt-3 text-xxs font-bold text-slate-500">
+                <button
+                  onClick={() => { setComposePostType("PROJECT_UPDATE"); setShowComposeModal(true); }}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                >
+                  <Rocket className="text-indigo-650" size={15} />
+                  Project Update
+                </button>
+                <button
+                  onClick={() => { setComposePostType("HACKATHON"); setShowComposeModal(true); }}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                >
+                  <Award className="text-amber-500" size={15} />
+                  Hackathon
+                </button>
+                <button
+                  onClick={() => { setComposePostType("ACHIEVEMENT"); setShowComposeModal(true); }}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                >
+                  <Sparkles className="text-emerald-600" size={15} />
+                  Achievement
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Category tabs selector bar */}
+          <div className="panel p-1 shadow-sm overflow-x-auto">
+            <nav className="flex space-x-1" aria-label="Feed category tabs">
+              {(
+                [
+                  { id: "all", label: "All Feed" },
+                  { id: "recommended", label: "For You" },
+                  { id: "discussions", label: "Discussions" },
+                  { id: "projects", label: "Projects" },
+                  { id: "jobs", label: "Opportunities" },
+                ] as const
+              ).map((cat) => {
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`relative rounded-md px-4 py-2 text-xs font-bold transition-all shrink-0 ${
+                      isActive
+                        ? "bg-slate-950 text-white shadow"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    {cat.label}
+                    {cat.id === "recommended" && feed.some((item) => item.reason) && (
+                      <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500 border-2 border-white" />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Loading spinner */}
+          {refreshing && (
+            <div className="flex items-center gap-2 text-xs text-slate-400 bg-white/70 border border-slate-200/50 rounded-lg px-4 py-2.5 shadow-sm">
+              <Loader2 className="animate-spin text-emerald-700" size={15} />
+              <span>Updating platform stream feeds...</span>
+            </div>
+          )}
+
+          {/* Feed List */}
+          <div className="space-y-4">
+            {filteredFeed.length > 0 ? (
+              filteredFeed.map((item, index) => (
+                <FeedCard
+                  key={`${item.type}-${"id" in item.data ? item.data.id : index}`}
+                  item={item}
+                  position={index}
+                  trackImpression={Boolean(user)}
+                  canInteract={Boolean(user)}
+                  onLike={(id) => postReaction.mutate({ id, action: "like" })}
+                  onSave={(id) => postReaction.mutate({ id, action: "save" })}
+                  onComment={async (id, content, parentCommentId) => {
+                    try {
+                      await commentOnPost.mutateAsync({ id, content, parentCommentId });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
+                  onRepost={async (id, caption) => {
+                    try {
+                      await repost.mutateAsync({ id, caption });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
+                />
+              ))
+            ) : (
+              <EmptyState
+                icon={Compass}
+                title={activeCategory === "recommended" ? "No recommendations matches" : "Workspace feed empty"}
+                text={
+                  activeCategory === "recommended"
+                    ? "Add detailed skills and experiences to your developer profile to enable the matching engine recommendation signals."
+                    : "No posts found in this feed category at the moment. Try reloading the feed."
+                }
+              />
+            )}
+          </div>
+        </section>
+
+        {/* RIGHT COLUMN - TOP ENGINEERS, PROJECTS & MONITOR TELEMETRY */}
+        <aside className="hidden lg:col-span-3 space-y-6 lg:block">
+          {/* Top Engineers Leaderboard */}
           <div className="panel p-4 bg-white border-slate-200">
             <div className="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
               <Trophy size={16} className="text-amber-500" />
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">
                 Top Engineers
               </h3>
             </div>
@@ -241,7 +371,7 @@ export function FeedPage() {
             {leaderboardQuery.isLoading ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
                 <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Fetching leaderboard...</span>
+                <span>Loading rankings...</span>
               </div>
             ) : leaders.length > 0 ? (
               <div className="space-y-3">
@@ -284,136 +414,30 @@ export function FeedPage() {
                 })}
               </div>
             ) : (
-              <div className="text-xs text-slate-400 text-center py-4">No top engineers data.</div>
+              <div className="text-xs text-slate-450 text-center py-4">No top engineers data.</div>
             )}
           </div>
-        </aside>
 
-        {/* MIDDLE COLUMN - COMPOSE FEED CARD & CHANNELS (lg:col-span-9 xl:col-span-6) */}
-        <section className="lg:col-span-9 xl:col-span-6 space-y-6">
-          {/* Category Tabs */}
-          <div className="panel p-1 border-slate-200 bg-white/95 shadow-sm overflow-x-auto">
-            <nav className="flex space-x-1" aria-label="Feed category tabs">
-              {(
-                [
-                  { id: "all", label: "All Feed" },
-                  { id: "recommended", label: "For You" },
-                  { id: "discussions", label: "Discussions" },
-                  { id: "projects", label: "Projects" },
-                  { id: "jobs", label: "Opportunities" },
-                ] as const
-              ).map((cat) => {
-                const isActive = activeCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`relative rounded-md px-4 py-2 text-xs font-semibold transition-all shrink-0 ${
-                      isActive
-                        ? "bg-slate-950 text-white shadow"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`}
-                  >
-                    {cat.label}
-                    {cat.id === "recommended" && feed.some((item) => item.reason) && (
-                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-white" />
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Compose Post */}
-          {user && (
-            <ComposePost
-              onCreate={async (payload) => {
-                try {
-                  await createPost.mutateAsync(payload);
-                  return true;
-                } catch {
-                  return false;
-                }
-              }}
-              disabled={createPost.isPending}
-            />
-          )}
-
-          {/* Refresh/Loader indicator */}
-          {refreshing && (
-            <div className="flex items-center gap-2 text-sm text-slate-500 bg-white/80 border border-slate-150 rounded-lg px-4 py-2.5 shadow-sm">
-              <Loader2 className="animate-spin text-emerald-600" size={16} />
-              <span>Fetching latest platform feeds...</span>
-            </div>
-          )}
-
-          {/* Feed Streams */}
-          <div className="space-y-4">
-            {filteredFeed.length > 0 ? (
-              filteredFeed.map((item, index) => (
-                <FeedCard
-                  key={`${item.type}-${"id" in item.data ? item.data.id : index}`}
-                  item={item}
-                  position={index}
-                  trackImpression={Boolean(user)}
-                  canInteract={Boolean(user)}
-                  onLike={(id) => postReaction.mutate({ id, action: "like" })}
-                  onSave={(id) => postReaction.mutate({ id, action: "save" })}
-                  onComment={async (id, content, parentCommentId) => {
-                    try {
-                      await commentOnPost.mutateAsync({ id, content, parentCommentId });
-                      return true;
-                    } catch {
-                      return false;
-                    }
-                  }}
-                  onRepost={async (id, caption) => {
-                    try {
-                      await repost.mutateAsync({ id, caption });
-                      return true;
-                    } catch {
-                      return false;
-                }
-              }}
-            />
-              ))
-            ) : (
-              <EmptyState
-                icon={Compass}
-                title={activeCategory === "recommended" ? "No matches yet" : "End of Feed"}
-                text={
-                  activeCategory === "recommended"
-                    ? "Completing your skills profile helps our recommendation engine find suitable projects."
-                    : "No items match this filter category right now. Refresh the page to reload."
-                }
-              />
-            )}
-          </div>
-        </section>
-
-        {/* RIGHT COLUMN - FEATURED PROJECTS & LATEST JOBS (xl:col-span-3, hidden lg, shown xl) */}
-        <aside className="hidden xl:block xl:col-span-3 space-y-6">
           {/* Featured Projects Card */}
           <div className="panel p-4 bg-white border-slate-200">
             <div className="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
               <Rocket size={16} className="text-indigo-600" />
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Featured Projects
+              <h3 className="text-[10px] font-bold text-slate-900 uppercase tracking-wider">
+                Featured Repositories
               </h3>
             </div>
 
             {projectsQuery.isLoading ? (
               <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
                 <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Loading projects...</span>
+                <span>Loading repositories...</span>
               </div>
             ) : projects.length > 0 ? (
               <div className="space-y-3.5">
                 {projects.slice(0, 3).map((project) => (
                   <div key={project.id} className="group/item">
                     <Link
-                      to="/projects"
+                      to={`/projects/${project.id}`}
                       className="block text-xs font-bold text-slate-800 group-hover/item:text-emerald-700 transition truncate"
                     >
                       {project.title}
@@ -442,88 +466,81 @@ export function FeedPage() {
             )}
           </div>
 
-          {/* Latest Jobs Card */}
-          <div className="panel p-4 bg-white border-slate-200">
-            <div className="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
-              <Briefcase size={16} className="text-emerald-600" />
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Latest Jobs
-              </h3>
-            </div>
-
-            {jobsQuery.isLoading ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
-                <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Loading job listings...</span>
-              </div>
-            ) : jobs.length > 0 ? (
-              <div className="space-y-3.5">
-                {jobs.slice(0, 3).map((job) => (
-                  <div key={job.id} className="group/item">
-                    <Link
-                      to="/jobs"
-                      className="block text-xs font-bold text-slate-800 group-hover/item:text-emerald-700 transition truncate"
-                    >
-                      {job.title}
-                    </Link>
-                    <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-slate-500 font-medium">
-                      <span>{job.company?.name || "Company"}</span>
-                      <span className="shrink-0 text-emerald-700">{titleCase(job.workMode)}</span>
-                    </div>
-                    {job.skillsRequired && job.skillsRequired.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {job.skillsRequired.slice(0, 2).map((skill) => (
-                          <span key={skill} className="chip text-[9px] py-0 px-1.5 bg-slate-50">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-400 text-center py-4">No job openings listed.</div>
-            )}
-          </div>
-
-          {/* Telemetry Snapshot Widget */}
+          {/* Telemetry Snapshot Monitor Widget */}
           <div className="panel p-4 bg-slate-950 text-white border-0 shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 -mt-8 -mr-8 h-20 w-20 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
             <div className="flex items-center gap-2 pb-3 mb-3 border-b border-white/10">
               <Activity size={16} className="text-emerald-400" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-white">
                 Telemetry Monitor
               </h3>
             </div>
             
-            <div className="space-y-2 text-[10px] font-semibold text-slate-300">
+            <div className="space-y-2 text-[10px] font-semibold text-slate-350">
               <div className="flex justify-between items-center">
-                <span>API STATUS:</span>
+                <span>API MONITOR STATUS:</span>
                 <span className="flex items-center gap-1">
                   <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-400" : "bg-rose-400 animate-ping"}`} />
                   <span className={apiOnline ? "text-emerald-400" : "text-rose-400"}>{apiOnline ? "ONLINE" : "OFFLINE"}</span>
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span>LATENCY:</span>
-                <span className="text-emerald-400">14 ms</span>
+                <span>LOCAL LATENCY SPEED:</span>
+                <span className="text-emerald-400">12 ms</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>TOTAL FEED ITEMS:</span>
-                <span>{feed.length} loaded</span>
+                <span>CACHED STREAM ITEMS:</span>
+                <span>{feed.length} elements</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>COMPILER STATUS:</span>
+                <span>INTEGRITY PIPELINE:</span>
                 <span className="text-emerald-400 flex items-center gap-0.5">
                   <CheckCircle size={10} />
-                  <span>READY</span>
+                  <span>SECURE</span>
                 </span>
               </div>
             </div>
           </div>
         </aside>
+
       </div>
+
+      {/* COMPOSER OVERLAY MODAL */}
+      {showComposeModal && user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="absolute inset-0" onClick={() => setShowComposeModal(false)} />
+          <div className="relative w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-2xl z-10 animate-in fade-in zoom-in duration-150 p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="text-sm font-bold text-slate-950 flex items-center gap-2">
+                <Sparkles className="text-emerald-700" size={17} />
+                Compose Engineering Update
+              </h3>
+              <button
+                onClick={() => setShowComposeModal(false)}
+                className="icon-btn border-slate-100 hover:bg-slate-100 shrink-0"
+                type="button"
+                title="Close"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            
+            <ComposePost
+              onCreate={async (payload) => {
+                try {
+                  await createPost.mutateAsync(payload);
+                  setShowComposeModal(false);
+                  return true;
+                } catch {
+                  return false;
+                }
+              }}
+              disabled={createPost.isPending}
+              initialType={composePostType}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

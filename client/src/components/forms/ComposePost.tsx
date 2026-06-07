@@ -20,6 +20,7 @@ const visibilityOptions = [
 export function ComposePost({
   onCreate,
   disabled,
+  initialType,
 }: {
   onCreate: (payload: {
     content: string;
@@ -28,9 +29,10 @@ export function ComposePost({
     visibility?: string;
   }) => Promise<boolean>;
   disabled: boolean;
+  initialType?: string;
 }) {
   const [content, setContent] = useState("");
-  const [type, setType] = useState(postTypes[0]);
+  const [type, setType] = useState(initialType || postTypes[0]);
   const [visibility, setVisibility] = useState(visibilityOptions[0]);
   const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);

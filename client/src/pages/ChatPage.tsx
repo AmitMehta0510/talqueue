@@ -2,6 +2,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import {
   Archive,
   Check,
+  ChevronLeft,
   Edit3,
   File as FileIcon,
   Forward,
@@ -756,6 +757,11 @@ function ActiveConversation({
   const [editContent, setEditContent] = useState("");
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    setShowSettings(false);
+  }, [conversation.id]);
 
   const messages = useMemo(
     () =>
@@ -799,6 +805,13 @@ function ActiveConversation({
       <div className="panel flex min-h-[42rem] flex-col overflow-hidden">
         <header className="flex items-center justify-between gap-4 border-b border-slate-200 p-4">
           <div className="flex min-w-0 items-center gap-3">
+            <Link
+              to="/chat"
+              className="xl:hidden text-slate-600 hover:text-emerald-805 p-1 -ml-1 mr-1 rounded-md transition hover:bg-slate-105 flex items-center justify-center shrink-0"
+              title="Back to conversations"
+            >
+              <ChevronLeft size={20} />
+            </Link>
             <ConversationAvatar conversation={conversation} currentUserId={user?.id} />
             <div className="min-w-0">
               <h2 className="truncate text-base font-bold text-slate-950">
@@ -809,10 +822,23 @@ function ActiveConversation({
               </p>
             </div>
           </div>
-          <span className="chip">
-            <MoreHorizontal size={13} />
-            {titleCase(conversation.type)}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings((s) => !s)}
+              className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xxs font-bold uppercase transition ${
+                showSettings
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-850"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+              type="button"
+            >
+              <MoreHorizontal size={14} />
+              <span>Details</span>
+            </button>
+            <span className="chip font-bold">
+              {titleCase(conversation.type)}
+            </span>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto bg-slate-50/70 p-4" ref={scrollRef}>
@@ -877,7 +903,7 @@ function ActiveConversation({
         />
       </div>
 
-      <div className="space-y-5">
+      <div className={`space-y-5 ${showSettings ? "block" : "hidden xl:block"}`}>
         <MessageSearchPanel conversationId={conversation.id} />
         <ConversationSettings conversation={conversation} currentUserId={user?.id} />
       </div>
@@ -989,7 +1015,7 @@ export function ChatPage() {
 
   return (
     <section className="grid gap-5 xl:grid-cols-[22rem_1fr]">
-      <aside className="space-y-5">
+      <aside className={`space-y-5 ${conversationId ? "hidden xl:block" : "block"}`}>
         <StartConversationPanel />
 
         <div className="panel p-4">
@@ -1049,20 +1075,22 @@ export function ChatPage() {
         )}
       </aside>
 
-      {activeConversation ? (
-        <ActiveConversation
-          chatSocket={chatSocket}
-          conversation={activeConversation}
-          conversations={conversations}
-        />
-      ) : conversationsQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="animate-spin" size={16} />
-          Loading chat
-        </div>
-      ) : (
-        <EmptyState icon={Smile} title="Pick a conversation" text="Start a direct chat or create a group." />
-      )}
+      <div className={conversationId ? "block" : "hidden xl:block"}>
+        {activeConversation ? (
+          <ActiveConversation
+            chatSocket={chatSocket}
+            conversation={activeConversation}
+            conversations={conversations}
+          />
+        ) : conversationsQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Loader2 className="animate-spin" size={16} />
+            Loading chat
+          </div>
+        ) : (
+          <EmptyState icon={Smile} title="Pick a conversation" text="Start a direct chat or create a group." />
+        )}
+      </div>
     </section>
   );
 }

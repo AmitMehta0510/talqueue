@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   BriefcaseBusiness,
@@ -11,6 +11,7 @@ import {
   MessageSquare,
   ShieldCheck,
   UserPlus,
+  Send,
 } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { EducationCard, ExperienceCard, SkillPill } from "../components/cards/ProfileCards";
@@ -24,6 +25,7 @@ import {
 } from "../hooks/usePlatformQueries";
 import { FollowingPage } from "../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../lib/format";
+import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 
 const flattenPages = <T, K extends string>(pages: Array<Record<K, T[]>>, key: K) =>
   pages.flatMap((page) => page[key] || []);
@@ -34,6 +36,7 @@ export function UserProfilePage() {
   const navigate = useNavigate();
   const profileQuery = useUserProfileQuery(userId);
   const followingQuery = useFollowingQuery(user?.id, 20);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const followUser = useFollowUserMutation();
   const createDirectConversation = useCreateDirectConversationMutation();
   const profile = profileQuery.data;
@@ -125,6 +128,16 @@ export function UserProfilePage() {
                   {createDirectConversation.isPending ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} />}
                   Message
                 </button>
+                {profile.acceptingReferrals && (
+                  <button
+                    className="btn-secondary"
+                    type="button"
+                    onClick={() => setShowReferralModal(true)}
+                  >
+                    <Send size={16} />
+                    Request Referral
+                  </button>
+                )}
                 {isFollowing ? (
                   <button className="btn-secondary" type="button" disabled>
                     <ShieldCheck size={16} />
@@ -257,6 +270,12 @@ export function UserProfilePage() {
           </div>
         </ProfilePanel>
       </aside>
+      {showReferralModal && (
+        <RequestReferralModal
+          targetUser={profile}
+          onClose={() => setShowReferralModal(false)}
+        />
+      )}
     </div>
   );
 }

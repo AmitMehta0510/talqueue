@@ -25,6 +25,9 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TeamsPage } from "./pages/TeamsPage";
 import { UserProfilePage } from "./pages/UserProfilePage";
+import { ReferralsPage } from "./pages/ReferralsPage";
+import { ReputationPage } from "./pages/ReputationPage";
+import { RecruiterPage } from "./pages/RecruiterPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -165,6 +168,30 @@ function AppRoutes() {
             element={
               <RequireAuth>
                 <NotificationsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/referrals"
+            element={
+              <RequireAuth>
+                <ReferralsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/reputation"
+            element={
+              <RequireAuth>
+                <ReputationPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/recruiter"
+            element={
+              <RequireAuth>
+                <RecruiterPage />
               </RequireAuth>
             }
           />

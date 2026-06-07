@@ -21,7 +21,8 @@ import {
   useCreateCompanyMutation,
   useSuggestedCompaniesQuery,
 } from "../hooks/usePlatformQueries";
-import { Company, CompanySize, CompanyType } from "../lib/api";
+import { Company, CompanySize, CompanyType, User } from "../lib/api";
+import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 import { compactPayload, formatCount, formatDate, titleCase, userHeadline, userName } from "../lib/format";
 
 const companyTypes: CompanyType[] = ["STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "ENTERPRISE", "MNC", "OTHER"];
@@ -447,6 +448,7 @@ function CompanyDetail({ slug }: { slug: string }) {
   const companyQuery = useCompanyQuery(slug);
   const company = companyQuery.data;
   const [employeePage, setEmployeePage] = useState(1);
+  const [selectedReferralUser, setSelectedReferralUser] = useState<User | null>(null);
   const employeesQuery = useCompanyEmployeesQuery(company?.id, employeePage, 10);
   const employees = employeesQuery.data?.employees || [];
 
@@ -572,6 +574,15 @@ function CompanyDetail({ slug }: { slug: string }) {
                       {employee.verificationScore !== undefined && (
                         <span className="chip">Score {Math.round(employee.verificationScore)}</span>
                       )}
+                      {employee.user?.acceptingReferrals && (
+                        <button
+                          type="button"
+                          className="chip bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:text-emerald-800 transition font-semibold"
+                          onClick={() => setSelectedReferralUser(employee.user || null)}
+                        >
+                          Request Referral
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))
@@ -639,6 +650,13 @@ function CompanyDetail({ slug }: { slug: string }) {
           </div>
         </aside>
       </div>
+      {selectedReferralUser && company && (
+        <RequestReferralModal
+          targetUser={selectedReferralUser}
+          companyNameDefault={company.name}
+          onClose={() => setSelectedReferralUser(null)}
+        />
+      )}
     </section>
   );
 }
