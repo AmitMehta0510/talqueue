@@ -1,23 +1,42 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
-  BriefcaseBusiness,
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Award,
+  Briefcase,
   Building2,
   CheckCircle2,
+  ChevronDown,
   Circle,
+  Code2,
   ExternalLink,
   GraduationCap,
+  Github,
+  Globe,
+  Linkedin,
   Link as LinkIcon,
   Loader2,
+  Mail,
   MapPin,
   Pencil,
   Plus,
   Save,
   Search,
+  Settings,
   ShieldCheck,
   Sparkles,
+  Star,
+  User,
+  X,
+  Zap,
 } from "lucide-react";
 import { Navigate, useLocation } from "react-router-dom";
-import { api, College, Skill, User } from "../lib/api";
+import { api, College, Skill, User as UserType } from "../lib/api";
 import {
   compactPayload,
   formatCount,
@@ -29,8 +48,12 @@ import {
 } from "../lib/format";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
-import { Avatar, ErrorState, InlineLoader, Metric } from "../components/ui";
-import { EducationCard, ExperienceCard, SkillPill } from "../components/cards/ProfileCards";
+import { Avatar, ErrorState, InlineLoader } from "../components/ui";
+import {
+  EducationCard,
+  ExperienceCard,
+  SkillPill,
+} from "../components/cards/ProfileCards";
 import {
   useAddEducationMutation,
   useAddExperienceMutation,
@@ -44,6 +67,10 @@ import {
   useSkillSearchQuery,
   useUpdateProfileMutation,
 } from "../hooks/usePlatformQueries";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Tab = "about" | "experience" | "skills" | "education" | "settings";
 
 const emptyExperienceForm = {
   companyName: "",
@@ -70,6 +97,8 @@ const emptyEducationForm = {
   current: false,
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function flattenPages<T, K extends string>(pages: Array<Record<K, T[]>>, key: K) {
   return pages.flatMap((page) => page[key] || []);
 }
@@ -77,46 +106,32 @@ function flattenPages<T, K extends string>(pages: Array<Record<K, T[]>>, key: K)
 const hasValue = (value?: string | null) => Boolean(value && value.trim());
 
 const getProfileCompletionTasks = (
-  profile: User,
-  counts: {
-    skills: number;
-    experiences: number;
-    educations: number;
-  },
+  profile: UserType,
+  counts: { skills: number; experiences: number; educations: number },
 ) => [
   {
     label: "Add name and headline",
     complete: hasValue(profile.profile?.fullName) && hasValue(profile.profile?.headline),
   },
-  {
-    label: "Write a short bio",
-    complete: hasValue(profile.profile?.bio),
-  },
+  { label: "Write a short bio", complete: hasValue(profile.profile?.bio) },
   {
     label: "Select college and department",
     complete: Boolean(profile.profile?.collegeId && profile.profile?.departmentId),
   },
-  {
-    label: "Add at least 3 skills",
-    complete: counts.skills >= 3,
-  },
-  {
-    label: "Add experience",
-    complete: counts.experiences > 0,
-  },
-  {
-    label: "Add education",
-    complete: counts.educations > 0,
-  },
+  { label: "Add at least 3 skills", complete: counts.skills >= 3 },
+  { label: "Add experience", complete: counts.experiences > 0 },
+  { label: "Add education", complete: counts.educations > 0 },
   {
     label: "Add GitHub, LinkedIn, or portfolio",
     complete: Boolean(
       profile.profile?.githubUrl ||
-        profile.profile?.linkedinUrl ||
-        profile.profile?.portfolioUrl,
+      profile.profile?.linkedinUrl ||
+      profile.profile?.portfolioUrl,
     ),
   },
 ];
+
+// ─── Root ─────────────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -129,17 +144,25 @@ export function ProfilePage() {
   return <ProfileWorkspace fallbackUser={user} />;
 }
 
-function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
+// ─── Workspace ────────────────────────────────────────────────────────────────
+
+function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<Tab>("about");
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
+  const [showEducationForm, setShowEducationForm] = useState(false);
+
   const profileQuery = useMyFullProfileQuery();
-  const skillsQuery = useMySkillsQuery(16);
-  const experiencesQuery = useMyExperiencesQuery(8);
-  const educationsQuery = useMyEducationsQuery(8);
+  const skillsQuery = useMySkillsQuery(20);
+  const experiencesQuery = useMyExperiencesQuery(10);
+  const educationsQuery = useMyEducationsQuery(10);
   const updateProfile = useUpdateProfileMutation();
   const addSkill = useAddSkillMutation();
   const addExperience = useAddExperienceMutation();
   const addEducation = useAddEducationMutation();
+
   const profile = profileQuery.data || fallbackUser;
+
   const skills = useMemo(
     () => flattenPages(skillsQuery.data?.pages || [], "skills"),
     [skillsQuery.data?.pages],
@@ -153,6 +176,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
     [educationsQuery.data?.pages],
   );
 
+  // Profile form state
   const [collegeQuery, setCollegeQuery] = useState("");
   const [collegeResults, setCollegeResults] = useState<College[]>([]);
   const [profileForm, setProfileForm] = useState({
@@ -175,19 +199,21 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
   const [experienceForm, setExperienceForm] = useState(emptyExperienceForm);
   const [educationForm, setEducationForm] = useState(emptyEducationForm);
   const [newDepartment, setNewDepartment] = useState("");
+
   const departmentsQuery = useDepartmentsQuery(profileForm.collegeId || undefined);
   const createDepartment = useCreateDepartmentMutation(profileForm.collegeId || undefined);
+
   const profileTasks = getProfileCompletionTasks(profile, {
     skills: skills.length,
     experiences: experiences.length,
     educations: educations.length,
   });
-  const completedTasks = profileTasks.filter((task) => task.complete).length;
+  const completedTasks = profileTasks.filter((t) => t.complete).length;
   const departments = departmentsQuery.data || [];
 
+  // Sync form when profile loads
   useEffect(() => {
     if (!profileQuery.data) return;
-
     setProfileForm({
       fullName: profile.profile?.fullName || "",
       username: profile.username || "",
@@ -208,14 +234,13 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
     setCollegeQuery(profile.profile?.college?.name || "");
   }, [profile, profileQuery.data]);
 
+  // College search
   useEffect(() => {
     const query = collegeQuery.trim();
-
     if (query.length < 2 || query === profile.profile?.college?.name) {
       setCollegeResults([]);
       return;
     }
-
     const timeout = window.setTimeout(async () => {
       try {
         const result = await api.searchColleges(query);
@@ -224,40 +249,28 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
         setCollegeResults([]);
       }
     }, 250);
-
     return () => window.clearTimeout(timeout);
   }, [collegeQuery, profile.profile?.college?.name]);
 
   const selectCollege = (college: College) => {
     setCollegeQuery(college.name);
     setCollegeResults([]);
-    setProfileForm((current) => ({
-      ...current,
-      collegeId: college.id,
-      departmentId: "",
-    }));
+    setProfileForm((c) => ({ ...c, collegeId: college.id, departmentId: "" }));
   };
 
   const changeCollegeQuery = (value: string) => {
     setCollegeQuery(value);
-
     if (value !== profile.profile?.college?.name) {
-      setProfileForm((current) => ({
-        ...current,
-        collegeId: "",
-        departmentId: "",
-      }));
+      setProfileForm((c) => ({ ...c, collegeId: "", departmentId: "" }));
     }
   };
 
   const saveProfile = (event: FormEvent) => {
     event.preventDefault();
-
     if (collegeQuery.trim() && !profileForm.collegeId) {
       showToast("error", "Select a college from the list before saving");
       return;
     }
-
     updateProfile.mutate(
       compactPayload({
         ...profileForm,
@@ -271,17 +284,15 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
 
   const submitExperience = async (event: FormEvent) => {
     event.preventDefault();
-
     if (
       experienceForm.startDate &&
       experienceForm.endDate &&
       !experienceForm.isCurrent &&
       new Date(experienceForm.endDate) < new Date(experienceForm.startDate)
     ) {
-      showToast("error", "Experience end date cannot be before start date");
+      showToast("error", "End date cannot be before start date");
       return;
     }
-
     try {
       await addExperience.mutateAsync({
         companyName: experienceForm.companyName,
@@ -302,29 +313,27 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
         }),
       });
       setExperienceForm(emptyExperienceForm);
+      setShowExperienceForm(false);
     } catch {
-      // Mutation hook owns the toast.
+      // Mutation hook shows toast
     }
   };
 
   const submitEducation = async (event: FormEvent) => {
     event.preventDefault();
-
     if (!profileForm.collegeId) {
-      showToast("error", "Select a college first");
+      showToast("error", "Select a college in Settings first");
       return;
     }
-
     if (
       educationForm.startYear &&
       educationForm.endYear &&
       !educationForm.current &&
       Number(educationForm.endYear) < Number(educationForm.startYear)
     ) {
-      showToast("error", "Education end year cannot be before start year");
+      showToast("error", "End year cannot be before start year");
       return;
     }
-
     try {
       await addEducation.mutateAsync({
         collegeId: profileForm.collegeId,
@@ -341,29 +350,25 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
         }),
       });
       setEducationForm(emptyEducationForm);
+      setShowEducationForm(false);
     } catch {
-      // Mutation hook owns the toast.
+      // Mutation hook shows toast
     }
   };
 
   const submitDepartment = async () => {
     const name = newDepartment.trim();
-
     if (!name) return;
     if (!profileForm.collegeId) {
       showToast("error", "Select a college first");
       return;
     }
-
     try {
       const result = await createDepartment.mutateAsync(name);
-      setProfileForm((current) => ({
-        ...current,
-        departmentId: result.data.id,
-      }));
+      setProfileForm((c) => ({ ...c, departmentId: result.data.id }));
       setNewDepartment("");
     } catch {
-      // Mutation hook owns the toast.
+      // Mutation hook shows toast
     }
   };
 
@@ -377,292 +382,255 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: User }) {
     );
   }
 
+  const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
+    { id: "about",      label: "About",      icon: User },
+    { id: "experience", label: "Experience", icon: Briefcase },
+    { id: "skills",     label: "Skills",     icon: Code2 },
+    { id: "education",  label: "Education",  icon: GraduationCap },
+    { id: "settings",   label: "Settings",   icon: Settings },
+  ];
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_24rem]">
-      <section className="space-y-5">
-        <ProfileHeader profile={profile} loading={profileQuery.isFetching} />
+    <div className="mx-auto max-w-5xl space-y-0">
+      {/* ── Hero Banner ─────────────────────────────────────────────── */}
+      <ProfileHero
+        profile={profile}
+        loading={profileQuery.isFetching}
+        completedTasks={completedTasks}
+        totalTasks={profileTasks.length}
+      />
 
-        <ProfileCompletionPanel
-          completed={completedTasks}
-          tasks={profileTasks}
-          total={profileTasks.length}
-        />
-
-        <form className="panel p-5" onSubmit={saveProfile}>
-          <div className="mb-4 flex items-center gap-2">
-            <Pencil size={18} className="text-emerald-700" />
-            <h3 className="text-base font-semibold text-slate-950">Profile basics</h3>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <LabeledField label="Full name">
-              <input className="field" value={profileForm.fullName} onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="Full name" minLength={2} />
-            </LabeledField>
-            <LabeledField label="Username">
-              <input className="field" value={profileForm.username} onChange={(event) => setProfileForm((current) => ({ ...current, username: event.target.value }))} placeholder="Username" minLength={3} pattern="[A-Za-z0-9_]+" />
-            </LabeledField>
-            <LabeledField label="Headline" className="md:col-span-2">
-              <input className="field" value={profileForm.headline} onChange={(event) => setProfileForm((current) => ({ ...current, headline: event.target.value }))} placeholder="Backend engineer, ML intern, frontend lead..." maxLength={160} />
-            </LabeledField>
-            <LabeledField label="Location">
-              <input className="field" value={profileForm.location} onChange={(event) => setProfileForm((current) => ({ ...current, location: event.target.value }))} placeholder="City, country" />
-            </LabeledField>
-            <LabeledField label="Graduation year">
-              <input className="field" value={profileForm.graduationYear} onChange={(event) => setProfileForm((current) => ({ ...current, graduationYear: event.target.value }))} placeholder="2027" type="number" min={1970} max={2100} />
-            </LabeledField>
-            <LabeledField label="Bio" className="md:col-span-2">
-              <textarea className="field min-h-24" value={profileForm.bio} onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))} placeholder="What you build, what you are learning, and what kind of work you want." maxLength={1000} />
-            </LabeledField>
-            <LabeledField label="Availability" className="md:col-span-2">
-              <input className="field" value={profileForm.availabilityText} onChange={(event) => setProfileForm((current) => ({ ...current, availabilityText: event.target.value }))} placeholder="Open to internships, teams, referrals, mentoring..." maxLength={240} />
-            </LabeledField>
-            <LabeledField label="Avatar URL">
-              <input className="field" value={profileForm.avatarUrl} onChange={(event) => setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))} placeholder="https://..." type="url" />
-            </LabeledField>
-            <LabeledField label="Banner URL">
-              <input className="field" value={profileForm.bannerUrl} onChange={(event) => setProfileForm((current) => ({ ...current, bannerUrl: event.target.value }))} placeholder="https://..." type="url" />
-            </LabeledField>
-            <LabeledField label="GitHub URL">
-              <input className="field" value={profileForm.githubUrl} onChange={(event) => setProfileForm((current) => ({ ...current, githubUrl: event.target.value }))} placeholder="https://github.com/..." type="url" />
-            </LabeledField>
-            <LabeledField label="LinkedIn URL">
-              <input className="field" value={profileForm.linkedinUrl} onChange={(event) => setProfileForm((current) => ({ ...current, linkedinUrl: event.target.value }))} placeholder="https://linkedin.com/in/..." type="url" />
-            </LabeledField>
-            <LabeledField label="Portfolio URL">
-              <input className="field" value={profileForm.portfolioUrl} onChange={(event) => setProfileForm((current) => ({ ...current, portfolioUrl: event.target.value }))} placeholder="https://..." type="url" />
-            </LabeledField>
-            <LabeledField label="Resume URL">
-              <input className="field" value={profileForm.resumeUrl} onChange={(event) => setProfileForm((current) => ({ ...current, resumeUrl: event.target.value }))} placeholder="https://..." type="url" />
-            </LabeledField>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div className="relative">
-              <label className="mb-1.5 block text-xs font-semibold text-slate-500">College</label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={16} />
-                <input className="field pl-9" value={collegeQuery} onChange={(event) => changeCollegeQuery(event.target.value)} placeholder="Search college" />
-              </div>
-              {collegeResults.length > 0 && (
-                <div className="absolute z-20 mt-2 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-panel">
-                  {collegeResults.map((college) => (
-                    <button className="block w-full px-3 py-2 text-left text-sm hover:bg-emerald-50" key={college.id} type="button" onClick={() => selectCollege(college)}>
-                      <div className="font-medium text-slate-800">{college.name}</div>
-                      <div className="text-xs text-slate-500">{[college.city, college.state].filter(Boolean).join(", ")}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {profileForm.collegeId && (
-                <p className="mt-1.5 text-xs text-emerald-700">
-                  Selected: {collegeQuery}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-500">Department</label>
-              <select className="field" value={profileForm.departmentId} onChange={(event) => setProfileForm((current) => ({ ...current, departmentId: event.target.value }))} disabled={!profileForm.collegeId || departmentsQuery.isFetching}>
-                <option value="">Department</option>
-                {departments.map((department) => (
-                  <option key={department.id} value={department.id}>{department.name}</option>
-                ))}
-              </select>
-              {departmentsQuery.isFetching && <div className="mt-2"><InlineLoader label="Loading departments" /></div>}
-            </div>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <input
-              className="field"
-              value={newDepartment}
-              onChange={(event) => setNewDepartment(event.target.value)}
-              placeholder="Add missing department"
-              disabled={!profileForm.collegeId}
-            />
+      {/* ── Tab Navigation ──────────────────────────────────────────── */}
+      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div className="flex overflow-x-auto">
+          {TABS.map(({ id, label, icon: Icon }) => (
             <button
-              className="btn-secondary shrink-0"
-              type="button"
-              disabled={!profileForm.collegeId || createDepartment.isPending}
-              onClick={submitDepartment}
+              key={id}
+              id={`profile-tab-${id}`}
+              className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
+                ${activeTab === id
+                  ? "text-emerald-700"
+                  : "text-slate-500 hover:text-slate-800"
+                }`}
+              onClick={() => setActiveTab(id)}
             >
-              {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Add
+              <Icon size={16} />
+              {label}
+              {activeTab === id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600" />
+              )}
             </button>
-          </div>
-
-          <div className="mt-5 flex justify-end">
-            <button className="btn-primary" type="submit" disabled={updateProfile.isPending}>
-              {updateProfile.isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              Save profile
-            </button>
-          </div>
-        </form>
-
-        <SkillManager onAddSkill={addSkill.mutateAsync} adding={addSkill.isPending} />
-
-        <form className="panel p-5" onSubmit={submitExperience}>
-          <div className="mb-4 flex items-center gap-2">
-            <BriefcaseBusiness size={18} className="text-amber-700" />
-            <h3 className="text-base font-semibold text-slate-950">Add experience</h3>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <input className="field" value={experienceForm.companyName} onChange={(event) => setExperienceForm((current) => ({ ...current, companyName: event.target.value }))} placeholder="Company" required />
-            <input className="field" value={experienceForm.title} onChange={(event) => setExperienceForm((current) => ({ ...current, title: event.target.value }))} placeholder="Title" required />
-            <select className="field" value={experienceForm.employmentType} onChange={(event) => setExperienceForm((current) => ({ ...current, employmentType: event.target.value }))}>
-              <option value="FULL_TIME">Full time</option>
-              <option value="INTERNSHIP">Internship</option>
-              <option value="CONTRACT">Contract</option>
-              <option value="FREELANCE">Freelance</option>
-            </select>
-            <input className="field" type="date" value={experienceForm.startDate} onChange={(event) => setExperienceForm((current) => ({ ...current, startDate: event.target.value }))} required />
-            <input className="field" type="date" value={experienceForm.endDate} onChange={(event) => setExperienceForm((current) => ({ ...current, endDate: event.target.value }))} disabled={experienceForm.isCurrent} />
-            <label className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600">
-              <input type="checkbox" checked={experienceForm.isCurrent} onChange={(event) => setExperienceForm((current) => ({ ...current, isCurrent: event.target.checked, endDate: event.target.checked ? "" : current.endDate }))} />
-              Current role
-            </label>
-            <input className="field" value={experienceForm.workEmail} onChange={(event) => setExperienceForm((current) => ({ ...current, workEmail: event.target.value }))} placeholder="Work email for verification" />
-            <input className="field" value={experienceForm.managerEmail} onChange={(event) => setExperienceForm((current) => ({ ...current, managerEmail: event.target.value }))} placeholder="Manager email" />
-            <input className="field" value={experienceForm.managerName} onChange={(event) => setExperienceForm((current) => ({ ...current, managerName: event.target.value }))} placeholder="Manager name" />
-            <input className="field" value={experienceForm.managerLinkedinUrl} onChange={(event) => setExperienceForm((current) => ({ ...current, managerLinkedinUrl: event.target.value }))} placeholder="Manager LinkedIn URL" />
-            <input className="field" value={experienceForm.techStack} onChange={(event) => setExperienceForm((current) => ({ ...current, techStack: event.target.value }))} placeholder="Tech stack" />
-            <input className="field" value={experienceForm.skillsUsed} onChange={(event) => setExperienceForm((current) => ({ ...current, skillsUsed: event.target.value }))} placeholder="Skills used" />
-            <input className="field" value={experienceForm.teamSize} onChange={(event) => setExperienceForm((current) => ({ ...current, teamSize: event.target.value }))} placeholder="Team size" type="number" />
-            <textarea className="field min-h-24 md:col-span-2" value={experienceForm.description} onChange={(event) => setExperienceForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" />
-          </div>
-          <div className="mt-5 flex justify-end">
-            <button className="btn-primary" type="submit" disabled={addExperience.isPending}>
-              {addExperience.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Add experience
-            </button>
-          </div>
-        </form>
-
-        <form className="panel p-5" onSubmit={submitEducation}>
-          <div className="mb-4 flex items-center gap-2">
-            <GraduationCap size={18} className="text-emerald-700" />
-            <h3 className="text-base font-semibold text-slate-950">Add education</h3>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <input className="field" value={educationForm.degree} onChange={(event) => setEducationForm((current) => ({ ...current, degree: event.target.value }))} placeholder="Degree" />
-            <input className="field" value={educationForm.fieldOfStudy} onChange={(event) => setEducationForm((current) => ({ ...current, fieldOfStudy: event.target.value }))} placeholder="Field of study" />
-            <input className="field" value={educationForm.startYear} onChange={(event) => setEducationForm((current) => ({ ...current, startYear: event.target.value }))} placeholder="Start year" type="number" />
-            <input className="field" value={educationForm.endYear} onChange={(event) => setEducationForm((current) => ({ ...current, endYear: event.target.value }))} placeholder="End year" type="number" disabled={educationForm.current} />
-            <label className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600">
-              <input type="checkbox" checked={educationForm.current} onChange={(event) => setEducationForm((current) => ({ ...current, current: event.target.checked, endYear: event.target.checked ? "" : current.endYear }))} />
-              Currently studying
-            </label>
-          </div>
-          <div className="mt-5 flex justify-end">
-            <button className="btn-primary" type="submit" disabled={addEducation.isPending || !profileForm.collegeId}>
-              {addEducation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Add education
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <aside className="space-y-5">
-        <div className="panel p-5">
-          <h3 className="text-sm font-semibold text-slate-950">Profile signals</h3>
-          <div className="mt-4 space-y-3 text-sm text-slate-600">
-            <div className="flex items-center gap-2"><MapPin size={16} className="text-slate-400" />{profile.profile?.location || "No location yet"}</div>
-            <div className="flex items-center gap-2"><Building2 size={16} className="text-slate-400" />{profile.profile?.college?.name || "No college selected"}</div>
-            <div className="flex items-center gap-2"><LinkIcon size={16} className="text-slate-400" />{profile.profile?.portfolioUrl || profile.profile?.githubUrl || "No links yet"}</div>
-          </div>
+          ))}
         </div>
+      </div>
 
-        <ProfileSection title="Skills" loading={skillsQuery.isFetching}>
-          <div className="flex flex-wrap gap-2">
-            {skills.length ? skills.map((skill) => <SkillPill key={skill.id} skill={skill} />) : <p className="text-sm text-slate-500">Search and add skills to improve recommendations.</p>}
-          </div>
-          {skillsQuery.hasNextPage && (
-            <button className="btn-secondary mt-4 w-full" type="button" disabled={skillsQuery.isFetchingNextPage} onClick={() => skillsQuery.fetchNextPage()}>
-              {skillsQuery.isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Load more
-            </button>
-          )}
-        </ProfileSection>
+      {/* ── Tab Content ─────────────────────────────────────────────── */}
+      <div className="mt-6">
+        {/* ABOUT */}
+        {activeTab === "about" && (
+          <AboutTab
+            profile={profile}
+            completedTasks={completedTasks}
+            tasks={profileTasks}
+          />
+        )}
 
-        <ProfileSection title="Experience" loading={experiencesQuery.isFetching}>
-          <div className="space-y-3">
-            {experiences.length ? experiences.map((experience) => <ExperienceCard key={experience.id} experience={experience} />) : <p className="text-sm text-slate-500">Add your first role or internship.</p>}
-          </div>
-          {experiencesQuery.hasNextPage && (
-            <button className="btn-secondary mt-4 w-full" type="button" disabled={experiencesQuery.isFetchingNextPage} onClick={() => experiencesQuery.fetchNextPage()}>
-              {experiencesQuery.isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Load more
-            </button>
-          )}
-        </ProfileSection>
+        {/* EXPERIENCE */}
+        {activeTab === "experience" && (
+          <ExperienceTab
+            experiences={experiences}
+            isFetching={experiencesQuery.isFetching}
+            hasNextPage={experiencesQuery.hasNextPage}
+            isFetchingNextPage={experiencesQuery.isFetchingNextPage}
+            onLoadMore={() => experiencesQuery.fetchNextPage()}
+            showForm={showExperienceForm}
+            onToggleForm={() => setShowExperienceForm((v) => !v)}
+            form={experienceForm}
+            onFormChange={setExperienceForm}
+            onSubmit={submitExperience}
+            isPending={addExperience.isPending}
+          />
+        )}
 
-        <ProfileSection title="Education" loading={educationsQuery.isFetching}>
-          <div className="space-y-3">
-            {educations.length ? educations.map((education) => <EducationCard key={education.id} education={education} />) : <p className="text-sm text-slate-500">Select a college and add education.</p>}
-          </div>
-          {educationsQuery.hasNextPage && (
-            <button className="btn-secondary mt-4 w-full" type="button" disabled={educationsQuery.isFetchingNextPage} onClick={() => educationsQuery.fetchNextPage()}>
-              {educationsQuery.isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Load more
-            </button>
-          )}
-        </ProfileSection>
-      </aside>
+        {/* SKILLS */}
+        {activeTab === "skills" && (
+          <SkillsTab
+            skills={skills}
+            isFetching={skillsQuery.isFetching}
+            hasNextPage={skillsQuery.hasNextPage}
+            isFetchingNextPage={skillsQuery.isFetchingNextPage}
+            onLoadMore={() => skillsQuery.fetchNextPage()}
+            onAddSkill={addSkill.mutateAsync}
+            isAdding={addSkill.isPending}
+          />
+        )}
+
+        {/* EDUCATION */}
+        {activeTab === "education" && (
+          <EducationTab
+            educations={educations}
+            isFetching={educationsQuery.isFetching}
+            hasNextPage={educationsQuery.hasNextPage}
+            isFetchingNextPage={educationsQuery.isFetchingNextPage}
+            onLoadMore={() => educationsQuery.fetchNextPage()}
+            showForm={showEducationForm}
+            onToggleForm={() => setShowEducationForm((v) => !v)}
+            form={educationForm}
+            onFormChange={setEducationForm}
+            onSubmit={submitEducation}
+            isPending={addEducation.isPending}
+            hasCollegeSelected={Boolean(profileForm.collegeId)}
+          />
+        )}
+
+        {/* SETTINGS */}
+        {activeTab === "settings" && (
+          <SettingsTab
+            profileForm={profileForm}
+            onProfileFormChange={setProfileForm}
+            collegeQuery={collegeQuery}
+            onCollegeQueryChange={changeCollegeQuery}
+            collegeResults={collegeResults}
+            onSelectCollege={selectCollege}
+            departments={departments}
+            departmentsLoading={departmentsQuery.isFetching}
+            newDepartment={newDepartment}
+            onNewDepartmentChange={setNewDepartment}
+            onAddDepartment={submitDepartment}
+            isDepartmentPending={createDepartment.isPending}
+            onSave={saveProfile}
+            isSavePending={updateProfile.isPending}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-function ProfileHeader({ profile, loading }: { profile: User; loading: boolean }) {
+// ─── Profile Hero ─────────────────────────────────────────────────────────────
+
+function ProfileHero({
+  profile,
+  loading,
+  completedTasks,
+  totalTasks,
+}: {
+  profile: UserType;
+  loading: boolean;
+  completedTasks: number;
+  totalTasks: number;
+}) {
+  const completePct = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   const links = [
-    { label: "GitHub", href: profile.profile?.githubUrl },
-    { label: "LinkedIn", href: profile.profile?.linkedinUrl },
-    { label: "Portfolio", href: profile.profile?.portfolioUrl },
-    { label: "Resume", href: profile.profile?.resumeUrl },
-  ].flatMap((link) => (link.href ? [{ ...link, href: link.href }] : []));
+    { icon: Github, label: "GitHub", href: profile.profile?.githubUrl },
+    { icon: Linkedin, label: "LinkedIn", href: profile.profile?.linkedinUrl },
+    { icon: Globe, label: "Portfolio", href: profile.profile?.portfolioUrl },
+    { icon: LinkIcon, label: "Resume", href: profile.profile?.resumeUrl },
+  ].filter((l) => l.href);
+
+  const availability = [
+    profile.openToWork && "Open to work",
+    profile.openToInternship && "Internships",
+    profile.acceptingCollaborators && "Collaborators",
+    profile.acceptingReferrals && "Referrals",
+    profile.acceptingMentorship && "Mentorship",
+  ].filter(Boolean) as string[];
 
   return (
-    <div className="panel overflow-hidden">
+    <div className="overflow-hidden rounded-t-xl border border-slate-200 bg-white shadow-sm">
+      {/* Banner */}
       <div
-        className="h-28 bg-emerald-950 bg-cover bg-center"
-        style={profile.profile?.bannerUrl ? { backgroundImage: `url(${profile.profile.bannerUrl})` } : undefined}
-      />
-      <div className="px-5 pb-5">
-        <div className="-mt-8 flex flex-wrap items-end justify-between gap-4">
-          <div className="flex items-end gap-4">
-            <Avatar user={profile} />
-            <div className="pb-1">
+        className="relative h-40 bg-cover bg-center"
+        style={
+          profile.profile?.bannerUrl
+            ? { backgroundImage: `url(${profile.profile.bannerUrl})` }
+            : { background: "linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #1e3a5f 100%)" }
+        }
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      </div>
+
+      {/* Avatar + info */}
+      <div className="px-6 pb-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="-mt-10 flex items-end gap-4">
+            <div className="relative">
+              <div className="rounded-full p-1 ring-4 ring-white bg-white shadow-lg">
+                <Avatar user={profile} size="lg" />
+              </div>
+              {profile.verifiedEngineer && (
+                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white">
+                  <ShieldCheck size={13} className="text-white" />
+                </div>
+              )}
+            </div>
+            <div className="mb-1">
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-slate-950">{userName(profile)}</h3>
-                {loading && <Loader2 className="animate-spin text-slate-400" size={16} />}
+                <h1 className="text-xl font-bold text-slate-900">{userName(profile)}</h1>
+                {loading && <Loader2 className="animate-spin text-slate-400" size={15} />}
               </div>
               <p className="text-sm text-slate-500">
                 {userHeadline(profile) || `@${profile.username}`}
               </p>
+              {profile.profile?.location && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                  <MapPin size={11} />
+                  {profile.profile.location}
+                </p>
+              )}
             </div>
           </div>
-          <span className="chip bg-white">
-            <ShieldCheck size={14} />
-            {titleCase(profile.trustLevel || "BEGINNER")}
-          </span>
+
+          {/* Trust + completion */}
+          <div className="flex items-center gap-3">
+            <CompletionRing pct={completePct} />
+            <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+              <ShieldCheck size={13} className="text-emerald-700" />
+              {titleCase(profile.trustLevel || "BEGINNER")}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-4">
-          <Metric label="Completeness" value={`${Math.round(profile.profileCompleteness || 0)}%`} />
-          <Metric label="Reputation" value={formatCount(profile.reputationScore)} />
-          <Metric label="Engineering" value={Math.round(profile.engineeringScore || 0)} />
-          <Metric label="Connections" value={formatCount(profile.connectionCount)} />
+        {/* Quick stats */}
+        <div className="mt-5 flex flex-wrap gap-6 border-t border-slate-100 pt-5 text-center">
+          <QuickStat label="Reputation" value={formatCount(profile.reputationScore)} accent="emerald" />
+          <QuickStat label="Engineering" value={Math.round(profile.engineeringScore || 0)} accent="teal" />
+          <QuickStat label="Followers" value={formatCount(profile.followersCount)} accent="slate" />
+          <QuickStat label="Connections" value={formatCount(profile.connectionCount)} accent="slate" />
+          <QuickStat label="Posts" value={formatCount(profile.postCount)} accent="slate" />
         </div>
+
+        {/* Links */}
         {links.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {links.map((link) => (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {links.map(({ icon: Icon, label, href }) => (
               <a
-                className="btn-secondary px-3 py-1.5"
-                href={link.href}
-                key={link.label}
-                rel="noreferrer"
+                key={label}
+                href={href!}
                 target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
               >
-                <ExternalLink size={15} />
-                {link.label}
+                <Icon size={13} />
+                {label}
+                <ExternalLink size={11} className="opacity-40" />
               </a>
+            ))}
+          </div>
+        )}
+
+        {/* Availability */}
+        {availability.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {availability.map((a) => (
+              <span
+                key={a}
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+              >
+                <Zap size={11} />
+                {a}
+              </span>
             ))}
           </div>
         )}
@@ -671,103 +639,818 @@ function ProfileHeader({ profile, loading }: { profile: User; loading: boolean }
   );
 }
 
-function ProfileCompletionPanel({
-  completed,
-  tasks,
-  total,
-}: {
-  completed: number;
-  tasks: Array<{ label: string; complete: boolean }>;
-  total: number;
-}) {
-  const percent = total ? Math.round((completed / total) * 100) : 0;
+// ─── Completion Ring ──────────────────────────────────────────────────────────
+
+function CompletionRing({ pct }: { pct: number }) {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const dash = circ - (pct / 100) * circ;
 
   return (
-    <div className="panel p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="text-emerald-700" size={18} />
-            <h3 className="text-base font-semibold text-slate-950">Profile foundation</h3>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Recommendations, jobs, teams, referrals, and discovery use these signals.
-          </p>
-        </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-slate-950">{percent}%</div>
-          <div className="text-xs text-slate-500">
-            {completed} of {total} complete
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="relative flex h-14 w-14 items-center justify-center">
+        <svg width="56" height="56" className="-rotate-90">
+          <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+          <circle
+            cx="28"
+            cy="28"
+            r={r}
+            fill="none"
+            stroke="#059669"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={dash}
+            className="transition-all duration-700"
+          />
+        </svg>
+        <span className="absolute text-xs font-bold text-slate-800">{pct}%</span>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-emerald-600 transition-all"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        {tasks.map((task) => {
-          const Icon = task.complete ? CheckCircle2 : Circle;
-
-          return (
-            <div
-              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                task.complete
-                  ? "border-emerald-100 bg-emerald-50 text-emerald-800"
-                  : "border-slate-100 bg-slate-50 text-slate-600"
-              }`}
-              key={task.label}
-            >
-              <Icon size={15} />
-              {task.label}
-            </div>
-          );
-        })}
-      </div>
+      <span className="text-[10px] font-medium text-slate-500">Profile</span>
     </div>
   );
 }
 
-function LabeledField({
-  children,
-  className = "",
+function QuickStat({
   label,
+  value,
+  accent,
 }: {
-  children: ReactNode;
-  className?: string;
   label: string;
+  value: string | number;
+  accent: "emerald" | "teal" | "slate";
 }) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-xs font-semibold text-slate-500">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
+  const textClass =
+    accent === "emerald"
+      ? "text-emerald-700"
+      : accent === "teal"
+      ? "text-teal-700"
+      : "text-slate-800";
 
-function ProfileSection({
-  title,
-  loading,
-  children,
-}: {
-  title: string;
-  loading: boolean;
-  children: ReactNode;
-}) {
   return (
-    <div className="panel p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">{title}</h3>
-        {loading && <Loader2 className="animate-spin text-slate-400" size={15} />}
-      </div>
-      <div className="mt-4">{children}</div>
+    <div>
+      <div className={`text-lg font-bold ${textClass}`}>{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
     </div>
   );
 }
+
+// ─── About Tab ────────────────────────────────────────────────────────────────
+
+function AboutTab({
+  profile,
+  completedTasks,
+  tasks,
+}: {
+  profile: UserType;
+  completedTasks: number;
+  tasks: Array<{ label: string; complete: boolean }>;
+}) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
+      <div className="space-y-5">
+        {/* Bio */}
+        {profile.profile?.bio ? (
+          <SectionCard title="About" icon={User}>
+            <p className="text-sm leading-relaxed text-slate-600">{profile.profile.bio}</p>
+          </SectionCard>
+        ) : (
+          <SectionCard title="About" icon={User}>
+            <p className="text-sm text-slate-400 italic">
+              No bio added yet — share your story in the Settings tab.
+            </p>
+          </SectionCard>
+        )}
+
+        {/* Availability text */}
+        {profile.profile?.availabilityText && (
+          <SectionCard title="Availability" icon={Zap}>
+            <p className="text-sm leading-relaxed text-slate-600">
+              {profile.profile.availabilityText}
+            </p>
+          </SectionCard>
+        )}
+      </div>
+
+      {/* Right sidebar */}
+      <div className="space-y-5">
+        {/* Profile foundation */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-500" />
+              <h3 className="text-sm font-semibold text-slate-900">Profile foundation</h3>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {completedTasks}/{tasks.length}
+            </span>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700"
+              style={{ width: `${tasks.length ? (completedTasks / tasks.length) * 100 : 0}%` }}
+            />
+          </div>
+          <div className="mt-4 space-y-2">
+            {tasks.map((task) => {
+              const Icon = task.complete ? CheckCircle2 : Circle;
+              return (
+                <div
+                  key={task.label}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs
+                    ${task.complete
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-slate-50 text-slate-500"
+                    }`}
+                >
+                  <Icon size={13} />
+                  {task.label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Signals */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">Profile signals</h3>
+          <div className="space-y-2.5 text-sm text-slate-600">
+            <InfoRow icon={MapPin}>{profile.profile?.location || "No location"}</InfoRow>
+            <InfoRow icon={Building2}>
+              {profile.profile?.college?.name || "No college selected"}
+            </InfoRow>
+            <InfoRow icon={GraduationCap}>
+              {profile.profile?.department?.name || "No department"}
+            </InfoRow>
+            {profile.profile?.githubUrl && (
+              <InfoRow icon={Github}>
+                <a
+                  href={profile.profile.githubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-emerald-700 hover:underline"
+                >
+                  GitHub
+                </a>
+              </InfoRow>
+            )}
+            {profile.profile?.linkedinUrl && (
+              <InfoRow icon={Linkedin}>
+                <a
+                  href={profile.profile.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  LinkedIn
+                </a>
+              </InfoRow>
+            )}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">Activity</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <MiniStat label="Skills" value={profile._count?.skills ?? 0} />
+            <MiniStat label="Experiences" value={profile._count?.experiences ?? 0} />
+            <MiniStat label="Educations" value={profile._count?.educations ?? 0} />
+            <MiniStat label="Roles" value={profile._count?.roles ?? 0} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Experience Tab ───────────────────────────────────────────────────────────
+
+function ExperienceTab({
+  experiences,
+  isFetching,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  showForm,
+  onToggleForm,
+  form,
+  onFormChange,
+  onSubmit,
+  isPending,
+}: {
+  experiences: ReturnType<typeof flattenPages<any, any>>;
+  isFetching: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+  showForm: boolean;
+  onToggleForm: () => void;
+  form: typeof emptyExperienceForm;
+  onFormChange: (f: typeof emptyExperienceForm) => void;
+  onSubmit: (e: FormEvent) => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">Work Experience</h2>
+          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        </div>
+        <button
+          id="profile-add-experience-btn"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          onClick={onToggleForm}
+        >
+          {showForm ? <X size={15} /> : <Plus size={15} />}
+          {showForm ? "Cancel" : "Add Experience"}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showForm && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Briefcase size={15} className="text-emerald-700" />
+            New Experience
+          </h3>
+          <form onSubmit={onSubmit}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Company *">
+                <input
+                  className="field"
+                  value={form.companyName}
+                  onChange={(e) => onFormChange({ ...form, companyName: e.target.value })}
+                  placeholder="Company name"
+                  required
+                />
+              </Field>
+              <Field label="Title *">
+                <input
+                  className="field"
+                  value={form.title}
+                  onChange={(e) => onFormChange({ ...form, title: e.target.value })}
+                  placeholder="Software Engineer"
+                  required
+                />
+              </Field>
+              <Field label="Type">
+                <select
+                  className="field"
+                  value={form.employmentType}
+                  onChange={(e) => onFormChange({ ...form, employmentType: e.target.value })}
+                >
+                  <option value="FULL_TIME">Full-time</option>
+                  <option value="INTERNSHIP">Internship</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="FREELANCE">Freelance</option>
+                </select>
+              </Field>
+              <Field label="Start date *">
+                <input
+                  className="field"
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => onFormChange({ ...form, startDate: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="End date">
+                <input
+                  className="field"
+                  type="date"
+                  value={form.endDate}
+                  onChange={(e) => onFormChange({ ...form, endDate: e.target.value })}
+                  disabled={form.isCurrent}
+                />
+              </Field>
+              <div className="flex items-center">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 transition hover:border-emerald-200">
+                  <input
+                    type="checkbox"
+                    checked={form.isCurrent}
+                    onChange={(e) =>
+                      onFormChange({ ...form, isCurrent: e.target.checked, endDate: e.target.checked ? "" : form.endDate })
+                    }
+                  />
+                  Current role
+                </label>
+              </div>
+              <Field label="Work email (for verification)">
+                <input
+                  className="field"
+                  value={form.workEmail}
+                  onChange={(e) => onFormChange({ ...form, workEmail: e.target.value })}
+                  placeholder="you@company.com"
+                />
+              </Field>
+              <Field label="Manager name">
+                <input
+                  className="field"
+                  value={form.managerName}
+                  onChange={(e) => onFormChange({ ...form, managerName: e.target.value })}
+                  placeholder="Manager's name"
+                />
+              </Field>
+              <Field label="Manager email">
+                <input
+                  className="field"
+                  value={form.managerEmail}
+                  onChange={(e) => onFormChange({ ...form, managerEmail: e.target.value })}
+                  placeholder="manager@company.com"
+                />
+              </Field>
+              <Field label="Manager LinkedIn">
+                <input
+                  className="field"
+                  value={form.managerLinkedinUrl}
+                  onChange={(e) => onFormChange({ ...form, managerLinkedinUrl: e.target.value })}
+                  placeholder="linkedin.com/in/..."
+                />
+              </Field>
+              <Field label="Tech stack (comma separated)">
+                <input
+                  className="field"
+                  value={form.techStack}
+                  onChange={(e) => onFormChange({ ...form, techStack: e.target.value })}
+                  placeholder="React, Node.js, PostgreSQL"
+                />
+              </Field>
+              <Field label="Skills used (comma separated)">
+                <input
+                  className="field"
+                  value={form.skillsUsed}
+                  onChange={(e) => onFormChange({ ...form, skillsUsed: e.target.value })}
+                  placeholder="TypeScript, Docker"
+                />
+              </Field>
+              <Field label="Team size">
+                <input
+                  className="field"
+                  type="number"
+                  value={form.teamSize}
+                  onChange={(e) => onFormChange({ ...form, teamSize: e.target.value })}
+                  placeholder="5"
+                />
+              </Field>
+              <Field label="Description" className="md:col-span-2">
+                <textarea
+                  className="field min-h-24"
+                  value={form.description}
+                  onChange={(e) => onFormChange({ ...form, description: e.target.value })}
+                  placeholder="Describe your responsibilities and achievements..."
+                />
+              </Field>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button className="btn-primary" type="submit" disabled={isPending}>
+                {isPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
+                Add Experience
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* List */}
+      {experiences.length === 0 && !isFetching ? (
+        <EmptySection
+          icon={Briefcase}
+          title="No experience yet"
+          text="Add your first role, internship, or project to showcase your journey."
+          action={
+            <button className="btn-primary mt-2" onClick={onToggleForm}>
+              <Plus size={15} /> Add Experience
+            </button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {experiences.map((exp) => (
+            <ExperienceCard key={exp.id} experience={exp} />
+          ))}
+        </div>
+      )}
+
+      {hasNextPage && (
+        <button
+          className="btn-secondary w-full"
+          onClick={onLoadMore}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? <Loader2 className="animate-spin" size={15} /> : <ChevronDown size={15} />}
+          Load more
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Skills Tab ───────────────────────────────────────────────────────────────
+
+function SkillsTab({
+  skills,
+  isFetching,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  onAddSkill,
+  isAdding,
+}: {
+  skills: any[];
+  isFetching: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+  onAddSkill: (payload: { skillId: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" }) => Promise<unknown>;
+  isAdding: boolean;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-semibold text-slate-900">Skills</h2>
+        {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+      </div>
+
+      {/* Add skill widget */}
+      <SkillManager onAddSkill={onAddSkill} adding={isAdding} />
+
+      {/* Skill grid */}
+      {skills.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {skills.map((skill) => (
+            <SkillPill key={skill.id} skill={skill} large />
+          ))}
+        </div>
+      ) : (
+        !isFetching && (
+          <EmptySection
+            icon={Code2}
+            title="No skills yet"
+            text="Search and add skills to power recommendations and discovery."
+          />
+        )
+      )}
+
+      {hasNextPage && (
+        <button
+          className="btn-secondary w-full"
+          onClick={onLoadMore}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? <Loader2 className="animate-spin" size={15} /> : <ChevronDown size={15} />}
+          Load more
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Education Tab ────────────────────────────────────────────────────────────
+
+function EducationTab({
+  educations,
+  isFetching,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  showForm,
+  onToggleForm,
+  form,
+  onFormChange,
+  onSubmit,
+  isPending,
+  hasCollegeSelected,
+}: {
+  educations: any[];
+  isFetching: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+  showForm: boolean;
+  onToggleForm: () => void;
+  form: typeof emptyEducationForm;
+  onFormChange: (f: typeof emptyEducationForm) => void;
+  onSubmit: (e: FormEvent) => void;
+  isPending: boolean;
+  hasCollegeSelected: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">Education</h2>
+          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        </div>
+        <button
+          id="profile-add-education-btn"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          onClick={onToggleForm}
+        >
+          {showForm ? <X size={15} /> : <Plus size={15} />}
+          {showForm ? "Cancel" : "Add Education"}
+        </button>
+      </div>
+
+      {!hasCollegeSelected && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <strong>Tip:</strong> Set your college in the <strong>Settings</strong> tab first to link education records.
+        </div>
+      )}
+
+      {/* Add form */}
+      {showForm && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <GraduationCap size={15} className="text-emerald-700" />
+            New Education
+          </h3>
+          <form onSubmit={onSubmit}>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Degree">
+                <input
+                  className="field"
+                  value={form.degree}
+                  onChange={(e) => onFormChange({ ...form, degree: e.target.value })}
+                  placeholder="B.Tech, M.S., MBA..."
+                />
+              </Field>
+              <Field label="Field of study">
+                <input
+                  className="field"
+                  value={form.fieldOfStudy}
+                  onChange={(e) => onFormChange({ ...form, fieldOfStudy: e.target.value })}
+                  placeholder="Computer Science"
+                />
+              </Field>
+              <Field label="Start year">
+                <input
+                  className="field"
+                  type="number"
+                  value={form.startYear}
+                  onChange={(e) => onFormChange({ ...form, startYear: e.target.value })}
+                  placeholder="2020"
+                />
+              </Field>
+              <Field label="End year">
+                <input
+                  className="field"
+                  type="number"
+                  value={form.endYear}
+                  onChange={(e) => onFormChange({ ...form, endYear: e.target.value })}
+                  placeholder="2024"
+                  disabled={form.current}
+                />
+              </Field>
+              <div className="flex items-center">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-emerald-200">
+                  <input
+                    type="checkbox"
+                    checked={form.current}
+                    onChange={(e) =>
+                      onFormChange({ ...form, current: e.target.checked, endYear: e.target.checked ? "" : form.endYear })
+                    }
+                  />
+                  Currently studying
+                </label>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                className="btn-primary"
+                type="submit"
+                disabled={isPending || !hasCollegeSelected}
+              >
+                {isPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
+                Add Education
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* List */}
+      {educations.length === 0 && !isFetching ? (
+        <EmptySection
+          icon={GraduationCap}
+          title="No education yet"
+          text="Add your degrees and certifications to strengthen your profile."
+          action={
+            <button className="btn-primary mt-2" onClick={onToggleForm}>
+              <Plus size={15} /> Add Education
+            </button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {educations.map((edu) => (
+            <EducationCard key={edu.id} education={edu} />
+          ))}
+        </div>
+      )}
+
+      {hasNextPage && (
+        <button
+          className="btn-secondary w-full"
+          onClick={onLoadMore}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? <Loader2 className="animate-spin" size={15} /> : <ChevronDown size={15} />}
+          Load more
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Tab ─────────────────────────────────────────────────────────────
+
+function SettingsTab({
+  profileForm,
+  onProfileFormChange,
+  collegeQuery,
+  onCollegeQueryChange,
+  collegeResults,
+  onSelectCollege,
+  departments,
+  departmentsLoading,
+  newDepartment,
+  onNewDepartmentChange,
+  onAddDepartment,
+  isDepartmentPending,
+  onSave,
+  isSavePending,
+}: {
+  profileForm: Record<string, string>;
+  onProfileFormChange: (f: any) => void;
+  collegeQuery: string;
+  onCollegeQueryChange: (v: string) => void;
+  collegeResults: College[];
+  onSelectCollege: (c: College) => void;
+  departments: any[];
+  departmentsLoading: boolean;
+  newDepartment: string;
+  onNewDepartmentChange: (v: string) => void;
+  onAddDepartment: () => void;
+  isDepartmentPending: boolean;
+  onSave: (e: FormEvent) => void;
+  isSavePending: boolean;
+}) {
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    onProfileFormChange({ ...profileForm, [key]: e.target.value });
+
+  return (
+    <form onSubmit={onSave} className="space-y-5">
+      {/* Basic info */}
+      <SettingsSection title="Basic information" icon={User}>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Full name">
+            <input className="field" value={profileForm.fullName} onChange={set("fullName")} placeholder="Full name" minLength={2} />
+          </Field>
+          <Field label="Username">
+            <input className="field" value={profileForm.username} onChange={set("username")} placeholder="username" minLength={3} pattern="[A-Za-z0-9_]+" />
+          </Field>
+          <Field label="Headline" className="md:col-span-2">
+            <input className="field" value={profileForm.headline} onChange={set("headline")} placeholder="Backend engineer, ML intern..." maxLength={160} />
+          </Field>
+          <Field label="Location">
+            <input className="field" value={profileForm.location} onChange={set("location")} placeholder="Mumbai, India" />
+          </Field>
+          <Field label="Graduation year">
+            <input className="field" type="number" value={profileForm.graduationYear} onChange={set("graduationYear")} placeholder="2027" min={1970} max={2100} />
+          </Field>
+          <Field label="Bio" className="md:col-span-2">
+            <textarea className="field min-h-28" value={profileForm.bio} onChange={set("bio")} placeholder="What you build, what you're learning, what kind of work you want..." maxLength={1000} />
+          </Field>
+          <Field label="Availability" className="md:col-span-2">
+            <input className="field" value={profileForm.availabilityText} onChange={set("availabilityText")} placeholder="Open to internships, referrals, mentoring..." maxLength={240} />
+          </Field>
+        </div>
+      </SettingsSection>
+
+      {/* Links */}
+      <SettingsSection title="Links & media" icon={LinkIcon}>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Avatar URL">
+            <input className="field" value={profileForm.avatarUrl} onChange={set("avatarUrl")} placeholder="https://..." type="url" />
+          </Field>
+          <Field label="Banner URL">
+            <input className="field" value={profileForm.bannerUrl} onChange={set("bannerUrl")} placeholder="https://..." type="url" />
+          </Field>
+          <Field label="GitHub URL">
+            <div className="relative">
+              <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.githubUrl} onChange={set("githubUrl")} placeholder="https://github.com/..." type="url" />
+            </div>
+          </Field>
+          <Field label="LinkedIn URL">
+            <div className="relative">
+              <Linkedin size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.linkedinUrl} onChange={set("linkedinUrl")} placeholder="https://linkedin.com/in/..." type="url" />
+            </div>
+          </Field>
+          <Field label="Portfolio URL">
+            <div className="relative">
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.portfolioUrl} onChange={set("portfolioUrl")} placeholder="https://yoursite.com" type="url" />
+            </div>
+          </Field>
+          <Field label="Resume URL">
+            <div className="relative">
+              <Mail size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.resumeUrl} onChange={set("resumeUrl")} placeholder="https://..." type="url" />
+            </div>
+          </Field>
+        </div>
+      </SettingsSection>
+
+      {/* College */}
+      <SettingsSection title="College & department" icon={Building2}>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="relative">
+            <label className="mb-1.5 block text-xs font-semibold text-slate-500">College</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
+              <input
+                className="field pl-9"
+                value={collegeQuery}
+                onChange={(e) => onCollegeQueryChange(e.target.value)}
+                placeholder="Search college..."
+              />
+            </div>
+            {collegeResults.length > 0 && (
+              <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                {collegeResults.map((college) => (
+                  <button
+                    key={college.id}
+                    className="block w-full px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                    type="button"
+                    onClick={() => onSelectCollege(college)}
+                  >
+                    <div className="font-medium text-slate-800">{college.name}</div>
+                    {(college.city || college.state) && (
+                      <div className="text-xs text-slate-400">
+                        {[college.city, college.state].filter(Boolean).join(", ")}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {profileForm.collegeId && (
+              <p className="mt-1.5 text-xs text-emerald-700">✓ {collegeQuery}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-500">Department</label>
+            <select
+              className="field"
+              value={profileForm.departmentId}
+              onChange={(e) => onProfileFormChange({ ...profileForm, departmentId: e.target.value })}
+              disabled={!profileForm.collegeId || departmentsLoading}
+            >
+              <option value="">Select department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+            {departmentsLoading && <div className="mt-2"><InlineLoader label="Loading departments" /></div>}
+          </div>
+
+          <div className="flex gap-2 md:col-span-2">
+            <input
+              className="field"
+              value={newDepartment}
+              onChange={(e) => onNewDepartmentChange(e.target.value)}
+              placeholder="Add a missing department..."
+              disabled={!profileForm.collegeId}
+            />
+            <button
+              className="btn-secondary shrink-0"
+              type="button"
+              disabled={!profileForm.collegeId || isDepartmentPending}
+              onClick={onAddDepartment}
+            >
+              {isDepartmentPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
+              Add
+            </button>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <div className="flex justify-end">
+        <button className="btn-primary gap-2 px-6" type="submit" disabled={isSavePending}>
+          {isSavePending ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
+          Save changes
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ─── Skill Manager ────────────────────────────────────────────────────────────
 
 function SkillManager({
   adding,
@@ -788,50 +1471,171 @@ function SkillManager({
       await onAddSkill({ skillId: skill.id, level });
       setQuery("");
     } catch {
-      // Mutation hook owns the toast.
+      // Mutation hook shows toast
     }
   };
 
   return (
-    <div className="panel p-5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
-        <Sparkles size={18} className="text-emerald-700" />
-        <h3 className="text-base font-semibold text-slate-950">Add skills</h3>
+        <Sparkles size={16} className="text-amber-500" />
+        <h3 className="text-sm font-semibold text-slate-900">Add a skill</h3>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
-        <input
-          className="field"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search skill catalog"
-        />
-        <select className="field" value={level} onChange={(event) => setLevel(event.target.value as typeof level)}>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
+          <input
+            className="field pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search skill (e.g. React, Python)..."
+          />
+          {query.length >= 2 && (
+            <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+              {skillSearch.isFetching ? (
+                <div className="p-3"><InlineLoader label="Searching..." /></div>
+              ) : skillSearch.data && skillSearch.data.length > 0 ? (
+                skillSearch.data.slice(0, 8).map((skill) => (
+                  <button
+                    key={skill.id}
+                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                    type="button"
+                    disabled={adding}
+                    onClick={() => add(skill)}
+                  >
+                    <span className="font-medium text-slate-800">{skill.name}</span>
+                    {skill.verified && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                        Verified
+                      </span>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <p className="p-3 text-sm text-slate-500">No matching skills found.</p>
+              )}
+            </div>
+          )}
+        </div>
+        <select
+          className="field w-36 shrink-0"
+          value={level}
+          onChange={(e) => setLevel(e.target.value as typeof level)}
+        >
           <option value="BEGINNER">Beginner</option>
           <option value="INTERMEDIATE">Intermediate</option>
           <option value="ADVANCED">Advanced</option>
           <option value="EXPERT">Expert</option>
         </select>
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {(skillSearch.data || []).map((skill) => (
-          <button
-            className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50"
-            key={skill.id}
-            type="button"
-            disabled={adding}
-            onClick={() => add(skill)}
-          >
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-slate-900">{skill.name}</span>
-              <span className="block truncate text-xs text-slate-500">{skill.category || "Engineering skill"}</span>
-            </span>
-            {adding ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
-          </button>
-        ))}
+    </div>
+  );
+}
+
+// ─── Shared small components ──────────────────────────────────────────────────
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.FC<{ size?: number; className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <Icon size={15} className="text-emerald-700" />
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
       </div>
-      {query.trim().length >= 2 && !skillSearch.isFetching && !(skillSearch.data || []).length && (
-        <p className="mt-3 text-sm text-slate-500">No matching skills found.</p>
-      )}
+      {children}
+    </div>
+  );
+}
+
+function SettingsSection({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.FC<{ size?: number; className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+        <Icon size={16} className="text-emerald-700" />
+        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  className = "",
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 block text-xs font-semibold text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  children,
+}: {
+  icon: React.FC<{ size?: number; className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon size={14} className="mt-0.5 shrink-0 text-slate-400" />
+      <span className="break-all">{children}</span>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3">
+      <div className="text-lg font-bold text-slate-800">{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function EmptySection({
+  icon: Icon,
+  title,
+  text,
+  action,
+}: {
+  icon: React.FC<{ size?: number; className?: string }>;
+  title: string;
+  text: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center">
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50">
+        <Icon size={22} className="text-slate-400" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <p className="mt-1 max-w-xs text-xs text-slate-500">{text}</p>
+      </div>
+      {action}
     </div>
   );
 }

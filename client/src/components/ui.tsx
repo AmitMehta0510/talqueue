@@ -23,9 +23,14 @@ export function Avatar({
   size = "md",
 }: {
   user?: User | null;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }) {
-  const className = size === "sm" ? "h-8 w-8 text-xs" : "h-11 w-11 text-sm";
+  const className =
+    size === "sm"
+      ? "h-8 w-8 text-xs"
+      : size === "lg"
+      ? "h-20 w-20 text-xl"
+      : "h-11 w-11 text-sm";
 
   if (user?.profile?.avatarUrl) {
     return (

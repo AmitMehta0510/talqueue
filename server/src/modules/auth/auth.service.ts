@@ -136,6 +136,7 @@ export const registerUser = async (data: RegisterInput) => {
         email,
         username,
         password: hashedPassword,
+        primaryRole: role,
         profile: {
           create: {
             fullName,
