@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import AppError from "shared/errors/AppError";
 
 const PLATFORM_ADMIN_ROLES = new Set([
-  "ADMIN",
-  "SUPER_ADMIN",
   "PLATFORM_ADMIN",
 ]);
 
@@ -31,7 +29,7 @@ export const requirePlatformAdmin = (
   const isAdmin = [...PLATFORM_ADMIN_ROLES].some((r) => roleNames.has(r));
 
   if (!isAdmin) {
-    return next(new AppError("Only platform admins can access this resource", 403));
+    return next(new AppError("Only the platform administrator (PLATFORM_ADMIN) can access this resource", 403));
   }
 
   next();

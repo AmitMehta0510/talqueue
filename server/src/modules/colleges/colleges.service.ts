@@ -99,8 +99,9 @@ export const isPlatformAdmin = (user: AuthUser) => {
 };
 
 const assertCanManageCollegeCatalog = (user: AuthUser) => {
-  if (!isPlatformAdmin(user)) {
-    throw new AppError("Only platform admins can create colleges", 403);
+  const roleNames = getRoleNames(user);
+  if (!roleNames.has("PLATFORM_ADMIN")) {
+    throw new AppError("Only the platform administrator (PLATFORM_ADMIN) can create colleges", 403);
   }
 };
 

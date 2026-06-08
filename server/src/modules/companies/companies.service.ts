@@ -36,9 +36,8 @@ const assertIsPlatformAdmin = async (userId: string) => {
     },
   });
   const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
-  const isAdmin = [...PLATFORM_ADMIN_ROLES].some((r) => roleNames.has(r));
-  if (!isAdmin) {
-    throw new AppError("Only platform admins can create companies", 403);
+  if (!roleNames.has("PLATFORM_ADMIN")) {
+    throw new AppError("Only the platform administrator (PLATFORM_ADMIN) can create companies", 403);
   }
 };
 
@@ -523,8 +522,6 @@ export const getCompanyEmployees = async (
                     id: true,
 
                     name: true,
-
-                    slug: true,
                   },
                 },
               },

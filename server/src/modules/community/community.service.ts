@@ -533,18 +533,22 @@ export const getCommunityBySlug = async (slug: string) => {
 };
 
 export const archiveCommunity = async (userId: string, communityId: string) => {
-  const membership = await prisma.communityMember.findUnique({
-    where: {
-      communityId_userId: {
-        communityId,
+  const roleNames = await getUserRoleNames(userId);
+  const isBypassAdmin = roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN");
 
-        userId,
+  if (!isBypassAdmin) {
+    const membership = await prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
       },
-    },
-  });
+    });
 
-  if (!membership || !["OWNER", "ADMIN"].includes(membership.role)) {
-    throw new AppError("Unauthorized", 403);
+    if (!membership || !["OWNER", "ADMIN"].includes(membership.role)) {
+      throw new AppError("Unauthorized", 403);
+    }
   }
 
   const community = await prisma.community.update({
