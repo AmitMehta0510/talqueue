@@ -543,6 +543,7 @@ model User {
   collegeAdminships    CollegeAdmin[] @relation("CollegeAdminUser")
   companyAdminGrants   CompanyAdmin[] @relation("CompanyAdminGrantor")
   companyAdminships    CompanyAdmin[] @relation("CompanyAdminUser")
+  createdCommunities   Community[]    @relation("CommunityCreator")
 }
 
 model UserRecommendation {
@@ -2552,6 +2553,7 @@ model Community {
   conversations Conversation[]
 
   createdById String
+  createdBy   User   @relation("CommunityCreator", fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
 
