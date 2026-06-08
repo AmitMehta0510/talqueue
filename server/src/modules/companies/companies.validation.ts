@@ -23,6 +23,8 @@ export const createCompanySchema = z.object({
 
   headquarters: z.string().optional(),
 
+  country: z.string().max(120).optional(),
+
   industry: z.string().optional(),
 
   foundedYear: z.number().int().optional(),

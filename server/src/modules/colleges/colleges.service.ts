@@ -18,6 +18,7 @@ export interface CreateCollegeData {
   name: string;
   state?: string;
   city?: string;
+  country?: string;
   website?: string;
   logoUrl?: string;
 }
@@ -25,6 +26,7 @@ export interface CreateCollegeData {
 export interface CreateDepartmentData {
   name: string;
   collegeId: string;
+  hod?: string;
 }
 
 export interface CollegeListParams {
@@ -41,16 +43,12 @@ const PLATFORM_ADMIN_ROLES = new Set([
   "PLATFORM_ADMIN",
 ]);
 
-const COLLEGE_ADMIN_ROLES = new Set([
-  "COLLEGE_ADMIN",
-  "COLLEGE_DIRECTOR",
-]);
-
 const collegeSelect = {
   id: true,
   name: true,
   state: true,
   city: true,
+  country: true,
   website: true,
   logoUrl: true,
   normalizedKey: true,
@@ -67,6 +65,7 @@ const collegeSelect = {
 const departmentSelect = {
   id: true,
   name: true,
+  hod: true,
   collegeId: true,
   createdAt: true,
 } satisfies Prisma.DepartmentSelect;
@@ -94,16 +93,9 @@ const getRoleNames = (user: AuthUser) =>
       .filter((roleName): roleName is string => Boolean(roleName)),
   );
 
-const isPlatformAdmin = (user: AuthUser) => {
+export const isPlatformAdmin = (user: AuthUser) => {
   const roleNames = getRoleNames(user);
-
   return [...PLATFORM_ADMIN_ROLES].some((roleName) => roleNames.has(roleName));
-};
-
-const isCollegeAdminRole = (user: AuthUser) => {
-  const roleNames = getRoleNames(user);
-
-  return [...COLLEGE_ADMIN_ROLES].some((roleName) => roleNames.has(roleName));
 };
 
 const assertCanManageCollegeCatalog = (user: AuthUser) => {
@@ -112,27 +104,31 @@ const assertCanManageCollegeCatalog = (user: AuthUser) => {
   }
 };
 
+/**
+ * A user can manage a specific college if they are:
+ * 1. A platform admin (ADMIN / SUPER_ADMIN / PLATFORM_ADMIN), OR
+ * 2. Explicitly listed in the CollegeAdmin table for that college.
+ */
 const assertCanManageCollege = async (user: AuthUser, collegeId: string) => {
   if (isPlatformAdmin(user)) {
     return;
   }
 
-  if (!isCollegeAdminRole(user)) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  const profile = await prisma.profile.findUnique({
+  const assignment = await prisma.collegeAdmin.findUnique({
     where: {
-      userId: user.id,
+      userId_collegeId: {
+        userId: user.id,
+        collegeId,
+      },
     },
-
-    select: {
-      collegeId: true,
-    },
+    select: { id: true },
   });
 
-  if (profile?.collegeId !== collegeId) {
-    throw new AppError("You can only manage your own college", 403);
+  if (!assignment) {
+    throw new AppError(
+      "You are not an admin of this college",
+      403,
+    );
   }
 };
 
@@ -242,6 +238,7 @@ export const createCollege = async (
       name,
       state: data.state ? normalizeText(data.state) : undefined,
       city: data.city ? normalizeText(data.city) : undefined,
+      country: data.country ? normalizeText(data.country) : undefined,
       website: data.website,
       logoUrl: data.logoUrl,
     },
@@ -251,6 +248,7 @@ export const createCollege = async (
       normalizedKey,
       state: data.state ? normalizeText(data.state) : undefined,
       city: data.city ? normalizeText(data.city) : undefined,
+      country: data.country ? normalizeText(data.country) : undefined,
       website: data.website,
       logoUrl: data.logoUrl,
     },
@@ -395,6 +393,7 @@ export const createDepartment = async (
   const department = await prisma.department.create({
     data: {
       name,
+      hod: data.hod,
       collegeId: data.collegeId,
     },
 

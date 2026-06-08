@@ -4,6 +4,7 @@ import activityRoutes from "modules/activities/activity.routes";
 import affinityRoutes from "modules/affinity/affinity.routes";
 import candidateRankingRoutes from "modules/analytics/candidate-ranking.routes";
 import leaderboardRoutes from "modules/analytics/leaderboard.routes";
+import adminRoutes from "modules/admin/admin.routes";
 import authRoutes from "modules/auth/auth.routes";
 import chatRoutes from "modules/chat/chat.routes";
 import collegeRoutes from "modules/colleges/colleges.routes";
@@ -40,6 +41,7 @@ type ApiRouteEntry = {
 
 export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "auth", path: "/auth", router: authRoutes },
+  { key: "admin", path: "/admin", router: adminRoutes },
   { key: "users", path: "/users", router: userRoutes },
   { key: "colleges", path: "/colleges", router: collegeRoutes },
   { key: "posts", path: "/posts", router: postRoutes },

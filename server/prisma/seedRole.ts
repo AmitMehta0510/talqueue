@@ -12,7 +12,8 @@ async function main() {
     "SUPER_ADMIN",
     "PLATFORM_ADMIN",
     "COLLEGE_ADMIN",
-    "COLLEGE_DIRECTOR"
+    "COLLEGE_DIRECTOR",
+    "COMPANY_ADMIN",
   ];
 
   for (const role of roles) {

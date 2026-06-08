@@ -21,52 +21,29 @@ import { createNotification } from "modules/notificatios/notifications.service";
 
 type CommunityWriteClient = Prisma.TransactionClient | typeof prisma;
 
-const OFFICIAL_COMMUNITY_ROLES = new Set([
-  "ADMIN",
-  "SUPER_ADMIN",
-  "PLATFORM_ADMIN",
-  "COLLEGE_ADMIN",
-  "COLLEGE_DIRECTOR",
-]);
-
-const PLATFORM_COMMUNITY_ROLES = new Set([
+const PLATFORM_ADMIN_ROLES = new Set([
   "ADMIN",
   "SUPER_ADMIN",
   "PLATFORM_ADMIN",
 ]);
 
-const getUserAccessContext = async (userId: string) => {
+const getUserRoleNames = async (userId: string) => {
   const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-
+    where: { id: userId },
     select: {
       roles: {
         select: {
-          role: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
-
-      profile: {
-        select: {
-          collegeId: true,
+          role: { select: { name: true } },
         },
       },
     },
   });
+  return new Set((user?.roles || []).map((r) => r.role.name));
+};
 
-  return {
-    roleNames: new Set(
-      (user?.roles || []).map((userRole) => userRole.role.name),
-    ),
-
-    collegeId: user?.profile?.collegeId,
-  };
+const isPlatformAdmin = async (userId: string) => {
+  const roleNames = await getUserRoleNames(userId);
+  return [...PLATFORM_ADMIN_ROLES].some((r) => roleNames.has(r));
 };
 
 const assertCanCreateOfficialCommunity = async (
@@ -74,33 +51,71 @@ const assertCanCreateOfficialCommunity = async (
 
   data: CreateCommunityData,
 ) => {
+  // GENERAL communities can be created by anyone
   if (data.type === CommunityType.GENERAL) {
     return;
   }
 
-  const accessContext = await getUserAccessContext(userId);
-
-  const canCreateOfficialCommunity =
-    [...OFFICIAL_COMMUNITY_ROLES].some((roleName) =>
-      accessContext.roleNames.has(roleName),
-    );
-
-  if (!canCreateOfficialCommunity) {
-    throw new AppError("Only verified admins can create official communities", 403);
+  // Platform admins can always create official communities
+  if (await isPlatformAdmin(userId)) {
+    return;
   }
 
-  const isPlatformAdmin =
-    [...PLATFORM_COMMUNITY_ROLES].some((roleName) =>
-      accessContext.roleNames.has(roleName),
-    );
+  if (data.type === CommunityType.COLLEGE) {
+    if (!data.collegeId) {
+      throw new AppError("collegeId required for college communities", 400);
+    }
 
-  if (
-    data.type === CommunityType.COLLEGE &&
-    !isPlatformAdmin &&
-    accessContext.collegeId !== data.collegeId
-  ) {
-    throw new AppError("You can only create communities for your own college", 403);
+    // Check CollegeAdmin assignment
+    const assignment = await prisma.collegeAdmin.findUnique({
+      where: {
+        userId_collegeId: {
+          userId,
+          collegeId: data.collegeId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!assignment) {
+      throw new AppError(
+        "Only verified admins can create college communities. You must be assigned as a college admin.",
+        403,
+      );
+    }
+
+    return;
   }
+
+  if (data.type === CommunityType.COMPANY) {
+    if (!data.companyId) {
+      throw new AppError("companyId required for company communities", 400);
+    }
+
+    // Check CompanyAdmin assignment (company-wide OR for the specific office city)
+    const assignment = await prisma.companyAdmin.findFirst({
+      where: {
+        userId,
+        companyId: data.companyId,
+        OR: [
+          { officeCity: null },
+          ...(data.city ? [{ officeCity: data.city }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!assignment) {
+      throw new AppError(
+        "Only verified admins can create company communities. You must be assigned as a company admin.",
+        403,
+      );
+    }
+
+    return;
+  }
+
+  throw new AppError("Only verified admins can create official communities", 403);
 };
 
 export interface CommunityAutoJoinContext {

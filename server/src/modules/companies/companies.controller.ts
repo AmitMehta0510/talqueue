@@ -19,7 +19,7 @@ export const createCompanyHandler = asyncHandler(
   async (req: any, res: Response) => {
     const validatedData = createCompanySchema.parse(req.body);
 
-    const company = await createCompany(validatedData);
+    const company = await createCompany(req.user.id, validatedData);
 
     res.status(201).json(successResponse(company, "Company created"));
   },

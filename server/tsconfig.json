@@ -18,13 +18,9 @@
       "./node_modules/@types"
     ],
 
-    "baseUrl": "./src",
-
     "paths": {
-      "*": ["*"]
-    },
-
-    "ignoreDeprecations": "5.0"
+      "*": ["./src/*"]
+    }
   },
 
   "include": ["src"]

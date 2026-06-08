@@ -14,7 +14,6 @@ import slugify from "slugify";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Return a base slug (no DB checks). Creation will attempt insert and handle collisions.
-// For extreme throughput, consider a centralized slug allocator or pre-reserved slug namespace.
 const generateCompanySlug = (name: string) => {
   return (
     slugify(name, {
@@ -25,10 +24,29 @@ const generateCompanySlug = (name: string) => {
   );
 };
 
+const PLATFORM_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
+
+const assertIsPlatformAdmin = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      roles: {
+        select: { role: { select: { name: true } } },
+      },
+    },
+  });
+  const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
+  const isAdmin = [...PLATFORM_ADMIN_ROLES].some((r) => roleNames.has(r));
+  if (!isAdmin) {
+    throw new AppError("Only platform admins can create companies", 403);
+  }
+};
+
 //
 // CREATE COMPANY
 //
-export const createCompany = async (data: any) => {
+export const createCompany = async (userId: string, data: any) => {
+  await assertIsPlatformAdmin(userId);
   const existingCompany = await prisma.company.findFirst({
     where: {
       name: {
@@ -66,6 +84,7 @@ export const createCompany = async (data: any) => {
           description: data.description,
           tagline: data.tagline,
           headquarters: data.headquarters,
+          country: data.country,
           industry: data.industry,
           foundedYear: data.foundedYear,
           type: data.type,

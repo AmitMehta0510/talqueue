@@ -537,6 +537,12 @@ model User {
   postShares       PostShare[]
   savedPosts       SavedPost[]
   messageReactions MessageReaction[]
+
+  // Admin assignments
+  collegeAdminGrants   CollegeAdmin[] @relation("CollegeAdminGrantor")
+  collegeAdminships    CollegeAdmin[] @relation("CollegeAdminUser")
+  companyAdminGrants   CompanyAdmin[] @relation("CompanyAdminGrantor")
+  companyAdminships    CompanyAdmin[] @relation("CompanyAdminUser")
 }
 
 model UserRecommendation {
@@ -648,9 +654,10 @@ model CodingProfile {
 model College {
   id String @id @default(uuid())
 
-  name  String
-  state String?
-  city  String?
+  name    String
+  state   String?
+  city    String?
+  country String?
 
   website String?
   logoUrl String?
@@ -663,6 +670,8 @@ model College {
 
   communities Community[]
 
+  collegeAdmins CollegeAdmin[]
+
   createdAt     DateTime       @default(now())
   posts         Post[]
   conversations Conversation[]
@@ -670,12 +679,16 @@ model College {
   @@index([name])
   @@index([city])
   @@index([state])
+  @@index([country])
 }
 
 model Department {
   id String @id @default(uuid())
 
   name String
+
+  // Head of Department (display name, not necessarily a platform user)
+  hod String?
 
   collegeId String
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
@@ -1959,6 +1972,8 @@ model Company {
 
   headquarters String?
 
+  country String?
+
   industry String?
 
   type CompanyType?
@@ -1986,6 +2001,8 @@ model Company {
   communities Community[]
 
   referralRequests ReferralRequest[]
+
+  companyAdmins CompanyAdmin[]
 
   createdAt DateTime @default(now())
 
@@ -2603,4 +2620,42 @@ model CommunityMember {
   @@index([communityId])
   @@index([role])
   @@index([active])
+}
+
+// ============================================================
+// ADMIN DELEGATION
+// ============================================================
+
+model CollegeAdmin {
+  id          String   @id @default(uuid())
+  userId      String
+  collegeId   String
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  user      User    @relation("CollegeAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  grantedBy User    @relation("CollegeAdminGrantor", fields: [grantedById], references: [id])
+
+  @@unique([userId, collegeId])
+  @@index([collegeId])
+  @@index([userId])
+}
+
+model CompanyAdmin {
+  id          String   @id @default(uuid())
+  userId      String
+  companyId   String
+  // null = admin for entire company; set to city for office-scoped admin
+  officeCity  String?
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  user      User    @relation("CompanyAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  grantedBy User    @relation("CompanyAdminGrantor", fields: [grantedById], references: [id])
+
+  @@unique([userId, companyId, officeCity])
+  @@index([companyId])
+  @@index([userId])
 }
