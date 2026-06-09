@@ -302,6 +302,11 @@ export function AppLayout() {
                           Recruiter Console
                         </Link>
                       )}
+                      {user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN") && (
+                        <Link to="/admin" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800">
+                          Platform Admin Console
+                        </Link>
+                      )}
                     </div>
 
                     <div className="border-t border-slate-100 pt-3 flex justify-end">

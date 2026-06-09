@@ -5,6 +5,7 @@ import { successResponse } from "shared/utils/apiResponse";
 import {
   assignCollegeAdminSchema,
   assignCompanyAdminSchema,
+  updateUserStatusSchema,
 } from "./admin.validation";
 
 import {
@@ -14,6 +15,11 @@ import {
   assignCompanyAdmin,
   removeCompanyAdmin,
   listCompanyAdmins,
+  getAdminStats,
+  listUsers,
+  updateUserStatus,
+  assignPlatformAdmin,
+  removePlatformAdmin,
 } from "./admin.service";
 
 // ============================================================
@@ -84,5 +90,62 @@ export const listCompanyAdminsHandler = asyncHandler(
     const admins = await listCompanyAdmins(companyId);
 
     res.json(successResponse(admins));
+  },
+);
+
+// ============================================================
+// PLATFORM ADMIN HANDLERS
+// ============================================================
+
+export const getAdminStatsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const stats = await getAdminStats();
+    res.json(successResponse(stats));
+  },
+);
+
+export const listUsersHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { search, limit, cursor } = req.query as {
+      search?: string;
+      limit?: string;
+      cursor?: string;
+    };
+
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const result = await listUsers(search, parsedLimit, cursor);
+
+    res.json(successResponse(result));
+  },
+);
+
+export const updateUserStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { userId } = req.params;
+    const { status } = updateUserStatusSchema.parse(req.body);
+
+    const result = await updateUserStatus(userId, status);
+
+    res.json(successResponse(result, `User status updated to ${status}`));
+  },
+);
+
+export const assignPlatformAdminHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { userId } = req.params;
+
+    const result = await assignPlatformAdmin(req.user.id, userId);
+
+    res.status(201).json(successResponse(result, result.message));
+  },
+);
+
+export const removePlatformAdminHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { userId } = req.params;
+
+    const result = await removePlatformAdmin(userId, req.user.id);
+
+    res.json(successResponse(result, result.message));
   },
 );

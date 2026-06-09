@@ -9,12 +9,31 @@ import {
   assignCompanyAdminHandler,
   removeCompanyAdminHandler,
   listCompanyAdminsHandler,
+  getAdminStatsHandler,
+  listUsersHandler,
+  updateUserStatusHandler,
+  assignPlatformAdminHandler,
+  removePlatformAdminHandler,
 } from "./admin.controller";
 
 const router = Router();
 
 // All admin routes require authentication + platform admin role
 router.use(protect, requirePlatformAdmin);
+
+// ============================================================
+// GENERAL PLATFORM ADMIN ROUTES
+// ============================================================
+
+router.get("/stats", getAdminStatsHandler);
+
+router.get("/users", listUsersHandler);
+
+router.patch("/users/:userId/status", updateUserStatusHandler);
+
+router.post("/users/:userId/platform-admin", assignPlatformAdminHandler);
+
+router.delete("/users/:userId/platform-admin", removePlatformAdminHandler);
 
 // ============================================================
 // COLLEGE ADMIN ROUTES

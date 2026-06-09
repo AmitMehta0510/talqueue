@@ -3248,3 +3248,177 @@ export const useHackathonSearchQuery = (query: string) =>
     enabled: query.trim().length >= 2,
     staleTime: 60_000,
   });
+
+export const useAdminStatsQuery = () => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+
+  return useQuery({
+    queryKey: queryKeys.admin.stats,
+    queryFn: async ({ signal }) => {
+      const result = await api.getAdminStats({ signal });
+      return result.data;
+    },
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminUsersQuery = (search: string, limit = 50) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.admin.users(search),
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.listAdminUsers(
+        { search, limit, cursor: pageParam },
+        { signal }
+      );
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useUpdateUserStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, status }: { userId: string; status: "ACTIVE" | "INACTIVE" | "BANNED" }) =>
+      api.updateUserStatus(userId, { status }),
+    onSuccess: (result) => {
+      showToast("success", result.message || "User status updated");
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useAssignPlatformAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => api.assignPlatformAdmin(userId),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Role granted successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRemovePlatformAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => api.removePlatformAdmin(userId),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Role revoked successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useAssignCollegeAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ collegeId, userId }: { collegeId: string; userId: string }) =>
+      api.assignCollegeAdmin(collegeId, { userId }),
+    onSuccess: (result, { collegeId }) => {
+      showToast("success", result.message || "Admin assigned successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.collegeAdmins(collegeId) });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRemoveCollegeAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ collegeId, userId }: { collegeId: string; userId: string }) =>
+      api.removeCollegeAdmin(collegeId, userId),
+    onSuccess: (result, { collegeId }) => {
+      showToast("success", result.message || "Admin removed successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.collegeAdmins(collegeId) });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useListCollegeAdminsQuery = (collegeId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.admin.collegeAdmins(collegeId),
+    queryFn: async ({ signal }) => {
+      const result = await api.listCollegeAdmins(collegeId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && collegeId),
+  });
+};
+
+export const useAssignCompanyAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId, officeCity }: { companyId: string; userId: string; officeCity?: string }) =>
+      api.assignCompanyAdmin(companyId, { userId, officeCity }),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Admin assigned successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.companyAdmins(companyId) });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRemoveCompanyAdminMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId, officeCity }: { companyId: string; userId: string; officeCity?: string }) =>
+      api.removeCompanyAdmin(companyId, userId, officeCity),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Admin removed successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.companyAdmins(companyId) });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useListCompanyAdminsQuery = (companyId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.admin.companyAdmins(companyId),
+    queryFn: async ({ signal }) => {
+      const result = await api.listCompanyAdmins(companyId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && companyId),
+  });
+};

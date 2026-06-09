@@ -10,3 +10,7 @@ export const assignCompanyAdminSchema = z.object({
   // If omitted, the user becomes an admin for the entire company.
   officeCity: z.string().max(120).optional(),
 });
+
+export const updateUserStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE", "BANNED"]),
+});

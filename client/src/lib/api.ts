@@ -1498,6 +1498,57 @@ export const api = {
     endYear?: number;
     current?: boolean;
   }) => request<Education>(`/users/me/educations/${educationId}`, { method: "PUT", body }),
+  getAdminStats: (options?: EndpointOptions) =>
+    request<{
+      userCount: number;
+      collegeCount: number;
+      companyCount: number;
+      projectCount: number;
+      jobCount: number;
+      statusDistribution: Array<{ status: string; count: number }>;
+      trustLevelDistribution: Array<{ trustLevel: string; count: number }>;
+    }>("/admin/stats", options),
+  listAdminUsers: (params: { search?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{
+      users: User[];
+      nextCursor: string | null;
+      hasNextPage: boolean;
+    }>(`/admin/users${toQuery(params)}`, options),
+  updateUserStatus: (userId: string, body: { status: "ACTIVE" | "INACTIVE" | "BANNED" }) =>
+    request<{ id: string; username: string; status: string }>(`/admin/users/${userId}/status`, {
+      method: "PATCH",
+      body,
+    }),
+  assignPlatformAdmin: (userId: string) =>
+    request<{ message: string }>(`/admin/users/${userId}/platform-admin`, {
+      method: "POST",
+    }),
+  removePlatformAdmin: (userId: string) =>
+    request<{ message: string }>(`/admin/users/${userId}/platform-admin`, {
+      method: "DELETE",
+    }),
+  assignCollegeAdmin: (collegeId: string, body: { userId: string }) =>
+    request<{ message: string; assignment: any }>(`/admin/colleges/${collegeId}/admins`, {
+      method: "POST",
+      body,
+    }),
+  removeCollegeAdmin: (collegeId: string, userId: string) =>
+    request<{ message: string }>(`/admin/colleges/${collegeId}/admins/${userId}`, {
+      method: "DELETE",
+    }),
+  listCollegeAdmins: (collegeId: string, options?: EndpointOptions) =>
+    request<any[]>(`/admin/colleges/${collegeId}/admins`, options),
+  assignCompanyAdmin: (companyId: string, body: { userId: string; officeCity?: string }) =>
+    request<{ message: string; assignment: any }>(`/admin/companies/${companyId}/admins`, {
+      method: "POST",
+      body,
+    }),
+  removeCompanyAdmin: (companyId: string, userId: string, officeCity?: string) =>
+    request<{ message: string }>(`/admin/companies/${companyId}/admins/${userId}${officeCity ? `?officeCity=${encodeURIComponent(officeCity)}` : ""}`, {
+      method: "DELETE",
+    }),
+  listCompanyAdmins: (companyId: string, options?: EndpointOptions) =>
+    request<any[]>(`/admin/companies/${companyId}/admins`, options),
   myProjects: (options?: EndpointOptions) =>
     request<Project[]>("/users/me/projects", options),
   searchSkills: (q: string, options?: EndpointOptions) =>

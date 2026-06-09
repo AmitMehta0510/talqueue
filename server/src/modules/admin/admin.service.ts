@@ -318,3 +318,147 @@ export const listCompanyAdmins = async (companyId: string) => {
     },
   });
 };
+
+// ============================================================
+// PLATFORM ADMIN CONTROLS
+// ============================================================
+
+export const getAdminStats = async () => {
+  const [
+    userCount,
+    collegeCount,
+    companyCount,
+    projectCount,
+    jobCount,
+    statusGroups,
+    trustGroups,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.college.count(),
+    prisma.company.count(),
+    prisma.project.count(),
+    prisma.job.count(),
+    prisma.user.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
+    prisma.user.groupBy({
+      by: ["trustLevel"],
+      _count: { _all: true },
+    }),
+  ]);
+
+  return {
+    userCount,
+    collegeCount,
+    companyCount,
+    projectCount,
+    jobCount,
+    statusDistribution: statusGroups.map((g) => ({
+      status: g.status,
+      count: g._count._all,
+    })),
+    trustLevelDistribution: trustGroups.map((g) => ({
+      trustLevel: g.trustLevel,
+      count: g._count._all,
+    })),
+  };
+};
+
+export const listUsers = async (search?: string, limit = 50, cursor?: string) => {
+  const where: any = {};
+  if (search && search.trim()) {
+    const q = search.trim();
+    where.OR = [
+      { username: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+      { profile: { fullName: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  const users = await prisma.user.findMany({
+    where,
+    take: limit + 1,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      status: true,
+      trustLevel: true,
+      createdAt: true,
+      profile: {
+        select: {
+          fullName: true,
+          avatarUrl: true,
+        },
+      },
+      roles: {
+        select: {
+          role: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  let nextCursor: string | null = null;
+  if (users.length > limit) {
+    const nextUser = users.pop();
+    nextCursor = nextUser?.id || null;
+  }
+
+  return {
+    users,
+    nextCursor,
+    hasNextPage: !!nextCursor,
+  };
+};
+
+export const updateUserStatus = async (userId: string, status: "ACTIVE" | "INACTIVE" | "BANNED") => {
+  await ensureUserExists(userId);
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { status },
+    select: { id: true, username: true, status: true },
+  });
+};
+
+export const assignPlatformAdmin = async (grantedById: string, targetUserId: string) => {
+  await ensureUserExists(targetUserId);
+  await grantRole(targetUserId, "PLATFORM_ADMIN");
+
+  return {
+    message: "User assigned as PLATFORM_ADMIN successfully",
+  };
+};
+
+export const removePlatformAdmin = async (targetUserId: string, executorId: string) => {
+  if (targetUserId === executorId) {
+    throw new AppError("You cannot revoke your own PLATFORM_ADMIN role to prevent self-lockout", 400);
+  }
+
+  await ensureUserExists(targetUserId);
+
+  const role = await prisma.role.findUnique({
+    where: { name: "PLATFORM_ADMIN" },
+    select: { id: true },
+  });
+
+  if (!role) {
+    throw new AppError("PLATFORM_ADMIN role not found", 404);
+  }
+
+  await prisma.userRole.deleteMany({
+    where: { userId: targetUserId, roleId: role.id },
+  });
+
+  return {
+    message: "PLATFORM_ADMIN role revoked successfully",
+  };
+};

@@ -28,6 +28,7 @@ import { UserProfilePage } from "./pages/UserProfilePage";
 import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReputationPage } from "./pages/ReputationPage";
 import { RecruiterPage } from "./pages/RecruiterPage";
+import { AdminPage } from "./pages/AdminPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -39,6 +40,23 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function RequirePlatformAdmin({ children }: { children: ReactNode }) {
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+
+  if (authStatus === "checking") {
+    return <PageLoader />;
+  }
+
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+
+  if (!user || !isPlatformAdmin) {
+    return <Navigate to="/feed" replace />;
   }
 
   return children;
@@ -193,6 +211,14 @@ function AppRoutes() {
               <RequireAuth>
                 <RecruiterPage />
               </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RequirePlatformAdmin>
+                <AdminPage />
+              </RequirePlatformAdmin>
             }
           />
         </Route>
