@@ -67,6 +67,7 @@ export interface AddEducationData {
   current?: boolean;
 }
 
+const MAX_SKILLS = 30;
 const DEFAULT_SECTION_LIMIT = 20;
 const MAX_SECTION_LIMIT = 50;
 
@@ -808,6 +809,24 @@ export const addSkill = async (userId: string, data: AddSkillData) => {
     throw new AppError("Skill not found", 404);
   }
 
+  // Check if this is a new skill (not an update of an existing one)
+  const existingUserSkill = await prisma.userSkill.findUnique({
+    where: {
+      userId_skillId: {
+        userId,
+        skillId: data.skillId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!existingUserSkill) {
+    const skillCount = await prisma.userSkill.count({ where: { userId } });
+    if (skillCount >= MAX_SKILLS) {
+      throw new AppError(`You can add a maximum of ${MAX_SKILLS} skills`, 400);
+    }
+  }
+
   return prisma.userSkill.upsert({
     where: {
       userId_skillId: {
@@ -1089,4 +1108,252 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
 
     return education;
   });
+};
+
+// ─── Remove Operations ──────────────────────────────────────────────────────
+
+export const removeSkill = async (userId: string, skillId: string) => {
+  const userSkill = await prisma.userSkill.findFirst({
+    where: { userId, skillId },
+    select: { id: true },
+  });
+
+  if (!userSkill) {
+    throw new AppError("Skill not found on your profile", 404);
+  }
+
+  await prisma.userSkill.delete({ where: { id: userSkill.id } });
+
+  calculateEngineeringScore(userId).catch(console.error);
+
+  return { id: userSkill.id };
+};
+
+export const removeExperience = async (userId: string, experienceId: string) => {
+  const experience = await prisma.experience.findFirst({
+    where: { id: experienceId, userId },
+    select: { id: true, companyName: true },
+  });
+
+  if (!experience) {
+    throw new AppError("Experience not found", 404);
+  }
+
+  await prisma.experience.delete({ where: { id: experienceId } });
+
+  Promise.all([
+    addReputation(userId, "EXPERIENCE_ADDED", -5, "Removed experience", {
+      experienceId,
+    }),
+    calculateEngineeringScore(userId),
+  ]).catch(console.error);
+
+  return { id: experienceId };
+};
+
+export const removeEducation = async (userId: string, educationId: string) => {
+  const education = await prisma.education.findFirst({
+    where: { id: educationId, userId },
+    select: { id: true },
+  });
+
+  if (!education) {
+    throw new AppError("Education not found", 404);
+  }
+
+  await prisma.education.delete({ where: { id: educationId } });
+
+  return { id: educationId };
+};
+
+// ─── Update Operations ──────────────────────────────────────────────────────
+
+export interface UpdateExperienceData {
+  title?: string;
+  employmentType?: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
+  description?: string;
+  workEmail?: string;
+  managerName?: string;
+  managerEmail?: string;
+  managerLinkedinUrl?: string;
+  skillsUsed?: string[];
+  techStack?: string[];
+  teamSize?: number;
+}
+
+export const updateExperience = async (
+  userId: string,
+  experienceId: string,
+  data: UpdateExperienceData,
+) => {
+  const existing = await prisma.experience.findFirst({
+    where: { id: experienceId, userId },
+    select: { id: true, startDate: true, endDate: true, isCurrent: true },
+  });
+
+  if (!existing) {
+    throw new AppError("Experience not found", 404);
+  }
+
+  const updateData: Record<string, any> = {};
+
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.workEmail !== undefined) updateData.workEmail = data.workEmail;
+  if (data.managerName !== undefined) updateData.managerName = data.managerName;
+  if (data.managerEmail !== undefined) updateData.managerEmail = data.managerEmail;
+  if (data.managerLinkedinUrl !== undefined) updateData.managerLinkedinUrl = data.managerLinkedinUrl;
+  if (data.skillsUsed !== undefined) updateData.skillsUsed = data.skillsUsed;
+  if (data.techStack !== undefined) updateData.techStack = data.techStack;
+  if (data.teamSize !== undefined) updateData.teamSize = data.teamSize;
+
+  if (data.employmentType !== undefined) {
+    updateData.employmentType = normalizeEmploymentType(data.employmentType);
+  }
+
+  if (data.isCurrent !== undefined) {
+    updateData.isCurrent = data.isCurrent;
+    if (data.isCurrent) {
+      updateData.endDate = null;
+    }
+  }
+
+  if (data.startDate !== undefined) {
+    updateData.startDate = toDate(data.startDate, "startDate");
+  }
+
+  if (data.endDate !== undefined && !data.isCurrent) {
+    updateData.endDate = toDate(data.endDate, "endDate");
+  }
+
+  const effectiveStart = updateData.startDate || existing.startDate;
+  const effectiveEnd = updateData.endDate ?? (updateData.isCurrent ? null : existing.endDate);
+
+  if (effectiveEnd && effectiveEnd < effectiveStart) {
+    throw new AppError("End date cannot be before start date", 400);
+  }
+
+  // Recalculate verification score
+  let verificationScore = 0;
+  const finalData = { ...data };
+  if (finalData.workEmail || (!finalData.workEmail && data.workEmail === undefined)) verificationScore += 25;
+  if (finalData.managerEmail || (!finalData.managerEmail && data.managerEmail === undefined)) verificationScore += 15;
+  if (finalData.techStack?.length || (!finalData.techStack && data.techStack === undefined)) verificationScore += 10;
+  if (finalData.skillsUsed?.length || (!finalData.skillsUsed && data.skillsUsed === undefined)) verificationScore += 10;
+
+  const scoringEnd = effectiveEnd || new Date();
+  const months = (scoringEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24 * 30);
+  if (months >= 3) verificationScore += 15;
+
+  updateData.verificationScore = verificationScore;
+  updateData.verified = verificationScore >= 60;
+  updateData.verifiedAt = updateData.verified ? new Date() : null;
+
+  // If marking current, unset other current experiences
+  if (data.isCurrent) {
+    await prisma.experience.updateMany({
+      where: { userId, isCurrent: true, id: { not: experienceId } },
+      data: { isCurrent: false },
+    });
+  }
+
+  const updated = await prisma.experience.update({
+    where: { id: experienceId },
+    data: updateData,
+    include: { company: true },
+  });
+
+  calculateEngineeringScore(userId).catch(console.error);
+
+  return updated;
+};
+
+export interface UpdateEducationData {
+  degree?: string;
+  fieldOfStudy?: string;
+  startYear?: number;
+  endYear?: number;
+  current?: boolean;
+}
+
+export const updateEducation = async (
+  userId: string,
+  educationId: string,
+  data: UpdateEducationData,
+) => {
+  const existing = await prisma.education.findFirst({
+    where: { id: educationId, userId },
+    select: { id: true, collegeId: true },
+  });
+
+  if (!existing) {
+    throw new AppError("Education not found", 404);
+  }
+
+  if (data.startYear && data.endYear && !data.current && data.endYear < data.startYear) {
+    throw new AppError("End year cannot be before start year", 400);
+  }
+
+  const updateData: Record<string, any> = {};
+
+  if (data.degree !== undefined) updateData.degree = data.degree;
+  if (data.fieldOfStudy !== undefined) updateData.fieldOfStudy = data.fieldOfStudy;
+  if (data.startYear !== undefined) updateData.startYear = data.startYear;
+
+  if (data.current !== undefined) {
+    updateData.current = data.current;
+    if (data.current) {
+      updateData.endYear = null;
+      // Unset other current educations
+      await prisma.education.updateMany({
+        where: { userId, current: true, id: { not: educationId } },
+        data: { current: false },
+      });
+    }
+  }
+
+  if (data.endYear !== undefined && !data.current) {
+    updateData.endYear = data.endYear;
+  }
+
+  return prisma.education.update({
+    where: { id: educationId },
+    data: updateData,
+    include: compactEducationInclude,
+  });
+};
+
+// ─── User Projects ──────────────────────────────────────────────────────────
+
+export const getMyProjects = async (userId: string) => {
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { ownerId: userId },
+        { members: { some: { userId } } },
+      ],
+      deletedAt: null,
+    },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          username: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+      _count: {
+        select: { members: true },
+      },
+    },
+    orderBy: [
+      { updatedAt: "desc" },
+    ],
+    take: 50,
+  });
+
+  return projects;
 };

@@ -1,4 +1,4 @@
-import { GraduationCap, ShieldCheck, Briefcase, Calendar, Users, Code2 } from "lucide-react";
+import { GraduationCap, ShieldCheck, Briefcase, Calendar, Users, Code2, Pencil, Trash2, X } from "lucide-react";
 import { Education, Experience, UserSkill } from "../../lib/api";
 import { formatMonthYear, titleCase } from "../../lib/format";
 
@@ -17,7 +17,15 @@ const EMPLOYMENT_LABELS: Record<string, string> = {
   FREELANCE: "Freelance",
 };
 
-export function ExperienceCard({ experience }: { experience: Experience }) {
+export function ExperienceCard({
+  experience,
+  onEdit,
+  onDelete,
+}: {
+  experience: Experience;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   const stack = [...(experience.techStack || []), ...(experience.skillsUsed || [])];
   const companyName = experience.companyName || experience.company?.name || "Company";
   const employmentLabel = EMPLOYMENT_LABELS[experience.employmentType || ""] || experience.employmentType;
@@ -26,6 +34,30 @@ export function ExperienceCard({ experience }: { experience: Experience }) {
 
   return (
     <article className="group relative flex gap-4 rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md">
+      {/* Action buttons */}
+      {(onEdit || onDelete) && (
+        <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {onEdit && (
+            <button
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+              onClick={onEdit}
+              title="Edit"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              onClick={onDelete}
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Company logo placeholder */}
       <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
         <Briefcase size={20} />
@@ -93,7 +125,15 @@ export function ExperienceCard({ experience }: { experience: Experience }) {
   );
 }
 
-export function EducationCard({ education }: { education: Education }) {
+export function EducationCard({
+  education,
+  onEdit,
+  onDelete,
+}: {
+  education: Education;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   const yearRange = [
     education.startYear,
     education.current ? "Present" : education.endYear,
@@ -106,11 +146,35 @@ export function EducationCard({ education }: { education: Education }) {
     .join(" · ");
 
   return (
-    <article className="group flex gap-4 rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md">
+    <article className="group relative flex gap-4 rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md">
+      {/* Action buttons */}
+      {(onEdit || onDelete) && (
+        <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {onEdit && (
+            <button
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+              onClick={onEdit}
+              title="Edit"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              onClick={onDelete}
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-700">
         <GraduationCap size={20} />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h4 className="font-semibold text-slate-900 truncate">
           {education.college?.name || "College"}
         </h4>
@@ -128,13 +192,21 @@ export function EducationCard({ education }: { education: Education }) {
   );
 }
 
-export function SkillPill({ skill, large = false }: { skill: UserSkill; large?: boolean }) {
+export function SkillPill({
+  skill,
+  large = false,
+  onRemove,
+}: {
+  skill: UserSkill;
+  large?: boolean;
+  onRemove?: () => void;
+}) {
   const levelClass = skill.level ? (LEVEL_COLORS[skill.level] || LEVEL_COLORS.BEGINNER) : "bg-slate-50 text-slate-600 border-slate-200";
   const levelLabel = skill.level ? titleCase(skill.level) : null;
 
   if (large) {
     return (
-      <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass}`}>
+      <div className={`group/skill relative flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass}`}>
         <span className="text-sm font-medium">
           {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
         </span>
@@ -142,6 +214,15 @@ export function SkillPill({ skill, large = false }: { skill: UserSkill; large?: 
           <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-xs font-medium">
             {levelLabel}
           </span>
+        )}
+        {onRemove && (
+          <button
+            className="ml-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover/skill:opacity-100"
+            onClick={onRemove}
+            title="Remove skill"
+          >
+            <X size={13} />
+          </button>
         )}
       </div>
     );

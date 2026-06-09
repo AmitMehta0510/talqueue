@@ -1507,6 +1507,101 @@ export const useSkillSearchQuery = (query: string) =>
     staleTime: 5 * 60_000,
   });
 
+export const useRemoveSkillMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (skillId: string) => api.deleteSkill(skillId),
+    onSuccess: () => showToast("success", "Skill removed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.skills });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useRemoveExperienceMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (experienceId: string) => api.deleteExperience(experienceId),
+    onSuccess: () => showToast("success", "Experience removed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.experiences });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useRemoveEducationMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (educationId: string) => api.deleteEducation(educationId),
+    onSuccess: () => showToast("success", "Education removed"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.educations });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useUpdateExperienceMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string } & Parameters<typeof api.updateExperience>[1]) =>
+      api.updateExperience(id, payload),
+    onSuccess: () => showToast("success", "Experience updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.experiences });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useUpdateEducationMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string } & Parameters<typeof api.updateEducation>[1]) =>
+      api.updateEducation(id, payload),
+    onSuccess: () => showToast("success", "Education updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.educations });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useMyProjectsQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.users.myProjects,
+    queryFn: async ({ signal }) => {
+      const result = await api.myProjects({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
 export const useCreatePostMutation = () => {
   const queryClient = useQueryClient();
   const { refreshUser, user } = useAuth();

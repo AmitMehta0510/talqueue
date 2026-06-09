@@ -1470,6 +1470,36 @@ export const api = {
     skillId: string;
     level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
   }) => request<UserSkill>("/users/me/skills", { method: "POST", body }),
+  deleteSkill: (skillId: string) =>
+    request<{ id: string }>(`/users/me/skills/${skillId}`, { method: "DELETE" }),
+  deleteExperience: (experienceId: string) =>
+    request<{ id: string }>(`/users/me/experiences/${experienceId}`, { method: "DELETE" }),
+  deleteEducation: (educationId: string) =>
+    request<{ id: string }>(`/users/me/educations/${educationId}`, { method: "DELETE" }),
+  updateExperience: (experienceId: string, body: {
+    title?: string;
+    employmentType?: string;
+    startDate?: string;
+    endDate?: string;
+    isCurrent?: boolean;
+    description?: string;
+    workEmail?: string;
+    managerName?: string;
+    managerEmail?: string;
+    managerLinkedinUrl?: string;
+    skillsUsed?: string[];
+    techStack?: string[];
+    teamSize?: number;
+  }) => request<Experience>(`/users/me/experiences/${experienceId}`, { method: "PUT", body }),
+  updateEducation: (educationId: string, body: {
+    degree?: string;
+    fieldOfStudy?: string;
+    startYear?: number;
+    endYear?: number;
+    current?: boolean;
+  }) => request<Education>(`/users/me/educations/${educationId}`, { method: "PUT", body }),
+  myProjects: (options?: EndpointOptions) =>
+    request<Project[]>("/users/me/projects", options),
   searchSkills: (q: string, options?: EndpointOptions) =>
     request<Skill[]>(
       `/users/skills/search${toQuery({ q, limit: 12 })}`,

@@ -12,9 +12,15 @@ import {
   getMyExperiences,
   getMyFullProfile,
   getMyProfile,
+  getMyProjects,
   getMySkills,
   getUserFullProfile,
+  removeEducation,
+  removeExperience,
+  removeSkill,
   searchSkills,
+  updateEducation,
+  updateExperience,
   updateProfile,
 } from "./users.service";
 
@@ -22,6 +28,8 @@ import {
   addEducationSchema,
   addExperienceSchema,
   addSkillSchema,
+  updateEducationSchema,
+  updateExperienceSchema,
   updateProfileSchema,
 } from "./users.validation";
 
@@ -205,3 +213,92 @@ export const createEducation =
       );
     }
   );
+
+// ─── Delete Handlers ────────────────────────────────────────────────────────
+
+export const deleteSkill = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await removeSkill(
+      req.user.id,
+      req.params.skillId
+    );
+
+    res.json(
+      successResponse(result, "Skill removed")
+    );
+  }
+);
+
+export const deleteExperience = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await removeExperience(
+      req.user.id,
+      req.params.experienceId
+    );
+
+    res.json(
+      successResponse(result, "Experience removed")
+    );
+  }
+);
+
+export const deleteEducation = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await removeEducation(
+      req.user.id,
+      req.params.educationId
+    );
+
+    res.json(
+      successResponse(result, "Education removed")
+    );
+  }
+);
+
+// ─── Update Handlers ────────────────────────────────────────────────────────
+
+export const updateExperienceHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData =
+      updateExperienceSchema.parse(req.body);
+
+    const experience = await updateExperience(
+      req.user.id,
+      req.params.experienceId,
+      validatedData
+    );
+
+    res.json(
+      successResponse(experience, "Experience updated")
+    );
+  }
+);
+
+export const updateEducationHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData =
+      updateEducationSchema.parse(req.body);
+
+    const education = await updateEducation(
+      req.user.id,
+      req.params.educationId,
+      validatedData
+    );
+
+    res.json(
+      successResponse(education, "Education updated")
+    );
+  }
+);
+
+// ─── Projects Handler ───────────────────────────────────────────────────────
+
+export const getMyProjectsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const projects = await getMyProjects(req.user.id);
+
+    res.json(
+      successResponse(projects)
+    );
+  }
+);

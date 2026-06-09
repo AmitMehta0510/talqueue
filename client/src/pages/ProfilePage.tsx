@@ -1,6 +1,7 @@
 import {
   FormEvent,
   ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -15,6 +16,7 @@ import {
   Circle,
   Code2,
   ExternalLink,
+  FolderKanban,
   GraduationCap,
   Github,
   Globe,
@@ -32,11 +34,12 @@ import {
   Sparkles,
   Star,
   User,
+  Users,
   X,
   Zap,
 } from "lucide-react";
-import { Navigate, useLocation } from "react-router-dom";
-import { api, College, Skill, User as UserType } from "../lib/api";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { api, College, Project, Skill, User as UserType } from "../lib/api";
 import {
   compactPayload,
   formatCount,
@@ -49,11 +52,13 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { Avatar, ErrorState, InlineLoader } from "../components/ui";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
   EducationCard,
   ExperienceCard,
   SkillPill,
 } from "../components/cards/ProfileCards";
+import { ProjectCard } from "../components/cards/ProjectCard";
 import {
   useAddEducationMutation,
   useAddExperienceMutation,
@@ -63,14 +68,22 @@ import {
   useMyEducationsQuery,
   useMyExperiencesQuery,
   useMyFullProfileQuery,
+  useMyProjectsQuery,
   useMySkillsQuery,
+  useRemoveEducationMutation,
+  useRemoveExperienceMutation,
+  useRemoveSkillMutation,
   useSkillSearchQuery,
+  useUpdateEducationMutation,
+  useUpdateExperienceMutation,
   useUpdateProfileMutation,
 } from "../hooks/usePlatformQueries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "about" | "experience" | "skills" | "education" | "settings";
+type Tab = "about" | "experience" | "skills" | "education" | "projects" | "settings";
+
+const MAX_SKILLS = 30;
 
 const emptyExperienceForm = {
   companyName: "",
@@ -151,15 +164,24 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [showEducationForm, setShowEducationForm] = useState(false);
+  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
+  const [editingEducationId, setEditingEducationId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "skill" | "experience" | "education"; id: string; label: string } | null>(null);
 
   const profileQuery = useMyFullProfileQuery();
   const skillsQuery = useMySkillsQuery(20);
   const experiencesQuery = useMyExperiencesQuery(10);
   const educationsQuery = useMyEducationsQuery(10);
+  const projectsQuery = useMyProjectsQuery();
   const updateProfile = useUpdateProfileMutation();
   const addSkill = useAddSkillMutation();
   const addExperience = useAddExperienceMutation();
   const addEducation = useAddEducationMutation();
+  const removeSkill = useRemoveSkillMutation();
+  const removeExperience = useRemoveExperienceMutation();
+  const removeEducation = useRemoveEducationMutation();
+  const updateExperience = useUpdateExperienceMutation();
+  const updateEducation = useUpdateEducationMutation();
 
   const profile = profileQuery.data || fallbackUser;
 
@@ -175,6 +197,18 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     () => flattenPages(educationsQuery.data?.pages || [], "educations"),
     [educationsQuery.data?.pages],
   );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!confirmDelete) return;
+    try {
+      if (confirmDelete.type === "skill") await removeSkill.mutateAsync(confirmDelete.id);
+      else if (confirmDelete.type === "experience") await removeExperience.mutateAsync(confirmDelete.id);
+      else if (confirmDelete.type === "education") await removeEducation.mutateAsync(confirmDelete.id);
+    } catch {
+      // Mutation hook shows toast
+    }
+    setConfirmDelete(null);
+  }, [confirmDelete, removeSkill, removeExperience, removeEducation]);
 
   // Profile form state
   const [collegeQuery, setCollegeQuery] = useState("");
@@ -294,26 +328,48 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       return;
     }
     try {
-      await addExperience.mutateAsync({
-        companyName: experienceForm.companyName,
-        title: experienceForm.title,
-        employmentType: experienceForm.employmentType,
-        startDate: experienceForm.startDate,
-        ...compactPayload({
-          endDate: experienceForm.isCurrent ? undefined : experienceForm.endDate,
-          isCurrent: experienceForm.isCurrent,
-          description: experienceForm.description,
-          workEmail: experienceForm.workEmail,
-          managerName: experienceForm.managerName,
-          managerEmail: experienceForm.managerEmail,
-          managerLinkedinUrl: experienceForm.managerLinkedinUrl,
-          techStack: splitCsv(experienceForm.techStack),
-          skillsUsed: splitCsv(experienceForm.skillsUsed),
-          teamSize: experienceForm.teamSize ? Number(experienceForm.teamSize) : undefined,
-        }),
-      });
+      if (editingExperienceId) {
+        await updateExperience.mutateAsync({
+          id: editingExperienceId,
+          title: experienceForm.title,
+          employmentType: experienceForm.employmentType,
+          startDate: experienceForm.startDate,
+          ...compactPayload({
+            endDate: experienceForm.isCurrent ? undefined : experienceForm.endDate,
+            isCurrent: experienceForm.isCurrent,
+            description: experienceForm.description,
+            workEmail: experienceForm.workEmail,
+            managerName: experienceForm.managerName,
+            managerEmail: experienceForm.managerEmail,
+            managerLinkedinUrl: experienceForm.managerLinkedinUrl,
+            techStack: splitCsv(experienceForm.techStack),
+            skillsUsed: splitCsv(experienceForm.skillsUsed),
+            teamSize: experienceForm.teamSize ? Number(experienceForm.teamSize) : undefined,
+          }),
+        });
+      } else {
+        await addExperience.mutateAsync({
+          companyName: experienceForm.companyName,
+          title: experienceForm.title,
+          employmentType: experienceForm.employmentType,
+          startDate: experienceForm.startDate,
+          ...compactPayload({
+            endDate: experienceForm.isCurrent ? undefined : experienceForm.endDate,
+            isCurrent: experienceForm.isCurrent,
+            description: experienceForm.description,
+            workEmail: experienceForm.workEmail,
+            managerName: experienceForm.managerName,
+            managerEmail: experienceForm.managerEmail,
+            managerLinkedinUrl: experienceForm.managerLinkedinUrl,
+            techStack: splitCsv(experienceForm.techStack),
+            skillsUsed: splitCsv(experienceForm.skillsUsed),
+            teamSize: experienceForm.teamSize ? Number(experienceForm.teamSize) : undefined,
+          }),
+        });
+      }
       setExperienceForm(emptyExperienceForm);
       setShowExperienceForm(false);
+      setEditingExperienceId(null);
     } catch {
       // Mutation hook shows toast
     }
@@ -335,25 +391,91 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       return;
     }
     try {
-      await addEducation.mutateAsync({
-        collegeId: profileForm.collegeId,
-        ...compactPayload({
-          departmentId: profileForm.departmentId || undefined,
-          degree: educationForm.degree,
-          fieldOfStudy: educationForm.fieldOfStudy,
-          startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
-          endYear:
-            educationForm.current || !educationForm.endYear
-              ? undefined
-              : Number(educationForm.endYear),
-          current: educationForm.current,
-        }),
-      });
+      if (editingEducationId) {
+        await updateEducation.mutateAsync({
+          id: editingEducationId,
+          ...compactPayload({
+            degree: educationForm.degree,
+            fieldOfStudy: educationForm.fieldOfStudy,
+            startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
+            endYear:
+              educationForm.current || !educationForm.endYear
+                ? undefined
+                : Number(educationForm.endYear),
+            current: educationForm.current,
+          }),
+        });
+      } else {
+        await addEducation.mutateAsync({
+          collegeId: profileForm.collegeId,
+          ...compactPayload({
+            departmentId: profileForm.departmentId || undefined,
+            degree: educationForm.degree,
+            fieldOfStudy: educationForm.fieldOfStudy,
+            startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
+            endYear:
+              educationForm.current || !educationForm.endYear
+                ? undefined
+                : Number(educationForm.endYear),
+            current: educationForm.current,
+          }),
+        });
+      }
       setEducationForm(emptyEducationForm);
       setShowEducationForm(false);
+      setEditingEducationId(null);
     } catch {
       // Mutation hook shows toast
     }
+  };
+
+  const handleEditExperience = (exp: any) => {
+    setExperienceForm({
+      companyName: exp.companyName || "",
+      title: exp.title || "",
+      employmentType: exp.employmentType || "FULL_TIME",
+      startDate: exp.startDate ? exp.startDate.split("T")[0] : "",
+      endDate: exp.endDate ? exp.endDate.split("T")[0] : "",
+      isCurrent: exp.isCurrent || false,
+      description: exp.description || "",
+      workEmail: "",
+      managerName: "",
+      managerEmail: "",
+      managerLinkedinUrl: "",
+      techStack: exp.techStack ? exp.techStack.join(", ") : "",
+      skillsUsed: exp.skillsUsed ? exp.skillsUsed.join(", ") : "",
+      teamSize: exp.teamSize ? exp.teamSize.toString() : "",
+    });
+    setEditingExperienceId(exp.id);
+    setShowExperienceForm(true);
+  };
+
+  const handleCancelExperience = () => {
+    setExperienceForm(emptyExperienceForm);
+    setShowExperienceForm(false);
+    setEditingExperienceId(null);
+  };
+
+  const handleEditEducation = (edu: any) => {
+    setFormFromEdu(edu);
+    setEditingEducationId(edu.id);
+    setShowEducationForm(true);
+  };
+
+  const setFormFromEdu = (edu: any) => {
+    setEducationForm({
+      degree: edu.degree || "",
+      fieldOfStudy: edu.fieldOfStudy || "",
+      startYear: edu.startYear ? edu.startYear.toString() : "",
+      endYear: edu.endYear ? edu.endYear.toString() : "",
+      current: edu.current || false,
+    });
+  };
+
+  const handleCancelEducation = () => {
+    setEducationForm(emptyEducationForm);
+    setShowEducationForm(false);
+    setEditingEducationId(null);
   };
 
   const submitDepartment = async () => {
@@ -387,6 +509,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "skills",     label: "Skills",     icon: Code2 },
     { id: "education",  label: "Education",  icon: GraduationCap },
+    { id: "projects",   label: "Projects",   icon: FolderKanban },
     { id: "settings",   label: "Settings",   icon: Settings },
   ];
 
@@ -448,7 +571,11 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             form={experienceForm}
             onFormChange={setExperienceForm}
             onSubmit={submitExperience}
-            isPending={addExperience.isPending}
+            isPending={addExperience.isPending || updateExperience.isPending}
+            editingId={editingExperienceId}
+            onEdit={handleEditExperience}
+            onDelete={(exp) => setConfirmDelete({ type: "experience", id: exp.id, label: exp.title || exp.companyName || "" })}
+            onCancel={handleCancelExperience}
           />
         )}
 
@@ -462,6 +589,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             onLoadMore={() => skillsQuery.fetchNextPage()}
             onAddSkill={addSkill.mutateAsync}
             isAdding={addSkill.isPending}
+            onRemove={(skill) => setConfirmDelete({ type: "skill", id: skill.skill?.id || "", label: skill.skill?.name || "" })}
           />
         )}
 
@@ -478,8 +606,21 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             form={educationForm}
             onFormChange={setEducationForm}
             onSubmit={submitEducation}
-            isPending={addEducation.isPending}
+            isPending={addEducation.isPending || updateEducation.isPending}
             hasCollegeSelected={Boolean(profileForm.collegeId)}
+            editingId={editingEducationId}
+            onEdit={handleEditEducation}
+            onDelete={(edu) => setConfirmDelete({ type: "education", id: edu.id, label: edu.degree || edu.college?.name || "" })}
+            onCancel={handleCancelEducation}
+          />
+        )}
+
+        {/* PROJECTS */}
+        {activeTab === "projects" && (
+          <ProjectsTab
+            projects={projectsQuery.data || []}
+            isFetching={projectsQuery.isFetching}
+            currentUserId={profile.id}
           />
         )}
 
@@ -503,6 +644,18 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={`Delete ${confirmDelete ? titleCase(confirmDelete.type) : ""}`}
+        message={`Are you sure you want to delete the ${confirmDelete?.type} "${confirmDelete?.label}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        isPending={removeSkill.isPending || removeExperience.isPending || removeEducation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -824,8 +977,6 @@ function AboutTab({
   );
 }
 
-// ─── Experience Tab ───────────────────────────────────────────────────────────
-
 function ExperienceTab({
   experiences,
   isFetching,
@@ -838,6 +989,10 @@ function ExperienceTab({
   onFormChange,
   onSubmit,
   isPending,
+  editingId,
+  onEdit,
+  onDelete,
+  onCancel,
 }: {
   experiences: ReturnType<typeof flattenPages<any, any>>;
   isFetching: boolean;
@@ -850,6 +1005,10 @@ function ExperienceTab({
   onFormChange: (f: typeof emptyExperienceForm) => void;
   onSubmit: (e: FormEvent) => void;
   isPending: boolean;
+  editingId: string | null;
+  onEdit: (exp: any) => void;
+  onDelete: (exp: any) => void;
+  onCancel: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -861,19 +1020,19 @@ function ExperienceTab({
         <button
           id="profile-add-experience-btn"
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-          onClick={onToggleForm}
+          onClick={editingId ? onCancel : onToggleForm}
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
           {showForm ? "Cancel" : "Add Experience"}
         </button>
       </div>
 
-      {/* Add form */}
+      {/* Add/Edit form */}
       {showForm && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Briefcase size={15} className="text-emerald-700" />
-            New Experience
+            {editingId ? "Edit Experience" : "New Experience"}
           </h3>
           <form onSubmit={onSubmit}>
             <div className="grid gap-3 md:grid-cols-2">
@@ -1005,8 +1164,8 @@ function ExperienceTab({
             </div>
             <div className="mt-4 flex justify-end">
               <button className="btn-primary" type="submit" disabled={isPending}>
-                {isPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
-                Add Experience
+                {isPending ? <Loader2 className="animate-spin" size={15} /> : editingId ? <Save size={15} /> : <Plus size={15} />}
+                {editingId ? "Save Experience" : "Add Experience"}
               </button>
             </div>
           </form>
@@ -1028,7 +1187,12 @@ function ExperienceTab({
       ) : (
         <div className="space-y-3">
           {experiences.map((exp) => (
-            <ExperienceCard key={exp.id} experience={exp} />
+            <ExperienceCard
+              key={exp.id}
+              experience={exp}
+              onEdit={() => onEdit(exp)}
+              onDelete={() => onDelete(exp)}
+            />
           ))}
         </div>
       )}
@@ -1057,6 +1221,7 @@ function SkillsTab({
   onLoadMore,
   onAddSkill,
   isAdding,
+  onRemove,
 }: {
   skills: any[];
   isFetching: boolean;
@@ -1065,22 +1230,31 @@ function SkillsTab({
   onLoadMore: () => void;
   onAddSkill: (payload: { skillId: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" }) => Promise<unknown>;
   isAdding: boolean;
+  onRemove: (skill: any) => void;
 }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <h2 className="text-base font-semibold text-slate-900">Skills</h2>
+        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+          {skills.length} / {MAX_SKILLS}
+        </span>
         {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
       </div>
 
       {/* Add skill widget */}
-      <SkillManager onAddSkill={onAddSkill} adding={isAdding} />
+      <SkillManager onAddSkill={onAddSkill} adding={isAdding} disabled={skills.length >= MAX_SKILLS} />
 
       {/* Skill grid */}
       {skills.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {skills.map((skill) => (
-            <SkillPill key={skill.id} skill={skill} large />
+            <SkillPill
+              key={skill.id}
+              skill={skill}
+              large
+              onRemove={() => onRemove(skill)}
+            />
           ))}
         </div>
       ) : (
@@ -1122,6 +1296,10 @@ function EducationTab({
   onSubmit,
   isPending,
   hasCollegeSelected,
+  editingId,
+  onEdit,
+  onDelete,
+  onCancel,
 }: {
   educations: any[];
   isFetching: boolean;
@@ -1135,6 +1313,10 @@ function EducationTab({
   onSubmit: (e: FormEvent) => void;
   isPending: boolean;
   hasCollegeSelected: boolean;
+  editingId: string | null;
+  onEdit: (edu: any) => void;
+  onDelete: (edu: any) => void;
+  onCancel: () => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1146,7 +1328,7 @@ function EducationTab({
         <button
           id="profile-add-education-btn"
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
-          onClick={onToggleForm}
+          onClick={editingId ? onCancel : onToggleForm}
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
           {showForm ? "Cancel" : "Add Education"}
@@ -1159,12 +1341,12 @@ function EducationTab({
         </div>
       )}
 
-      {/* Add form */}
+      {/* Add/Edit form */}
       {showForm && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <GraduationCap size={15} className="text-emerald-700" />
-            New Education
+            {editingId ? "Edit Education" : "New Education"}
           </h3>
           <form onSubmit={onSubmit}>
             <div className="grid gap-3 md:grid-cols-2">
@@ -1222,8 +1404,8 @@ function EducationTab({
                 type="submit"
                 disabled={isPending || !hasCollegeSelected}
               >
-                {isPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
-                Add Education
+                {isPending ? <Loader2 className="animate-spin" size={15} /> : editingId ? <Save size={15} /> : <Plus size={15} />}
+                {editingId ? "Save Education" : "Add Education"}
               </button>
             </div>
           </form>
@@ -1245,7 +1427,12 @@ function EducationTab({
       ) : (
         <div className="space-y-3">
           {educations.map((edu) => (
-            <EducationCard key={edu.id} education={edu} />
+            <EducationCard
+              key={edu.id}
+              education={edu}
+              onEdit={() => onEdit(edu)}
+              onDelete={() => onDelete(edu)}
+            />
           ))}
         </div>
       )}
@@ -1264,7 +1451,50 @@ function EducationTab({
   );
 }
 
-// ─── Settings Tab ─────────────────────────────────────────────────────────────
+// ─── Projects Tab ─────────────────────────────────────────────────────────────
+
+function ProjectsTab({
+  projects,
+  isFetching,
+  currentUserId,
+}: {
+  projects: Project[];
+  isFetching: boolean;
+  currentUserId?: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-semibold text-slate-900">Projects</h2>
+        {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+      </div>
+
+      {projects.length === 0 && !isFetching ? (
+        <EmptySection
+          icon={FolderKanban}
+          title="No projects showcase yet"
+          text="Create a new project or join an existing team project to display them here."
+          action={
+            <Link to="/projects" className="btn-primary mt-2">
+              <Plus size={15} /> Create or Join Project
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {projects.map((proj) => (
+            <ProjectCard
+              key={proj.id}
+              project={proj}
+              currentUserId={currentUserId}
+              onJoin={() => {}}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SettingsTab({
   profileForm,
@@ -1455,12 +1685,14 @@ function SettingsTab({
 function SkillManager({
   adding,
   onAddSkill,
+  disabled,
 }: {
   adding: boolean;
   onAddSkill: (payload: {
     skillId: string;
     level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
   }) => Promise<unknown>;
+  disabled?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT">("INTERMEDIATE");
@@ -1481,53 +1713,59 @@ function SkillManager({
         <Sparkles size={16} className="text-amber-500" />
         <h3 className="text-sm font-semibold text-slate-900">Add a skill</h3>
       </div>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
-          <input
-            className="field pl-9"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search skill (e.g. React, Python)..."
-          />
-          {query.length >= 2 && (
-            <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
-              {skillSearch.isFetching ? (
-                <div className="p-3"><InlineLoader label="Searching..." /></div>
-              ) : skillSearch.data && skillSearch.data.length > 0 ? (
-                skillSearch.data.slice(0, 8).map((skill) => (
-                  <button
-                    key={skill.id}
-                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
-                    type="button"
-                    disabled={adding}
-                    onClick={() => add(skill)}
-                  >
-                    <span className="font-medium text-slate-800">{skill.name}</span>
-                    {skill.verified && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
-                        Verified
-                      </span>
-                    )}
-                  </button>
-                ))
-              ) : (
-                <p className="p-3 text-sm text-slate-500">No matching skills found.</p>
-              )}
-            </div>
-          )}
+      {disabled ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <strong>Skill limit reached:</strong> You can add up to {MAX_SKILLS} skills. Remove some existing skills to add new ones.
         </div>
-        <select
-          className="field w-36 shrink-0"
-          value={level}
-          onChange={(e) => setLevel(e.target.value as typeof level)}
-        >
-          <option value="BEGINNER">Beginner</option>
-          <option value="INTERMEDIATE">Intermediate</option>
-          <option value="ADVANCED">Advanced</option>
-          <option value="EXPERT">Expert</option>
-        </select>
-      </div>
+      ) : (
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
+            <input
+              className="field pl-9"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search skill (e.g. React, Python)..."
+            />
+            {query.length >= 2 && (
+              <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                {skillSearch.isFetching ? (
+                  <div className="p-3"><InlineLoader label="Searching..." /></div>
+                ) : skillSearch.data && skillSearch.data.length > 0 ? (
+                  skillSearch.data.slice(0, 8).map((skill) => (
+                    <button
+                      key={skill.id}
+                      className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                      type="button"
+                      disabled={adding}
+                      onClick={() => add(skill)}
+                    >
+                      <span className="font-medium text-slate-800">{skill.name}</span>
+                      {skill.verified && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                          Verified
+                        </span>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <p className="p-3 text-sm text-slate-500">No matching skills found.</p>
+                )}
+              </div>
+            )}
+          </div>
+          <select
+            className="field w-36 shrink-0"
+            value={level}
+            onChange={(e) => setLevel(e.target.value as typeof level)}
+          >
+            <option value="BEGINNER">Beginner</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="ADVANCED">Advanced</option>
+            <option value="EXPERT">Expert</option>
+          </select>
+        </div>
+      )}
     </div>
   );
 }

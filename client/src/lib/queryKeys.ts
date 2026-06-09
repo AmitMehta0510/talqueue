@@ -9,6 +9,7 @@ export const queryKeys = {
     skills: ["users", "me", "skills"] as const,
     experiences: ["users", "me", "experiences"] as const,
     educations: ["users", "me", "educations"] as const,
+    myProjects: ["users", "me", "projects"] as const,
     publicProfile: (userId: string) => ["users", "profile", userId] as const,
     skillSearch: (query: string) =>
       ["users", "skills", "search", query] as const,

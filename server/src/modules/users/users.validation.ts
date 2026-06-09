@@ -96,3 +96,49 @@ export const addEducationSchema = z.object({
 
   current: z.boolean().optional(),
 });
+
+export const updateExperienceSchema = z.object({
+  title: z.string().min(1).optional(),
+
+  employmentType: z.enum([
+    "FULL_TIME",
+    "INTERN",
+    "INTERNSHIP",
+    "CONTRACT",
+    "FREELANCE",
+  ]).optional(),
+
+  startDate: z.string().optional(),
+
+  endDate: z.string().optional(),
+
+  isCurrent: z.boolean().optional(),
+
+  description: z.string().optional(),
+
+  workEmail: z.string().email().optional(),
+
+  managerName: z.string().optional(),
+
+  managerEmail: z.string().email().optional(),
+
+  managerLinkedinUrl: z.string().optional(),
+
+  skillsUsed: z.array(z.string()).optional(),
+
+  techStack: z.array(z.string()).optional(),
+
+  teamSize: z.number().int().positive().optional(),
+});
+
+export const updateEducationSchema = z.object({
+  degree: z.string().optional(),
+
+  fieldOfStudy: z.string().optional(),
+
+  startYear: z.number().int().optional(),
+
+  endYear: z.number().int().optional(),
+
+  current: z.boolean().optional(),
+});
