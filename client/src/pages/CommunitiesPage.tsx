@@ -32,6 +32,7 @@ import {
   useCompaniesQuery,
   useCommunityQuery,
   useCreateCommunityMutation,
+  useCreatePostMutation,
   useDepartmentsQuery,
   useSuggestedCommunitiesQuery,
   useJoinedCommunitiesQuery,
@@ -565,6 +566,97 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
 }
 
 // ---------------------------------------------------------------------------
+// CreatePostComposer — Reddit-style inline post box
+// ---------------------------------------------------------------------------
+
+function CreatePostComposer({ communitySlug, communityId, isMember }: { communitySlug: string; communityId: string; isMember: boolean }) {
+  const { user } = useAuth();
+  const createPost = useCreatePostMutation();
+  const communityQuery = useCommunityQuery(communitySlug);
+  const [expanded, setExpanded] = useState(false);
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  if (!user || !isMember) return null;
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+    try {
+      await createPost.mutateAsync({
+        content: content.trim(),
+        type: "TEXT",
+        tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+        visibility: "PUBLIC",
+      });
+      setContent("");
+      setTags("");
+      setExpanded(false);
+      // Refresh the community to show the new post
+      communityQuery.refetch();
+    } catch { /* toast handled by mutation */ }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      {/* Collapsed state — Reddit-style click-to-expand */}
+      {!expanded ? (
+        <div className="flex items-center gap-3 p-3">
+          <Avatar user={user} size="sm" />
+          <button
+            type="button"
+            onClick={() => { setExpanded(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
+            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-sm text-slate-400 transition hover:border-emerald-300 hover:bg-white hover:text-slate-600"
+          >
+            Share something with this community…
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={submit}>
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Create Post</p>
+          </div>
+          <div className="p-4 space-y-3">
+            <textarea
+              ref={textareaRef}
+              className="field min-h-28 resize-none text-sm"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What do you want to share with this community?"
+              required
+            />
+            <input
+              className="field text-sm"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="Tags (comma-separated, optional)"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-4 py-3">
+            <button
+              type="button"
+              className="btn-secondary py-1.5 text-xs"
+              onClick={() => { setExpanded(false); setContent(""); setTags(""); }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary py-1.5 text-xs"
+              disabled={createPost.isPending || !content.trim()}
+            >
+              {createPost.isPending ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+              Post
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // CommunityDetail — Reddit-style subreddit page
 // ---------------------------------------------------------------------------
 
@@ -703,6 +795,13 @@ function CommunityDetail({ slug }: { slug: string }) {
       <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_20rem]">
         {/* ── Left: Post Feed ── */}
         <div className="space-y-3">
+          {/* Create Post Composer */}
+          <CreatePostComposer
+            communitySlug={slug}
+            communityId={community.id}
+            isMember={isMember}
+          />
+
           {/* Sort bar */}
           <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-2">
             {([
@@ -749,7 +848,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                 {(community.conversations || []).map((conv) => (
                   <Link
                     key={conv.id}
-                    to={`/chat?conversation=${conv.id}`}
+                    to={`/chat/${conv.id}`}
                     className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800"
                   >
                     <Hash size={14} className="text-slate-400 group-hover:text-emerald-600" />
