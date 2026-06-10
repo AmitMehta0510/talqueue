@@ -593,3 +593,149 @@ export const archiveCommunity = async (userId: string, communityId: string) => {
     success: true,
   };
 };
+
+export const getJoinedCommunities = async (userId: string) => {
+  const memberships = await prisma.communityMember.findMany({
+    where: {
+      userId,
+      active: true,
+      archived: false,
+    },
+    include: {
+      community: {
+        include: {
+          college: true,
+          company: true,
+          department: true,
+          createdBy: {
+            include: {
+              profile: true,
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              posts: true,
+              conversations: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      joinedAt: "desc",
+    },
+  });
+
+  return memberships.map((m) => m.community);
+};
+
+export const joinCommunity = async (userId: string, communityId: string) => {
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+  });
+
+  if (!community) {
+    throw new AppError("Community not found", 404);
+  }
+
+  if (community.archived) {
+    throw new AppError("Cannot join an archived community", 400);
+  }
+
+  // Check if already a member
+  const existingMember = await prisma.communityMember.findUnique({
+    where: {
+      communityId_userId: {
+        communityId,
+        userId,
+      },
+    },
+  });
+
+  if (existingMember) {
+    if (existingMember.active) {
+      throw new AppError("Already a member of this community", 400);
+    }
+    // Re-join
+    await prisma.communityMember.update({
+      where: { id: existingMember.id },
+      data: {
+        active: true,
+        leftAt: null,
+        joinedAt: new Date(),
+      },
+    });
+  } else {
+    // Create new membership
+    await prisma.communityMember.create({
+      data: {
+        communityId,
+        userId,
+        role: "MEMBER",
+      },
+    });
+  }
+
+  // Increment memberCount
+  await prisma.community.update({
+    where: { id: communityId },
+    data: {
+      memberCount: {
+        increment: 1,
+      },
+    },
+  });
+
+  return { success: true };
+};
+
+export const leaveCommunity = async (userId: string, communityId: string) => {
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+  });
+
+  if (!community) {
+    throw new AppError("Community not found", 404);
+  }
+
+  // Check membership
+  const existingMember = await prisma.communityMember.findUnique({
+    where: {
+      communityId_userId: {
+        communityId,
+        userId,
+      },
+    },
+  });
+
+  if (!existingMember || !existingMember.active) {
+    throw new AppError("You are not a member of this community", 400);
+  }
+
+  if (existingMember.role === "OWNER") {
+    throw new AppError("Owners cannot leave their community. You must archive it instead.", 400);
+  }
+
+  // Mark membership as inactive
+  await prisma.communityMember.update({
+    where: { id: existingMember.id },
+    data: {
+      active: false,
+      leftAt: new Date(),
+    },
+  });
+
+  // Decrement memberCount
+  await prisma.community.update({
+    where: { id: communityId },
+    data: {
+      memberCount: {
+        decrement: 1,
+      },
+    },
+  });
+
+  return { success: true };
+};
+

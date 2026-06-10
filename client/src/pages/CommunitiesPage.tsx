@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Archive,
   Building2,
@@ -21,6 +21,9 @@ import {
   useCreateCommunityMutation,
   useDepartmentsQuery,
   useSuggestedCommunitiesQuery,
+  useJoinedCommunitiesQuery,
+  useJoinCommunityMutation,
+  useLeaveCommunityMutation,
 } from "../hooks/usePlatformQueries";
 import { College, Community, CommunityCategory, CommunityType } from "../lib/api";
 import {
@@ -75,7 +78,19 @@ function StatusBadge({ value }: { value?: string | null }) {
   return <span className="chip">{titleCase(value) || "Unknown"}</span>;
 }
 
-function CommunityCard({ community, context }: { community: Community; context?: string }) {
+function CommunityCard({
+  community,
+  context,
+  isMember,
+}: {
+  community: Community;
+  context?: string;
+  isMember: boolean;
+}) {
+  const { user: currentUser } = useAuth();
+  const joinMutation = useJoinCommunityMutation(community.slug);
+  const leaveMutation = useLeaveCommunityMutation(community.slug);
+
   const scope =
     community.college?.name ||
     community.department?.name ||
@@ -101,9 +116,38 @@ function CommunityCard({ community, context }: { community: Community; context?:
             <p className="truncate text-xs text-slate-500">{scope}</p>
           </div>
         </div>
-        <Link className="btn-secondary px-3 py-1.5" to={`/communities/${community.slug}`}>
-          Open
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link className="btn-secondary px-3 py-1.5 font-semibold text-xs" to={`/communities/${community.slug}`}>
+            Open
+          </Link>
+          {currentUser && (
+            isMember ? (
+              community.createdById !== currentUser.id && (
+                <button
+                  type="button"
+                  disabled={leaveMutation.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Leave the ${community.name} community?`)) {
+                      leaveMutation.mutate(community.id);
+                    }
+                  }}
+                  className="btn-secondary px-3 py-1.5 text-xs text-rose-600 hover:text-rose-800 hover:bg-rose-50 hover:border-rose-250 border-rose-200 font-semibold"
+                >
+                  {leaveMutation.isPending ? <Loader2 className="animate-spin" size={13} /> : "Leave"}
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                disabled={joinMutation.isPending}
+                onClick={() => joinMutation.mutate(community.id)}
+                className="btn-primary px-3 py-1.5 text-xs font-semibold"
+              >
+                {joinMutation.isPending ? <Loader2 className="animate-spin" size={13} /> : "Join"}
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">
@@ -347,6 +391,13 @@ function CommunityDetail({ slug }: { slug: string }) {
   const community = communityQuery.data;
   const archive = useArchiveCommunityMutation(slug);
 
+  const joinedQuery = useJoinedCommunitiesQuery();
+  const joinedCommunities = joinedQuery.data || [];
+  const isMember = joinedCommunities.some((jc) => jc.id === community?.id);
+
+  const joinMutation = useJoinCommunityMutation(slug);
+  const leaveMutation = useLeaveCommunityMutation(slug);
+
   const canArchive = useMemo(() => {
     if (!user || !community) return false;
     if (community.createdById === user.id) return true;
@@ -404,21 +455,50 @@ function CommunityDetail({ slug }: { slug: string }) {
                 </p>
               </div>
             </div>
-            {canArchive && !community.archived && (
-              <button
-                className="btn-secondary"
-                type="button"
-                disabled={archive.isPending}
-                onClick={() => {
-                  if (window.confirm("Archive this community?")) {
-                    archive.mutate(community.id);
-                  }
-                }}
-              >
-                {archive.isPending ? <Loader2 className="animate-spin" size={16} /> : <Archive size={16} />}
-                Archive
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {!community.archived && (
+                isMember ? (
+                  community.createdById !== user.id && (
+                    <button
+                      className="btn-secondary text-rose-600 hover:text-rose-800 hover:bg-rose-50 hover:border-rose-250 border-rose-200"
+                      type="button"
+                      disabled={leaveMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Leave the ${community.name} community?`)) {
+                          leaveMutation.mutate(community.id);
+                        }
+                      }}
+                    >
+                      {leaveMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : "Leave Community"}
+                    </button>
+                  )
+                ) : (
+                  <button
+                    className="btn-primary"
+                    type="button"
+                    disabled={joinMutation.isPending}
+                    onClick={() => joinMutation.mutate(community.id)}
+                  >
+                    {joinMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : "Join Community"}
+                  </button>
+                )
+              )}
+              {canArchive && !community.archived && (
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={archive.isPending}
+                  onClick={() => {
+                    if (window.confirm("Archive this community?")) {
+                      archive.mutate(community.id);
+                    }
+                  }}
+                >
+                  {archive.isPending ? <Loader2 className="animate-spin" size={16} /> : <Archive size={16} />}
+                  Archive
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -530,13 +610,30 @@ export function CommunitiesPage() {
   const { communitySlug } = useParams();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"joined" | "explore">("joined");
+  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
+
   const suggestedQuery = useSuggestedCommunitiesQuery();
   const communities = suggestedQuery.data || [];
+
+  const joinedQuery = useJoinedCommunitiesQuery();
+  const joinedCommunities = joinedQuery.data || [];
+
+  useEffect(() => {
+    if (!joinedQuery.isLoading && !hasSetDefaultTab) {
+      if (joinedCommunities.length === 0) {
+        setActiveTab("explore");
+      }
+      setHasSetDefaultTab(true);
+    }
+  }, [joinedQuery.isLoading, joinedCommunities.length, hasSetDefaultTab]);
+
+  const currentList = activeTab === "joined" ? joinedCommunities : communities;
 
   const filteredCommunities = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return communities.filter((community) => {
+    return currentList.filter((community) => {
       const haystack = [
         community.name,
         community.description,
@@ -552,7 +649,7 @@ export function CommunitiesPage() {
 
       return !normalizedQuery || haystack.includes(normalizedQuery);
     });
-  }, [communities, query]);
+  }, [currentList, query]);
 
   if (communitySlug) {
     return <CommunityDetail slug={communitySlug} />;
@@ -562,17 +659,45 @@ export function CommunitiesPage() {
     <section className="space-y-5">
       <CreateCommunityPanel disabled={!user} />
 
+      {/* Tabs */}
+      {user && (
+        <div className="flex border-b border-slate-200 bg-white rounded-xl border p-1 shadow-sm overflow-x-auto">
+          <button
+            type="button"
+            className={`flex-1 rounded-lg py-2 text-xs font-bold uppercase tracking-wider transition-all
+              ${activeTab === "joined"
+                ? "bg-emerald-700 text-white shadow"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            onClick={() => setActiveTab("joined")}
+          >
+            My Communities ({joinedCommunities.length})
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded-lg py-2 text-xs font-bold uppercase tracking-wider transition-all
+              ${activeTab === "explore"
+                ? "bg-emerald-700 text-white shadow"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            onClick={() => setActiveTab("explore")}
+          >
+            Explore Communities ({communities.length})
+          </button>
+        </div>
+      )}
+
       <div className="panel p-4">
         <input
           className="field"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Filter suggested communities"
+          placeholder={activeTab === "joined" ? "Filter my communities" : "Filter suggested communities"}
           disabled={!user}
         />
       </div>
 
-      {suggestedQuery.isFetching && (
+      {(suggestedQuery.isFetching || joinedQuery.isFetching) && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="animate-spin" size={16} />
           Loading communities
@@ -583,15 +708,42 @@ export function CommunitiesPage() {
         {!user ? (
           <EmptyState icon={Users} title="Login required" text="Sign in to view personalized community suggestions." />
         ) : filteredCommunities.length ? (
-          filteredCommunities.map((community) => (
-            <CommunityCard community={community} context="Suggested" key={community.id} />
-          ))
+          filteredCommunities.map((community) => {
+            const isMember = joinedCommunities.some((jc) => jc.id === community.id);
+            return (
+              <CommunityCard
+                community={community}
+                context={activeTab === "joined" ? "Joined" : "Suggested"}
+                isMember={isMember}
+                key={community.id}
+              />
+            );
+          })
+        ) : activeTab === "joined" ? (
+          <div className="xl:col-span-2">
+            <EmptyState
+              icon={Users}
+              title="No communities joined"
+              text="You haven't joined any communities yet. Check out the Explore tab to find spaces for your college or interests!"
+              action={
+                <button
+                  type="button"
+                  className="btn-primary mt-2"
+                  onClick={() => setActiveTab("explore")}
+                >
+                  Explore Communities
+                </button>
+              }
+            />
+          </div>
         ) : (
-          <EmptyState
-            icon={Hash}
-            title="No communities suggested"
-            text="Community suggestions will appear as your profile and activity grow."
-          />
+          <div className="xl:col-span-2">
+            <EmptyState
+              icon={Hash}
+              title="No communities suggested"
+              text="Community suggestions will appear as your profile and activity grow."
+            />
+          </div>
         )}
       </div>
     </section>

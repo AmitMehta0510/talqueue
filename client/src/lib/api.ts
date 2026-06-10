@@ -2187,6 +2187,16 @@ export const api = {
       `/communities/${slug}${toQuery({ page, limit })}`,
       options,
     ),
+  joinedCommunities: (options?: EndpointOptions) =>
+    request<Community[]>("/communities/me/joined", options),
+  joinCommunity: (communityId: string) =>
+    request<{ success: boolean }>(`/communities/${communityId}/join`, {
+      method: "POST",
+    }),
+  leaveCommunity: (communityId: string) =>
+    request<{ success: boolean }>(`/communities/${communityId}/leave`, {
+      method: "POST",
+    }),
   trackRecommendationImpression: (body: {
     entityId: string;
     entityType: string;

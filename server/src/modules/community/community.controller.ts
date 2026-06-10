@@ -8,6 +8,9 @@ import {
   createCommunity,
   getCommunityBySlug,
   archiveCommunity,
+  getJoinedCommunities,
+  joinCommunity,
+  leaveCommunity,
 } from "./community.service";
 
 // CREATE COMMUNITY
@@ -56,3 +59,25 @@ export const archiveCommunityHandler = asyncHandler(
     res.json(successResponse(result));
   },
 );
+
+export const getJoinedCommunitiesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const communities = await getJoinedCommunities(req.user!.id);
+    res.json(successResponse(communities));
+  },
+);
+
+export const joinCommunityHandler = asyncHandler(
+  async (req: Request<{ communityId: string }>, res: Response) => {
+    const result = await joinCommunity(req.user!.id, req.params.communityId);
+    res.json(successResponse(result));
+  },
+);
+
+export const leaveCommunityHandler = asyncHandler(
+  async (req: Request<{ communityId: string }>, res: Response) => {
+    const result = await leaveCommunity(req.user!.id, req.params.communityId);
+    res.json(successResponse(result));
+  },
+);
+

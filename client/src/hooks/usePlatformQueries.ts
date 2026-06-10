@@ -717,6 +717,52 @@ export const useCommunityQuery = (slug?: string) =>
     enabled: Boolean(slug),
   });
 
+export const useJoinedCommunitiesQuery = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.communities.joined(),
+    queryFn: async ({ signal }) => {
+      const result = await api.joinedCommunities({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useJoinCommunityMutation = (slug?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (communityId: string) => api.joinCommunity(communityId),
+    onSuccess: () => {
+      invalidateCommunity(queryClient, slug);
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.joined() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.suggested() });
+      showToast("success", "Successfully joined community");
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+export const useLeaveCommunityMutation = (slug?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (communityId: string) => api.leaveCommunity(communityId),
+    onSuccess: () => {
+      invalidateCommunity(queryClient, slug);
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.joined() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.suggested() });
+      showToast("success", "Left community successfully");
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
 const invalidateCommunity = (
   queryClient: ReturnType<typeof useQueryClient>,
   slug?: string,
