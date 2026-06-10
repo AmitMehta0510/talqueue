@@ -59,6 +59,7 @@ export type User = {
   educations?: Education[];
   createdAt?: string;
   updatedAt?: string;
+  lastActiveAt?: string | null;
 };
 
 export type College = {

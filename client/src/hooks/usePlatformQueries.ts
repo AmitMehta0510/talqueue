@@ -172,7 +172,7 @@ export const useConversationMessagesQuery = (conversationId?: string) => {
     enabled: Boolean(user && conversationId),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
-    refetchInterval: user && conversationId ? 30_000 : false,
+    // No refetchInterval: socket handles real-time updates, periodic refetch causes duplicates
   });
 };
 

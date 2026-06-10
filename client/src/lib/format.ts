@@ -38,6 +38,52 @@ export const formatDate = (value?: string) => {
   }).format(new Date(value));
 };
 
+/** Returns time only, e.g. "5:37 PM" — used inside message bubbles */
+export const formatMessageTime = (value?: string | null): string => {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(value));
+};
+
+/** Returns a human-readable day label for chat date dividers: "Today", "Yesterday", or "Jun 8" */
+export const formatRelativeDate = (value?: string | null): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (isSameDay(date, today)) return "Today";
+  if (isSameDay(date, yesterday)) return "Yesterday";
+
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+};
+
+/** Returns "Last active X ago" style string for chat headers */
+export const formatLastActive = (value?: string | null): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+
+  if (diffMins < 1) return "Active just now";
+  if (diffMins < 60) return `Active ${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Active ${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Active yesterday";
+  return `Active ${diffDays}d ago`;
+};
+
 export const formatMonthYear = (value?: string | null) => {
   if (!value) return "Present";
 
