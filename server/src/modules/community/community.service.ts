@@ -21,6 +21,54 @@ import { createNotification } from "modules/notificatios/notifications.service";
 
 type CommunityWriteClient = Prisma.TransactionClient | typeof prisma;
 
+// ---------------------------------------------------------------------------
+// Conversation participant helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Adds a user as a ConversationParticipant in all active conversations of a
+ * community. Safe to call inside a transaction (pass `client`) or standalone.
+ */
+const addUserToCommunityConversations = async (
+  userId: string,
+  communityId: string,
+  client: CommunityWriteClient = prisma,
+) => {
+  const conversations = await client.conversation.findMany({
+    where: { communityId, archived: false },
+    select: { id: true },
+  });
+
+  for (const conv of conversations) {
+    await client.conversationParticipant.upsert({
+      where: {
+        conversationId_userId: { conversationId: conv.id, userId },
+      },
+      update: {},
+      create: { conversationId: conv.id, userId },
+    });
+  }
+};
+
+/**
+ * Removes a user from all active community conversations when they leave.
+ */
+const removeUserFromCommunityConversations = async (
+  userId: string,
+  communityId: string,
+) => {
+  const conversations = await prisma.conversation.findMany({
+    where: { communityId, archived: false },
+    select: { id: true },
+  });
+
+  for (const conv of conversations) {
+    await prisma.conversationParticipant.deleteMany({
+      where: { conversationId: conv.id, userId },
+    });
+  }
+};
+
 const PLATFORM_ADMIN_ROLES = new Set([
   "ADMIN",
   "SUPER_ADMIN",
@@ -259,6 +307,9 @@ export const autoJoinUserCommunities = async (
       },
     });
 
+    // Add user to all active community conversations
+    await addUserToCommunityConversations(userId, community.id, client);
+
     joinedCommunityIds.push(community.id);
   }
 
@@ -398,7 +449,8 @@ export const createCommunity = async (
     },
   });
 
-  // DEFAULT CONVERSATION
+  // DEFAULT CONVERSATION — creator is immediately added as a participant
+  // so they can send/read messages right away.
   await prisma.conversation.create({
     data: {
       type: "COMMUNITY",
@@ -412,6 +464,10 @@ export const createCommunity = async (
       communityId: community.id,
 
       createdById: userId,
+
+      participants: {
+        create: { userId },
+      },
     },
   });
 
@@ -643,6 +699,17 @@ export const joinCommunity = async (userId: string, communityId: string) => {
     throw new AppError("Cannot join an archived community", 400);
   }
 
+  // Cross-institution access guard:
+  // PRIVATE communities are restricted to verified members only (auto-join eligible).
+  // PUBLIC communities (e.g. coding, placements) are open to all engineers,
+  // including students from other colleges/companies.
+  if (community.visibility === "PRIVATE") {
+    throw new AppError(
+      "This community is private and restricted to verified members. You can only be added automatically when you register your college or company.",
+      403,
+    );
+  }
+
   // Check if already a member
   const existingMember = await prisma.communityMember.findUnique({
     where: {
@@ -686,6 +753,9 @@ export const joinCommunity = async (userId: string, communityId: string) => {
       },
     },
   });
+
+  // Add user to all active community conversations so they can interact
+  await addUserToCommunityConversations(userId, communityId);
 
   return { success: true };
 };
@@ -735,6 +805,9 @@ export const leaveCommunity = async (userId: string, communityId: string) => {
       },
     },
   });
+
+  // Remove user from all active community conversations
+  await removeUserFromCommunityConversations(userId, communityId);
 
   return { success: true };
 };

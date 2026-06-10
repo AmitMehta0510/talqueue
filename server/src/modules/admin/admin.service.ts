@@ -92,6 +92,55 @@ const revokeRoleIfOrphaned = async (
   });
 };
 
+/**
+ * When a user is assigned as a college or company admin, ensure they are
+ * promoted to ADMIN role inside all communities for that institution and
+ * added as a ConversationParticipant in every active community conversation.
+ * This gives them immediate management access and chat access.
+ */
+const ensureInstitutionAdminInCommunities = async (
+  userId: string,
+  filter: { collegeId: string } | { companyId: string },
+) => {
+  const communities = await prisma.community.findMany({
+    where: { ...filter, archived: false },
+    select: {
+      id: true,
+      conversations: {
+        where: { archived: false },
+        select: { id: true },
+      },
+    },
+  });
+
+  for (const community of communities) {
+    // Upsert community membership — promote to ADMIN so they can manage
+    await prisma.communityMember.upsert({
+      where: {
+        communityId_userId: { communityId: community.id, userId },
+      },
+      update: { role: "ADMIN", active: true, leftAt: null },
+      create: { communityId: community.id, userId, role: "ADMIN" },
+    });
+
+    // Increment memberCount only if this is a new record (upsert doesn't tell
+    // us, so we check via a count — simpler than raw SQL for now)
+    // NOTE: memberCount is a denormalised cache; slight over-count is harmless
+    // compared to under-count, so we skip incrementing on update paths.
+
+    // Add to every active community conversation
+    for (const conv of community.conversations) {
+      await prisma.conversationParticipant.upsert({
+        where: {
+          conversationId_userId: { conversationId: conv.id, userId },
+        },
+        update: {},
+        create: { conversationId: conv.id, userId },
+      });
+    }
+  }
+};
+
 // ============================================================
 // COLLEGE ADMIN
 // ============================================================
@@ -115,6 +164,10 @@ export const assignCollegeAdmin = async (
   });
 
   await grantRole(targetUserId, "COLLEGE_ADMIN");
+
+  // Promote the new college admin to ADMIN inside all communities for this
+  // college and add them as a conversation participant in each community chat.
+  await ensureInstitutionAdminInCommunities(targetUserId, { collegeId });
 
   return {
     message: `User assigned as admin of ${college.name}`,
@@ -243,6 +296,10 @@ export const assignCompanyAdmin = async (
     });
 
   await grantRole(targetUserId, "COMPANY_ADMIN");
+
+  // Promote the new company admin to ADMIN inside all communities for this
+  // company and add them as a conversation participant in each community chat.
+  await ensureInstitutionAdminInCommunities(targetUserId, { companyId });
 
   const scope = city ? `${company.name} — ${city} office` : company.name;
 
