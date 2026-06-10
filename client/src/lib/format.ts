@@ -89,10 +89,41 @@ export const extractFeedItems = (items: Array<FeedItem | FeedPost>) =>
     };
   });
 
-export const getErrorMessage = (error: unknown) => {
-  if (error instanceof ApiError || error instanceof Error) {
-    return error.message;
+const HTTP_MESSAGES: Record<number, string> = {
+  400: "The request couldn't be understood. Please check your input and try again.",
+  401: "You need to sign in to do that.",
+  403: "You don't have permission to perform this action.",
+  404: "We couldn't find what you're looking for.",
+  409: "This already exists — try a different name or value.",
+  422: "Some information you entered isn't valid. Please check and try again.",
+  429: "Too many requests. Please wait a moment and try again.",
+  500: "Something went wrong on our end. Please try again in a moment.",
+  502: "Our server is temporarily unavailable. Please try again shortly.",
+  503: "The service is currently down for maintenance. Please check back soon.",
+};
+
+/** Returns a user-friendly, plain-English error message. */
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    // Prefer the server's own message when it's meaningful (not a raw status text)
+    const serverMsg = error.message;
+    const isGeneric =
+      !serverMsg ||
+      serverMsg === "Request failed" ||
+      serverMsg.toLowerCase() === "internal server error" ||
+      serverMsg.toLowerCase() === "bad gateway";
+
+    if (!isGeneric) return serverMsg;
+    return HTTP_MESSAGES[error.status] ?? "Something went wrong. Please try again.";
   }
 
-  return "Something went wrong";
+  if (error instanceof Error) {
+    if (error.name === "AbortError" || error.message.includes("aborted"))
+      return "The request took too long. Please check your connection and try again.";
+    if (error.message.toLowerCase().includes("network") || error.message.toLowerCase().includes("fetch"))
+      return "No internet connection. Check your network and try again.";
+    if (error.message) return error.message;
+  }
+
+  return "Something went wrong. Please try again.";
 };

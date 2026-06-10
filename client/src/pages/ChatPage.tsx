@@ -158,40 +158,36 @@ function ConversationRow({
 
   return (
     <Link
-      className={`block rounded-md border p-3 transition ${
-        active
-          ? "border-emerald-300 bg-emerald-50"
-          : "border-slate-100 bg-white hover:border-emerald-200 hover:bg-slate-50"
+      className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-all hover:bg-slate-100 ${
+        active ? "bg-blue-50 border-l-2 border-blue-600" : "border-l-2 border-transparent"
       }`}
       to={`/chat/${conversation.id}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="relative shrink-0">
         <ConversationAvatar conversation={conversation} currentUserId={currentUserId} />
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-slate-950">
-              {conversationName(conversation, currentUserId)}
-            </h3>
-            {participant?.pinned && <Pin className="shrink-0 text-emerald-700" size={13} />}
-            {participant?.muted && <VolumeX className="shrink-0 text-slate-400" size={13} />}
-            {isArchived && <Archive className="shrink-0 text-slate-400" size={13} />}
-          </div>
-          <p className="mt-1 truncate text-xs text-slate-500">
-            {conversationSubtitle(conversation, currentUserId)}
-          </p>
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={`truncate text-sm font-semibold ${unread > 0 ? "text-slate-900" : "text-slate-700"}`}>
+            {conversationName(conversation, currentUserId)}
+          </span>
+          <span className="shrink-0 text-[10px] text-slate-400">
+            {formatDate(conversation.updatedAt || conversation.lastMessageAt || "")}
+          </span>
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-xs text-slate-400">{formatDate(conversation.updatedAt || conversation.lastMessageAt || "")}</div>
-          {unread > 0 && (
-            <div className="mt-2 inline-flex min-w-6 justify-center rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-bold text-white">
-              {unread}
-            </div>
-          )}
-        </div>
+        <p className={`mt-0.5 truncate text-xs ${unread > 0 ? "font-semibold text-slate-700" : "text-slate-400"}`}>
+          {conversationSubtitle(conversation, currentUserId)}
+        </p>
       </div>
     </Link>
   );
 }
+
 
 function StartConversationPanel() {
   const navigate = useNavigate();
@@ -381,38 +377,52 @@ function MessageBubble({
   const deleted = Boolean(message.deletedAt);
 
   return (
-    <article className={`flex gap-3 ${mine ? "justify-end" : "justify-start"}`}>
-      {!mine && <Avatar user={message.sender} size="sm" />}
-      <div className={`max-w-[min(38rem,82%)] ${mine ? "items-end" : "items-start"}`}>
-        <div className={`rounded-lg px-4 py-3 ${mine ? "bg-emerald-700 text-white" : "border border-slate-200 bg-white text-slate-800"}`}>
-          {!mine && (
-            <div className="mb-1 text-xs font-semibold text-emerald-700">{userName(message.sender)}</div>
-          )}
-          {message.replyToMessage && (
-            <div className={`mb-2 rounded-md px-3 py-2 text-xs ${mine ? "bg-emerald-800/60 text-emerald-50" : "bg-slate-50 text-slate-500"}`}>
-              {userName(message.replyToMessage.sender)}: {message.replyToMessage.content || titleCase(message.replyToMessage.type)}
-            </div>
-          )}
+    <article className={`flex gap-2.5 ${mine ? "flex-row-reverse" : "flex-row"}`}>
+      {!mine && <div className="shrink-0 mt-1"><Avatar user={message.sender} size="sm" /></div>}
+      <div className={`flex max-w-[min(34rem,78%)] flex-col ${mine ? "items-end" : "items-start"}`}>
+        {/* Sender name for group chats */}
+        {!mine && (
+          <span className="mb-1 text-[11px] font-semibold text-blue-700">{userName(message.sender)}</span>
+        )}
+
+        {/* Reply preview */}
+        {message.replyToMessage && (
+          <div className={`mb-1.5 rounded-lg px-3 py-1.5 text-[11px] border-l-2 ${
+            mine
+              ? "border-blue-300 bg-blue-700/50 text-blue-50"
+              : "border-slate-300 bg-slate-100 text-slate-500"
+          }`}>
+            <span className="font-semibold">{userName(message.replyToMessage.sender)}: </span>
+            {message.replyToMessage.content || titleCase(message.replyToMessage.type)}
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div className={`rounded-2xl px-4 py-2.5 ${
+          mine
+            ? "rounded-tr-sm bg-blue-600 text-white"
+            : "rounded-tl-sm border border-slate-200 bg-white text-slate-800"
+        }`}>
           {message.content && (
-            <p className={`whitespace-pre-wrap text-sm leading-6 ${deleted ? "italic opacity-70" : ""}`}>
+            <p className={`whitespace-pre-wrap text-sm leading-relaxed ${deleted ? "italic opacity-60" : ""}`}>
               {message.content}
             </p>
           )}
           <MessageAttachments attachments={message.attachments || undefined} />
-          <div className={`mt-2 flex items-center justify-between gap-3 text-[11px] ${mine ? "text-emerald-50/80" : "text-slate-400"}`}>
-            <span>
-              {message.createdAt ? formatDate(message.createdAt) : "Sending"}
-              {message.editedAt && !deleted ? " · edited" : ""}
-            </span>
-            {mine && <span>{(message.readByUsers?.length || 0) > 1 ? "Seen" : "Sent"}</span>}
+          <div className={`mt-1 flex items-center justify-end gap-2 text-[10px] ${mine ? "text-blue-200" : "text-slate-400"}`}>
+            <span>{message.createdAt ? formatDate(message.createdAt) : "Sending…"}</span>
+            {mine && (
+              <span>{(message.readByUsers?.length || 0) > 1 ? "✓✓" : "✓"}</span>
+            )}
           </div>
         </div>
 
+        {/* Action row */}
         {!deleted && (
           <div className={`mt-1 flex flex-wrap gap-1 ${mine ? "justify-end" : "justify-start"}`}>
             {quickReactions.map((emoji) => (
               <button
-                className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs transition hover:border-emerald-300"
+                className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs transition hover:border-blue-300 hover:bg-blue-50"
                 key={emoji}
                 type="button"
                 onClick={() => onReact(message, emoji)}
@@ -420,26 +430,24 @@ function MessageBubble({
                 {emoji}
               </button>
             ))}
-            <button className="icon-btn h-7 w-7" type="button" title="Reply" onClick={() => onReply(message)}>
-              <MessageSquare size={13} />
+            <button className="icon-btn h-6 w-6" type="button" title="Reply" onClick={() => onReply(message)}>
+              <MessageSquare size={12} />
             </button>
-            <button className="icon-btn h-7 w-7" type="button" title="Forward" onClick={() => onForward(message)}>
-              <Forward size={13} />
+            <button className="icon-btn h-6 w-6" type="button" title="Forward" onClick={() => onForward(message)}>
+              <Forward size={12} />
             </button>
             {mine && !message.id.startsWith("pending-") && (
               <>
-                <button className="icon-btn h-7 w-7" type="button" title="Edit" onClick={() => onEdit(message)}>
-                  <Edit3 size={13} />
+                <button className="icon-btn h-6 w-6" type="button" title="Edit" onClick={() => onEdit(message)}>
+                  <Edit3 size={12} />
                 </button>
-                <button className="icon-btn h-7 w-7" type="button" title="Delete" onClick={() => onDelete(message)}>
-                  <Trash2 size={13} />
+                <button className="icon-btn h-6 w-6" type="button" title="Delete" onClick={() => onDelete(message)}>
+                  <Trash2 size={12} />
                 </button>
               </>
             )}
             {(message.reactions || []).slice(0, 4).map((reaction) => (
-              <span className="chip py-0.5" key={reaction.id}>
-                {reaction.emoji}
-              </span>
+              <span className="chip py-0.5 text-xs" key={reaction.id}>{reaction.emoji}</span>
             ))}
           </div>
         )}
@@ -498,57 +506,63 @@ function Composer({
   };
 
   return (
-    <form className="border-t border-slate-200 bg-white p-4" onSubmit={submit}>
+    <form className="border-t border-slate-100 bg-white px-4 py-3" onSubmit={submit}>
+      {/* Reply banner */}
       {replyTo && (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-emerald-100 bg-emerald-50 p-3">
-          <div className="min-w-0 text-sm">
-            <div className="font-semibold text-slate-900">Replying to {userName(replyTo.sender)}</div>
-            <div className="truncate text-xs text-slate-500">{replyTo.content || titleCase(replyTo.type)}</div>
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+          <div className="min-w-0 flex-1 text-xs">
+            <span className="font-semibold text-slate-700">Replying to {userName(replyTo.sender)}: </span>
+            <span className="truncate text-slate-500">{replyTo.content || titleCase(replyTo.type)}</span>
           </div>
-          <button className="icon-btn h-8 w-8" type="button" title="Cancel reply" onClick={onClearReply}>
-            <X size={15} />
-          </button>
+          <button className="icon-btn h-6 w-6" type="button" onClick={onClearReply}><X size={13} /></button>
         </div>
       )}
 
+      {/* Attachment pills */}
       {attachments.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {attachments.map((attachment) => (
-            <span className="chip" key={attachment.id || attachment.name}>
-              {attachment.type === "IMAGE" ? <Image size={13} /> : <FileIcon size={13} />}
-              {attachment.name}
-              <button
-                className="ml-1"
-                type="button"
-                onClick={() => setAttachments((current) => current.filter((item) => item !== attachment))}
-              >
-                <X size={12} />
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {attachments.map((att) => (
+            <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600" key={att.id || att.name}>
+              {att.type === "IMAGE" ? <Image size={11} /> : <FileIcon size={11} />}
+              {att.name}
+              <button type="button" onClick={() => setAttachments((c) => c.filter((a) => a !== att))}>
+                <X size={10} />
               </button>
             </span>
           ))}
         </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-[auto_1fr_auto]">
-        <label className="icon-btn h-10 w-10" title="Attach files">
-          <Paperclip size={17} />
+      {/* LinkedIn-style pill input row */}
+      <div className="flex items-end gap-2">
+        {/* Attach */}
+        <label className="shrink-0 cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600" title="Attach files">
+          <Paperclip size={18} />
           <input className="hidden" type="file" multiple onChange={handleFiles} />
         </label>
+
+        {/* Textarea pill */}
         <textarea
-          className="field min-h-10 resize-none"
+          className="flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
           value={content}
-          onChange={(event) => updateContent(event.target.value)}
+          onChange={(e) => updateContent(e.target.value)}
           onBlur={onStopTyping}
-          placeholder="Write a message"
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(e as unknown as FormEvent); } }}
+          placeholder="Write a message…"
           rows={1}
         />
+
+        {/* Send button */}
         <button
-          className="btn-primary h-10"
+          className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition ${
+            content.trim() || attachments.length
+              ? "bg-blue-600 text-white hover:bg-blue-700"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+          }`}
           type="submit"
           disabled={sendMessage.isPending || (!content.trim() && !attachments.length)}
         >
           {sendMessage.isPending ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-          Send
         </button>
       </div>
     </form>

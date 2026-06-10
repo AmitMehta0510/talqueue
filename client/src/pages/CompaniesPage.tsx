@@ -7,9 +7,16 @@ import {
   Github,
   Linkedin,
   Loader2,
+  MapPin,
   Plus,
   Search,
+  ShieldCheck,
   Users,
+  X,
+  Star,
+  ArrowLeft,
+  TrendingUp,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
@@ -23,427 +30,216 @@ import {
 } from "../hooks/usePlatformQueries";
 import { Company, CompanySize, CompanyType, User } from "../lib/api";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
-import { compactPayload, formatCount, formatDate, titleCase, userHeadline, userName } from "../lib/format";
+import {
+  compactPayload,
+  formatCount,
+  formatDate,
+  titleCase,
+  userHeadline,
+  userName,
+} from "../lib/format";
 
-const companyTypes: CompanyType[] = ["STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "ENTERPRISE", "MNC", "OTHER"];
-const companySizes: CompanySize[] = ["SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE"];
+const companyTypes: CompanyType[] = [
+  "STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "ENTERPRISE", "MNC", "OTHER",
+];
+const companySizes: CompanySize[] = [
+  "SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE",
+];
 
-function CompanyLogo({ company }: { company: Company }) {
+const TYPE_COLOR: Record<string, string> = {
+  STARTUP:       "bg-violet-50 text-violet-700 border-violet-200",
+  PRODUCT_BASED: "bg-blue-50 text-blue-700 border-blue-200",
+  SERVICE_BASED: "bg-teal-50 text-teal-700 border-teal-200",
+  ENTERPRISE:    "bg-amber-50 text-amber-700 border-amber-200",
+  MNC:           "bg-rose-50 text-rose-700 border-rose-200",
+  OTHER:         "bg-slate-50 text-slate-600 border-slate-200",
+};
+
+// ---------------------------------------------------------------------------
+// Company Logo
+// ---------------------------------------------------------------------------
+function CompanyLogo({ company, size = "md" }: { company: Company; size?: "sm" | "md" | "lg" }) {
+  const dims = { sm: "h-9 w-9", md: "h-12 w-12", lg: "h-16 w-16" };
+  const dim = dims[size];
   if (company.logoUrl) {
-    return (
-      <img
-        className="h-11 w-11 rounded-md object-cover"
-        src={company.logoUrl}
-        alt={company.name}
-      />
-    );
+    return <img className={`${dim} rounded-xl object-cover border border-slate-100`} src={company.logoUrl} alt={company.name} />;
   }
-
   return (
-    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
-      <Building2 size={21} />
+    <div className={`inline-flex ${dim} shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500`}>
+      <Building2 size={size === "lg" ? 28 : size === "md" ? 22 : 16} />
     </div>
   );
 }
 
-function StatusBadge({ value }: { value?: string | null }) {
-  return <span className="chip">{titleCase(value) || "Unknown"}</span>;
+// ---------------------------------------------------------------------------
+// Naukri-style Company Card
+// ---------------------------------------------------------------------------
+function CompanyCard({ company }: { company: Company }) {
+  const typeColor = TYPE_COLOR[company.type ?? "OTHER"] ?? TYPE_COLOR.OTHER;
+
+  return (
+    <Link
+      to={`/companies/${company.slug}`}
+      className="group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-md"
+    >
+      {/* Logo + Name */}
+      <div className="flex items-start gap-3">
+        <CompanyLogo company={company} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="truncate text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+              {company.name}
+            </h3>
+            {company.verified && <ShieldCheck size={13} className="shrink-0 text-emerald-500" />}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-slate-500">
+            {company.tagline || company.industry || "Technology Company"}
+          </p>
+        </div>
+      </div>
+
+      {/* Badges */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {company.type && (
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${typeColor}`}>
+            {titleCase(company.type)}
+          </span>
+        )}
+        {company.headquarters && (
+          <span className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+            <MapPin size={9} /> {company.headquarters}
+          </span>
+        )}
+        {company.hiringEnabled && (
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+            Hiring
+          </span>
+        )}
+        {company.referralEnabled && (
+          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+            Referrals
+          </span>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <span className="flex items-center gap-1">
+          <BriefcaseBusiness size={11} />
+          <strong className="text-slate-800">{formatCount(company._count?.jobs)}</strong> Jobs
+        </span>
+        <span className="flex items-center gap-1">
+          <Users size={11} />
+          <strong className="text-slate-800">{formatCount(company._count?.experiences)}</strong> Employees
+        </span>
+        {company.rating != null && (
+          <span className="flex items-center gap-1 ml-auto">
+            <Star size={11} className="text-amber-400" />
+            <strong className="text-slate-700">{company.rating.toFixed(1)}</strong>
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex items-center text-xs font-semibold text-blue-600 group-hover:translate-x-0.5 transition-transform">
+        View company <ChevronRight size={13} className="ml-0.5" />
+      </div>
+    </Link>
+  );
 }
 
-function CreateCompanyPanel({ disabled }: { disabled?: boolean }) {
+// ---------------------------------------------------------------------------
+// Create Company Panel (admin / super-admin)
+// ---------------------------------------------------------------------------
+function CreateCompanyModal({ onClose }: { onClose: () => void }) {
   const createCompany = useCreateCompanyMutation();
-  const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    name: "",
-    tagline: "",
-    description: "",
-    headquarters: "",
-    industry: "",
-    websiteUrl: "",
-    careersPageUrl: "",
-    logoUrl: "",
-    linkedinUrl: "",
-    githubUrl: "",
-    foundedYear: "",
-    type: "" as "" | CompanyType,
-    size: "" as "" | CompanySize,
-    hiringEnabled: true,
-    referralEnabled: true,
+    name: "", tagline: "", description: "", headquarters: "", industry: "",
+    websiteUrl: "", careersPageUrl: "", logoUrl: "", linkedinUrl: "", githubUrl: "",
+    foundedYear: "", type: "" as "" | CompanyType, size: "" as "" | CompanySize,
+    hiringEnabled: true, referralEnabled: true,
   });
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+    setForm((p) => ({ ...p, [k]: v }));
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
     try {
       await createCompany.mutateAsync({
         name: form.name,
         ...compactPayload({
-          tagline: form.tagline,
-          description: form.description,
-          headquarters: form.headquarters,
-          industry: form.industry,
-          websiteUrl: form.websiteUrl,
-          careersPageUrl: form.careersPageUrl,
-          logoUrl: form.logoUrl,
-          linkedinUrl: form.linkedinUrl,
-          githubUrl: form.githubUrl,
-          type: form.type || undefined,
-          size: form.size || undefined,
+          tagline: form.tagline, description: form.description, headquarters: form.headquarters,
+          industry: form.industry, websiteUrl: form.websiteUrl, careersPageUrl: form.careersPageUrl,
+          logoUrl: form.logoUrl, linkedinUrl: form.linkedinUrl, githubUrl: form.githubUrl,
+          type: form.type || undefined, size: form.size || undefined,
         }),
         foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
         hiringEnabled: form.hiringEnabled,
         referralEnabled: form.referralEnabled,
       });
-      setForm({
-        name: "",
-        tagline: "",
-        description: "",
-        headquarters: "",
-        industry: "",
-        websiteUrl: "",
-        careersPageUrl: "",
-        logoUrl: "",
-        linkedinUrl: "",
-        githubUrl: "",
-        foundedYear: "",
-        type: "",
-        size: "",
-        hiringEnabled: true,
-        referralEnabled: true,
-      });
-      setOpen(false);
-    } catch {
-      return;
-    }
+      onClose();
+    } catch { return; }
   };
 
   return (
-    <div className="panel p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-slate-950">Companies</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Explore hiring teams, employee signals, and referral-friendly companies.
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <h2 className="text-base font-bold text-slate-900">Add Company</h2>
+          <button onClick={onClose} type="button" className="icon-btn"><X size={16} /></button>
         </div>
-        <button
-          className="btn-primary"
-          type="button"
-          disabled={disabled}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <Plus size={16} />
-          Add company
-        </button>
-      </div>
-
-      {open && (
-        <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={submit}>
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_12rem]">
-            <input
-              className="field"
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Company name"
-              required
-            />
-            <input
-              className="field"
-              value={form.tagline}
-              onChange={(event) => setForm((current) => ({ ...current, tagline: event.target.value }))}
-              placeholder="Tagline"
-            />
-            <input
-              className="field"
-              min={1800}
-              type="number"
-              value={form.foundedYear}
-              onChange={(event) => setForm((current) => ({ ...current, foundedYear: event.target.value }))}
-              placeholder="Founded"
-            />
+        <form className="space-y-4 p-6" onSubmit={submit}>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
+            <input className="field" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Company name *" required />
+            <input className="field" value={form.tagline} onChange={(e) => set("tagline", e.target.value)} placeholder="Tagline" />
+            <input className="field" type="number" min={1800} value={form.foundedYear} onChange={(e) => set("foundedYear", e.target.value)} placeholder="Founded" />
           </div>
-          <textarea
-            className="field min-h-24"
-            value={form.description}
-            onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-            placeholder="Description"
-          />
+          <textarea className="field min-h-20 resize-none" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Description" />
           <div className="grid gap-3 md:grid-cols-4">
-            <input
-              className="field"
-              value={form.industry}
-              onChange={(event) => setForm((current) => ({ ...current, industry: event.target.value }))}
-              placeholder="Industry"
-            />
-            <input
-              className="field"
-              value={form.headquarters}
-              onChange={(event) => setForm((current) => ({ ...current, headquarters: event.target.value }))}
-              placeholder="Headquarters"
-            />
-            <select
-              className="field"
-              value={form.type}
-              onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as "" | CompanyType }))}
-            >
+            <input className="field" value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="Industry" />
+            <input className="field" value={form.headquarters} onChange={(e) => set("headquarters", e.target.value)} placeholder="HQ City" />
+            <select className="field" value={form.type} onChange={(e) => set("type", e.target.value as "" | CompanyType)}>
               <option value="">Type</option>
-              {companyTypes.map((type) => (
-                <option key={type} value={type}>
-                  {titleCase(type)}
-                </option>
-              ))}
+              {companyTypes.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
             </select>
-            <select
-              className="field"
-              value={form.size}
-              onChange={(event) => setForm((current) => ({ ...current, size: event.target.value as "" | CompanySize }))}
-            >
+            <select className="field" value={form.size} onChange={(e) => set("size", e.target.value as "" | CompanySize)}>
               <option value="">Size</option>
-              {companySizes.map((size) => (
-                <option key={size} value={size}>
-                  {titleCase(size)}
-                </option>
-              ))}
+              {companySizes.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </select>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <input
-              className="field"
-              value={form.websiteUrl}
-              onChange={(event) => setForm((current) => ({ ...current, websiteUrl: event.target.value }))}
-              placeholder="Website URL"
-            />
-            <input
-              className="field"
-              value={form.careersPageUrl}
-              onChange={(event) => setForm((current) => ({ ...current, careersPageUrl: event.target.value }))}
-              placeholder="Careers URL"
-            />
-            <input
-              className="field"
-              value={form.logoUrl}
-              onChange={(event) => setForm((current) => ({ ...current, logoUrl: event.target.value }))}
-              placeholder="Logo URL"
-            />
-            <input
-              className="field"
-              value={form.linkedinUrl}
-              onChange={(event) => setForm((current) => ({ ...current, linkedinUrl: event.target.value }))}
-              placeholder="LinkedIn URL"
-            />
-            <input
-              className="field md:col-span-2"
-              value={form.githubUrl}
-              onChange={(event) => setForm((current) => ({ ...current, githubUrl: event.target.value }))}
-              placeholder="GitHub URL"
-            />
+            <input className="field" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="Website URL" />
+            <input className="field" value={form.careersPageUrl} onChange={(e) => set("careersPageUrl", e.target.value)} placeholder="Careers URL" />
+            <input className="field" value={form.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="Logo URL" />
+            <input className="field" value={form.linkedinUrl} onChange={(e) => set("linkedinUrl", e.target.value)} placeholder="LinkedIn URL" />
+            <input className="field md:col-span-2" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.hiringEnabled}
-                onChange={(event) => setForm((current) => ({ ...current, hiringEnabled: event.target.checked }))}
-              />
-              Hiring
+          <div className="flex gap-6 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="checkbox" checked={form.hiringEnabled} onChange={(e) => set("hiringEnabled", e.target.checked)} className="accent-blue-600" />
+              Hiring enabled
             </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.referralEnabled}
-                onChange={(event) => setForm((current) => ({ ...current, referralEnabled: event.target.checked }))}
-              />
-              Referrals
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="checkbox" checked={form.referralEnabled} onChange={(e) => set("referralEnabled", e.target.checked)} className="accent-blue-600" />
+              Referrals enabled
             </label>
           </div>
-          <button className="btn-primary" type="submit" disabled={createCompany.isPending}>
-            {createCompany.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-            Save company
-          </button>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-3">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={createCompany.isPending}>
+              {createCompany.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+              Save Company
+            </button>
+          </div>
         </form>
-      )}
-    </div>
-  );
-}
-
-function CompanyCard({ company, context }: { company: Company; context?: string }) {
-  return (
-    <article className="panel p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <CompanyLogo company={company} />
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-slate-950">{company.name}</h3>
-              {company.verified && (
-                <span className="chip shrink-0 text-emerald-700">
-                  <Check size={13} />
-                  Verified
-                </span>
-              )}
-            </div>
-            <p className="truncate text-xs text-slate-500">
-              {company.tagline || company.industry || company.headquarters || "Company profile"}
-            </p>
-          </div>
-        </div>
-        <Link className="btn-secondary px-3 py-1.5" to={`/companies/${company.slug}`}>
-          Open
-        </Link>
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        <Metric label="Jobs" value={formatCount(company._count?.jobs)} />
-        <Metric label="Employees" value={formatCount(company._count?.experiences)} />
-        <Metric label="Rating" value={company.rating ? company.rating.toFixed(1) : "New"} />
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {context && <span className="chip">{context}</span>}
-        {company.recommendationScore !== undefined && <span className="chip">Score {company.recommendationScore}</span>}
-        {company.industry && <span className="chip">{company.industry}</span>}
-        {company.headquarters && <span className="chip">{company.headquarters}</span>}
-        {company.hiringEnabled && <span className="chip">Hiring</span>}
-        {company.referralEnabled && <span className="chip">Referrals</span>}
-      </div>
-    </article>
-  );
-}
-
-function CompanyFilters({
-  onApply,
-}: {
-  onApply: (filters: {
-    q?: string;
-    industry?: string;
-    location?: string;
-    type?: CompanyType;
-    size?: CompanySize;
-    verified?: boolean;
-    hiringEnabled?: boolean;
-  }) => void;
-}) {
-  const [form, setForm] = useState({
-    q: "",
-    industry: "",
-    location: "",
-    type: "" as "" | CompanyType,
-    size: "" as "" | CompanySize,
-    verifiedOnly: false,
-    hiringOnly: false,
-  });
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    onApply({
-      ...compactPayload({
-        q: form.q,
-        industry: form.industry,
-        location: form.location,
-        type: form.type || undefined,
-        size: form.size || undefined,
-      }),
-      verified: form.verifiedOnly || undefined,
-      hiringEnabled: form.hiringOnly || undefined,
-    });
-  };
-
-  return (
-    <form className="panel p-4" onSubmit={submit}>
-      <div className="grid gap-3 lg:grid-cols-[1fr_12rem_12rem_11rem_11rem_auto]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            className="field pl-9"
-            value={form.q}
-            onChange={(event) => setForm((current) => ({ ...current, q: event.target.value }))}
-            placeholder="Search companies"
-          />
-        </div>
-        <input
-          className="field"
-          value={form.industry}
-          onChange={(event) => setForm((current) => ({ ...current, industry: event.target.value }))}
-          placeholder="Industry"
-        />
-        <input
-          className="field"
-          value={form.location}
-          onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))}
-          placeholder="Location"
-        />
-        <select
-          className="field"
-          value={form.type}
-          onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as "" | CompanyType }))}
-        >
-          <option value="">Type</option>
-          {companyTypes.map((type) => (
-            <option key={type} value={type}>
-              {titleCase(type)}
-            </option>
-          ))}
-        </select>
-        <select
-          className="field"
-          value={form.size}
-          onChange={(event) => setForm((current) => ({ ...current, size: event.target.value as "" | CompanySize }))}
-        >
-          <option value="">Size</option>
-          {companySizes.map((size) => (
-            <option key={size} value={size}>
-              {titleCase(size)}
-            </option>
-          ))}
-        </select>
-        <button className="btn-primary" type="submit">
-          <Search size={16} />
-          Apply
-        </button>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
-        <label className="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.verifiedOnly}
-            onChange={(event) => setForm((current) => ({ ...current, verifiedOnly: event.target.checked }))}
-          />
-          Verified
-        </label>
-        <label className="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.hiringOnly}
-            onChange={(event) => setForm((current) => ({ ...current, hiringOnly: event.target.checked }))}
-          />
-          Hiring
-        </label>
-      </div>
-    </form>
-  );
-}
-
-function SuggestedCompaniesPanel() {
-  const suggestedQuery = useSuggestedCompaniesQuery();
-  const companies = suggestedQuery.data || [];
-
-  if (!companies.length) return null;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-600">Suggested companies</h3>
-        {suggestedQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
-      </div>
-      <div className="grid gap-5 xl:grid-cols-2">
-        {companies.slice(0, 4).map((company) => (
-          <CompanyCard company={company} context="Recommended" key={company.id} />
-        ))}
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Company Detail Page
+// ---------------------------------------------------------------------------
 function CompanyDetail({ slug }: { slug: string }) {
   const companyQuery = useCompanyQuery(slug);
   const company = companyQuery.data;
@@ -454,158 +250,175 @@ function CompanyDetail({ slug }: { slug: string }) {
 
   if (companyQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Loader2 className="animate-spin" size={16} />
-        Loading company
+      <div className="space-y-4 animate-pulse">
+        <div className="h-48 rounded-xl bg-slate-200" />
+        <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+          <div className="h-64 rounded-xl bg-slate-200" />
+          <div className="h-64 rounded-xl bg-slate-200" />
+        </div>
       </div>
     );
   }
 
   if (!company) {
-    return <EmptyState icon={Building2} title="Company not found" text="This company is unavailable." />;
+    return <EmptyState icon={Building2} title="Company not found" text="This company doesn't exist or has been removed." />;
   }
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/companies">
-        Back to companies
+      {/* Back link */}
+      <Link
+        to="/companies"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition"
+      >
+        <ArrowLeft size={14} /> Back to Companies
       </Link>
 
-      <div className="panel overflow-hidden">
-        {company.coverImageUrl && (
-          <img className="h-48 w-full object-cover sm:h-64" src={company.coverImageUrl} alt={company.name} />
+      {/* ── Hero ── */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {company.coverImageUrl ? (
+          <img className="h-44 w-full object-cover sm:h-56" src={company.coverImageUrl} alt={company.name} />
+        ) : (
+          <div className="h-24 w-full bg-gradient-to-br from-blue-600 to-indigo-700" />
         )}
-        <div className="p-6">
+        <div className="px-6 pb-6">
+          {/* Logo overlapping banner */}
+          <div className="-mt-8 mb-3">
+            <CompanyLogo company={company} size="lg" />
+          </div>
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex min-w-0 gap-4">
-              <CompanyLogo company={company} />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-2xl font-bold text-slate-950">{company.name}</h2>
-                  {company.verified && (
-                    <span className="chip text-emerald-700">
-                      <Check size={13} />
-                      Verified
-                    </span>
-                  )}
-                  {company.type && <StatusBadge value={company.type} />}
-                </div>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  {company.description || company.tagline || "No company description has been added yet."}
-                </p>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold text-slate-900">{company.name}</h1>
+                {company.verified && <ShieldCheck size={18} className="text-emerald-500" />}
+                {company.type && (
+                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${TYPE_COLOR[company.type] ?? TYPE_COLOR.OTHER}`}>
+                    {titleCase(company.type)}
+                  </span>
+                )}
               </div>
+              <p className="mt-1 text-sm text-slate-500">
+                {[company.industry, company.headquarters].filter(Boolean).join(" · ")}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {company.websiteUrl && (
-                <a className="btn-secondary" href={company.websiteUrl} rel="noreferrer" target="_blank">
-                  <ExternalLink size={16} />
-                  Website
+                <a className="btn-secondary" href={company.websiteUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink size={14} /> Website
                 </a>
               )}
               {company.linkedinUrl && (
-                <a className="icon-btn" href={company.linkedinUrl} rel="noreferrer" target="_blank" title="LinkedIn">
-                  <Linkedin size={17} />
+                <a className="icon-btn" href={company.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn">
+                  <Linkedin size={15} />
                 </a>
               )}
               {company.githubUrl && (
-                <a className="icon-btn" href={company.githubUrl} rel="noreferrer" target="_blank" title="GitHub">
-                  <Github size={17} />
+                <a className="icon-btn" href={company.githubUrl} target="_blank" rel="noreferrer" title="GitHub">
+                  <Github size={15} />
                 </a>
               )}
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            <Metric label="Jobs" value={formatCount(company._count?.jobs)} />
+          {company.description && (
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">{company.description}</p>
+          )}
+
+          {/* Key metrics */}
+          <div className="mt-5 grid grid-cols-3 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-6">
+            <Metric label="Open Jobs" value={formatCount(company._count?.jobs)} />
             <Metric label="Employees" value={formatCount(company._count?.experiences)} />
             <Metric label="Referrals" value={formatCount(company._count?.referralRequests)} />
-            <Metric label="Rating" value={company.rating ? company.rating.toFixed(1) : "New"} />
-            <Metric label="Founded" value={company.foundedYear || "Unlisted"} />
-            <Metric label="Size" value={titleCase(company.size) || "Unlisted"} />
+            <Metric label="Rating" value={company.rating ? `${company.rating.toFixed(1)} ★` : "New"} />
+            <Metric label="Founded" value={company.foundedYear?.toString() || "—"} />
+            <Metric label="Size" value={titleCase(company.size) || "—"} />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
+      {/* ── 2-col body ── */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
+        {/* Left: Jobs + Employees */}
         <div className="space-y-5">
-          <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Open jobs</h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {(company.jobs || []).length ? (
-                (company.jobs || []).map((job) => (
-                  <article className="rounded-md border border-slate-100 p-3" key={job.id}>
-                    <div className="text-sm font-semibold text-slate-900">{job.title}</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {[job.location, titleCase(job.workMode), titleCase(job.experienceLevel)].filter(Boolean).join(" - ")}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <StatusBadge value={job.type} />
-                      {job.createdAt && <span className="chip">{formatDate(job.createdAt)}</span>}
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No open jobs listed.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="panel p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-950">Current employees</h3>
-              {employeesQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {employees.length ? (
-                employees.map((employee) => (
-                  <article className="rounded-md border border-slate-100 p-3" key={employee.id}>
-                    <div className="flex items-center gap-3">
-                      <Avatar user={employee.user} size="sm" />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900">{userName(employee.user)}</div>
-                        <div className="truncate text-xs text-slate-500">
-                          {employee.title || userHeadline(employee.user)}
-                        </div>
+          {/* Open Jobs */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 className="text-sm font-bold text-slate-900 mb-4">Open Positions</h2>
+            {(company.jobs || []).length > 0 ? (
+              <div className="space-y-3">
+                {(company.jobs || []).map((job) => (
+                  <div key={job.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 p-3 hover:border-blue-200 transition">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{job.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {[job.location, titleCase(job.workMode), titleCase(job.experienceLevel)].filter(Boolean).join(" · ")}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {job.type && (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                            {titleCase(job.type)}
+                          </span>
+                        )}
+                        {job.createdAt && (
+                          <span className="text-[10px] text-slate-400">{formatDate(job.createdAt)}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {employee.verified && <span className="chip text-emerald-700">Verified</span>}
-                      {employee.workEmailVerified && <span className="chip">Work email</span>}
-                      {employee.verificationScore !== undefined && (
-                        <span className="chip">Score {Math.round(employee.verificationScore)}</span>
-                      )}
-                      {employee.user?.acceptingReferrals && (
-                        <button
-                          type="button"
-                          className="chip bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:text-emerald-800 transition font-semibold"
-                          onClick={() => setSelectedReferralUser(employee.user || null)}
-                        >
-                          Request Referral
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No current employees listed.</p>
-              )}
+                    <Link
+                      to="/jobs"
+                      className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition"
+                    >
+                      Apply
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No open positions right now.</p>
+            )}
+          </div>
+
+          {/* Employees */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-900">Current Employees</h2>
+              {employeesQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={14} />}
             </div>
+            {employees.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {employees.map((emp) => (
+                  <div key={emp.id} className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
+                    <Avatar user={emp.user} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{userName(emp.user)}</p>
+                      <p className="truncate text-xs text-slate-500">{emp.title || userHeadline(emp.user)}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {emp.verified && <span className="text-[10px] font-bold text-emerald-600">✓ Verified</span>}
+                        {emp.user?.acceptingReferrals && (
+                          <button
+                            type="button"
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition"
+                            onClick={() => setSelectedReferralUser(emp.user || null)}
+                          >
+                            Request Referral →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">No employee profiles linked yet.</p>
+            )}
             {(employeesQuery.data?.totalPages || 0) > 1 && (
               <div className="mt-4 flex justify-end gap-2">
-                <button
-                  className="btn-secondary px-3 py-1.5"
-                  type="button"
-                  disabled={employeePage <= 1}
-                  onClick={() => setEmployeePage((page) => Math.max(1, page - 1))}
-                >
+                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
+                  disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1, p - 1))}>
                   Previous
                 </button>
-                <button
-                  className="btn-secondary px-3 py-1.5"
-                  type="button"
+                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
                   disabled={employeePage >= (employeesQuery.data?.totalPages || 1)}
-                  onClick={() => setEmployeePage((page) => page + 1)}
-                >
+                  onClick={() => setEmployeePage((p) => p + 1)}>
                   Next
                 </button>
               </div>
@@ -613,43 +426,72 @@ function CompanyDetail({ slug }: { slug: string }) {
           </div>
         </div>
 
-        <aside className="space-y-5">
-          <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Company signals</h3>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {company.industry && <span className="chip">{company.industry}</span>}
-              {company.headquarters && <span className="chip">{company.headquarters}</span>}
-              {company.hiringEnabled && <span className="chip">Hiring enabled</span>}
-              {company.referralEnabled && <span className="chip">Referral enabled</span>}
+        {/* Right sidebar */}
+        <aside className="space-y-4">
+          {/* About */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">About</h3>
+            <div className="space-y-2.5 text-xs text-slate-600">
+              {company.industry && <p><span className="font-semibold">Industry:</span> {company.industry}</p>}
+              {company.size && <p><span className="font-semibold">Size:</span> {titleCase(company.size)}</p>}
+              {company.headquarters && <p className="flex items-center gap-1"><MapPin size={11} /> {company.headquarters}</p>}
+              {company.foundedYear && <p><span className="font-semibold">Founded:</span> {company.foundedYear}</p>}
+              {company.rating != null && (
+                <p className="flex items-center gap-1">
+                  <Star size={11} className="text-amber-400" />
+                  <span className="font-semibold">{company.rating.toFixed(1)}</span> company rating
+                </p>
+              )}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {company.hiringEnabled && (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                  Hiring
+                </span>
+              )}
+              {company.referralEnabled && (
+                <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                  Referrals open
+                </span>
+              )}
+              {company.verified && (
+                <span className="flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-700">
+                  <ShieldCheck size={11} /> Verified
+                </span>
+              )}
             </div>
             {company.careersPageUrl && (
-              <a className="btn-primary mt-5 w-full" href={company.careersPageUrl} rel="noreferrer" target="_blank">
-                <BriefcaseBusiness size={16} />
-                Careers page
+              <a
+                className="btn-primary mt-4 w-full text-center"
+                href={company.careersPageUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <BriefcaseBusiness size={15} /> Visit Careers Page
               </a>
             )}
           </div>
 
-          <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Employee preview</h3>
-            <div className="mt-4 space-y-3">
-              {(company.experiences || []).length ? (
-                (company.experiences || []).map((experience) => (
-                  <div className="flex items-center gap-3 rounded-md border border-slate-100 p-3" key={experience.id}>
-                    <Avatar user={experience.user} size="sm" />
+          {/* Employee preview */}
+          {(company.experiences || []).length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="text-sm font-bold text-slate-900 mb-3">Employee Highlights</h3>
+              <div className="space-y-3">
+                {(company.experiences || []).slice(0, 5).map((exp) => (
+                  <div key={exp.id} className="flex items-center gap-2.5">
+                    <Avatar user={exp.user} size="sm" />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">{userName(experience.user)}</div>
-                      <div className="truncate text-xs text-slate-500">{experience.title || "Employee"}</div>
+                      <p className="truncate text-xs font-semibold text-slate-800">{userName(exp.user)}</p>
+                      <p className="truncate text-[10px] text-slate-500">{exp.title || "Employee"}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">Employee previews will appear once profiles add experience.</p>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </aside>
       </div>
+
       {selectedReferralUser && company && (
         <RequestReferralModal
           targetUser={selectedReferralUser}
@@ -661,49 +503,151 @@ function CompanyDetail({ slug }: { slug: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main CompaniesPage
+// ---------------------------------------------------------------------------
 export function CompaniesPage() {
   const { companySlug } = useParams();
   const { user } = useAuth();
-  const [filters, setFilters] = useState({});
-  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, ...filters });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Filter state
+  const [searchQ, setSearchQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState<CompanyType | "">("");
+  const [hiringOnly, setHiringOnly] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, unknown>>({});
+  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, ...appliedFilters });
+  const suggestedQuery = useSuggestedCompaniesQuery();
   const companies = companiesQuery.data?.companies || [];
+  const suggested = suggestedQuery.data || [];
 
-  const totalLabel = useMemo(() => {
-    if (!companiesQuery.data) return "Directory";
-    return `${companiesQuery.data.total} companies`;
-  }, [companiesQuery.data]);
+  const applyFilters = () => {
+    setAppliedFilters({
+      ...(searchQ.trim() ? { q: searchQ.trim() } : {}),
+      ...(typeFilter ? { type: typeFilter } : {}),
+      ...(hiringOnly ? { hiringEnabled: true } : {}),
+      ...(verifiedOnly ? { verified: true } : {}),
+    });
+  };
 
-  if (companySlug) {
-    return <CompanyDetail slug={companySlug} />;
-  }
+  const clearFilters = () => {
+    setSearchQ(""); setTypeFilter(""); setHiringOnly(false); setVerifiedOnly(false);
+    setAppliedFilters({});
+  };
+
+  const hasFilters = Boolean(searchQ || typeFilter || hiringOnly || verifiedOnly);
+
+  if (companySlug) return <CompanyDetail slug={companySlug} />;
 
   return (
-    <section className="space-y-5">
-      <CreateCompanyPanel disabled={!user} />
-      <SuggestedCompaniesPanel />
-      <CompanyFilters onApply={setFilters} />
+    <section className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Companies</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Explore hiring teams, employee signals, and referral-friendly companies.
+          </p>
+        </div>
+        {user && (
+          <button type="button" className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} /> Add Company
+          </button>
+        )}
+      </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-600">{totalLabel}</h3>
-        {companiesQuery.isFetching && (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Loader2 className="animate-spin" size={16} />
-            Loading companies
+      {/* Naukri-style search + filter bar */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap gap-3">
+          {/* Search */}
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              className="field pl-9"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+              placeholder="Company name, industry…"
+            />
           </div>
+
+          {/* Type filter */}
+          <select
+            className="field w-auto min-w-[130px]"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as CompanyType | "")}
+          >
+            <option value="">All Types</option>
+            {companyTypes.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+          </select>
+
+          {/* Toggle chips */}
+          <button
+            type="button"
+            onClick={() => setHiringOnly((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+              hiringOnly
+                ? "border-emerald-400 bg-emerald-600 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300"
+            }`}
+          >
+            Hiring
+          </button>
+          <button
+            type="button"
+            onClick={() => setVerifiedOnly((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+              verifiedOnly
+                ? "border-teal-400 bg-teal-600 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:border-teal-300"
+            }`}
+          >
+            <ShieldCheck size={12} /> Verified
+          </button>
+
+          <button type="button" className="btn-primary" onClick={applyFilters}>
+            <Search size={15} /> Search
+          </button>
+          {hasFilters && (
+            <button type="button" onClick={clearFilters} className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition flex items-center gap-1">
+              <X size={12} /> Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Suggested */}
+      {suggested.length > 0 && !hasFilters && (
+        <div>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+            <TrendingUp size={15} className="text-blue-500" /> Suggested for you
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {suggested.slice(0, 4).map((c) => <CompanyCard key={c.id} company={c} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Directory */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-700">
+            {companiesQuery.data ? `${companiesQuery.data.total} companies` : "Company Directory"}
+          </h2>
+          {companiesQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        </div>
+        {companies.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {companies.map((c) => <CompanyCard key={c.id} company={c} />)}
+          </div>
+        ) : (
+          <EmptyState icon={Building2} title="No companies found" text="Try adjusting your search or filters." />
         )}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        {companies.length ? (
-          companies.map((company) => <CompanyCard company={company} key={company.id} />)
-        ) : (
-          <EmptyState
-            icon={Users}
-            title="No companies found"
-            text="Company records from the backend will appear here."
-          />
-        )}
-      </div>
+      {showCreateModal && <CreateCompanyModal onClose={() => setShowCreateModal(false)} />}
     </section>
   );
 }
