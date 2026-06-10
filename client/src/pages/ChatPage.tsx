@@ -821,7 +821,7 @@ function ActiveConversation({
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/chat"
-              className="xl:hidden text-slate-600 hover:text-emerald-805 p-1 -ml-1 mr-1 rounded-md transition hover:bg-slate-105 flex items-center justify-center shrink-0"
+              className="lg:hidden text-slate-600 hover:text-emerald-805 p-1 -ml-1 mr-1 rounded-md transition hover:bg-slate-105 flex items-center justify-center shrink-0"
               title="Back to conversations"
             >
               <ChevronLeft size={20} />
@@ -999,11 +999,22 @@ export function ChatPage() {
   const conversations = showArchived
     ? (archivedConversationsQuery.data || [])
     : (conversationsQuery.data || []);
-  const activeConversation = conversations.find((conversation) => conversation.id === conversationId);
+
+  // Guarantee client-side sorting by the most recent activity (message time, updated, or created time)
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const dateA = a.lastMessageAt || a.updatedAt || a.createdAt || "";
+      const dateB = b.lastMessageAt || b.updatedAt || b.createdAt || "";
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+  }, [conversations]);
+
+  const activeConversation = sortedConversations.find((conversation) => conversation.id === conversationId);
+
   const filteredConversations = useMemo(() => {
     const normalized = filter.trim().toLowerCase();
 
-    return conversations.filter((conversation) => {
+    return sortedConversations.filter((conversation) => {
       const haystack = [
         conversationName(conversation, user?.id),
         conversationSubtitle(conversation, user?.id),
@@ -1015,21 +1026,21 @@ export function ChatPage() {
 
       return !normalized || haystack.includes(normalized);
     });
-  }, [conversations, filter, user?.id]);
+  }, [sortedConversations, filter, user?.id]);
 
   useEffect(() => {
-    if (!conversationId && conversations[0]?.id) {
-      navigate(`/chat/${conversations[0].id}`, { replace: true });
+    if (!conversationId && sortedConversations[0]?.id) {
+      navigate(`/chat/${sortedConversations[0].id}`, { replace: true });
     }
-  }, [conversationId, conversations, navigate]);
+  }, [conversationId, sortedConversations, navigate]);
 
   if (!user) {
     return <EmptyState icon={MessageSquare} title="Login required" text="Sign in to open your conversations." />;
   }
 
   return (
-    <section className="grid gap-5 xl:grid-cols-[22rem_1fr]">
-      <aside className={`space-y-5 ${conversationId ? "hidden xl:block" : "block"}`}>
+    <section className="grid gap-5 lg:grid-cols-[22rem_1fr]">
+      <aside className={`space-y-5 ${conversationId ? "hidden lg:block" : "block"}`}>
         <StartConversationPanel />
 
         <div className="panel p-4">
@@ -1089,12 +1100,12 @@ export function ChatPage() {
         )}
       </aside>
 
-      <div className={conversationId ? "block" : "hidden xl:block"}>
+      <div className={conversationId ? "block" : "hidden lg:block"}>
         {activeConversation ? (
           <ActiveConversation
             chatSocket={chatSocket}
             conversation={activeConversation}
-            conversations={conversations}
+            conversations={sortedConversations}
           />
         ) : conversationsQuery.isLoading ? (
           <div className="flex items-center gap-2 text-sm text-slate-500">
