@@ -70,26 +70,42 @@ function ConnectionRequestPanel() {
                 </div>
               </div>
               <p className="mt-3 text-sm text-slate-600">{notification.message}</p>
-              <div className="mt-4 flex gap-2">
-                <button
-                  className="btn-primary px-3 py-1.5"
-                  type="button"
-                  disabled={reviewConnection.isPending || !connectionId}
-                  onClick={() => connectionId && reviewConnection.mutate({ connectionId, status: "ACCEPTED" })}
-                >
-                  <Check size={15} />
-                  Accept
-                </button>
-                <button
-                  className="btn-secondary px-3 py-1.5"
-                  type="button"
-                  disabled={reviewConnection.isPending || !connectionId}
-                  onClick={() => connectionId && reviewConnection.mutate({ connectionId, status: "REJECTED" })}
-                >
-                  <X size={15} />
-                  Reject
-                </button>
-              </div>
+              {notification.metadata?.connectionStatus === "ACCEPTED" || notification.metadata?.connectionStatus === "REJECTED" ? (
+                <div className="mt-4 flex items-center gap-1.5 text-sm font-semibold">
+                  {notification.metadata.connectionStatus === "ACCEPTED" ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full text-xs font-semibold">
+                      <UserCheck size={13} />
+                      Accepted
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-100/80 px-2.5 py-1 rounded-full text-xs font-semibold">
+                      <X size={13} />
+                      Rejected
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    className="btn-primary px-3 py-1.5"
+                    type="button"
+                    disabled={reviewConnection.isPending || !connectionId}
+                    onClick={() => connectionId && reviewConnection.mutate({ connectionId, status: "ACCEPTED" })}
+                  >
+                    <Check size={15} />
+                    Accept
+                  </button>
+                  <button
+                    className="btn-secondary px-3 py-1.5"
+                    type="button"
+                    disabled={reviewConnection.isPending || !connectionId}
+                    onClick={() => connectionId && reviewConnection.mutate({ connectionId, status: "REJECTED" })}
+                  >
+                    <X size={15} />
+                    Reject
+                  </button>
+                </div>
+              )}
             </article>
           );
         })}

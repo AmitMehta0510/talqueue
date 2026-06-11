@@ -57,6 +57,7 @@ export type User = {
   skills?: UserSkill[];
   experiences?: Experience[];
   educations?: Education[];
+  ownedProjects?: Project[];
   createdAt?: string;
   updatedAt?: string;
   lastActiveAt?: string | null;

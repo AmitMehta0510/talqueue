@@ -6,6 +6,8 @@ import {
   Building2,
   Code2,
   ExternalLink,
+  FolderKanban,
+  Gift,
   Github,
   Globe,
   GraduationCap,
@@ -27,6 +29,7 @@ import {
   ExperienceCard,
   SkillPill,
 } from "../components/cards/ProfileCards";
+import { ProjectCard } from "../components/cards/ProjectCard";
 import { Avatar, EmptyState, ErrorState, InlineLoader } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -44,7 +47,7 @@ import {
 } from "../lib/format";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 
-type Tab = "about" | "experience" | "skills" | "education";
+type Tab = "about" | "projects" | "experience" | "skills" | "education";
 
 const flattenFollowing = <T, K extends string>(pages: Array<Record<K, T[]>>, key: K) =>
   pages.flatMap((page) => page[key] || []);
@@ -123,6 +126,7 @@ export function UserProfilePage() {
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
     { id: "about",      label: "About",      icon: User },
+    { id: "projects",   label: "Projects",   icon: FolderKanban },
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "skills",     label: "Skills",     icon: Code2 },
     { id: "education",  label: "Education",  icon: GraduationCap },
@@ -187,16 +191,14 @@ export function UserProfilePage() {
                 )}
                 Message
               </button>
-              {profile.acceptingReferrals && (
-                <button
-                  id="user-profile-referral-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700"
-                  onClick={() => setShowReferralModal(true)}
-                >
-                  <Send size={15} />
-                  Request Referral
-                </button>
-              )}
+              <button
+                id="user-profile-referral-btn"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                onClick={() => setShowReferralModal(true)}
+              >
+                <Gift size={15} />
+                Ask Referral
+              </button>
               {isFollowing ? (
                 <button
                   id="user-profile-following-btn"
@@ -341,6 +343,31 @@ export function UserProfilePage() {
                 </div>
               </InfoPanel>
             </div>
+          </div>
+        )}
+
+        {/* PROJECTS */}
+        {activeTab === "projects" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-slate-900">Projects</h2>
+            {(profile.ownedProjects || []).length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(profile.ownedProjects || []).map((proj) => (
+                  <ProjectCard
+                    key={proj.id}
+                    project={proj}
+                    currentUserId={user?.id}
+                    onJoin={() => {}}
+                  />
+                ))}
+              </div>
+            ) : (
+              <BlankSection
+                icon={FolderKanban}
+                title="No projects showcase yet"
+                text="This engineer hasn't listed any public projects yet."
+              />
+            )}
           </div>
         )}
 

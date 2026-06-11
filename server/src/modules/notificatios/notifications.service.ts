@@ -84,6 +84,37 @@ export const getMyNotifications =  async (
         take: safeLimit,
       });
 
+    const connectionIds = notifications
+      .filter((n) => n.type === "CONNECTION_REQUEST" && n.metadata && typeof (n.metadata as any).connectionId === "string")
+      .map((n) => (n.metadata as any).connectionId as string);
+
+    let connectionMap: Record<string, string> = {};
+    if (connectionIds.length > 0) {
+      const connections = await prisma.connection.findMany({
+        where: { id: { in: connectionIds } },
+        select: { id: true, status: true },
+      });
+      connectionMap = connections.reduce((acc, conn) => {
+        acc[conn.id] = conn.status;
+        return acc;
+      }, {} as Record<string, string>);
+    }
+
+    const enrichedNotifications = notifications.map((n) => {
+      if (n.type === "CONNECTION_REQUEST" && n.metadata && typeof (n.metadata as any).connectionId === "string") {
+        const connectionId = (n.metadata as any).connectionId;
+        const status = connectionMap[connectionId] || "PENDING";
+        return {
+          ...n,
+          metadata: {
+            ...(n.metadata as any),
+            connectionStatus: status,
+          },
+        };
+      }
+      return n;
+    });
+
     const unreadCount =
       await prisma.notification.count({
 
@@ -97,7 +128,7 @@ export const getMyNotifications =  async (
       });
 
     return {
-      notifications,
+      notifications: enrichedNotifications,
       unreadCount,
       page: safePage,
       limit: safeLimit,

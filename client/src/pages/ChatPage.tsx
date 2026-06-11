@@ -973,6 +973,7 @@ function ActiveConversation({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
+  const lastScrolledConvId = useRef<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -1012,24 +1013,31 @@ function ActiveConversation({
     return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   }, []);
 
-  // On conversation switch: always jump to bottom instantly
+  // Reset the scroll ref on room switch
   useEffect(() => {
-    const id = setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "instant" as ScrollBehavior });
-    }, 60);
-    return () => clearTimeout(id);
+    lastScrolledConvId.current = null;
   }, [conversation.id]);
 
-  // On new message: only smooth-scroll if user is already near the bottom
+  // On messages load: scroll to bottom instantly (no layout jump/animation)
+  useEffect(() => {
+    if (!messagesQuery.isLoading && messages.length > 0 && lastScrolledConvId.current !== conversation.id) {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        lastScrolledConvId.current = conversation.id;
+      }
+    }
+  }, [messagesQuery.isLoading, messages.length, conversation.id]);
+
+  // On new message: only smooth-scroll if user is already near the bottom and room is initially scrolled
   useEffect(() => {
     if (messagesQuery.isFetchingNextPage) return; // don't scroll when loading older pages
-    if (isNearBottom()) {
+    if (lastScrolledConvId.current === conversation.id && isNearBottom()) {
       const id = setTimeout(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
       }, 60);
       return () => clearTimeout(id);
     }
-  }, [messages.length]);
+  }, [messages.length, conversation.id]);
 
 
   // Preserve scroll position when older messages are prepended

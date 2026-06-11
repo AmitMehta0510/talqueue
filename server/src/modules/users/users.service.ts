@@ -169,6 +169,32 @@ const userFullProfileSelect = {
       role: true,
     },
   },
+
+  ownedProjects: {
+    where: {
+      visibility: "PUBLIC",
+      deletedAt: null,
+      NOT: {
+        status: "DELETED",
+      },
+    },
+    include: {
+      owner: {
+        include: {
+          profile: true,
+        },
+      },
+      _count: {
+        select: {
+          members: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 10,
+  },
 } satisfies Prisma.UserSelect;
 
 const compactEducationInclude = {

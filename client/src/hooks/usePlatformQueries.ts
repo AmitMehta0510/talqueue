@@ -369,14 +369,27 @@ export const useMarkConversationReadMutation = (conversationId?: string) => {
     onMutate: async () => {
       if (!conversationId) return;
 
+      const updateConvList = (conversations: Conversation[] | undefined) =>
+        conversations?.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                unreadCount: 0,
+                participants: conversation.participants?.map((p) =>
+                  p.userId === user?.id ? { ...p, unreadCount: 0 } : p,
+                ),
+              }
+            : conversation,
+        );
+
       queryClient.setQueryData<Conversation[]>(
         queryKeys.chat.conversations(),
-        (conversations) =>
-          conversations?.map((conversation) =>
-            conversation.id === conversationId
-              ? { ...conversation, unreadCount: 0 }
-              : conversation,
-          ),
+        updateConvList,
+      );
+
+      queryClient.setQueryData<Conversation[]>(
+        queryKeys.chat.archived(),
+        updateConvList,
       );
     },
     onSuccess: (result) => {
