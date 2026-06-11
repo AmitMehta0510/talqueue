@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   Check,
@@ -986,11 +986,16 @@ function ActiveConversation({
       .flatMap((page) => page.messages || []);
     // Deduplicate by id to prevent optimistic + socket double-render
     const seen = new Set<string>();
-    return flat.filter((m) => {
+    const deduped = flat.filter((m) => {
       if (seen.has(m.id)) return false;
       seen.add(m.id);
       return true;
     });
+    // Always sort ascending by createdAt so latest message is at the bottom
+    return deduped.sort(
+      (a, b) =>
+        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
+    );
   }, [messagesQuery.data?.pages]);
 
   useEffect(() => {
@@ -1000,15 +1005,32 @@ function ActiveConversation({
     }
   }, [conversation.id, conversation.unreadCount]);
 
-  // Scroll to bottom when new messages arrive or conversation changes
+  // Scroll to bottom on conversation change and when initial messages load
+  const isNearBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }, []);
+
+  // On conversation switch: always jump to bottom instantly
   useEffect(() => {
-    if (!messagesQuery.isFetchingNextPage) {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "instant" as ScrollBehavior });
+    }, 60);
+    return () => clearTimeout(id);
   }, [conversation.id]);
+
+  // On new message: only smooth-scroll if user is already near the bottom
+  useEffect(() => {
+    if (messagesQuery.isFetchingNextPage) return; // don't scroll when loading older pages
+    if (isNearBottom()) {
+      const id = setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      }, 60);
+      return () => clearTimeout(id);
+    }
+  }, [messages.length]);
+
 
   // Preserve scroll position when older messages are prepended
   useEffect(() => {

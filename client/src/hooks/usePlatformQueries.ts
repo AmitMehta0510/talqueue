@@ -2291,6 +2291,25 @@ export const usePlatformSearchMutation = () => {
 
       const q = payload.q.trim();
 
+      // Helper: server returns { user, relevanceScore, matchReasons }[] from searchUsers
+      const flattenUsers = (data: any[]): any[] => {
+        if (!data?.length) return [];
+        // If first item is a raw user (has 'id'), return as-is
+        if (data[0]?.id) return data;
+        // Otherwise flatten the wrapped format
+        return data.map((item: any) => ({
+          ...item.user,
+          affinityScore: item.relevanceScore,
+        }));
+      };
+
+      // Helper: server returns { project, relevanceScore }[] from searchProjects
+      const flattenProjects = (data: any[]): any[] => {
+        if (!data?.length) return [];
+        if (data[0]?.id) return data;
+        return data.map((item: any) => ({ ...item.project, relevanceScore: item.relevanceScore }));
+      };
+
       // ── People ────────────────────────────────────────────────────────────
       if (payload.tab === "people") {
         const f = (payload as any).people || {};
@@ -2302,7 +2321,7 @@ export const usePlatformSearchMutation = () => {
           ...(f.openToWork && { openToWork: true }),
           ...(f.acceptingReferrals && { acceptingReferrals: true }),
         });
-        return { users: result.data };
+        return { users: flattenUsers(result.data as any) };
       }
 
       // ── Projects ──────────────────────────────────────────────────────────
@@ -2314,7 +2333,7 @@ export const usePlatformSearchMutation = () => {
           ...(f.status && { status: f.status }),
           ...(f.acceptingCollaborators && { lookingForCollaborators: true }),
         } as any);
-        return { projects: result.data };
+        return { projects: flattenProjects(result.data as any) };
       }
 
       // ── Jobs ──────────────────────────────────────────────────────────────
@@ -2382,8 +2401,8 @@ export const usePlatformSearchMutation = () => {
       ]);
       return {
         ...(searchQuery ? globalResult.data : {}),
-        users: userResult.data,
-        projects: projectResult.data,
+        users: flattenUsers(userResult.data as any),
+        projects: flattenProjects(projectResult.data as any),
         jobs: jobResult.data,
         companies: companyResult.data,
         communities: communityResult.data,

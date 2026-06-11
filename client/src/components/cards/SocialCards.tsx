@@ -1,4 +1,4 @@
-import { Check, Gift, Link as LinkIcon, Loader2, MessageSquare, UserPlus, Users } from "lucide-react";
+import { Check, CheckCheck, Gift, Link as LinkIcon, Loader2, MessageSquare, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { SuggestedUser, User } from "../../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../../lib/format";
@@ -180,9 +180,9 @@ export function EngineerCard({
                 Connected
               </button>
             ) : connectionStatus === "PENDING" ? (
-              <button className="btn-secondary px-3 py-1.5" type="button" disabled>
-                <Loader2 className="animate-spin" size={15} />
-                Pending…
+              <button className="btn-secondary px-3 py-1.5 text-slate-500" type="button" disabled>
+                <CheckCheck size={15} />
+                Request Sent
               </button>
             ) : (
               <button
@@ -196,6 +196,7 @@ export function EngineerCard({
               </button>
             )
           )}
+
 
           {/* Message — only available once connected */}
           {onMessage && (
@@ -214,6 +215,7 @@ export function EngineerCard({
               Message
             </button>
           )}
+
 
           {/* Ask Referral — available to anyone (no connection required) */}
           {acceptingReferrals && onRequestReferral && (
