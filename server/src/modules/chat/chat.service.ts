@@ -206,7 +206,7 @@ export const createDirectConversation = async (
   createActivity(
     currentUserId,
 
-    "CONVERSATION_STARTED",
+    "MESSAGE_SENT",
 
     "Started conversation",
 
@@ -280,7 +280,7 @@ export const createGroupConversation = async (
 
   createActivity(
     currentUserId,
-    "CONVERSATION_STARTED",
+    "MESSAGE_SENT",
     "Created group conversation",
     `Created ${data.title}`,
     {
