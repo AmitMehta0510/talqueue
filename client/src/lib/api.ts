@@ -53,6 +53,9 @@ export type User = {
     experiences?: number;
     educations?: number;
     roles?: number;
+    posts?: number;
+    projectMemberships?: number;
+    followers?: number;
   };
   skills?: UserSkill[];
   experiences?: Experience[];
@@ -1507,8 +1510,20 @@ export const api = {
       companyCount: number;
       projectCount: number;
       jobCount: number;
+      postCount: number;
+      hackathonCount: number;
+      communityCount: number;
+      referralCount: number;
+      connectionCount: number;
+      messageCount: number;
+      activeJobCount: number;
+      openProjectCount: number;
+      newUsersToday: number;
+      newUsersThisWeek: number;
       statusDistribution: Array<{ status: string; count: number }>;
       trustLevelDistribution: Array<{ trustLevel: string; count: number }>;
+      userRoleDistribution: Array<{ role: string; count: number }>;
+      platformRoleDistribution: Array<{ roleName: string; count: number }>;
     }>("/admin/stats", options),
   listAdminUsers: (params: { search?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{
@@ -1516,6 +1531,8 @@ export const api = {
       nextCursor: string | null;
       hasNextPage: boolean;
     }>(`/admin/users${toQuery(params)}`, options),
+  getAdminUserDetail: (userId: string, options?: EndpointOptions) =>
+    request<any>(`/admin/users/${userId}`, options),
   updateUserStatus: (userId: string, body: { status: "ACTIVE" | "INACTIVE" | "BANNED" }) =>
     request<{ id: string; username: string; status: string }>(`/admin/users/${userId}/status`, {
       method: "PATCH",
@@ -1551,6 +1568,35 @@ export const api = {
     }),
   listCompanyAdmins: (companyId: string, options?: EndpointOptions) =>
     request<any[]>(`/admin/companies/${companyId}/admins`, options),
+  // Content Moderation
+  adminListPosts: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ posts: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/posts${toQuery(params)}`, options),
+  adminDeletePost: (postId: string) =>
+    request<{ message: string }>(`/admin/content/posts/${postId}`, { method: "DELETE" }),
+  adminListHackathons: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ hackathons: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/hackathons${toQuery(params)}`, options),
+  adminUpdateHackathonStatus: (hackathonId: string, body: { status: string }) =>
+    request<any>(`/admin/content/hackathons/${hackathonId}/status`, { method: "PATCH", body }),
+  adminListProjects: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ projects: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/projects${toQuery(params)}`, options),
+  adminUpdateProjectStatus: (projectId: string, body: { status: string }) =>
+    request<any>(`/admin/content/projects/${projectId}/status`, { method: "PATCH", body }),
+  adminListJobs: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ jobs: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/jobs${toQuery(params)}`, options),
+  adminDeleteJob: (jobId: string) =>
+    request<{ message: string }>(`/admin/content/jobs/${jobId}`, { method: "DELETE" }),
+  adminListCommunities: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ communities: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/communities${toQuery(params)}`, options),
+  adminUpdateCommunity: (communityId: string, body: { archived?: boolean; verified?: boolean }) =>
+    request<any>(`/admin/content/communities/${communityId}`, { method: "PATCH", body }),
+  adminListReferrals: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
+    request<{ referrals: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/referrals${toQuery(params)}`, options),
+  // Department Management
+  adminCreateDepartment: (collegeId: string, body: { name: string; hod?: string }) =>
+    request<any>(`/admin/colleges/${collegeId}/departments`, { method: "POST", body }),
+  adminListDepartments: (collegeId: string, options?: EndpointOptions) =>
+    request<any[]>(`/admin/colleges/${collegeId}/departments`, options),
+
   myProjects: (options?: EndpointOptions) =>
     request<Project[]>("/users/me/projects", options),
   searchSkills: (q: string, options?: EndpointOptions) =>

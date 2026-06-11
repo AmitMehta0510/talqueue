@@ -3607,3 +3607,192 @@ export const useListCompanyAdminsQuery = (companyId: string) => {
     enabled: Boolean(user && companyId),
   });
 };
+
+// ─── ADMIN CONTENT MODERATION HOOKS ──────────────────────────────────────────
+
+export const useAdminPostsQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "posts", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListPosts({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminDeletePostMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (postId: string) => api.adminDeletePost(postId),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Post removed");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "posts"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminHackathonsQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "hackathons", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListHackathons({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminUpdateHackathonStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ hackathonId, status }: { hackathonId: string; status: string }) =>
+      api.adminUpdateHackathonStatus(hackathonId, { status }),
+    onSuccess: () => {
+      showToast("success", "Hackathon status updated");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "hackathons"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminProjectsQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "projects", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListProjects({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminUpdateProjectStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ projectId, status }: { projectId: string; status: string }) =>
+      api.adminUpdateProjectStatus(projectId, { status }),
+    onSuccess: () => {
+      showToast("success", "Project status updated");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "projects"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminJobsQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "jobs", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListJobs({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminDeleteJobMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (jobId: string) => api.adminDeleteJob(jobId),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Job removed");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminCommunitiesQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "communities", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListCommunities({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminUpdateCommunityMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ communityId, archived, verified }: { communityId: string; archived?: boolean; verified?: boolean }) =>
+      api.adminUpdateCommunity(communityId, { archived, verified }),
+    onSuccess: () => {
+      showToast("success", "Community updated");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "communities"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminReferralsQuery = (q: string) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  return useInfiniteQuery({
+    queryKey: ["admin", "content", "referrals", q],
+    queryFn: async ({ pageParam, signal }) => {
+      const result = await api.adminListReferrals({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+      return result.data;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+// ─── ADMIN DEPARTMENT MANAGEMENT ──────────────────────────────────────────────
+
+export const useAdminCreateDepartmentMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ collegeId, name, hod }: { collegeId: string; name: string; hod?: string }) =>
+      api.adminCreateDepartment(collegeId, { name, hod }),
+    onSuccess: (_, { collegeId }) => {
+      showToast("success", "Department created successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "departments", collegeId] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminDepartmentsQuery = (collegeId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["admin", "departments", collegeId],
+    queryFn: async ({ signal }) => {
+      const result = await api.adminListDepartments(collegeId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && collegeId),
+  });
+};
+

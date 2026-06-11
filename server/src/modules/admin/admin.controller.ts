@@ -17,9 +17,23 @@ import {
   listCompanyAdmins,
   getAdminStats,
   listUsers,
+  getUserDetail,
   updateUserStatus,
   assignPlatformAdmin,
   removePlatformAdmin,
+  adminListPosts,
+  adminDeletePost,
+  adminListHackathons,
+  adminUpdateHackathonStatus,
+  adminListProjects,
+  adminUpdateProjectStatus,
+  adminListJobs,
+  adminDeleteJob,
+  adminListCommunities,
+  adminUpdateCommunity,
+  adminListReferrals,
+  adminCreateDepartment,
+  adminListDepartments,
 } from "./admin.service";
 
 // ============================================================
@@ -119,6 +133,14 @@ export const listUsersHandler = asyncHandler(
   },
 );
 
+export const getUserDetailHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { userId } = req.params;
+    const user = await getUserDetail(userId);
+    res.json(successResponse(user));
+  },
+);
+
 export const updateUserStatusHandler = asyncHandler(
   async (req: any, res: Response) => {
     const { userId } = req.params;
@@ -147,5 +169,145 @@ export const removePlatformAdminHandler = asyncHandler(
     const result = await removePlatformAdmin(userId, req.user.id);
 
     res.json(successResponse(result, result.message));
+  },
+);
+
+// ============================================================
+// CONTENT MODERATION HANDLERS
+// ============================================================
+
+export const adminListPostsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListPosts({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminDeletePostHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { postId } = req.params;
+    const result = await adminDeletePost(postId);
+    res.json(successResponse(result, result.message));
+  },
+);
+
+export const adminListHackathonsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListHackathons({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminUpdateHackathonStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { hackathonId } = req.params;
+    const { status } = req.body;
+    const result = await adminUpdateHackathonStatus(hackathonId, status);
+    res.json(successResponse(result));
+  },
+);
+
+export const adminListProjectsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListProjects({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminUpdateProjectStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { projectId } = req.params;
+    const { status } = req.body;
+    const result = await adminUpdateProjectStatus(projectId, status);
+    res.json(successResponse(result));
+  },
+);
+
+export const adminListJobsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListJobs({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminDeleteJobHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { jobId } = req.params;
+    const result = await adminDeleteJob(jobId);
+    res.json(successResponse(result, result.message));
+  },
+);
+
+export const adminListCommunitiesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListCommunities({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminUpdateCommunityHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { communityId } = req.params;
+    const { archived, verified } = req.body;
+    const result = await adminUpdateCommunity(communityId, { archived, verified });
+    res.json(successResponse(result));
+  },
+);
+
+export const adminListReferralsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { q, limit, cursor } = req.query as any;
+    const result = await adminListReferrals({
+      q,
+      limit: limit ? parseInt(limit, 10) : 20,
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+// ============================================================
+// DEPARTMENT MANAGEMENT
+// ============================================================
+
+export const adminCreateDepartmentHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const { name, hod } = req.body;
+    const result = await adminCreateDepartment(req.user.id, { name, collegeId, hod });
+    res.status(201).json(successResponse(result, "Department created successfully"));
+  },
+);
+
+export const adminListDepartmentsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const departments = await adminListDepartments(collegeId);
+    res.json(successResponse(departments));
   },
 );
