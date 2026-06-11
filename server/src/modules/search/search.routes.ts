@@ -6,31 +6,19 @@ import {
   searchUsersHandler,
   searchProjectsHandler,
   searchHackathonsHandler,
-
+  searchJobsHandler,
+  searchCompaniesHandler,
+  searchCommunitiesHandler,
 } from "./search.controller";
 
 const router = Router();
 
-router.get(
-  "/global",
-  globalSearchHandler
-);
+router.get("/global", globalSearchHandler);
+router.get("/users", searchUsersHandler);
+router.get("/projects", searchProjectsHandler);
+router.get("/hackathons", searchHackathonsHandler);
+router.get("/jobs", searchJobsHandler);
+router.get("/companies", searchCompaniesHandler);
+router.get("/communities", searchCommunitiesHandler);
 
-router.get(
-  "/users",
-  searchUsersHandler
-);
-
-router.get(
-  "/projects",
-  searchProjectsHandler
-);
-
-
-router.get(
-  "/hackathons",
-  searchHackathonsHandler
-);
-
-
-export default router;
+export default router;

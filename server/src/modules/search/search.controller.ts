@@ -11,15 +11,13 @@ import {
 } from "shared/utils/apiResponse";
 
 import {
-
   globalSearch,
-
   searchUsers,
-
   searchProjects,
-
   searchHackathons,
-
+  searchJobs,
+  searchCompanies,
+  searchCommunities,
 } from "./search.service";
 
 export const globalSearchHandler =  asyncHandler(
@@ -125,56 +123,22 @@ export const searchUsersHandler =asyncHandler(
 //
 // SEARCH PROJECTS
 //
-export const searchProjectsHandler =  asyncHandler(
-    async (
-      req: Request,
-      res: Response
-    ) => {
+export const searchProjectsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const projects = await searchProjects({
+      query: req.query.q?.toString(),
+      techStack: req.query.techStack?.toString().split(",").filter(Boolean),
+      domains: req.query.domains?.toString().split(",").filter(Boolean),
+      difficultyLevels: req.query.difficultyLevels?.toString().split(",").filter(Boolean),
+      verifiedOnly: req.query.verifiedOnly === "true",
+      featuredOnly: req.query.featuredOnly === "true",
+      lookingForCollaborators: req.query.lookingForCollaborators === "true",
+      limit: req.query.limit ? Number(req.query.limit) : 20,
+    });
+    res.json(successResponse(projects));
+  }
+);
 
-      const projects =
-        await searchProjects({
-
-          query:
-            req.query.q?.toString(),
-
-          techStack:
-            req.query.techStack
-              ?.toString()
-              .split(","),
-
-          domains:
-            req.query.domains
-              ?.toString()
-              .split(","),
-
-          difficultyLevels:
-            req.query.difficultyLevels
-              ?.toString()
-              .split(","),
-
-          verifiedOnly:
-            req.query.verifiedOnly ===
-            "true",
-
-          featuredOnly:
-            req.query.featuredOnly ===
-            "true",
-
-          limit:
-            req.query.limit
-              ? Number(
-                  req.query.limit
-                )
-              : 20,
-        });
-
-      res.json(
-        successResponse(
-          projects
-        )
-      );
-    }
-  );
 
 //
 // SEARCH HACKATHONS
@@ -223,3 +187,59 @@ export const searchHackathonsHandler =  asyncHandler(
       );
     }
   );
+
+//
+// SEARCH JOBS
+//
+export const searchJobsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const jobs = await searchJobs({
+      query: req.query.q?.toString(),
+      companyName: req.query.companyName?.toString(),
+      skills: req.query.skills?.toString().split(",").filter(Boolean),
+      workMode: req.query.workMode?.toString(),
+      experienceLevel: req.query.experienceLevel?.toString(),
+      location: req.query.location?.toString(),
+      type: req.query.type?.toString(),
+      salaryMin: req.query.salaryMin ? Number(req.query.salaryMin) : undefined,
+      salaryMax: req.query.salaryMax ? Number(req.query.salaryMax) : undefined,
+      postedWithinDays: req.query.postedWithinDays ? Number(req.query.postedWithinDays) : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : 20,
+    });
+    res.json(successResponse(jobs));
+  }
+);
+
+//
+// SEARCH COMPANIES
+//
+export const searchCompaniesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const companies = await searchCompanies({
+      query: req.query.q?.toString(),
+      industry: req.query.industry?.toString(),
+      size: req.query.size?.toString(),
+      location: req.query.location?.toString(),
+      hiringEnabled: req.query.hiringEnabled === "true" ? true : req.query.hiringEnabled === "false" ? false : undefined,
+      referralEnabled: req.query.referralEnabled === "true" ? true : req.query.referralEnabled === "false" ? false : undefined,
+      verified: req.query.verified === "true" ? true : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : 20,
+    });
+    res.json(successResponse(companies));
+  }
+);
+
+//
+// SEARCH COMMUNITIES
+//
+export const searchCommunitiesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const communities = await searchCommunities({
+      query: req.query.q?.toString(),
+      type: req.query.type?.toString(),
+      category: req.query.category?.toString(),
+      limit: req.query.limit ? Number(req.query.limit) : 20,
+    });
+    res.json(successResponse(communities));
+  }
+);

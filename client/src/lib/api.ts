@@ -1557,6 +1557,9 @@ export const api = {
       `/users/skills/search${toQuery({ q, limit: 12 })}`,
       options,
     ),
+  createCustomSkill: (name: string) =>
+    request<Skill>("/users/skills/create-custom", { method: "POST", body: { name } }),
+
   searchColleges: (q: string) =>
     request<College[]>(`/colleges/search${toQuery({ q })}`),
   colleges: (limit = 50, options?: CursorOptions) => {
@@ -2026,15 +2029,19 @@ export const api = {
     request<ReferralRequest[]>("/referrals/sent", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),
-  searchUsers: (q: string, options?: EndpointOptions) =>
-    request<User[]>(`/search/users${toQuery({ q, limit: 12 })}`, options),
-  searchProjects: (q: string, options?: EndpointOptions) =>
-    request<Project[]>(`/search/projects${toQuery({ q, limit: 12 })}`, options),
-  searchHackathons: (q: string, options?: EndpointOptions) =>
-    request<Hackathon[]>(
-      `/search/hackathons${toQuery({ q, limit: 12 })}`,
-      options,
-    ),
+  searchUsers: (params: { q?: string; collegeIds?: string; departmentIds?: string; graduationYears?: string; skills?: string; openToWork?: boolean; acceptingReferrals?: boolean; limit?: number }, options?: EndpointOptions) =>
+    request<User[]>(`/search/users${toQuery({ ...params, limit: params.limit || 20 })}`, options),
+  searchProjects: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
+    request<Project[]>(`/search/projects${toQuery({ ...params, limit: params.limit || 12 })}`, options),
+  searchHackathons: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
+    request<Hackathon[]>(`/search/hackathons${toQuery({ ...params, limit: params.limit || 12 })}`, options),
+  searchJobs: (params: { q?: string; companyName?: string; skills?: string; workMode?: string; experienceLevel?: string; location?: string; type?: string; salaryMin?: number; salaryMax?: number; postedWithinDays?: number; limit?: number }, options?: EndpointOptions) =>
+    request<Job[]>(`/search/jobs${toQuery({ ...params, limit: params.limit || 20 })}`, options),
+  searchCompanies: (params: { q?: string; industry?: string; size?: string; location?: string; hiringEnabled?: string; referralEnabled?: string; limit?: number }, options?: EndpointOptions) =>
+    request<Company[]>(`/search/companies${toQuery({ ...params, limit: params.limit || 20 })}`, options),
+  searchCommunities: (params: { q?: string; type?: string; category?: string; limit?: number }, options?: EndpointOptions) =>
+    request<Community[]>(`/search/communities${toQuery({ ...params, limit: params.limit || 20 })}`, options),
+
   trackFeedImpression: (body: {
     entityId: string;
     entityType: FeedItemType;

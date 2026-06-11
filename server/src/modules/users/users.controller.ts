@@ -19,6 +19,7 @@ import {
   removeExperience,
   removeSkill,
   searchSkills,
+  upsertSkillByName,
   updateEducation,
   updateExperience,
   updateProfile,
@@ -130,6 +131,18 @@ export const searchSkillsHandler = asyncHandler(
     res.json(
       successResponse(skills)
     );
+  }
+);
+
+export const createCustomSkillHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const name = (req.body.name || "").toString().trim();
+    if (!name || name.length < 2) {
+      res.status(400).json({ success: false, message: "Skill name must be at least 2 characters" });
+      return;
+    }
+    const skill = await upsertSkillByName(name);
+    res.status(201).json(successResponse(skill, "Skill created"));
   }
 );
 

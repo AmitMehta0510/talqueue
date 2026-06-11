@@ -2262,32 +2262,137 @@ export const useReviewConnectionMutation = () => {
   });
 };
 
+export type PlatformSearchPayload =
+  | { tab: "all"; q: string }
+  | { tab: "people"; q: string; people?: { college?: string; year?: string; skills?: string; openToWork?: boolean; acceptingReferrals?: boolean } }
+  | { tab: "projects"; q: string; project?: { techStack?: string; status?: string; acceptingCollaborators?: boolean } }
+  | { tab: "jobs"; q: string; job?: { company?: string; location?: string; workMode?: string; experienceLevel?: string; salaryMin?: string; salaryMax?: string; skills?: string; freshness?: string } }
+  | { tab: "hackathons"; q: string; hack?: { tags?: string; upcomingOnly?: boolean } }
+  | { tab: "companies"; q: string; company?: { industry?: string; location?: string; hiringEnabled?: boolean; referralEnabled?: boolean } }
+  | { tab: "communities"; q: string; community?: { type?: string; category?: string } }
+  | { tab: "posts"; q: string };
+
 export const usePlatformSearchMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (query: string): Promise<SearchResults> => {
-      const trimmed = query.trim();
-
-      if (!trimmed) {
-        return {};
+    mutationFn: async (payload: PlatformSearchPayload | string): Promise<SearchResults> => {
+      // Legacy string support
+      if (typeof payload === "string") {
+        const q = payload.trim();
+        if (!q) return {};
+        const [globalResult, userResult, projectResult] = await Promise.all([
+          api.searchGlobal(q),
+          api.searchUsers({ q }),
+          api.searchProjects({ q }),
+        ]);
+        return { ...globalResult.data, users: userResult.data, projects: projectResult.data };
       }
 
-      const [globalResult, userResult, projectResult] = await Promise.all([
-        api.searchGlobal(trimmed),
-        api.searchUsers(trimmed),
-        api.searchProjects(trimmed),
-      ]);
+      const q = payload.q.trim();
 
+      // ── People ────────────────────────────────────────────────────────────
+      if (payload.tab === "people") {
+        const f = (payload as any).people || {};
+        const result = await api.searchUsers({
+          ...(q && { q }),
+          ...(f.college && { collegeIds: f.college }),
+          ...(f.year && { graduationYears: f.year }),
+          ...(f.skills && { skills: f.skills }),
+          ...(f.openToWork && { openToWork: true }),
+          ...(f.acceptingReferrals && { acceptingReferrals: true }),
+        });
+        return { users: result.data };
+      }
+
+      // ── Projects ──────────────────────────────────────────────────────────
+      if (payload.tab === "projects") {
+        const f = (payload as any).project || {};
+        const result = await api.searchProjects({
+          ...(q && { q }),
+          ...(f.techStack && { techStack: f.techStack }),
+          ...(f.status && { status: f.status }),
+          ...(f.acceptingCollaborators && { lookingForCollaborators: true }),
+        } as any);
+        return { projects: result.data };
+      }
+
+      // ── Jobs ──────────────────────────────────────────────────────────────
+      if (payload.tab === "jobs") {
+        const f = (payload as any).job || {};
+        const result = await api.searchJobs({
+          ...(q && { q }),
+          ...(f.company && { companyName: f.company }),
+          ...(f.location && { location: f.location }),
+          ...(f.workMode && { workMode: f.workMode }),
+          ...(f.experienceLevel && { experienceLevel: f.experienceLevel }),
+          ...(f.skills && { skills: f.skills }),
+          ...(f.salaryMin && { salaryMin: Number(f.salaryMin) }),
+          ...(f.salaryMax && { salaryMax: Number(f.salaryMax) }),
+          ...(f.freshness && { postedWithinDays: Number(f.freshness) }),
+        });
+        return { jobs: result.data };
+      }
+
+      // ── Hackathons ────────────────────────────────────────────────────────
+      if (payload.tab === "hackathons") {
+        const f = (payload as any).hack || {};
+        const result = await api.searchHackathons({
+          ...(q && { q }),
+          ...(f.tags && { tags: f.tags }),
+          ...(f.upcomingOnly && { upcomingOnly: true }),
+        } as any);
+        return { hackathons: result.data };
+      }
+
+      // ── Companies ─────────────────────────────────────────────────────────
+      if (payload.tab === "companies") {
+        const f = (payload as any).company || {};
+        const result = await api.searchCompanies({
+          ...(q && { q }),
+          ...(f.industry && { industry: f.industry }),
+          ...(f.location && { location: f.location }),
+          ...(f.hiringEnabled && { hiringEnabled: "true" }),
+          ...(f.referralEnabled && { referralEnabled: "true" }),
+        });
+        return { companies: result.data };
+      }
+
+      // ── Communities ───────────────────────────────────────────────────────
+      if (payload.tab === "communities") {
+        const f = (payload as any).community || {};
+        const result = await api.searchCommunities({
+          ...(q && { q }),
+          ...(f.type && { type: f.type }),
+          ...(f.category && { category: f.category }),
+        });
+        return { communities: result.data };
+      }
+
+      // ── All (global) ──────────────────────────────────────────────────────
+      // Run with whatever query is available; even empty query returns top results
+      const searchQuery = q || undefined;
+      const [globalResult, userResult, projectResult, jobResult, companyResult, communityResult] = await Promise.all([
+        searchQuery ? api.searchGlobal(searchQuery) : Promise.resolve({ data: {} as any }),
+        api.searchUsers({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
+        api.searchProjects({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
+        api.searchJobs({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
+        api.searchCompanies({ ...(searchQuery && { q: searchQuery }), limit: 8 }),
+        api.searchCommunities({ ...(searchQuery && { q: searchQuery }), limit: 8 }),
+      ]);
       return {
-        ...globalResult.data,
+        ...(searchQuery ? globalResult.data : {}),
         users: userResult.data,
         projects: projectResult.data,
+        jobs: jobResult.data,
+        companies: companyResult.data,
+        communities: communityResult.data,
       };
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
 
 export const useNotificationsQuery = (page = 1, limit = 20) => {
   const { user } = useAuth();
@@ -3288,12 +3393,13 @@ export const useHackathonSearchQuery = (query: string) =>
   useQuery({
     queryKey: queryKeys.search.hackathons(query.trim()),
     queryFn: async ({ signal }) => {
-      const result = await api.searchHackathons(query.trim(), { signal });
+      const result = await api.searchHackathons({ q: query.trim() }, { signal });
       return result.data || [];
     },
     enabled: query.trim().length >= 2,
     staleTime: 60_000,
   });
+
 
 export const useAdminStatsQuery = () => {
   const { user } = useAuth();

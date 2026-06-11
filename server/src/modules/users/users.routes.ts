@@ -6,6 +6,7 @@ import {
   createEducation,
   createExperience,
   createSkill,
+  createCustomSkillHandler,
   deleteEducation,
   deleteExperience,
   deleteSkill,
@@ -37,6 +38,8 @@ router.get("/me/educations", protect, getMeEducations);
 router.get("/me/projects", protect, getMyProjectsHandler);
 
 router.get("/skills/search", protect, searchSkillsHandler);
+
+router.post("/skills/create-custom", protect, createCustomSkillHandler);
 
 router.put("/me", protect, updateMe);
 

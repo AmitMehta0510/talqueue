@@ -4,6 +4,9 @@ import {
   SearchUsersFilters,
   SearchProjectsFilters,
   SearchHackathonsFilters,
+  SearchJobsFilters,
+  SearchCompaniesFilters,
+  SearchCommunitiesFilters,
 } from "./search.types";
 
 import {
@@ -223,76 +226,53 @@ export const searchUsers =  async (
 //
 // PROJECTS
 //
-export const searchProjects =  async (
+export const searchProjects = async (
     filters: SearchProjectsFilters
   ) => {
 
-    const projects =
-      await prisma.project.findMany({
+    const techStackTerms = filters.techStack
+      ?.flatMap((t) => t.split(",").map((s) => s.trim().toLowerCase()))
+      .filter(Boolean) || [];
+
+    const projects = await prisma.project.findMany({
 
         where: {
 
           deletedAt: null,
 
-          visibility:
-            "PUBLIC",
+          visibility: "PUBLIC",
 
           ...(filters.query && {
 
             OR: [
-
-              {
-                title: {
-                  contains:
-                    filters.query,
-                  mode:
-                    "insensitive",
-                },
-              },
-
-              {
-                description: {
-                  contains:
-                    filters.query,
-                  mode:
-                    "insensitive",
-                },
-              },
+              { title: { contains: filters.query, mode: "insensitive" } },
+              { description: { contains: filters.query, mode: "insensitive" } },
             ],
           }),
 
-          ...(filters.verifiedOnly && {
-            verified: true,
+          ...(filters.verifiedOnly && { verified: true }),
+
+          ...(filters.featuredOnly && { featured: true }),
+
+          ...(filters.lookingForCollaborators && { acceptingCollaborators: true }),
+
+          ...(filters.difficultyLevels?.length && {
+            difficulty: { in: filters.difficultyLevels as any },
           }),
 
-          ...(filters.featuredOnly && {
-            featured: true,
-          }),
-
-          ...(filters.domains
-            ?.length && {
-
-            domain: {
-              in:
-                filters.domains,
-            },
+          ...(filters.domains?.length && {
+            domain: { in: filters.domains },
           }),
         },
 
         include: {
-
-          owner: {
-            include: {
-              profile: true,
-            },
-          },
-
+          owner: { include: { profile: true } },
           members: true,
         },
 
-        take:
-          filters.limit || 20,
+        take: filters.limit || 20,
       });
+
 
     const ranked =
       projects.map(
@@ -418,75 +398,178 @@ export const searchHackathons =  async (
   };
 
 //
+// JOBS
+//
+export const searchJobs = async (filters: SearchJobsFilters) => {
+  const postedAfter = filters.postedWithinDays
+    ? new Date(Date.now() - filters.postedWithinDays * 24 * 60 * 60 * 1000)
+    : undefined;
+
+  return prisma.job.findMany({
+    where: {
+      status: "OPEN",
+      deletedAt: null,
+
+      ...(filters.query && {
+        OR: [
+          { title: { contains: filters.query, mode: "insensitive" } },
+          { description: { contains: filters.query, mode: "insensitive" } },
+          { company: { name: { contains: filters.query, mode: "insensitive" } } },
+        ],
+      }),
+
+      ...(filters.companyName && {
+        company: { name: { contains: filters.companyName, mode: "insensitive" } },
+      }),
+
+      ...(filters.workMode && { workMode: filters.workMode as any }),
+      ...(filters.experienceLevel && { experienceLevel: filters.experienceLevel as any }),
+      ...(filters.type && { type: filters.type as any }),
+
+      ...(filters.location && {
+        location: { contains: filters.location, mode: "insensitive" },
+      }),
+
+      ...(filters.salaryMin !== undefined && { salaryMax: { gte: filters.salaryMin } }),
+      ...(filters.salaryMax !== undefined && { salaryMin: { lte: filters.salaryMax } }),
+
+      ...(postedAfter && { createdAt: { gte: postedAfter } }),
+
+      ...(filters.skills?.length && {
+        skillsRequired: { hasSome: filters.skills },
+      }),
+    },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      location: true,
+      workMode: true,
+      type: true,
+      experienceLevel: true,
+      salaryMin: true,
+      salaryMax: true,
+      createdAt: true,
+      featured: true,
+      skillsRequired: true,
+      company: {
+        select: { id: true, name: true, logoUrl: true, verified: true },
+      },
+    },
+    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+    take: filters.limit || 20,
+  });
+};
+
+//
+// COMPANIES
+//
+export const searchCompanies = async (filters: SearchCompaniesFilters) => {
+  return prisma.company.findMany({
+    where: {
+      ...(filters.query && {
+        OR: [
+          { name: { contains: filters.query, mode: "insensitive" } },
+          { description: { contains: filters.query, mode: "insensitive" } },
+          { tagline: { contains: filters.query, mode: "insensitive" } },
+        ],
+      }),
+      ...(filters.industry && {
+        industry: { contains: filters.industry, mode: "insensitive" },
+      }),
+      ...(filters.size && { size: filters.size as any }),
+      ...(filters.location && {
+        headquarters: { contains: filters.location, mode: "insensitive" },
+      }),
+      ...(filters.hiringEnabled !== undefined && { hiringEnabled: filters.hiringEnabled }),
+      ...(filters.referralEnabled !== undefined && { referralEnabled: filters.referralEnabled }),
+      ...(filters.verified !== undefined && { verified: filters.verified }),
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logoUrl: true,
+      tagline: true,
+      description: true,
+      industry: true,
+      headquarters: true,
+      size: true,
+      verified: true,
+      hiringEnabled: true,
+      referralEnabled: true,
+    },
+    orderBy: [{ verified: "desc" }, { name: "asc" }],
+    take: filters.limit || 20,
+  });
+};
+
+//
+// COMMUNITIES
+//
+export const searchCommunities = async (filters: SearchCommunitiesFilters) => {
+  return prisma.community.findMany({
+    where: {
+      ...(filters.query && {
+        OR: [
+          { name: { contains: filters.query, mode: "insensitive" } },
+          { description: { contains: filters.query, mode: "insensitive" } },
+          { shortDescription: { contains: filters.query, mode: "insensitive" } },
+        ],
+      }),
+      ...(filters.type && { type: filters.type as any }),
+      ...(filters.category && { category: filters.category as any }),
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      avatarUrl: true,
+      shortDescription: true,
+      description: true,
+      type: true,
+      category: true,
+      memberCount: true,
+      postCount: true,
+      trendingScore: true,
+      _count: { select: { members: true, posts: true } },
+    },
+    orderBy: [{ trendingScore: "desc" }, { memberCount: "desc" }],
+    take: filters.limit || 20,
+  });
+};
+
+//
 // GLOBAL SEARCH
 //
-export const globalSearch =  async (
-    query: string
-  ) => {
+export const globalSearch = async (query: string) => {
+  const [users, projects, hackathons, jobs, companies, communities] = await Promise.all([
+    searchUsers({ query, limit: 6 }),
+    searchProjects({ query, limit: 6 }),
+    searchHackathons({ query, limit: 6 }),
+    searchJobs({ query, limit: 6 }),
+    searchCompanies({ query, limit: 6 }),
+    searchCommunities({ query, limit: 6 }),
+  ]);
 
-    const [
-      users,
-      projects,
-      hackathons,
-    ] = await Promise.all([
-      searchUsers({
-        query,
-        limit: 8,
-      }),
+  const topResults = [
+    ...users.map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),
+    ...projects.map((p) => ({ type: "PROJECT", score: p.relevanceScore, data: p.project })),
+    ...hackathons.map((h) => ({ type: "HACKATHON", score: h.relevanceScore, data: h.hackathon })),
+    ...jobs.map((j) => ({ type: "JOB", score: (j.featured ? 2 : 1), data: j })),
+    ...companies.map((c) => ({ type: "COMPANY", score: c.verified ? 2 : 1, data: c })),
+    ...communities.map((c) => ({ type: "COMMUNITY", score: c.trendingScore || 0, data: c })),
+  ];
 
-      searchProjects({
-        query,
-        limit: 8,
-      }),
+  topResults.sort((a, b) => b.score - a.score);
 
-      searchHackathons({
-        query,
-        limit: 8,
-      }),
-    ]);
-
-    const topResults = [
-
-      ...users.map((u) => ({
-        type: "USER",
-        score:
-          u.relevanceScore,
-        data: u.user,
-      })),
-
-      ...projects.map(
-        (p) => ({
-          type:
-            "PROJECT",
-          score:
-            p.relevanceScore,
-          data:
-            p.project,
-        })
-      ),
-
-      ...hackathons.map(
-        (h) => ({
-          type:
-            "HACKATHON",
-          score:
-            h.relevanceScore,
-          data:
-            h.hackathon,
-        })
-      ),
-    ];
-
-    topResults.sort(
-      (a, b) =>
-        b.score - a.score
-    );
-
-    return {
-      users,
-      projects,
-      hackathons,
-      topResults:
-        topResults.slice(0, 15),
-    };
+  return {
+    users,
+    projects,
+    hackathons,
+    jobs,
+    companies,
+    communities,
+    topResults: topResults.slice(0, 15),
   };
+};

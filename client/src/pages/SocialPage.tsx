@@ -146,9 +146,8 @@ function SearchPanel() {
             users.map((foundUser) => (
               <EngineerCard
                 disabled={followUser.isPending || connectUser.isPending}
-                isFollowing={followingIds.has(foundUser.id)}
                 key={foundUser.id}
-                user={foundUser}
+                user={{ ...foundUser, isFollowing: followingIds.has(foundUser.id) } as any}
                 onConnect={(item) => connectUser.mutate(item.id)}
                 onFollow={(item) => followUser.mutate(item.id)}
                 onOpenProfile={(item) => navigate(`/users/${item.id}`)}
@@ -248,24 +247,32 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
         {users.filter((item) => item.user).length ? (
           users
             .filter((item): item is { user: User; context?: string; key: string } => Boolean(item.user))
-            .map((item) => (
-              <EngineerCard
-                context={item.context}
-                disabled={
-                  followUser.isPending ||
-                  connectUser.isPending ||
-                  createDirectConversation.isPending ||
-                  item.user.id === user?.id
-                }
-                isFollowing={followingIds.has(item.user.id)}
-                key={item.key}
-                user={item.user}
-                onConnect={activeTab === "connections" ? undefined : (target) => connectUser.mutate(target.id)}
-                onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
-                onMessage={activeTab === "connections" ? startConversation : undefined}
-                onOpenProfile={(target) => navigate(`/users/${target.id}`)}
-              />
-            ))
+            .map((item) => {
+              // Enrich with follow/connection status so EngineerCard initializes correctly
+              const enriched = {
+                ...item.user,
+                isFollowing: followingIds.has(item.user.id),
+                connectionStatus: activeTab === "connections" ? "ACCEPTED" : undefined,
+              } as any;
+              return (
+                <EngineerCard
+                  context={item.context}
+                  currentUserId={user?.id}
+                  disabled={
+                    followUser.isPending ||
+                    connectUser.isPending ||
+                    createDirectConversation.isPending ||
+                    item.user.id === user?.id
+                  }
+                  key={item.key}
+                  user={enriched}
+                  onConnect={activeTab === "connections" ? undefined : (target) => connectUser.mutate(target.id)}
+                  onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
+                  onMessage={activeTab === "connections" ? startConversation : undefined}
+                  onOpenProfile={(target) => navigate(`/users/${target.id}`)}
+                />
+              );
+            })
         ) : (
           <EmptyState icon={Inbox} title="Nothing here yet" text="Your social graph will fill in as you interact." />
         )}

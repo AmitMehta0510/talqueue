@@ -971,6 +971,8 @@ function ActiveConversation({
   const [editContent, setEditContent] = useState("");
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollHeightRef = useRef<number>(0);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -998,12 +1000,54 @@ function ActiveConversation({
     }
   }, [conversation.id, conversation.unreadCount]);
 
+  // Scroll to bottom when new messages arrive or conversation changes
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages.length, conversation.id]);
+    if (!messagesQuery.isFetchingNextPage) {
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [conversation.id]);
+
+  // Preserve scroll position when older messages are prepended
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (messagesQuery.isFetchingNextPage) {
+      prevScrollHeightRef.current = el.scrollHeight;
+    } else {
+      const diff = el.scrollHeight - prevScrollHeightRef.current;
+      if (diff > 0 && prevScrollHeightRef.current > 0) {
+        el.scrollTop = diff;
+        prevScrollHeightRef.current = 0;
+      }
+    }
+  }, [messagesQuery.isFetchingNextPage, messages.length]);
+
+  // IntersectionObserver: auto-load older messages when sentinel is visible (user scrolled to top)
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0]?.isIntersecting &&
+          messagesQuery.hasNextPage &&
+          !messagesQuery.isFetchingNextPage
+        ) {
+          const el = scrollRef.current;
+          if (el) prevScrollHeightRef.current = el.scrollHeight;
+          messagesQuery.fetchNextPage();
+        }
+      },
+      { root: scrollRef.current, threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [messagesQuery.hasNextPage, messagesQuery.isFetchingNextPage, messagesQuery.fetchNextPage]);
 
   const typingOthers = useMemo(() => typingUserIds.filter((id) => id !== user?.id), [typingUserIds, user?.id]);
   const typingNames = useMemo(() => {
@@ -1092,16 +1136,13 @@ function ActiveConversation({
         </header>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-slate-50/70 p-4" ref={scrollRef}>
-          {messagesQuery.hasNextPage && (
-            <button
-              className="btn-secondary mx-auto mb-4 flex"
-              type="button"
-              disabled={messagesQuery.isFetchingNextPage}
-              onClick={() => messagesQuery.fetchNextPage()}
-            >
-              {messagesQuery.isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} />}
-              Load older
-            </button>
+          {/* Sentinel for IntersectionObserver – sits at the top of the scroll container */}
+          <div ref={sentinelRef} className="h-px w-full" />
+          {messagesQuery.isFetchingNextPage && (
+            <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
+              <Loader2 className="animate-spin" size={14} />
+              Loading older messages…
+            </div>
           )}
 
           {messagesQuery.isLoading ? (

@@ -1680,8 +1680,6 @@ function SettingsTab({
   );
 }
 
-// ─── Skill Manager ────────────────────────────────────────────────────────────
-
 function SkillManager({
   adding,
   onAddSkill,
@@ -1696,6 +1694,7 @@ function SkillManager({
 }) {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT">("INTERMEDIATE");
+  const [creatingCustom, setCreatingCustom] = useState(false);
   const skillSearch = useSkillSearchQuery(query);
 
   const add = async (skill: Skill) => {
@@ -1706,6 +1705,25 @@ function SkillManager({
       // Mutation hook shows toast
     }
   };
+
+  const addCustomSkill = async () => {
+    if (!query.trim() || query.trim().length < 2) return;
+    setCreatingCustom(true);
+    try {
+      const result = await api.createCustomSkill(query.trim());
+      await onAddSkill({ skillId: result.data.id, level });
+      setQuery("");
+    } catch {
+      // error shown by hook
+    } finally {
+      setCreatingCustom(false);
+    }
+  };
+
+  const noResults =
+    query.length >= 2 &&
+    !skillSearch.isFetching &&
+    (!skillSearch.data || skillSearch.data.length === 0);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1748,9 +1766,20 @@ function SkillManager({
                       )}
                     </button>
                   ))
-                ) : (
-                  <p className="p-3 text-sm text-slate-500">No matching skills found.</p>
-                )}
+                ) : noResults ? (
+                  <div className="p-3">
+                    <p className="text-sm text-slate-500">No matching skills found.</p>
+                    <button
+                      className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                      type="button"
+                      disabled={creatingCustom || adding}
+                      onClick={addCustomSkill}
+                    >
+                      {creatingCustom ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                      Add "{query.trim()}" as a custom skill
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -1769,6 +1798,7 @@ function SkillManager({
     </div>
   );
 }
+
 
 // ─── Shared small components ──────────────────────────────────────────────────
 

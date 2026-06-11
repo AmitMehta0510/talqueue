@@ -654,6 +654,25 @@ export const searchSkills = async (query: string, limit = 12) => {
   });
 };
 
+export const upsertSkillByName = async (rawName: string) => {
+  const name = rawName.trim();
+  if (!name || name.length < 2) {
+    throw new AppError("Skill name must be at least 2 characters", 400);
+  }
+
+  // Check if skill already exists (case-insensitive)
+  const existing = await prisma.skill.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+  });
+
+  if (existing) return existing;
+
+  return prisma.skill.create({
+    data: { name },
+  });
+};
+
+
 export const updateProfile = async (
   userId: string,
   data: UpdateProfileData,
