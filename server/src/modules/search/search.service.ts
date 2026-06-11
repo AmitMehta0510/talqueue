@@ -81,6 +81,17 @@ export const searchUsers =  async (
             },
           }),
 
+          ...(filters.collegeName && {
+            profile: {
+              college: {
+                name: {
+                  contains: filters.collegeName,
+                  mode: "insensitive",
+                },
+              },
+            },
+          }),
+
           ...(filters.departmentIds
             ?.length && {
 

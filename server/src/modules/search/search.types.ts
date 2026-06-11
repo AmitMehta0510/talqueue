@@ -1,6 +1,7 @@
 export interface SearchUsersFilters {
   query?: string;
   collegeIds?: string[];
+  collegeName?: string;
   departmentIds?: string[];
   graduationYears?: number[];
   skills?: string[];

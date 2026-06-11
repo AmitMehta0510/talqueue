@@ -2030,7 +2030,7 @@ export const api = {
     request<ReferralRequest[]>("/referrals/sent", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),
-  searchUsers: (params: { q?: string; collegeIds?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; limit?: number }, options?: EndpointOptions) =>
+  searchUsers: (params: { q?: string; collegeIds?: string; collegeName?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<User[]>(`/search/users${toQuery({ ...params, limit: params.limit || 20 })}`, options),
   searchProjects: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
     request<Project[]>(`/search/projects${toQuery({ ...params, limit: params.limit || 12 })}`, options),

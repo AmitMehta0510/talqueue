@@ -284,6 +284,14 @@ export function DiscoverPage() {
   // Filters open by default for filterable tabs
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // When switching tabs, reset the search so stale results don't pollute the new tab
+  const handleTabChange = useCallback((tab: TabKey) => {
+    if (tab !== activeTab) {
+      search.reset();
+      setActiveTab(tab);
+    }
+  }, [activeTab, search]);
+
   // Per-tab filter state
   const [peopleF, setPeopleF] = useState<PeopleFilters>(emptyPeople);
   const [projectF, setProjectF] = useState<ProjectFilters>(emptyProject);
@@ -561,7 +569,7 @@ export function DiscoverPage() {
                   }`}
                   key={tab.key}
                   type="button"
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleTabChange(tab.key)}
                 >
                   <Icon size={15} />
                   {tab.label}

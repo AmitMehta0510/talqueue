@@ -62,6 +62,8 @@ export const searchUsersHandler =asyncHandler(
               ?.toString()
               .split(","),
 
+          collegeName: req.query.collegeName?.toString() || undefined,
+
           departmentIds:
             req.query.departmentIds
               ?.toString()
@@ -88,23 +90,19 @@ export const searchUsersHandler =asyncHandler(
               ?.toString()
               .split(","),
 
-          role: req.query.role?.toString(),
+          role: req.query.role?.toString() || undefined,
 
           openToWork:
-            req.query.openToWork ===
-            "true",
+            req.query.openToWork === "true" ? true : undefined,
 
           openToInternship:
-            req.query.openToInternship ===
-            "true",
+            req.query.openToInternship === "true" ? true : undefined,
 
           acceptingCollaborators:
-            req.query.acceptingCollaborators ===
-            "true",
+            req.query.acceptingCollaborators === "true" ? true : undefined,
 
           acceptingReferrals:
-            req.query.acceptingReferrals ===
-            "true",
+            req.query.acceptingReferrals === "true" ? true : undefined,
 
           limit:
             req.query.limit

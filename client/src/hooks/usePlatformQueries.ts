@@ -2328,7 +2328,7 @@ export const usePlatformSearchMutation = () => {
         const f = (payload as any).people || {};
         const result = await api.searchUsers({
           ...(q && { q }),
-          ...(f.college && { collegeIds: f.college }),
+          ...(f.college && { collegeName: f.college }),
           ...(f.year && { graduationYears: f.year }),
           ...(f.skills && { skills: f.skills }),
           ...(f.openToWork && { openToWork: true }),
