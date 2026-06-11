@@ -97,6 +97,7 @@ interface PeopleFilters {
   college: string;
   year: string;
   skills: string;
+  role: string;
   openToWork: boolean;
   acceptingReferrals: boolean;
 }
@@ -135,7 +136,7 @@ interface CommunityFilters {
   category: string;
 }
 
-const emptyPeople: PeopleFilters = { college: "", year: "", skills: "", openToWork: false, acceptingReferrals: false };
+const emptyPeople: PeopleFilters = { college: "", year: "", skills: "", role: "", openToWork: false, acceptingReferrals: false };
 const emptyProject: ProjectFilters = { techStack: "", status: "", acceptingCollaborators: false };
 const emptyJob: JobFilters = { company: "", location: "", workMode: "", experienceLevel: "", salaryMin: "", salaryMax: "", skills: "", freshness: "" };
 const emptyHackathon: HackathonFilters = { tags: "", upcomingOnly: false };
@@ -600,6 +601,15 @@ export function DiscoverPage() {
                   </FilterField>
                   <FilterField label="Skills (comma separated)">
                     <input className="field" value={peopleF.skills} onChange={(e) => setPeopleF({ ...peopleF, skills: e.target.value })} placeholder="React, Python, Flutter..." />
+                  </FilterField>
+                  <FilterField label="Role / User type">
+                    <select className="field" value={peopleF.role} onChange={(e) => setPeopleF({ ...peopleF, role: e.target.value })}>
+                      <option value="">Any role</option>
+                      <option value="STUDENT">🎓 Student</option>
+                      <option value="PROFESSOR">🏫 Professor / Faculty</option>
+                      <option value="RECRUITER">💼 Recruiter</option>
+                      <option value="WORKING_PROFESSIONAL">🧑‍💻 Working Professional</option>
+                    </select>
                   </FilterField>
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
                     <input type="checkbox" checked={peopleF.openToWork} onChange={(e) => setPeopleF({ ...peopleF, openToWork: e.target.checked })} />

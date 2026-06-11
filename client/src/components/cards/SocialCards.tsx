@@ -1,4 +1,4 @@
-import { Check, CheckCheck, Gift, Link as LinkIcon, Loader2, MessageSquare, UserPlus, Users } from "lucide-react";
+import { Check, CheckCheck, Gift, Link as LinkIcon, MessageSquare, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { SuggestedUser, User } from "../../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../../lib/format";
@@ -19,7 +19,6 @@ export function EngineerCard({
 }: {
   user: User | SuggestedUser;
   context?: string;
-  /** The logged-in user's ID — hides action buttons on own card */
   currentUserId?: string;
   disabled?: boolean;
   onConnect?: (user: User | SuggestedUser) => void;
@@ -35,25 +34,17 @@ export function EngineerCard({
     .filter(Boolean)
     .slice(0, 4) as string[];
 
-  // ── Connection state machine ─────────────────────────────────────────────
-  // Initialise from whatever the API returned; default to NONE
   const initConnection: ConnectionStatus =
     ((user as any).connectionStatus as ConnectionStatus) || "NONE";
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(initConnection);
 
-  // ── Follow state ─────────────────────────────────────────────────────────
-  // Initialise from API (isFollowing field) or default false
   const [isFollowing, setIsFollowing] = useState<boolean>(
     Boolean((user as any).isFollowing),
   );
 
   const isSelf = Boolean(currentUserId && user.id === currentUserId);
-  const acceptingReferrals = Boolean((user as any).acceptingReferrals);
-
-  // Connected users can message each other; referrals are always open
   const canMessage = connectionStatus === "ACCEPTED";
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleConnect = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onConnect || connectionStatus !== "NONE") return;
@@ -77,6 +68,13 @@ export function EngineerCard({
   const handleReferral = (e: React.MouseEvent) => {
     e.stopPropagation();
     onRequestReferral?.(user);
+  };
+
+  const roleLabel: Record<string, string> = {
+    STUDENT: "Student",
+    PROFESSOR: "Professor",
+    RECRUITER: "Recruiter",
+    WORKING_PROFESSIONAL: "Professional",
   };
 
   return (
@@ -104,6 +102,11 @@ export function EngineerCard({
                 <span className="chip shrink-0 text-emerald-700">
                   <Check size={13} />
                   Verified
+                </span>
+              )}
+              {(user as any).role && (
+                <span className="chip shrink-0">
+                  {roleLabel[(user as any).role] ?? titleCase((user as any).role)}
                 </span>
               )}
             </div>
@@ -134,7 +137,7 @@ export function EngineerCard({
         ))}
       </div>
 
-      {/* Chips */}
+      {/* Skills + score chips */}
       <div className="mt-4 flex flex-wrap gap-2">
         {context && <span className="chip">{context}</span>}
         {suggested.collaborationScore !== undefined && (
@@ -180,7 +183,7 @@ export function EngineerCard({
                 Connected
               </button>
             ) : connectionStatus === "PENDING" ? (
-              <button className="btn-secondary px-3 py-1.5 text-slate-500" type="button" disabled>
+              <button className="btn-secondary px-3 py-1.5 text-slate-400" type="button" disabled>
                 <CheckCheck size={15} />
                 Request Sent
               </button>
@@ -191,24 +194,23 @@ export function EngineerCard({
                 disabled={disabled}
                 onClick={handleConnect}
               >
-                <LinkIcon size={15} />
+                <Link size={15} />
                 Connect
               </button>
             )
           )}
 
-
-          {/* Message — only available once connected */}
+          {/* Message — show always when handler given, disabled until connected */}
           {onMessage && (
             <button
-              className={`px-3 py-1.5 inline-flex items-center gap-1.5 rounded-lg border text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                 canMessage
                   ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50"
                   : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400"
               }`}
               type="button"
               disabled={!canMessage || disabled}
-              title={canMessage ? "Send message" : "Connect first to send messages"}
+              title={canMessage ? "Open chat" : "Connect first to send messages"}
               onClick={handleMessage}
             >
               <MessageSquare size={14} />
@@ -216,9 +218,8 @@ export function EngineerCard({
             </button>
           )}
 
-
-          {/* Ask Referral — available to anyone (no connection required) */}
-          {acceptingReferrals && onRequestReferral && (
+          {/* Ask Referral — ALWAYS show when handler is provided; server validates eligibility */}
+          {onRequestReferral && (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
               type="button"
@@ -241,5 +242,15 @@ export function TeamRoleBadge({ value }: { value?: string | null }) {
       <Users size={13} />
       {titleCase(value || "MEMBER")}
     </span>
+  );
+}
+
+// Re-export Link icon fix
+function Link({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
   );
 }

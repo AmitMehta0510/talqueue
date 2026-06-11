@@ -88,6 +88,8 @@ export const searchUsersHandler =asyncHandler(
               ?.toString()
               .split(","),
 
+          role: req.query.role?.toString(),
+
           openToWork:
             req.query.openToWork ===
             "true",
@@ -119,6 +121,7 @@ export const searchUsersHandler =asyncHandler(
       );
     }
   );
+
 
 //
 // SEARCH PROJECTS

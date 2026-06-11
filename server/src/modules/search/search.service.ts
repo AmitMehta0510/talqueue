@@ -139,16 +139,16 @@ export const searchUsers =  async (
               filters.openToInternship,
           }),
 
-          ...(filters.acceptingCollaborators !==
-            undefined && {
-            acceptingCollaborators:
-              filters.acceptingCollaborators,
+          ...(filters.acceptingCollaborators !== undefined && {
+            acceptingCollaborators: filters.acceptingCollaborators,
           }),
 
-          ...(filters.acceptingReferrals !==
-            undefined && {
-            acceptingReferrals:
-              filters.acceptingReferrals,
+          ...(filters.acceptingReferrals !== undefined && {
+            acceptingReferrals: filters.acceptingReferrals,
+          }),
+
+          ...(filters.role && {
+            role: filters.role as any,
           }),
 
           ...(filters.companyNames

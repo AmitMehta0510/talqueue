@@ -2264,7 +2264,7 @@ export const useReviewConnectionMutation = () => {
 
 export type PlatformSearchPayload =
   | { tab: "all"; q: string }
-  | { tab: "people"; q: string; people?: { college?: string; year?: string; skills?: string; openToWork?: boolean; acceptingReferrals?: boolean } }
+  | { tab: "people"; q: string; people?: { college?: string; year?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean } }
   | { tab: "projects"; q: string; project?: { techStack?: string; status?: string; acceptingCollaborators?: boolean } }
   | { tab: "jobs"; q: string; job?: { company?: string; location?: string; workMode?: string; experienceLevel?: string; salaryMin?: string; salaryMax?: string; skills?: string; freshness?: string } }
   | { tab: "hackathons"; q: string; hack?: { tags?: string; upcomingOnly?: boolean } }
@@ -2320,6 +2320,7 @@ export const usePlatformSearchMutation = () => {
           ...(f.skills && { skills: f.skills }),
           ...(f.openToWork && { openToWork: true }),
           ...(f.acceptingReferrals && { acceptingReferrals: true }),
+          ...(f.role && { role: f.role }),
         });
         return { users: flattenUsers(result.data as any) };
       }

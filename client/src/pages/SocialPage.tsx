@@ -252,6 +252,7 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
               const enriched = {
                 ...item.user,
                 isFollowing: followingIds.has(item.user.id),
+                // Mark as ACCEPTED for connections so Message button is enabled
                 connectionStatus: activeTab === "connections" ? "ACCEPTED" : undefined,
               } as any;
               return (
@@ -268,8 +269,9 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
                   user={enriched}
                   onConnect={activeTab === "connections" ? undefined : (target) => connectUser.mutate(target.id)}
                   onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
-                  onMessage={activeTab === "connections" ? startConversation : undefined}
+                  onMessage={startConversation}
                   onOpenProfile={(target) => navigate(`/users/${target.id}`)}
+                  onRequestReferral={(target) => navigate(`/discover?referral=${target.id}`)}
                 />
               );
             })

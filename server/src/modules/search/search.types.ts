@@ -6,6 +6,7 @@ export interface SearchUsersFilters {
   skills?: string[];
   trustLevels?: string[];
   companyNames?: string[];
+  role?: string;
   minEngineeringScore?: number;
   maxEngineeringScore?: number;
   openToWork?: boolean;
