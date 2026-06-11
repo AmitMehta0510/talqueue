@@ -70,6 +70,8 @@ export const addExperienceSchema = z.object({
 
   managerLinkedinUrl: z.string().optional(),
 
+  companyWebsiteUrl: z.string().optional(),
+
   documents: z.any().optional(),
 
   skillsUsed: z.array(z.string()).optional(),
@@ -124,6 +126,8 @@ export const updateExperienceSchema = z.object({
 
   managerLinkedinUrl: z.string().optional(),
 
+  companyWebsiteUrl: z.string().optional(),
+
   skillsUsed: z.array(z.string()).optional(),
 
   techStack: z.array(z.string()).optional(),
@@ -132,6 +136,10 @@ export const updateExperienceSchema = z.object({
 });
 
 export const updateEducationSchema = z.object({
+  collegeId: z.string().uuid().optional(),
+
+  departmentId: z.string().uuid().optional(),
+
   degree: z.string().optional(),
 
   fieldOfStudy: z.string().optional(),

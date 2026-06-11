@@ -129,6 +129,7 @@ export type Experience = {
     name?: string;
     logoUrl?: string | null;
     verified?: boolean;
+    websiteUrl?: string | null;
   } | null;
 };
 
@@ -1448,6 +1449,7 @@ export const api = {
   }) => request<User>("/users/me", { method: "PUT", body }),
   addExperience: (body: {
     companyName: string;
+    companyWebsiteUrl?: string;
     title: string;
     employmentType: string;
     startDate: string;
@@ -1482,6 +1484,7 @@ export const api = {
   deleteEducation: (educationId: string) =>
     request<{ id: string }>(`/users/me/educations/${educationId}`, { method: "DELETE" }),
   updateExperience: (experienceId: string, body: {
+    companyWebsiteUrl?: string;
     title?: string;
     employmentType?: string;
     startDate?: string;
@@ -1497,6 +1500,8 @@ export const api = {
     teamSize?: number;
   }) => request<Experience>(`/users/me/experiences/${experienceId}`, { method: "PUT", body }),
   updateEducation: (educationId: string, body: {
+    collegeId?: string;
+    departmentId?: string;
     degree?: string;
     fieldOfStudy?: string;
     startYear?: number;

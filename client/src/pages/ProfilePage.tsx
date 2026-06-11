@@ -39,7 +39,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { api, College, Project, Skill, User as UserType } from "../lib/api";
+import { api, College, Department, Project, Skill, User as UserType } from "../lib/api";
 import {
   compactPayload,
   formatCount,
@@ -87,6 +87,7 @@ const MAX_SKILLS = 30;
 
 const emptyExperienceForm = {
   companyName: "",
+  companyWebsiteUrl: "",
   title: "",
   employmentType: "FULL_TIME",
   startDate: "",
@@ -103,6 +104,9 @@ const emptyExperienceForm = {
 };
 
 const emptyEducationForm = {
+  collegeId: "",
+  collegeName: "",
+  departmentId: "",
   degree: "",
   fieldOfStudy: "",
   startYear: "",
@@ -227,15 +231,11 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     linkedinUrl: profile.profile?.linkedinUrl || "",
     portfolioUrl: profile.profile?.portfolioUrl || "",
     graduationYear: profile.profile?.graduationYear?.toString() || "",
-    collegeId: profile.profile?.collegeId || "",
-    departmentId: profile.profile?.departmentId || "",
   });
   const [experienceForm, setExperienceForm] = useState(emptyExperienceForm);
   const [educationForm, setEducationForm] = useState(emptyEducationForm);
-  const [newDepartment, setNewDepartment] = useState("");
 
-  const departmentsQuery = useDepartmentsQuery(profileForm.collegeId || undefined);
-  const createDepartment = useCreateDepartmentMutation(profileForm.collegeId || undefined);
+  const departmentsQuery = useDepartmentsQuery(educationForm.collegeId || undefined);
 
   const profileTasks = getProfileCompletionTasks(profile, {
     skills: skills.length,
@@ -262,16 +262,13 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       linkedinUrl: profile.profile?.linkedinUrl || "",
       portfolioUrl: profile.profile?.portfolioUrl || "",
       graduationYear: profile.profile?.graduationYear?.toString() || "",
-      collegeId: profile.profile?.collegeId || "",
-      departmentId: profile.profile?.departmentId || "",
     });
-    setCollegeQuery(profile.profile?.college?.name || "");
   }, [profile, profileQuery.data]);
 
   // College search
   useEffect(() => {
     const query = collegeQuery.trim();
-    if (query.length < 2 || query === profile.profile?.college?.name) {
+    if (query.length < 2 || query === educationForm.collegeName) {
       setCollegeResults([]);
       return;
     }
@@ -284,34 +281,44 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       }
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [collegeQuery, profile.profile?.college?.name]);
+  }, [collegeQuery, educationForm.collegeName]);
 
   const selectCollege = (college: College) => {
     setCollegeQuery(college.name);
     setCollegeResults([]);
-    setProfileForm((c) => ({ ...c, collegeId: college.id, departmentId: "" }));
+    setEducationForm((e) => ({
+      ...e,
+      collegeId: college.id,
+      collegeName: college.name,
+      departmentId: "",
+      fieldOfStudy: "",
+    }));
   };
 
   const changeCollegeQuery = (value: string) => {
     setCollegeQuery(value);
-    if (value !== profile.profile?.college?.name) {
-      setProfileForm((c) => ({ ...c, collegeId: "", departmentId: "" }));
-    }
+    setEducationForm((e) => {
+      if (value !== e.collegeName) {
+        return {
+          ...e,
+          collegeId: "",
+          collegeName: "",
+          departmentId: "",
+          fieldOfStudy: "",
+        };
+      }
+      return e;
+    });
   };
 
   const saveProfile = (event: FormEvent) => {
     event.preventDefault();
-    if (collegeQuery.trim() && !profileForm.collegeId) {
-      showToast("error", "Select a college from the list before saving");
-      return;
-    }
     updateProfile.mutate(
       compactPayload({
         ...profileForm,
         graduationYear: profileForm.graduationYear
           ? Number(profileForm.graduationYear)
           : undefined,
-        departmentId: profileForm.departmentId || undefined,
       }),
     );
   };
@@ -331,6 +338,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       if (editingExperienceId) {
         await updateExperience.mutateAsync({
           id: editingExperienceId,
+          companyWebsiteUrl: experienceForm.companyWebsiteUrl || undefined,
           title: experienceForm.title,
           employmentType: experienceForm.employmentType,
           startDate: experienceForm.startDate,
@@ -350,6 +358,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       } else {
         await addExperience.mutateAsync({
           companyName: experienceForm.companyName,
+          companyWebsiteUrl: experienceForm.companyWebsiteUrl || undefined,
           title: experienceForm.title,
           employmentType: experienceForm.employmentType,
           startDate: experienceForm.startDate,
@@ -377,8 +386,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const submitEducation = async (event: FormEvent) => {
     event.preventDefault();
-    if (!profileForm.collegeId) {
-      showToast("error", "Select a college in Settings first");
+    if (!educationForm.collegeId) {
+      showToast("error", "Select a college from the list first");
       return;
     }
     if (
@@ -395,6 +404,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
         await updateEducation.mutateAsync({
           id: editingEducationId,
           ...compactPayload({
+            collegeId: educationForm.collegeId,
+            departmentId: educationForm.departmentId || undefined,
             degree: educationForm.degree,
             fieldOfStudy: educationForm.fieldOfStudy,
             startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
@@ -407,9 +418,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
         });
       } else {
         await addEducation.mutateAsync({
-          collegeId: profileForm.collegeId,
+          collegeId: educationForm.collegeId,
           ...compactPayload({
-            departmentId: profileForm.departmentId || undefined,
+            departmentId: educationForm.departmentId || undefined,
             degree: educationForm.degree,
             fieldOfStudy: educationForm.fieldOfStudy,
             startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
@@ -422,6 +433,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
         });
       }
       setEducationForm(emptyEducationForm);
+      setCollegeQuery("");
+      setCollegeResults([]);
       setShowEducationForm(false);
       setEditingEducationId(null);
     } catch {
@@ -431,17 +444,18 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const handleEditExperience = (exp: any) => {
     setExperienceForm({
-      companyName: exp.companyName || "",
+      companyName: exp.companyName || exp.company?.name || "",
+      companyWebsiteUrl: exp.company?.websiteUrl || "",
       title: exp.title || "",
       employmentType: exp.employmentType || "FULL_TIME",
       startDate: exp.startDate ? exp.startDate.split("T")[0] : "",
       endDate: exp.endDate ? exp.endDate.split("T")[0] : "",
       isCurrent: exp.isCurrent || false,
       description: exp.description || "",
-      workEmail: "",
-      managerName: "",
-      managerEmail: "",
-      managerLinkedinUrl: "",
+      workEmail: exp.workEmail || "",
+      managerName: exp.managerName || "",
+      managerEmail: exp.managerEmail || "",
+      managerLinkedinUrl: exp.managerLinkedinUrl || "",
       techStack: exp.techStack ? exp.techStack.join(", ") : "",
       skillsUsed: exp.skillsUsed ? exp.skillsUsed.join(", ") : "",
       teamSize: exp.teamSize ? exp.teamSize.toString() : "",
@@ -458,12 +472,16 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const handleEditEducation = (edu: any) => {
     setFormFromEdu(edu);
+    setCollegeQuery(edu.college?.name || "");
     setEditingEducationId(edu.id);
     setShowEducationForm(true);
   };
 
   const setFormFromEdu = (edu: any) => {
     setEducationForm({
+      collegeId: edu.collegeId || "",
+      collegeName: edu.college?.name || "",
+      departmentId: edu.departmentId || "",
       degree: edu.degree || "",
       fieldOfStudy: edu.fieldOfStudy || "",
       startYear: edu.startYear ? edu.startYear.toString() : "",
@@ -474,24 +492,10 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const handleCancelEducation = () => {
     setEducationForm(emptyEducationForm);
+    setCollegeQuery("");
+    setCollegeResults([]);
     setShowEducationForm(false);
     setEditingEducationId(null);
-  };
-
-  const submitDepartment = async () => {
-    const name = newDepartment.trim();
-    if (!name) return;
-    if (!profileForm.collegeId) {
-      showToast("error", "Select a college first");
-      return;
-    }
-    try {
-      const result = await createDepartment.mutateAsync(name);
-      setProfileForm((c) => ({ ...c, departmentId: result.data.id }));
-      setNewDepartment("");
-    } catch {
-      // Mutation hook shows toast
-    }
   };
 
   if (profileQuery.isError) {
@@ -602,16 +606,27 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             isFetchingNextPage={educationsQuery.isFetchingNextPage}
             onLoadMore={() => educationsQuery.fetchNextPage()}
             showForm={showEducationForm}
-            onToggleForm={() => setShowEducationForm((v) => !v)}
+            onToggleForm={() => {
+              if (showEducationForm) {
+                handleCancelEducation();
+              } else {
+                setShowEducationForm(true);
+              }
+            }}
             form={educationForm}
             onFormChange={setEducationForm}
             onSubmit={submitEducation}
             isPending={addEducation.isPending || updateEducation.isPending}
-            hasCollegeSelected={Boolean(profileForm.collegeId)}
             editingId={editingEducationId}
             onEdit={handleEditEducation}
             onDelete={(edu) => setConfirmDelete({ type: "education", id: edu.id, label: edu.degree || edu.college?.name || "" })}
             onCancel={handleCancelEducation}
+            collegeQuery={collegeQuery}
+            onCollegeQueryChange={changeCollegeQuery}
+            collegeResults={collegeResults}
+            onSelectCollege={selectCollege}
+            departments={departments}
+            departmentsLoading={departmentsQuery.isFetching}
           />
         )}
 
@@ -629,16 +644,6 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
           <SettingsTab
             profileForm={profileForm}
             onProfileFormChange={setProfileForm}
-            collegeQuery={collegeQuery}
-            onCollegeQueryChange={changeCollegeQuery}
-            collegeResults={collegeResults}
-            onSelectCollege={selectCollege}
-            departments={departments}
-            departmentsLoading={departmentsQuery.isFetching}
-            newDepartment={newDepartment}
-            onNewDepartmentChange={setNewDepartment}
-            onAddDepartment={submitDepartment}
-            isDepartmentPending={createDepartment.isPending}
             onSave={saveProfile}
             isSavePending={updateProfile.isPending}
           />
@@ -1045,6 +1050,15 @@ function ExperienceTab({
                   required
                 />
               </Field>
+              <Field label="Company website URL">
+                <input
+                  className="field"
+                  type="url"
+                  value={form.companyWebsiteUrl}
+                  onChange={(e) => onFormChange({ ...form, companyWebsiteUrl: e.target.value })}
+                  placeholder="https://company.com"
+                />
+              </Field>
               <Field label="Title *">
                 <input
                   className="field"
@@ -1295,11 +1309,16 @@ function EducationTab({
   onFormChange,
   onSubmit,
   isPending,
-  hasCollegeSelected,
   editingId,
   onEdit,
   onDelete,
   onCancel,
+  collegeQuery,
+  onCollegeQueryChange,
+  collegeResults,
+  onSelectCollege,
+  departments,
+  departmentsLoading,
 }: {
   educations: any[];
   isFetching: boolean;
@@ -1312,11 +1331,16 @@ function EducationTab({
   onFormChange: (f: typeof emptyEducationForm) => void;
   onSubmit: (e: FormEvent) => void;
   isPending: boolean;
-  hasCollegeSelected: boolean;
   editingId: string | null;
   onEdit: (edu: any) => void;
   onDelete: (edu: any) => void;
   onCancel: () => void;
+  collegeQuery: string;
+  onCollegeQueryChange: (v: string) => void;
+  collegeResults: College[];
+  onSelectCollege: (college: College) => void;
+  departments: Department[];
+  departmentsLoading: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -1335,12 +1359,6 @@ function EducationTab({
         </button>
       </div>
 
-      {!hasCollegeSelected && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <strong>Tip:</strong> Set your college in the <strong>Settings</strong> tab first to link education records.
-        </div>
-      )}
-
       {/* Add/Edit form */}
       {showForm && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
@@ -1350,6 +1368,68 @@ function EducationTab({
           </h3>
           <form onSubmit={onSubmit}>
             <div className="grid gap-3 md:grid-cols-2">
+              <div className="relative">
+                <Field label="College *">
+                  <input
+                    className="field"
+                    value={collegeQuery}
+                    onChange={(e) => onCollegeQueryChange(e.target.value)}
+                    placeholder="Search college name..."
+                    required
+                  />
+                </Field>
+                {collegeResults.length > 0 && (
+                  <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {collegeResults.map((college) => (
+                      <button
+                        key={college.id}
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                        type="button"
+                        onClick={() => onSelectCollege(college)}
+                      >
+                        <span className="font-medium text-slate-800">{college.name}</span>
+                        {college.city && (
+                          <span className="text-xs text-slate-400">
+                            {college.city}, {college.state}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Field label="Department/Branch *">
+                <select
+                  className="field"
+                  value={form.departmentId}
+                  onChange={(e) => {
+                    const deptId = e.target.value;
+                    const dept = departments.find((d) => d.id === deptId);
+                    onFormChange({
+                      ...form,
+                      departmentId: deptId,
+                      fieldOfStudy: dept ? dept.name : "",
+                    });
+                  }}
+                  disabled={!form.collegeId || departmentsLoading}
+                  required
+                >
+                  <option value="">
+                    {!form.collegeId
+                      ? "Select a college first"
+                      : departmentsLoading
+                      ? "Loading departments..."
+                      : "Select Department/Branch"}
+                  </option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
               <Field label="Degree">
                 <input
                   className="field"
@@ -1358,33 +1438,27 @@ function EducationTab({
                   placeholder="B.Tech, M.S., MBA..."
                 />
               </Field>
-              <Field label="Field of study">
-                <input
-                  className="field"
-                  value={form.fieldOfStudy}
-                  onChange={(e) => onFormChange({ ...form, fieldOfStudy: e.target.value })}
-                  placeholder="Computer Science"
-                />
-              </Field>
-              <Field label="Start year">
-                <input
-                  className="field"
-                  type="number"
-                  value={form.startYear}
-                  onChange={(e) => onFormChange({ ...form, startYear: e.target.value })}
-                  placeholder="2020"
-                />
-              </Field>
-              <Field label="End year">
-                <input
-                  className="field"
-                  type="number"
-                  value={form.endYear}
-                  onChange={(e) => onFormChange({ ...form, endYear: e.target.value })}
-                  placeholder="2024"
-                  disabled={form.current}
-                />
-              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Start year">
+                  <input
+                    className="field"
+                    type="number"
+                    value={form.startYear}
+                    onChange={(e) => onFormChange({ ...form, startYear: e.target.value })}
+                    placeholder="2020"
+                  />
+                </Field>
+                <Field label="End year">
+                  <input
+                    className="field"
+                    type="number"
+                    value={form.endYear}
+                    onChange={(e) => onFormChange({ ...form, endYear: e.target.value })}
+                    placeholder="2024"
+                    disabled={form.current}
+                  />
+                </Field>
+              </div>
               <div className="flex items-center">
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-emerald-200">
                   <input
@@ -1402,7 +1476,7 @@ function EducationTab({
               <button
                 className="btn-primary"
                 type="submit"
-                disabled={isPending || !hasCollegeSelected}
+                disabled={isPending || !form.collegeId}
               >
                 {isPending ? <Loader2 className="animate-spin" size={15} /> : editingId ? <Save size={15} /> : <Plus size={15} />}
                 {editingId ? "Save Education" : "Add Education"}
@@ -1499,31 +1573,11 @@ function ProjectsTab({
 function SettingsTab({
   profileForm,
   onProfileFormChange,
-  collegeQuery,
-  onCollegeQueryChange,
-  collegeResults,
-  onSelectCollege,
-  departments,
-  departmentsLoading,
-  newDepartment,
-  onNewDepartmentChange,
-  onAddDepartment,
-  isDepartmentPending,
   onSave,
   isSavePending,
 }: {
   profileForm: Record<string, string>;
   onProfileFormChange: (f: any) => void;
-  collegeQuery: string;
-  onCollegeQueryChange: (v: string) => void;
-  collegeResults: College[];
-  onSelectCollege: (c: College) => void;
-  departments: any[];
-  departmentsLoading: boolean;
-  newDepartment: string;
-  onNewDepartmentChange: (v: string) => void;
-  onAddDepartment: () => void;
-  isDepartmentPending: boolean;
   onSave: (e: FormEvent) => void;
   isSavePending: boolean;
 }) {
@@ -1595,81 +1649,6 @@ function SettingsTab({
         </div>
       </SettingsSection>
 
-      {/* College */}
-      <SettingsSection title="College & department" icon={Building2}>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="relative">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-500">College</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
-              <input
-                className="field pl-9"
-                value={collegeQuery}
-                onChange={(e) => onCollegeQueryChange(e.target.value)}
-                placeholder="Search college..."
-              />
-            </div>
-            {collegeResults.length > 0 && (
-              <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                {collegeResults.map((college) => (
-                  <button
-                    key={college.id}
-                    className="block w-full px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
-                    type="button"
-                    onClick={() => onSelectCollege(college)}
-                  >
-                    <div className="font-medium text-slate-800">{college.name}</div>
-                    {(college.city || college.state) && (
-                      <div className="text-xs text-slate-400">
-                        {[college.city, college.state].filter(Boolean).join(", ")}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            {profileForm.collegeId && (
-              <p className="mt-1.5 text-xs text-emerald-700">✓ {collegeQuery}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-500">Department</label>
-            <select
-              className="field"
-              value={profileForm.departmentId}
-              onChange={(e) => onProfileFormChange({ ...profileForm, departmentId: e.target.value })}
-              disabled={!profileForm.collegeId || departmentsLoading}
-            >
-              <option value="">Select department</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-            {departmentsLoading && <div className="mt-2"><InlineLoader label="Loading departments" /></div>}
-          </div>
-
-          <div className="flex gap-2 md:col-span-2">
-            <input
-              className="field"
-              value={newDepartment}
-              onChange={(e) => onNewDepartmentChange(e.target.value)}
-              placeholder="Add a missing department..."
-              disabled={!profileForm.collegeId}
-            />
-            <button
-              className="btn-secondary shrink-0"
-              type="button"
-              disabled={!profileForm.collegeId || isDepartmentPending}
-              onClick={onAddDepartment}
-            >
-              {isDepartmentPending ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}
-              Add
-            </button>
-          </div>
-        </div>
-      </SettingsSection>
-
       <div className="flex justify-end">
         <button className="btn-primary gap-2 px-6" type="submit" disabled={isSavePending}>
           {isSavePending ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
@@ -1693,30 +1672,37 @@ function SkillManager({
   disabled?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState<{ id: string; name: string } | null>(null);
   const [level, setLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT">("INTERMEDIATE");
   const [creatingCustom, setCreatingCustom] = useState(false);
   const skillSearch = useSkillSearchQuery(query);
 
-  const add = async (skill: Skill) => {
-    try {
-      await onAddSkill({ skillId: skill.id, level });
-      setQuery("");
-    } catch {
-      // Mutation hook shows toast
-    }
+  const selectSkill = (skill: Skill) => {
+    setSelectedSkill({ id: skill.id, name: skill.name });
+    setQuery("");
   };
 
-  const addCustomSkill = async () => {
+  const handleCreateCustomSkill = async () => {
     if (!query.trim() || query.trim().length < 2) return;
     setCreatingCustom(true);
     try {
       const result = await api.createCustomSkill(query.trim());
-      await onAddSkill({ skillId: result.data.id, level });
+      setSelectedSkill({ id: result.data.id, name: result.data.name });
       setQuery("");
     } catch {
       // error shown by hook
     } finally {
       setCreatingCustom(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedSkill) return;
+    try {
+      await onAddSkill({ skillId: selectedSkill.id, level });
+      setSelectedSkill(null);
+    } catch {
+      // hook shows toast
     }
   };
 
@@ -1736,63 +1722,92 @@ function SkillManager({
           <strong>Skill limit reached:</strong> You can add up to {MAX_SKILLS} skills. Remove some existing skills to add new ones.
         </div>
       ) : (
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
-            <input
-              className="field pl-9"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search skill (e.g. React, Python)..."
-            />
-            {query.length >= 2 && (
-              <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
-                {skillSearch.isFetching ? (
-                  <div className="p-3"><InlineLoader label="Searching..." /></div>
-                ) : skillSearch.data && skillSearch.data.length > 0 ? (
-                  skillSearch.data.slice(0, 8).map((skill) => (
-                    <button
-                      key={skill.id}
-                      className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
-                      type="button"
-                      disabled={adding}
-                      onClick={() => add(skill)}
-                    >
-                      <span className="font-medium text-slate-800">{skill.name}</span>
-                      {skill.verified && (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
-                          Verified
-                        </span>
-                      )}
-                    </button>
-                  ))
-                ) : noResults ? (
-                  <div className="p-3">
-                    <p className="text-sm text-slate-500">No matching skills found.</p>
-                    <button
-                      className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
-                      type="button"
-                      disabled={creatingCustom || adding}
-                      onClick={addCustomSkill}
-                    >
-                      {creatingCustom ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
-                      Add "{query.trim()}" as a custom skill
-                    </button>
-                  </div>
-                ) : null}
+        <div className="space-y-4">
+          {!selectedSkill ? (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
+              <input
+                className="field pl-9"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search skill (e.g. React, Python)..."
+              />
+              {query.length >= 2 && (
+                <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {skillSearch.isFetching ? (
+                    <div className="p-3"><InlineLoader label="Searching..." /></div>
+                  ) : skillSearch.data && skillSearch.data.length > 0 ? (
+                    skillSearch.data.slice(0, 8).map((skill) => (
+                      <button
+                        key={skill.id}
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                        type="button"
+                        onClick={() => selectSkill(skill)}
+                      >
+                        <span className="font-medium text-slate-800">{skill.name}</span>
+                        {skill.verified && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                            Verified
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  ) : noResults ? (
+                    <div className="p-3">
+                      <p className="text-sm text-slate-500">No matching skills found.</p>
+                      <button
+                        className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                        type="button"
+                        disabled={creatingCustom}
+                        onClick={handleCreateCustomSkill}
+                      >
+                        {creatingCustom ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                        Add "{query.trim()}" as a custom skill
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/25 p-4 transition-all">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Selected Skill:</span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
+                  {selectedSkill.name}
+                  <button
+                    type="button"
+                    className="rounded-full p-0.5 hover:bg-emerald-700 transition"
+                    onClick={() => setSelectedSkill(null)}
+                    title="Change skill"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
               </div>
-            )}
-          </div>
-          <select
-            className="field w-36 shrink-0"
-            value={level}
-            onChange={(e) => setLevel(e.target.value as typeof level)}
-          >
-            <option value="BEGINNER">Beginner</option>
-            <option value="INTERMEDIATE">Intermediate</option>
-            <option value="ADVANCED">Advanced</option>
-            <option value="EXPERT">Expert</option>
-          </select>
+              <div className="flex items-center gap-2">
+                <select
+                  className="field py-1 text-sm"
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value as typeof level)}
+                >
+                  <option value="BEGINNER">Beginner</option>
+                  <option value="INTERMEDIATE">Intermediate</option>
+                  <option value="ADVANCED">Advanced</option>
+                  <option value="EXPERT">Expert</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn-primary py-1.5"
+                  disabled={adding}
+                  onClick={handleSave}
+                >
+                  {adding ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                  Save Skill
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

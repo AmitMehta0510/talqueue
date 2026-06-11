@@ -40,6 +40,7 @@ export interface AddSkillData {
 
 export interface AddExperienceData {
   companyName: string;
+  companyWebsiteUrl?: string;
   title: string;
   employmentType: EmploymentType | "INTERNSHIP";
   startDate: string;
@@ -386,6 +387,7 @@ const getOrCreateCompany = async (
   tx: Prisma.TransactionClient,
 
   rawCompanyName: string,
+  websiteUrl?: string,
 ) => {
   const companyName = normalizeSearchText(rawCompanyName);
 
@@ -403,6 +405,12 @@ const getOrCreateCompany = async (
   });
 
   if (existingCompany) {
+    if (websiteUrl && !existingCompany.websiteUrl) {
+      return tx.company.update({
+        where: { id: existingCompany.id },
+        data: { websiteUrl },
+      });
+    }
     return existingCompany;
   }
 
@@ -412,12 +420,14 @@ const getOrCreateCompany = async (
         name: companyName,
       },
 
-      update: {},
+      update: websiteUrl ? { websiteUrl } : {},
 
       create: {
         name: companyName,
 
         slug: buildStableCompanySlug(companyName),
+
+        websiteUrl,
       },
     });
   } catch (error) {
@@ -435,6 +445,12 @@ const getOrCreateCompany = async (
       });
 
       if (company) {
+        if (websiteUrl && !company.websiteUrl) {
+          return tx.company.update({
+            where: { id: company.id },
+            data: { websiteUrl },
+          });
+        }
         return company;
       }
 
@@ -443,6 +459,8 @@ const getOrCreateCompany = async (
           name: companyName,
 
           slug: buildFallbackCompanySlug(companyName),
+
+          websiteUrl,
         },
       });
     }
@@ -967,7 +985,7 @@ export const addExperience = async (
   const verified = verificationScore >= 60;
 
   const experience = await prisma.$transaction(async (tx) => {
-    const company = await getOrCreateCompany(tx, companyName);
+    const company = await getOrCreateCompany(tx, companyName, data.companyWebsiteUrl);
 
     if (data.isCurrent) {
       await tx.experience.updateMany({
@@ -1141,6 +1159,18 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
       include: compactEducationInclude,
     });
 
+    // Sync to user's profile
+    await tx.profile.upsert({
+      where: { userId },
+      update: { collegeId: data.collegeId, departmentId: data.departmentId || null },
+      create: {
+        userId,
+        fullName: "",
+        collegeId: data.collegeId,
+        departmentId: data.departmentId || null,
+      },
+    });
+
     await autoJoinUserCommunities(
       userId,
       {
@@ -1206,7 +1236,43 @@ export const removeEducation = async (userId: string, educationId: string) => {
     throw new AppError("Education not found", 404);
   }
 
-  await prisma.education.delete({ where: { id: educationId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.education.delete({ where: { id: educationId } });
+
+    // Find next most recent education
+    const remaining = await tx.education.findFirst({
+      where: { userId },
+      orderBy: [
+        { current: "desc" },
+        { startYear: "desc" },
+      ],
+      select: { collegeId: true, departmentId: true },
+    });
+
+    if (remaining) {
+      await tx.profile.upsert({
+        where: { userId },
+        update: { collegeId: remaining.collegeId, departmentId: remaining.departmentId },
+        create: {
+          userId,
+          fullName: "",
+          collegeId: remaining.collegeId,
+          departmentId: remaining.departmentId,
+        },
+      });
+    } else {
+      await tx.profile.upsert({
+        where: { userId },
+        update: { collegeId: null, departmentId: null },
+        create: {
+          userId,
+          fullName: "",
+          collegeId: null,
+          departmentId: null,
+        },
+      });
+    }
+  });
 
   return { id: educationId };
 };
@@ -1215,6 +1281,7 @@ export const removeEducation = async (userId: string, educationId: string) => {
 
 export interface UpdateExperienceData {
   title?: string;
+  companyWebsiteUrl?: string;
   employmentType?: string;
   startDate?: string;
   endDate?: string;
@@ -1236,7 +1303,7 @@ export const updateExperience = async (
 ) => {
   const existing = await prisma.experience.findFirst({
     where: { id: experienceId, userId },
-    select: { id: true, startDate: true, endDate: true, isCurrent: true },
+    select: { id: true, startDate: true, endDate: true, isCurrent: true, companyId: true },
   });
 
   if (!existing) {
@@ -1264,6 +1331,13 @@ export const updateExperience = async (
     if (data.isCurrent) {
       updateData.endDate = null;
     }
+  }
+
+  if (data.companyWebsiteUrl !== undefined) {
+    await prisma.company.update({
+      where: { id: existing.companyId },
+      data: { websiteUrl: data.companyWebsiteUrl },
+    });
   }
 
   if (data.startDate !== undefined) {
@@ -1317,6 +1391,8 @@ export const updateExperience = async (
 };
 
 export interface UpdateEducationData {
+  collegeId?: string;
+  departmentId?: string | null;
   degree?: string;
   fieldOfStudy?: string;
   startYear?: number;
@@ -1331,7 +1407,7 @@ export const updateEducation = async (
 ) => {
   const existing = await prisma.education.findFirst({
     where: { id: educationId, userId },
-    select: { id: true, collegeId: true },
+    select: { id: true, collegeId: true, departmentId: true },
   });
 
   if (!existing) {
@@ -1364,10 +1440,52 @@ export const updateEducation = async (
     updateData.endYear = data.endYear;
   }
 
-  return prisma.education.update({
-    where: { id: educationId },
-    data: updateData,
-    include: compactEducationInclude,
+  if (data.collegeId !== undefined) {
+    const college = await prisma.college.findUnique({
+      where: { id: data.collegeId },
+      select: { id: true },
+    });
+    if (!college) {
+      throw new AppError("College not found", 404);
+    }
+    updateData.collegeId = data.collegeId;
+  }
+
+  if (data.departmentId !== undefined) {
+    const effectiveCollegeId = data.collegeId || existing.collegeId;
+    await assertDepartmentBelongsToCollege(prisma, effectiveCollegeId, data.departmentId);
+    updateData.departmentId = data.departmentId;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const res = await tx.education.update({
+      where: { id: educationId },
+      data: updateData,
+      include: compactEducationInclude,
+    });
+
+    // Sync to user's profile
+    await tx.profile.upsert({
+      where: { userId },
+      update: { collegeId: res.collegeId, departmentId: res.departmentId || null },
+      create: {
+        userId,
+        fullName: "",
+        collegeId: res.collegeId,
+        departmentId: res.departmentId || null,
+      },
+    });
+
+    await autoJoinUserCommunities(
+      userId,
+      {
+        collegeId: res.collegeId,
+        departmentId: res.departmentId,
+      },
+      tx,
+    );
+
+    return res;
   });
 };
 
