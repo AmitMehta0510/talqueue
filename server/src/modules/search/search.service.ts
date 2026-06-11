@@ -81,11 +81,11 @@ export const searchUsers =  async (
             },
           }),
 
-          ...(filters.collegeName && {
+          ...((filters as any).collegeName && {
             profile: {
               college: {
                 name: {
-                  contains: filters.collegeName,
+                  contains: (filters as any).collegeName,
                   mode: "insensitive",
                 },
               },
