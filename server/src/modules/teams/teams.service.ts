@@ -909,3 +909,107 @@ export const deleteTeam = async (ownerId: string, teamId: string) => {
 
   return updatedTeam;
 };
+
+// ─── Update team (name / description) ────────────────────────────────────────
+
+export const updateTeam = async (
+  ownerId: string,
+  teamId: string,
+  data: { name?: string; description?: string },
+) => {
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team) throw new AppError("Team not found", 404);
+
+  // Allow OWNER or ADMIN
+  const membership = await prisma.teamMember.findFirst({
+    where: { teamId, userId: ownerId },
+  });
+  if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+    throw new AppError("Unauthorized", 403);
+  }
+
+  const updated = await prisma.team.update({
+    where: { id: teamId },
+    data: {
+      ...(data.name && { name: data.name }),
+      ...(data.description !== undefined && { description: data.description }),
+    },
+    include: {
+      members: { include: { user: { include: { profile: true } } } },
+      invites: true,
+    },
+  });
+
+  createActivity(
+    ownerId,
+    "TEAM_UPDATED",
+    "Updated a team",
+    `Updated team "${updated.name}"`,
+    { teamId },
+  ).catch(console.error);
+
+  return updated;
+};
+
+// ─── Promote / demote member ──────────────────────────────────────────────────
+
+export const promoteMember = async (
+  requesterId: string,
+  teamId: string,
+  memberUserId: string,
+  newRole: "MEMBER" | "ADMIN",
+) => {
+  const requesterMembership = await prisma.teamMember.findFirst({
+    where: { teamId, userId: requesterId },
+  });
+  if (!requesterMembership || requesterMembership.role !== "OWNER") {
+    throw new AppError("Only the team owner can change member roles", 403);
+  }
+
+  const targetMembership = await prisma.teamMember.findFirst({
+    where: { teamId, userId: memberUserId },
+  });
+  if (!targetMembership) throw new AppError("Member not found", 404);
+  if (targetMembership.role === "OWNER") throw new AppError("Cannot change owner role", 400);
+
+  const updated = await prisma.teamMember.update({
+    where: { id: targetMembership.id },
+    data: { role: newRole },
+    include: { user: { include: { profile: true } } },
+  });
+
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+
+  createNotification({
+    userId: memberUserId,
+    type: "TEAM_INVITE",
+    title: "Role Updated",
+    message: `Your role in "${team?.name}" was changed to ${newRole}`,
+  }).catch(console.error);
+
+  return updated;
+};
+
+// ─── Get my pending invites (across all teams) ────────────────────────────────
+
+export const getMyPendingInvites = async (userId: string) => {
+  return prisma.teamInvite.findMany({
+    where: {
+      invitedUserId: userId,
+      status: "PENDING",
+    },
+    include: {
+      team: {
+        include: {
+          members: {
+            include: { user: { include: { profile: true } } },
+          },
+          _count: { select: { members: true } },
+        },
+      },
+      invitedBy: { include: { profile: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+

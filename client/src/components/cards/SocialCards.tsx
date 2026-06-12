@@ -140,6 +140,12 @@ export function EngineerCard({
       {/* Skills + score chips */}
       <div className="mt-4 flex flex-wrap gap-2">
         {context && <span className="chip">{context}</span>}
+        {(user.mutualConnectionCount ?? 0) > 0 && (
+          <span className="chip text-emerald-700">
+            <Users size={11} />
+            {user.mutualConnectionCount} mutual
+          </span>
+        )}
         {suggested.collaborationScore !== undefined && (
           <span className="chip">Collab {Math.round(suggested.collaborationScore)}</span>
         )}

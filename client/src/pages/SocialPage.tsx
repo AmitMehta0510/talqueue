@@ -161,8 +161,9 @@ function SearchPanel() {
           {users.length ? (
             users.map((foundUser) => {
               const isReferralEligible =
-                (foundUser as any).role === "WORKING_PROFESSIONAL" ||
-                (foundUser as any).role === "RECRUITER";
+                (foundUser.primaryRole === "WORKING_PROFESSIONAL" || (foundUser as any).role === "WORKING_PROFESSIONAL") ||
+                (foundUser.primaryRole === "RECRUITER" || (foundUser as any).role === "RECRUITER");
+              const canAskReferral = isReferralEligible && foundUser.acceptingReferrals === true;
               return (
                 <EngineerCard
                   disabled={followUser.isPending || connectUser.isPending}
@@ -171,7 +172,7 @@ function SearchPanel() {
                   onConnect={(item) => connectUser.mutate(item.id)}
                   onFollow={(item) => followUser.mutate(item.id)}
                   onOpenProfile={(item) => navigate(`/users/${item.id}`)}
-                  onRequestReferral={isReferralEligible ? (item) => navigate(`/discover?referral=${item.id}`) : undefined}
+                  onRequestReferral={canAskReferral ? (item) => navigate(`/discover?referral=${item.id}`) : undefined}
                 />
               );
             })
@@ -293,7 +294,12 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
                   onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
                   onMessage={startConversation}
                   onOpenProfile={(target) => navigate(`/users/${target.id}`)}
-                  onRequestReferral={(target) => navigate(`/discover?referral=${target.id}`)}
+                  onRequestReferral={
+                    (item.user.primaryRole === "WORKING_PROFESSIONAL" || item.user.primaryRole === "RECRUITER") &&
+                    item.user.acceptingReferrals === true
+                      ? (target) => navigate(`/discover?referral=${target.id}`)
+                      : undefined
+                  }
                 />
               );
             })

@@ -21,6 +21,7 @@ import {
   Star,
   User,
   UserPlus,
+  Users,
   Zap,
 } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
@@ -36,6 +37,7 @@ import {
   useCreateDirectConversationMutation,
   useFollowUserMutation,
   useFollowingQuery,
+  useMutualConnectionsQuery,
   useUserProfileQuery,
 } from "../hooks/usePlatformQueries";
 import { FollowingPage } from "../lib/api";
@@ -47,7 +49,7 @@ import {
 } from "../lib/format";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 
-type Tab = "about" | "projects" | "experience" | "skills" | "education";
+type Tab = "about" | "projects" | "experience" | "skills" | "education" | "connections";
 
 const flattenFollowing = <T, K extends string>(pages: Array<Record<K, T[]>>, key: K) =>
   pages.flatMap((page) => page[key] || []);
@@ -58,6 +60,7 @@ export function UserProfilePage() {
   const navigate = useNavigate();
   const profileQuery = useUserProfileQuery(userId);
   const followingQuery = useFollowingQuery(user?.id, 20);
+  const mutualQuery = useMutualConnectionsQuery(userId, 12);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const followUser = useFollowUserMutation();
@@ -125,11 +128,12 @@ export function UserProfilePage() {
   ].filter(Boolean) as string[];
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about",      label: "About",      icon: User },
+    { id: "about",       label: "About",       icon: User },
     { id: "projects",   label: "Projects",   icon: FolderKanban },
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "skills",     label: "Skills",     icon: Code2 },
     { id: "education",  label: "Education",  icon: GraduationCap },
+    { id: "connections",label: "Mutual",      icon: Users },
   ];
 
   return (
@@ -191,14 +195,17 @@ export function UserProfilePage() {
                 )}
                 Message
               </button>
-              <button
-                id="user-profile-referral-btn"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
-                onClick={() => setShowReferralModal(true)}
-              >
-                <Gift size={15} />
-                Ask Referral
-              </button>
+              {(profile.primaryRole === "WORKING_PROFESSIONAL" || profile.primaryRole === "RECRUITER") &&
+                profile.acceptingReferrals === true && (
+                <button
+                  id="user-profile-referral-btn"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                  onClick={() => setShowReferralModal(true)}
+                >
+                  <Gift size={15} />
+                  Ask Referral
+                </button>
+              )}
               {isFollowing ? (
                 <button
                   id="user-profile-following-btn"
@@ -418,6 +425,74 @@ export function UserProfilePage() {
             )}
           </div>
         )}
+
+        {/* MUTUAL CONNECTIONS */}
+        {activeTab === "connections" && (() => {
+          const mutualPages = mutualQuery.data?.pages || [];
+          const mutuals = mutualPages.flatMap((p: any) => p.connections || p.users || []);
+          return (
+            <div className="space-y-4">
+              <h2 className="text-base font-semibold text-slate-900">
+                Mutual Connections
+                {mutuals.length > 0 && (
+                  <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                    {mutuals.length}{mutualQuery.hasNextPage ? "+" : ""}
+                  </span>
+                )}
+              </h2>
+              {mutualQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="animate-spin" size={15} />
+                  Loading mutual connections…
+                </div>
+              ) : mutuals.length > 0 ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {mutuals.map((item: any) => {
+                      const u = item?.user || item?.follower || item?.following || item;
+                      if (!u?.id) return null;
+                      return (
+                        <button
+                          key={u.id}
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                          onClick={() => navigate(`/users/${u.id}`)}
+                        >
+                          <Avatar user={u} />
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900">
+                              {u.profile?.fullName || u.username}
+                            </div>
+                            <div className="truncate text-xs text-slate-500">
+                              {u.profile?.headline || u.primaryRole || `@${u.username}`}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {mutualQuery.hasNextPage && (
+                    <button
+                      className="btn-secondary w-full"
+                      disabled={mutualQuery.isFetchingNextPage}
+                      onClick={() => mutualQuery.fetchNextPage()}
+                    >
+                      {mutualQuery.isFetchingNextPage
+                        ? <Loader2 className="animate-spin" size={16} />
+                        : <Users size={16} />}
+                      Load more
+                    </button>
+                  )}
+                </>
+              ) : (
+                <BlankSection
+                  icon={Users}
+                  title="No mutual connections"
+                  text="You and this engineer don't share any common connections yet."
+                />
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Referral modal */}

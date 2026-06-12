@@ -1,4 +1,7 @@
-import { AlertTriangle, Archive, Check, Loader2, Plus, Search, Trash2, UserMinus, UserPlus, Users, X } from "lucide-react";
+import {
+  AlertTriangle, Archive, Check, ChevronDown, Edit3, Loader2,
+  Plus, RotateCcw, Search, Shield, Trash2, UserMinus, UserPlus, Users, X,
+} from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { TeamRoleBadge } from "../components/cards/SocialCards";
@@ -7,26 +10,39 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   useCreateTeamMutation,
   useInviteTeamMemberMutation,
+  useMyPendingTeamInvitesQuery,
   useMyTeamsQuery,
   usePlatformSearchMutation,
+  usePromoteMemberMutation,
   useRemoveTeamMemberMutation,
   useReviewTeamInviteMutation,
   useTeamLifecycleMutation,
   useTeamQuery,
+  useUpdateTeamMutation,
   useWithdrawTeamInviteMutation,
 } from "../hooks/usePlatformQueries";
 import { Team, TeamInvite, User } from "../lib/api";
 import { compactPayload, formatCount, formatDate, titleCase, userHeadline, userName } from "../lib/format";
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
 const teamMemberCount = (team?: Team) => team?._count?.members || team?.members?.length || 0;
 
 const currentMembership = (team?: Team, userId?: string) =>
-  team?.members?.find((member) => member.userId === userId);
+  team?.members?.find((m) => m.userId === userId);
 
 const canManageTeam = (team?: Team, userId?: string) => {
-  const membership = currentMembership(team, userId);
-  return membership?.role === "OWNER" || membership?.role === "ADMIN" || team?.ownerId === userId;
+  const m = currentMembership(team, userId);
+  return m?.role === "OWNER" || m?.role === "ADMIN" || team?.ownerId === userId;
 };
+
+const statusColor = (status?: string) => {
+  if (status === "ARCHIVED") return "text-amber-700 bg-amber-50 border-amber-200";
+  if (status === "DELETED") return "text-rose-700 bg-rose-50 border-rose-200";
+  return "text-emerald-700 bg-emerald-50 border-emerald-200";
+};
+
+// ─── Create Team ─────────────────────────────────────────────────────────────
 
 function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -36,46 +52,42 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
   const search = usePlatformSearchMutation();
   const createTeam = useCreateTeamMutation();
 
-  const submitSearch = (event?: { preventDefault: () => void }) => {
-    event?.preventDefault();
-    search.mutate(query);
+  const submitSearch = (e?: { preventDefault: () => void }) => {
+    e?.preventDefault();
+    if (query.trim()) search.mutate(query);
   };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
     try {
       await createTeam.mutateAsync({
         name: form.name,
         ...compactPayload({
           description: form.description,
-          members: selectedMembers.map((member) => member.id),
+          members: selectedMembers.map((m) => m.id),
         }),
       });
       setForm({ name: "", description: "" });
       setSelectedMembers([]);
+      setQuery("");
       setOpen(false);
-    } catch {
-      return;
-    }
+    } catch { return; }
   };
 
-  const addMember = (user: User) => {
-    setSelectedMembers((current) =>
-      current.some((member) => member.id === user.id) ? current : [...current, user],
-    );
-  };
+  const addMember = (u: User) =>
+    setSelectedMembers((cur) => cur.some((m) => m.id === u.id) ? cur : [...cur, u]);
 
   return (
     <div className="panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-950">Teams</h2>
-          <p className="mt-1 text-sm text-slate-500">Create working groups, manage members, and prepare hackathon squads.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Create working groups, manage members, and prepare hackathon squads.
+          </p>
         </div>
-        <button className="btn-primary" type="button" disabled={disabled} onClick={() => setOpen((value) => !value)}>
-          <Plus size={16} />
-          Create
+        <button className="btn-primary" type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}>
+          <Plus size={16} /> Create
         </button>
       </div>
 
@@ -83,74 +95,69 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
         <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={submit}>
           <div className="grid gap-3 md:grid-cols-2">
             <input
-              className="field"
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Team name"
-              required
+              className="field" value={form.name} required
+              onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+              placeholder="Team name *"
             />
             <input
-              className="field"
-              value={form.description}
-              onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-              placeholder="Description"
+              className="field" value={form.description}
+              onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))}
+              placeholder="Description (optional)"
             />
           </div>
 
+          {/* Member search */}
           <div className="rounded-md border border-slate-100 p-3">
             <div className="flex gap-2">
               <input
-                className="field"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Add members"
+                className="field" value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), submitSearch())}
+                placeholder="Search & add members"
               />
               <button className="btn-secondary" type="button" disabled={search.isPending} onClick={submitSearch}>
                 {search.isPending ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
               </button>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedMembers.map((member) => (
-                <button
-                  className="chip"
-                  key={member.id}
-                  type="button"
-                  onClick={() =>
-                    setSelectedMembers((current) => current.filter((item) => item.id !== member.id))
-                  }
-                >
-                  {userName(member)}
-                  <X size={13} />
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {(search.data?.users || []).slice(0, 6).map((item: any) => {
-                // Unwrap { user, relevanceScore } format from search API
-                const foundUser: User = item?.id ? item : item?.user;
-                if (!foundUser?.id) return null;
-                return (
+            {selectedMembers.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedMembers.map((m) => (
                   <button
-                    className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3 text-left hover:border-emerald-200 hover:bg-emerald-50"
-                    key={foundUser.id}
-                    type="button"
-                    onClick={() => addMember(foundUser)}
+                    className="chip" key={m.id} type="button"
+                    onClick={() => setSelectedMembers((cur) => cur.filter((x) => x.id !== m.id))}
                   >
-                    <span className="flex min-w-0 items-center gap-3">
-                      <Avatar user={foundUser} size="sm" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</span>
-                        <span className="block truncate text-xs text-slate-500">{userHeadline(foundUser)}</span>
-                      </span>
-                    </span>
-                    <Plus size={15} />
+                    {userName(m)} <X size={13} />
                   </button>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
+            {(search.data?.users || []).length > 0 && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {(search.data?.users || []).slice(0, 6).map((item: any) => {
+                  const u: User = item?.id ? item : item?.user;
+                  if (!u?.id) return null;
+                  const selected = selectedMembers.some((m) => m.id === u.id);
+                  return (
+                    <button
+                      className={`flex items-center justify-between gap-3 rounded-md border p-3 text-left transition ${selected ? "border-emerald-300 bg-emerald-50" : "border-slate-100 hover:border-emerald-200 hover:bg-emerald-50"}`}
+                      key={u.id} type="button" onClick={() => addMember(u)}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <Avatar user={u} size="sm" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-slate-900">{userName(u)}</span>
+                          <span className="block truncate text-xs text-slate-500">{userHeadline(u)}</span>
+                        </span>
+                      </span>
+                      {selected ? <Check size={15} className="text-emerald-600" /> : <Plus size={15} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <button className="btn-primary" type="submit" disabled={createTeam.isPending}>
+          <button className="btn-primary" type="submit" disabled={createTeam.isPending || !form.name.trim()}>
             {createTeam.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
             Create team
           </button>
@@ -160,66 +167,172 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
   );
 }
 
+// ─── Pending invites banner (global — received across all teams) ──────────────
+
+function PendingInvitesBanner() {
+  const review = useReviewTeamInviteMutation();
+  const { data: invites, isLoading } = useMyPendingTeamInvitesQuery();
+
+  if (isLoading || !invites?.length) return null;
+
+  return (
+    <div className="panel overflow-hidden p-0">
+      <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-2">
+        <UserPlus size={15} className="text-amber-700" />
+        <span className="text-sm font-semibold text-amber-800">
+          You have {invites.length} pending team invite{invites.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {invites.map((invite: TeamInvite) => (
+          <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-900">
+                {invite.team?.name || "Team"}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                Invited by {invite.invitedBy ? userName(invite.invitedBy) : "someone"} · {formatDate(invite.createdAt)}
+              </div>
+              {invite.message && (
+                <p className="mt-1 text-sm text-slate-600 italic">"{invite.message}"</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="btn-primary px-3 py-1.5"
+                type="button"
+                disabled={review.isPending}
+                onClick={() => review.mutate({ inviteId: invite.id, status: "ACCEPTED" })}
+              >
+                <Check size={14} /> Accept
+              </button>
+              <button
+                className="btn-secondary px-3 py-1.5"
+                type="button"
+                disabled={review.isPending}
+                onClick={() => review.mutate({ inviteId: invite.id, status: "REJECTED" })}
+              >
+                <X size={14} /> Decline
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Team Card (list view) ────────────────────────────────────────────────────
+
 function TeamCard({ team }: { team: Team }) {
   return (
-    <article className="panel p-5">
+    <article className={`panel p-5 ${team.status === "ARCHIVED" ? "opacity-75" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-base font-semibold text-slate-950">
-            <Link className="hover:text-emerald-700" to={`/teams/${team.id}`}>
-              {team.name}
-            </Link>
+            <Link className="hover:text-emerald-700" to={`/teams/${team.id}`}>{team.name}</Link>
           </h3>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
             {team.description || "No description yet."}
           </p>
         </div>
-        <span className="chip shrink-0">{titleCase(team.status || "ACTIVE")}</span>
+        <span className={`chip shrink-0 border ${statusColor(team.status)}`}>
+          {titleCase(team.status || "ACTIVE")}
+        </span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-        <div className="rounded-md border border-slate-100 p-3">
-          <div className="font-semibold text-slate-900">{teamMemberCount(team)}</div>
-          <div className="mt-1 text-slate-500">Members</div>
-        </div>
-        <div className="rounded-md border border-slate-100 p-3">
-          <div className="font-semibold text-slate-900">{formatCount(team.reputationScore)}</div>
-          <div className="mt-1 text-slate-500">Reputation</div>
-        </div>
-        <div className="rounded-md border border-slate-100 p-3">
-          <div className="font-semibold text-slate-900">{formatCount(team.completedProjectsCount)}</div>
-          <div className="mt-1 text-slate-500">Completed</div>
-        </div>
+        {[
+          { label: "Members", value: teamMemberCount(team) },
+          { label: "Reputation", value: formatCount(team.reputationScore) },
+          { label: "Completed", value: formatCount(team.completedProjectsCount) },
+        ].map(({ label, value }) => (
+          <div className="rounded-md border border-slate-100 p-3" key={label}>
+            <div className="font-semibold text-slate-900">{value}</div>
+            <div className="mt-1 text-slate-500">{label}</div>
+          </div>
+        ))}
       </div>
 
       <div className="mt-4 flex -space-x-2">
-        {(team.members || []).slice(0, 6).map((member) => (
-          <div className="rounded-full border-2 border-white" key={member.id || member.userId}>
-            <Avatar user={member.user} size="sm" />
+        {(team.members || []).slice(0, 6).map((m) => (
+          <div className="rounded-full border-2 border-white" key={m.id || m.userId}>
+            <Avatar user={m.user} size="sm" />
           </div>
         ))}
       </div>
 
       <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
-        <Link className="btn-secondary px-3 py-1.5" to={`/teams/${team.id}`}>
-          Open
-        </Link>
+        <Link className="btn-secondary px-3 py-1.5" to={`/teams/${team.id}`}>Open</Link>
       </div>
     </article>
   );
 }
+
+// ─── Edit Team Panel (inline) ─────────────────────────────────────────────────
+
+function EditTeamPanel({ team }: { team: Team }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: team.name, description: team.description || "" });
+  const update = useUpdateTeamMutation(team.id);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await update.mutateAsync(compactPayload({ name: form.name, description: form.description }));
+      setOpen(false);
+    } catch { return; }
+  };
+
+  return (
+    <div className="panel p-5">
+      <button
+        className="flex w-full items-center justify-between text-sm font-semibold text-slate-950"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="flex items-center gap-2"><Edit3 size={15} /> Edit team</span>
+        <ChevronDown size={14} className={`transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <form className="mt-4 space-y-3" onSubmit={submit}>
+          <input
+            className="field" value={form.name} required
+            onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+            placeholder="Team name"
+          />
+          <textarea
+            className="field resize-none" rows={3} value={form.description}
+            onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))}
+            placeholder="Description"
+          />
+          <div className="flex gap-2">
+            <button className="btn-primary px-3 py-1.5" type="submit" disabled={update.isPending}>
+              {update.isPending ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
+              Save
+            </button>
+            <button className="btn-secondary px-3 py-1.5" type="button" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// ─── Invite Member Panel ──────────────────────────────────────────────────────
 
 function InviteMemberPanel({ team }: { team: Team }) {
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const search = usePlatformSearchMutation();
   const invite = useInviteTeamMemberMutation(team.id);
-  const memberIds = new Set((team.members || []).map((member) => member.userId));
-  const users = (search.data?.users || []).filter((user) => !memberIds.has(user.id));
+  const memberIds = new Set((team.members || []).map((m) => m.userId));
+  const users = (search.data?.users || []).filter((u) => !memberIds.has(u.id));
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    search.mutate(query);
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) search.mutate(query);
   };
 
   return (
@@ -227,9 +340,8 @@ function InviteMemberPanel({ team }: { team: Team }) {
       <h3 className="text-sm font-semibold text-slate-950">Invite members</h3>
       <form className="mt-4 flex gap-2" onSubmit={submitSearch}>
         <input
-          className="field"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          className="field" value={query}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Search engineers"
         />
         <button className="btn-secondary" type="submit" disabled={search.isPending}>
@@ -237,53 +349,63 @@ function InviteMemberPanel({ team }: { team: Team }) {
         </button>
       </form>
       <input
-        className="field mt-3"
-        value={message}
-        onChange={(event) => setMessage(event.target.value)}
-        placeholder="Invite message"
+        className="field mt-3" value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Personal message (optional)"
       />
       <div className="mt-4 space-y-2">
         {users.slice(0, 5).map((item: any) => {
-          // Unwrap { user, relevanceScore } from search API
-          const foundUser: User = item?.id ? item : item?.user;
-          if (!foundUser?.id) return null;
+          const u: User = item?.id ? item : item?.user;
+          if (!u?.id) return null;
           return (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
+            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={u.id}>
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar user={foundUser} size="sm" />
+                <Avatar user={u} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</div>
-                  <div className="truncate text-xs text-slate-500">{userHeadline(foundUser) || `@${foundUser.username}`}</div>
+                  <div className="truncate text-sm font-semibold text-slate-900">{userName(u)}</div>
+                  <div className="truncate text-xs text-slate-500">{userHeadline(u) || `@${u.username}`}</div>
                 </div>
               </div>
               <button
-                className="btn-secondary px-3 py-1.5"
-                type="button"
+                className="btn-secondary px-3 py-1.5" type="button"
                 disabled={invite.isPending}
-                onClick={() => invite.mutate({ userId: foundUser.id, message })}
+                onClick={() => invite.mutate({ userId: u.id, message })}
               >
-                <UserPlus size={15} />
-                Invite
+                <UserPlus size={15} /> Invite
               </button>
             </div>
           );
         })}
+        {search.data && users.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-3">No engineers found — all matches are already members.</p>
+        )}
       </div>
     </div>
   );
 }
 
-function MembersPanel({ team, canManage, currentUserId }: { team: Team; canManage: boolean; currentUserId?: string }) {
+// ─── Members Panel ────────────────────────────────────────────────────────────
+
+function MembersPanel({
+  team, canManage, currentUserId, isOwner,
+}: {
+  team: Team; canManage: boolean; currentUserId?: string; isOwner: boolean;
+}) {
+  const navigate = useNavigate();
   const removeMember = useRemoveTeamMemberMutation(team.id);
+  const promote = usePromoteMemberMutation(team.id);
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Members</h3>
+      <h3 className="text-sm font-semibold text-slate-950">Members ({teamMemberCount(team)})</h3>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {(team.members || []).map((member) => (
           <div className="rounded-md border border-slate-100 p-3" key={member.id || member.userId}>
             <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
+              <button
+                className="flex min-w-0 items-center gap-3 text-left"
+                onClick={() => navigate(`/users/${member.userId}`)}
+              >
                 <Avatar user={member.user} size="sm" />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-slate-900">{userName(member.user)}</div>
@@ -291,12 +413,28 @@ function MembersPanel({ team, canManage, currentUserId }: { team: Team; canManag
                     {userHeadline(member.user) || formatDate(member.joinedAt)}
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
+              </button>
+              <div className="flex shrink-0 items-center gap-1">
                 <TeamRoleBadge value={member.role} />
+                {/* Promote/Demote (owner only, not on themselves or other owner) */}
+                {isOwner && member.userId !== currentUserId && member.role !== "OWNER" && (
+                  <button
+                    className={`icon-btn h-7 w-7 ${member.role === "ADMIN" ? "text-amber-600" : ""}`}
+                    type="button"
+                    title={member.role === "ADMIN" ? "Demote to Member" : "Promote to Admin"}
+                    disabled={promote.isPending}
+                    onClick={() => promote.mutate({
+                      memberUserId: member.userId,
+                      role: member.role === "ADMIN" ? "MEMBER" : "ADMIN",
+                    })}
+                  >
+                    <Shield size={13} />
+                  </button>
+                )}
+                {/* Remove */}
                 {canManage && member.userId !== currentUserId && member.role !== "OWNER" && (
                   <button
-                    className="icon-btn h-8 w-8"
+                    className="icon-btn h-7 w-7 text-rose-500"
                     type="button"
                     title="Remove member"
                     disabled={removeMember.isPending}
@@ -306,7 +444,7 @@ function MembersPanel({ team, canManage, currentUserId }: { team: Team; canManag
                       }
                     }}
                   >
-                    <UserMinus size={15} />
+                    <UserMinus size={13} />
                   </button>
                 )}
               </div>
@@ -318,7 +456,13 @@ function MembersPanel({ team, canManage, currentUserId }: { team: Team; canManag
   );
 }
 
-function TeamInvitesPanel({ team, currentUserId, canManage }: { team: Team; currentUserId?: string; canManage: boolean }) {
+// ─── Team Invites Panel ───────────────────────────────────────────────────────
+
+function TeamInvitesPanel({
+  team, currentUserId, canManage,
+}: {
+  team: Team; currentUserId?: string; canManage: boolean;
+}) {
   const withdraw = useWithdrawTeamInviteMutation(team.id);
   const review = useReviewTeamInviteMutation();
   const invites = team.invites || [];
@@ -327,7 +471,10 @@ function TeamInvitesPanel({ team, currentUserId, canManage }: { team: Team; curr
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Invites</h3>
+      <h3 className="text-sm font-semibold text-slate-950">
+        Invites
+        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{invites.length}</span>
+      </h3>
       <div className="mt-4 space-y-2">
         {invites.map((invite: TeamInvite) => {
           const isRecipient = invite.invitedUserId === currentUserId;
@@ -342,42 +489,35 @@ function TeamInvitesPanel({ team, currentUserId, canManage }: { team: Team; curr
                   </div>
                   <div className="text-xs text-slate-500">{formatDate(invite.createdAt)}</div>
                 </div>
-                <span className="chip">{titleCase(invite.status)}</span>
+                <span className={`chip border ${invite.status === "ACCEPTED" ? "text-emerald-700 border-emerald-200" : invite.status === "REJECTED" ? "text-rose-700 border-rose-200" : "border-slate-200"}`}>
+                  {titleCase(invite.status)}
+                </span>
               </div>
-              {invite.message && <p className="mt-2 text-sm text-slate-600">{invite.message}</p>}
+              {invite.message && <p className="mt-2 text-sm text-slate-600 italic">"{invite.message}"</p>}
               {isPending && (
                 <div className="mt-3 flex gap-2">
                   {isRecipient && (
                     <>
                       <button
-                        className="btn-primary px-3 py-1.5"
-                        type="button"
-                        disabled={review.isPending}
+                        className="btn-primary px-3 py-1.5" type="button" disabled={review.isPending}
                         onClick={() => review.mutate({ inviteId: invite.id, status: "ACCEPTED" })}
                       >
-                        <Check size={15} />
-                        Accept
+                        <Check size={14} /> Accept
                       </button>
                       <button
-                        className="btn-secondary px-3 py-1.5"
-                        type="button"
-                        disabled={review.isPending}
+                        className="btn-secondary px-3 py-1.5" type="button" disabled={review.isPending}
                         onClick={() => review.mutate({ inviteId: invite.id, status: "REJECTED" })}
                       >
-                        <X size={15} />
-                        Reject
+                        <X size={14} /> Reject
                       </button>
                     </>
                   )}
                   {canManage && (
                     <button
-                      className="btn-secondary px-3 py-1.5"
-                      type="button"
-                      disabled={withdraw.isPending}
+                      className="btn-secondary px-3 py-1.5" type="button" disabled={withdraw.isPending}
                       onClick={() => withdraw.mutate(invite.id)}
                     >
-                      <X size={15} />
-                      Withdraw
+                      <X size={14} /> Withdraw
                     </button>
                   )}
                 </div>
@@ -390,61 +530,72 @@ function TeamInvitesPanel({ team, currentUserId, canManage }: { team: Team; curr
   );
 }
 
-function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: boolean; isOwner: boolean }) {
+// ─── Team Actions ─────────────────────────────────────────────────────────────
+
+function TeamActions({
+  team, canManage, isOwner,
+}: {
+  team: Team; canManage: boolean; isOwner: boolean;
+}) {
   const navigate = useNavigate();
   const lifecycle = useTeamLifecycleMutation(team.id);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const memberCount = teamMemberCount(team);
+  const isArchived = team.status === "ARCHIVED";
 
   const handleDelete = async () => {
     try {
       await lifecycle.mutateAsync("delete");
       navigate("/teams");
-    } catch {
-      // toast shown by hook
-    }
+    } catch { /* toast shown by hook */ }
   };
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Team actions</h3>
+      <h3 className="text-sm font-semibold text-slate-950">Actions</h3>
       <div className="mt-4 grid gap-2">
+        {/* Leave (non-owner only) */}
         {!isOwner && (
           <button
-            className="btn-secondary justify-start"
-            type="button"
+            className="btn-secondary justify-start" type="button"
             disabled={lifecycle.isPending}
             onClick={() => lifecycle.mutate("leave")}
           >
-            <UserMinus size={16} />
-            Leave team
+            <UserMinus size={16} /> Leave team
           </button>
         )}
-        {canManage && (
+        {/* Archive / Restore */}
+        {canManage && !isArchived && (
           <button
             className="btn-secondary justify-start text-amber-700 border-amber-200 hover:bg-amber-50"
-            type="button"
-            disabled={lifecycle.isPending}
-            onClick={() => lifecycle.mutate("archive" as any)}
+            type="button" disabled={lifecycle.isPending}
+            onClick={() => lifecycle.mutate("archive")}
           >
-            <Archive size={16} />
-            Archive team
+            <Archive size={16} /> Archive team
           </button>
         )}
-        {canManage && isOwner && (
+        {canManage && isArchived && (
           <button
-            className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
-            type="button"
-            disabled={lifecycle.isPending}
+            className="btn-secondary justify-start text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            type="button" disabled={lifecycle.isPending}
+            onClick={() => lifecycle.mutate("restore")}
+          >
+            <RotateCcw size={16} /> Restore team
+          </button>
+        )}
+        {/* Delete (owner only) */}
+        {isOwner && (
+          <button
+            className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 flex items-center gap-2 disabled:opacity-60"
+            type="button" disabled={lifecycle.isPending}
             onClick={() => setShowDeleteConfirm(true)}
           >
-            <Trash2 size={16} />
-            Delete team
+            <Trash2 size={16} /> Delete team
           </button>
         )}
       </div>
 
-      {/* Production-grade delete confirmation modal */}
+      {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
           <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
@@ -454,29 +605,28 @@ function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: bool
               </div>
               <h3 className="mt-4 text-lg font-bold text-slate-950">Delete "{team.name}"?</h3>
               <p className="mt-2 text-sm text-slate-500">
-                This will permanently remove the team and all associated data. 
-                <strong className="text-slate-700"> {memberCount} member{memberCount !== 1 ? "s" : ""}</strong> will lose access.
-                This action cannot be undone.
+                This will permanently delete the team and all associated data.{" "}
+                <strong className="text-slate-700">
+                  {memberCount} member{memberCount !== 1 ? "s" : ""}
+                </strong>{" "}
+                will lose access. This action cannot be undone.
               </p>
               <p className="mt-2 text-xs text-slate-400">
-                Consider <strong>archiving</strong> instead — archived teams can be restored.
+                Consider <strong>archiving</strong> instead — archived teams can be restored later.
               </p>
             </div>
             <div className="mt-6 flex gap-3">
               <button
                 className="flex-1 rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
+                type="button" onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel
               </button>
               <button
                 className="flex-1 rounded-md bg-rose-600 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
-                type="button"
-                disabled={lifecycle.isPending}
-                onClick={handleDelete}
+                type="button" disabled={lifecycle.isPending} onClick={handleDelete}
               >
-                {lifecycle.isPending ? <Loader2 className="mx-auto animate-spin" size={16} /> : "Yes, delete team"}
+                {lifecycle.isPending ? <Loader2 className="mx-auto animate-spin" size={16} /> : "Yes, delete"}
               </button>
             </div>
           </div>
@@ -486,41 +636,46 @@ function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: bool
   );
 }
 
+// ─── Team Owner Panel ─────────────────────────────────────────────────────────
+
 function TeamOwnerPanel({ team }: { team: Team }) {
+  const navigate = useNavigate();
   const owner =
     team.owner ||
-    team.members?.find((member) => member.userId === team.ownerId || member.role === "OWNER")?.user;
+    team.members?.find((m) => m.userId === team.ownerId || m.role === "OWNER")?.user;
 
   return (
     <div className="panel p-5">
       <h3 className="text-sm font-semibold text-slate-950">Owner</h3>
-      <div className="mt-4 flex items-center gap-3">
+      <button
+        className="mt-4 flex w-full items-center gap-3 text-left"
+        onClick={() => owner?.id && navigate(`/users/${owner.id}`)}
+      >
         <Avatar user={owner} />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-950">
-            {userName(owner)}
-          </div>
-          <div className="truncate text-xs text-slate-500">
-            {userHeadline(owner) || owner?.username || "Team owner"}
-          </div>
+          <div className="truncate text-sm font-semibold text-slate-950">{userName(owner)}</div>
+          <div className="truncate text-xs text-slate-500">{userHeadline(owner) || owner?.username || "Team owner"}</div>
         </div>
-      </div>
+      </button>
     </div>
   );
 }
+
+// ─── Team Detail ──────────────────────────────────────────────────────────────
 
 function TeamDetail({ teamId }: { teamId: string }) {
   const { user } = useAuth();
   const teamQuery = useTeamQuery(teamId);
   const team = teamQuery.data;
   const canManage = canManageTeam(team, user?.id);
-  const isOwner = Boolean(team?.ownerId === user?.id || currentMembership(team, user?.id)?.role === "OWNER");
+  const isOwner = Boolean(
+    team?.ownerId === user?.id || currentMembership(team, user?.id)?.role === "OWNER",
+  );
 
   if (teamQuery.isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Loader2 className="animate-spin" size={16} />
-        Loading team
+        <Loader2 className="animate-spin" size={16} /> Loading team
       </div>
     );
   }
@@ -532,15 +687,18 @@ function TeamDetail({ teamId }: { teamId: string }) {
   return (
     <section className="space-y-5">
       <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/teams">
-        Back to teams
+        ← Back to teams
       </Link>
 
+      {/* Hero */}
       <div className="panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl font-bold text-slate-950">{team.name}</h2>
-              <span className="chip">{titleCase(team.status || "ACTIVE")}</span>
+              <span className={`chip border ${statusColor(team.status)}`}>
+                {titleCase(team.status || "ACTIVE")}
+              </span>
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
               {team.description || "No description yet."}
@@ -557,12 +715,13 @@ function TeamDetail({ teamId }: { teamId: string }) {
 
       <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
         <div className="space-y-5">
-          <MembersPanel canManage={canManage} currentUserId={user?.id} team={team} />
+          <MembersPanel canManage={canManage} currentUserId={user?.id} isOwner={isOwner} team={team} />
           <TeamInvitesPanel canManage={canManage} currentUserId={user?.id} team={team} />
         </div>
         <aside className="space-y-5">
           <TeamOwnerPanel team={team} />
           {canManage && <InviteMemberPanel team={team} />}
+          {canManage && <EditTeamPanel team={team} />}
           <TeamActions canManage={canManage} isOwner={isOwner} team={team} />
         </aside>
       </div>
@@ -570,31 +729,27 @@ function TeamDetail({ teamId }: { teamId: string }) {
   );
 }
 
+// ─── Teams Page ───────────────────────────────────────────────────────────────
+
 export function TeamsPage() {
   const { teamId } = useParams();
   const { user } = useAuth();
   const teamsQuery = useMyTeamsQuery();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
-  const filteredTeams = useMemo(() => {
-    const teams = teamsQuery.data || [];
-    const normalized = query.trim().toLowerCase();
-    return teams.filter((team) => {
-      const matchesQuery = [team.name, team.description, team.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized);
-      const matchesStatus = status === "ALL" || team.status === status;
 
-      return matchesQuery && matchesStatus;
+  const filteredTeams = useMemo(() => {
+    const teams = (teamsQuery.data || []).filter((t) => t.status !== "DELETED");
+    const q = query.trim().toLowerCase();
+    return teams.filter((team) => {
+      const matchQ = !q || [team.name, team.description, team.status].filter(Boolean).join(" ").toLowerCase().includes(q);
+      const matchS = status === "ALL" || team.status === status;
+      return matchQ && matchS;
     });
   }, [query, status, teamsQuery.data]);
+
   const visibleStatuses = useMemo(
-    () =>
-      Array.from(
-        new Set((teamsQuery.data || []).map((team) => team.status || "ACTIVE").filter(Boolean)),
-      ),
+    () => Array.from(new Set((teamsQuery.data || []).map((t) => t.status || "ACTIVE").filter(Boolean))),
     [teamsQuery.data],
   );
 
@@ -602,43 +757,35 @@ export function TeamsPage() {
     return <EmptyState icon={Users} title="Login required" text="Sign in to create and manage teams." />;
   }
 
-  if (teamId) {
-    return <TeamDetail teamId={teamId} />;
-  }
+  if (teamId) return <TeamDetail teamId={teamId} />;
 
   return (
     <section className="space-y-5">
+      <PendingInvitesBanner />
       <CreateTeamPanel disabled={!user} />
 
       <div className="panel p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="grid grid-cols-3 gap-4">
-            <Metric label="Teams" value={formatCount(teamsQuery.data?.length || 0)} />
-            <Metric label="Visible" value={formatCount(filteredTeams.length)} />
-            <Metric
-              label="Members"
-              value={formatCount(
-                (teamsQuery.data || []).reduce((total, team) => total + teamMemberCount(team), 0),
-              )}
-            />
-          </div>
+        <div className="grid grid-cols-3 gap-4">
+          <Metric label="My Teams" value={formatCount(teamsQuery.data?.length || 0)} />
+          <Metric label="Visible" value={formatCount(filteredTeams.length)} />
+          <Metric
+            label="Total Members"
+            value={formatCount((teamsQuery.data || []).reduce((s, t) => s + teamMemberCount(t), 0))}
+          />
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
-              className="field pl-9"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              className="field pl-9" value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Search your teams"
             />
           </div>
-          <select className="field" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select className="field" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="ALL">All status</option>
-            {visibleStatuses.map((item) => (
-              <option key={item} value={item}>
-                {titleCase(item)}
-              </option>
+            {visibleStatuses.map((s) => (
+              <option key={s} value={s}>{titleCase(s)}</option>
             ))}
           </select>
         </div>
@@ -646,8 +793,7 @@ export function TeamsPage() {
 
       {teamsQuery.isFetching && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="animate-spin" size={16} />
-          Loading teams
+          <Loader2 className="animate-spin" size={16} /> Loading teams
         </div>
       )}
 

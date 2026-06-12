@@ -48,6 +48,7 @@ export type User = {
   acceptingCollaborators?: boolean;
   acceptingReferrals?: boolean;
   acceptingMentorship?: boolean;
+  mutualConnectionCount?: number;
   _count?: {
     skills?: number;
     experiences?: number;
@@ -1913,6 +1914,17 @@ export const api = {
     request<Team>(`/teams/${teamId}/delete`, { method: "DELETE" }),
   archiveTeam: (teamId: string) =>
     request<Team>(`/teams/${teamId}/archive`, { method: "PATCH" }),
+  restoreTeam: (teamId: string) =>
+    request<Team>(`/teams/${teamId}/restore`, { method: "PATCH" }),
+  updateTeam: (teamId: string, body: { name?: string; description?: string }) =>
+    request<Team>(`/teams/${teamId}/update`, { method: "PATCH", body }),
+  promoteMember: (teamId: string, memberUserId: string, role: "MEMBER" | "ADMIN") =>
+    request<{ id: string; role: string }>(`/teams/${teamId}/members/${memberUserId}/role`, {
+      method: "PATCH",
+      body: { role },
+    }),
+  myPendingTeamInvites: (options?: EndpointOptions) =>
+    request<TeamInvite[]>("/teams/invites/pending", options),
   followUser: (userId: string) =>
     request<SocialFollow>(`/social/follow/${userId}`, { method: "POST" }),
   unfollowUser: (userId: string) =>

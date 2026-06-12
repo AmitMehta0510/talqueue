@@ -1005,21 +1005,67 @@ export const useTeamLifecycleMutation = (teamId?: string) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  return useMutation<unknown, Error, "leave" | "delete" | "archive">({
+  return useMutation<unknown, Error, "leave" | "delete" | "archive" | "restore">({
     mutationFn: async (action) => {
       if (!teamId) throw new Error("Team missing");
       if (action === "leave") return api.leaveTeam(teamId);
       if (action === "archive") return api.archiveTeam(teamId);
+      if (action === "restore") return api.restoreTeam(teamId);
       return api.deleteTeam(teamId);
     },
     onSuccess: (_result, action) => {
       let msg = "Team deleted";
       if (action === "leave") msg = "Left team";
       if (action === "archive") msg = "Team archived";
+      if (action === "restore") msg = "Team restored";
       showToast("success", msg);
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useUpdateTeamMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { name?: string; description?: string }) => {
+      if (!teamId) throw new Error("Team missing");
+      return api.updateTeam(teamId, data);
+    },
+    onSuccess: () => showToast("success", "Team updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const usePromoteMemberMutation = (teamId?: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ memberUserId, role }: { memberUserId: string; role: "MEMBER" | "ADMIN" }) => {
+      if (!teamId) throw new Error("Team missing");
+      return api.promoteMember(teamId, memberUserId, role);
+    },
+    onSuccess: () => showToast("success", "Member role updated"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => invalidateTeams(queryClient, teamId),
+  });
+};
+
+export const useMyPendingTeamInvitesQuery = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.teams.pendingInvites(),
+    queryFn: async ({ signal }) => {
+      const result = await api.myPendingTeamInvites({ signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user),
+    staleTime: 30_000,
   });
 };
 

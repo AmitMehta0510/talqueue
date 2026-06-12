@@ -15,6 +15,11 @@ export const createTeamSchema =
       ).optional(),
   });
 
+export const updateTeamSchema = z.object({
+  name: z.string().min(3).optional(),
+  description: z.string().optional(),
+});
+
 export const inviteMemberSchema =
   z.object({
 
@@ -34,3 +39,7 @@ export const reviewInviteSchema =
         "REJECTED",
       ]),
   });
+
+export const promoteMemberSchema = z.object({
+  role: z.enum(["MEMBER", "ADMIN"]),
+});
