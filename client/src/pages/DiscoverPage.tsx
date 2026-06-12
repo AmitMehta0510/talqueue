@@ -647,7 +647,7 @@ export function DiscoverPage() {
                       <option value="STUDENT">🎓 Student</option>
                       <option value="PROFESSOR">🏫 Professor / Faculty</option>
                       <option value="RECRUITER">💼 Recruiter</option>
-                      <option value="WORKING_PROFESSIONAL">🧑‍💻 Working Professional</option>
+                      <option value="PROFESSIONAL">🧑‍💻 Working Professional</option>
                     </select>
                   </FilterField>
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">

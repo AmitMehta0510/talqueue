@@ -75,6 +75,7 @@ export function EngineerCard({
     PROFESSOR: "Professor",
     RECRUITER: "Recruiter",
     WORKING_PROFESSIONAL: "Professional",
+    PROFESSIONAL: "Professional",
   };
 
   return (
@@ -227,7 +228,7 @@ export function EngineerCard({
           {/* Ask Referral — only show for Professionals/Recruiters who accept referrals */}
           {onRequestReferral &&
             (
-              (user.primaryRole === "WORKING_PROFESSIONAL" || (user as any).role === "WORKING_PROFESSIONAL") ||
+              (user.primaryRole === "PROFESSIONAL" || user.primaryRole === "WORKING_PROFESSIONAL" || (user as any).role === "PROFESSIONAL" || (user as any).role === "WORKING_PROFESSIONAL") ||
               (user.primaryRole === "RECRUITER" || (user as any).role === "RECRUITER")
             ) &&
             user.acceptingReferrals === true && (

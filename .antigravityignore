@@ -1,0 +1,25 @@
+# Dependencies and builds
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# Lockfiles (can be extremely large)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Assets and media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.ico
+*.mp4
+
+# Database and logs
+*.log
+prisma/migrations/

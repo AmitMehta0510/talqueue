@@ -161,7 +161,7 @@ function SearchPanel() {
           {users.length ? (
             users.map((foundUser) => {
               const isReferralEligible =
-                (foundUser.primaryRole === "WORKING_PROFESSIONAL" || (foundUser as any).role === "WORKING_PROFESSIONAL") ||
+                (foundUser.primaryRole === "PROFESSIONAL" || foundUser.primaryRole === "WORKING_PROFESSIONAL" || (foundUser as any).role === "PROFESSIONAL" || (foundUser as any).role === "WORKING_PROFESSIONAL") ||
                 (foundUser.primaryRole === "RECRUITER" || (foundUser as any).role === "RECRUITER");
               const canAskReferral = isReferralEligible && foundUser.acceptingReferrals === true;
               return (
@@ -295,7 +295,7 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
                   onMessage={startConversation}
                   onOpenProfile={(target) => navigate(`/users/${target.id}`)}
                   onRequestReferral={
-                    (item.user.primaryRole === "WORKING_PROFESSIONAL" || item.user.primaryRole === "RECRUITER") &&
+                    (item.user.primaryRole === "PROFESSIONAL" || item.user.primaryRole === "WORKING_PROFESSIONAL" || item.user.primaryRole === "RECRUITER") &&
                     item.user.acceptingReferrals === true
                       ? (target) => navigate(`/discover?referral=${target.id}`)
                       : undefined

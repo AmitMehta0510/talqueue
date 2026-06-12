@@ -64,6 +64,7 @@ export const queryKeys = {
     all: ["teams"] as const,
     mine: () => ["teams", "mine"] as const,
     detail: (teamId: string) => ["teams", "detail", teamId] as const,
+    pendingInvites: () => ["teams", "invites", "pending"] as const,
   },
   social: {
     all: ["social"] as const,

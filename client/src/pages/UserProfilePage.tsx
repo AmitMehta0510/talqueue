@@ -195,7 +195,7 @@ export function UserProfilePage() {
                 )}
                 Message
               </button>
-              {(profile.primaryRole === "WORKING_PROFESSIONAL" || profile.primaryRole === "RECRUITER") &&
+              {(profile.primaryRole === "PROFESSIONAL" || profile.primaryRole === "WORKING_PROFESSIONAL" || profile.primaryRole === "RECRUITER") &&
                 profile.acceptingReferrals === true && (
                 <button
                   id="user-profile-referral-btn"

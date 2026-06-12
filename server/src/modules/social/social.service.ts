@@ -27,6 +27,7 @@ const compactUserSelect = {
   followersCount: true,
   followingCount: true,
   connectionCount: true,
+  acceptingReferrals: true,
   profile: {
     select: {
       fullName: true,
