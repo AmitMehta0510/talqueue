@@ -2,14 +2,12 @@ import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 
 import {
   BriefcaseBusiness,
   Building2,
-  ChevronDown,
-  ChevronUp,
   Compass,
+  ExternalLink,
   Filter,
   Gift,
   Hash,
   Loader2,
-  MessageSquare,
   Newspaper,
   Rocket,
   Search,
@@ -271,6 +269,38 @@ const feedTitle = (item: FeedItem) => {
   if (item.type === "JOB") return (item.data as Job).title;
   if (item.type === "POST") return (item.data as FeedPost).content;
   return String((item.data as Record<string, unknown>).name || item.type);
+};
+
+/** Returns a client-side route for a feed item, or null if not navigable. */
+const feedItemRoute = (item: FeedItem): string | null => {
+  switch (item.type) {
+    case "PROJECT": {
+      const p = item.data as Project;
+      return p?.id ? `/projects/${p.id}` : null;
+    }
+    case "JOB": {
+      const j = item.data as Job;
+      return j?.id ? `/jobs` : null; // jobs open via modal on the jobs page
+    }
+    case "HACKATHON": {
+      const h = item.data as Record<string, unknown>;
+      return h?.id ? `/hackathons` : null;
+    }
+    case "COMPANY": {
+      const c = item.data as Record<string, unknown>;
+      return c?.slug ? `/companies/${c.slug}` : c?.id ? `/companies` : null;
+    }
+    case "COMMUNITY": {
+      const comm = item.data as Record<string, unknown>;
+      return comm?.slug ? `/communities/${comm.slug}` : null;
+    }
+    case "POST": {
+      const post = item.data as FeedPost;
+      return post?.id ? `/social` : null;
+    }
+    default:
+      return null;
+  }
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -867,6 +897,21 @@ function PersonalizedDiscovery({
   user: User | null;
   currentUserId?: string;
 }) {
+  // Merge collaborators + teammates into a single "Connect & Collaborate" pool
+  // (deduplicated by id, tagged with context). Collaborators come first.
+  // NOTE: Hook must be called BEFORE any conditional returns (Rules of Hooks).
+  const connectPool = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Array<User & { _context: string }> = [];
+    for (const u of collaborators) {
+      if (!seen.has(u.id)) { seen.add(u.id); out.push({ ...u, _context: "Collaborator" }); }
+    }
+    for (const u of teammates) {
+      if (!seen.has(u.id)) { seen.add(u.id); out.push({ ...u, _context: "Teammate" }); }
+    }
+    return out;
+  }, [collaborators, teammates]);
+
   if (!user) {
     return (
       <EmptyState
@@ -881,19 +926,19 @@ function PersonalizedDiscovery({
     <div className="space-y-5">
       {loading && <InlineLoader label="Refreshing suggestions" />}
 
-      <DiscoverySection count={discoveryFeed.length} icon={Compass} title="Discovery feed">
-        {discoveryFeed.length ? (
+      {/* ── Discovery feed ── */}
+      {discoveryFeed.length > 0 && (
+        <DiscoverySection count={discoveryFeed.length} icon={Compass} title="Discovery Feed">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {discoveryFeed.slice(0, 6).map((item, index) => (
               <FeedSuggestionCard item={item} key={`${item.type}-${index}`} />
             ))}
           </div>
-        ) : (
-          <EmptyState icon={Compass} title="No discovery feed yet" text="Suggestions will appear as your profile grows." />
-        )}
-      </DiscoverySection>
+        </DiscoverySection>
+      )}
 
-      <DiscoverySection count={engineers.length} icon={Users} title="Suggested engineers">
+      {/* ── Engineers ── */}
+      <DiscoverySection count={engineers.length} icon={Users} title="Suggested Engineers">
         <PeopleGrid
           disabled={!canInteract}
           onConnect={onConnect}
@@ -906,37 +951,69 @@ function PersonalizedDiscovery({
         />
       </DiscoverySection>
 
+      {/* ── Connect & Collaborate (merged collaborators + teammates) ── */}
+      {connectPool.length > 0 && (
+        <DiscoverySection count={connectPool.length} icon={Users} title="Connect &amp; Collaborate">
+          <p className="-mt-1 mb-3 text-xs text-slate-500">
+            Engineers matched to your skills and projects — potential collaborators and teammates.
+          </p>
+          <div className="grid gap-5 xl:grid-cols-2">
+            {connectPool.map((u) => (
+              <EngineerCard
+                key={u.id}
+                context={(u as any)._context}
+                disabled={!canInteract}
+                onConnect={onConnect}
+                onOpenProfile={onOpenProfile}
+                onRequestReferral={onRequestReferral}
+                user={u}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
+        </DiscoverySection>
+      )}
+
+      {/* ── Mentors & Recruiters side by side ── */}
       <div className="grid gap-5 xl:grid-cols-2">
         <DiscoverySection count={mentors.length} icon={UserRound} title="Mentors">
-          <PeopleGrid disabled={!canInteract} onMessage={onMessage} onOpenProfile={onOpenProfile} onRequestReferral={onRequestReferral} users={mentors} currentUserId={currentUserId} />
+          <PeopleGrid
+            disabled={!canInteract}
+            onMessage={onMessage}
+            onOpenProfile={onOpenProfile}
+            onRequestReferral={onRequestReferral}
+            users={mentors}
+            currentUserId={currentUserId}
+          />
         </DiscoverySection>
         <DiscoverySection count={recruiters.length} icon={BriefcaseBusiness} title="Recruiters">
-          <PeopleGrid disabled={!canInteract} onMessage={onMessage} onOpenProfile={onOpenProfile} onRequestReferral={onRequestReferral} users={recruiters} currentUserId={currentUserId} />
+          <PeopleGrid
+            disabled={!canInteract}
+            onMessage={onMessage}
+            onOpenProfile={onOpenProfile}
+            onRequestReferral={onRequestReferral}
+            users={recruiters}
+            currentUserId={currentUserId}
+          />
         </DiscoverySection>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DiscoverySection count={collaborators.length} icon={Users} title="Collaborators">
-          <PeopleGrid disabled={!canInteract} onConnect={onConnect} onOpenProfile={onOpenProfile} onRequestReferral={onRequestReferral} users={collaborators} currentUserId={currentUserId} />
-        </DiscoverySection>
-        <DiscoverySection count={teammates.length} icon={Users} title="Teammates">
-          <PeopleGrid disabled={!canInteract} onConnect={onConnect} onOpenProfile={onOpenProfile} onRequestReferral={onRequestReferral} users={teammates} currentUserId={currentUserId} />
-        </DiscoverySection>
-      </div>
-
-      <DiscoverySection count={projects.length} icon={Rocket} title="Suggested projects">
+      {/* ── Projects ── */}
+      <DiscoverySection count={projects.length} icon={Rocket} title="Suggested Projects">
         <ProjectGrid currentUserId={user.id} onJoin={onJoin} projects={projects} />
       </DiscoverySection>
 
+      {/* ── Jobs & Hackathons ── */}
       <div className="grid gap-5 xl:grid-cols-2">
-        <DiscoverySection count={jobs.length} icon={BriefcaseBusiness} title="Suggested jobs">
+        <DiscoverySection count={jobs.length} icon={BriefcaseBusiness} title="Suggested Jobs">
           <JobGrid jobs={jobs} />
         </DiscoverySection>
-        <DiscoverySection count={hackathons.length} icon={Trophy} title="Suggested hackathons">
+        <DiscoverySection count={hackathons.length} icon={Trophy} title="Hackathons">
           <HackathonGrid hackathons={hackathons} />
         </DiscoverySection>
       </div>
 
+      {/* ── Companies & Communities ── */}
       <div className="grid gap-5 xl:grid-cols-2">
         <DiscoverySection count={companies.length} icon={Building2} title="Companies">
           <CompanyGrid companies={companies} />
@@ -946,9 +1023,12 @@ function PersonalizedDiscovery({
         </DiscoverySection>
       </div>
 
-      <DiscoverySection count={posts.length} icon={Newspaper} title="Suggested posts">
-        <PostGrid posts={posts} />
-      </DiscoverySection>
+      {/* ── Posts ── */}
+      {posts.length > 0 && (
+        <DiscoverySection count={posts.length} icon={Newspaper} title="Suggested Posts">
+          <PostGrid posts={posts} />
+        </DiscoverySection>
+      )}
     </div>
   );
 }
@@ -1185,10 +1265,40 @@ function PostSuggestionCard({ post }: { post: FeedPost }) {
 }
 
 function FeedSuggestionCard({ item }: { item: FeedItem }) {
+  const navigate = useNavigate();
+  const route = feedItemRoute(item);
+
+  const typeColors: Record<string, string> = {
+    PROJECT: "bg-violet-50 text-violet-700 border-violet-200",
+    JOB: "bg-sky-50 text-sky-700 border-sky-200",
+    POST: "bg-slate-50 text-slate-700 border-slate-200",
+    HACKATHON: "bg-amber-50 text-amber-700 border-amber-200",
+    COMPANY: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    COMMUNITY: "bg-rose-50 text-rose-700 border-rose-200",
+  };
+  const chipClass = typeColors[item.type] ?? "bg-slate-50 text-slate-700 border-slate-200";
+
+  const handleClick = () => {
+    if (route) navigate(route);
+  };
+
   return (
-    <article className="panel p-4">
+    <article
+      className={`panel p-4 transition ${
+        route ? "cursor-pointer hover:border-emerald-300 hover:shadow-md" : ""
+      }`}
+      role={route ? "button" : undefined}
+      tabIndex={route ? 0 : undefined}
+      onClick={route ? handleClick : undefined}
+      onKeyDown={(e) => {
+        if (route && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="line-clamp-2 text-sm font-semibold text-slate-950">
             {feedTitle(item) || titleCase(item.type)}
           </div>
@@ -1196,7 +1306,14 @@ function FeedSuggestionCard({ item }: { item: FeedItem }) {
             {item.reason || "Recommended from your profile and activity."}
           </p>
         </div>
-        <span className="chip shrink-0">{titleCase(item.type)}</span>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${chipClass}`}>
+            {titleCase(item.type)}
+          </span>
+          {route && (
+            <ExternalLink className="text-slate-400" size={13} />
+          )}
+        </div>
       </div>
     </article>
   );

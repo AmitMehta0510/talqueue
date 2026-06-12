@@ -159,7 +159,9 @@ export const searchUsers =  async (
           }),
 
           ...(filters.role && {
-            role: filters.role as any,
+            // The User model stores the primary role as `primaryRole String?`
+            // (the `roles` relation is for admin/platform roles).
+            primaryRole: filters.role,
           }),
 
           ...(filters.companyNames

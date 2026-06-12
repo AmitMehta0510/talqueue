@@ -104,9 +104,9 @@ export function EngineerCard({
                   Verified
                 </span>
               )}
-              {(user as any).role && (
+              {(user.primaryRole || (user as any).role) && (
                 <span className="chip shrink-0">
-                  {roleLabel[(user as any).role] ?? titleCase((user as any).role)}
+                  {roleLabel[(user.primaryRole || (user as any).role) as string] ?? titleCase((user.primaryRole || (user as any).role) as string)}
                 </span>
               )}
             </div>
@@ -221,10 +221,10 @@ export function EngineerCard({
           {/* Ask Referral — only show for Professionals/Recruiters who accept referrals */}
           {onRequestReferral &&
             (
-              (user as any).role === "WORKING_PROFESSIONAL" ||
-              (user as any).role === "RECRUITER"
+              (user.primaryRole === "WORKING_PROFESSIONAL" || (user as any).role === "WORKING_PROFESSIONAL") ||
+              (user.primaryRole === "RECRUITER" || (user as any).role === "RECRUITER")
             ) &&
-            (user as any).acceptingReferrals === true && (
+            user.acceptingReferrals === true && (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
               type="button"
