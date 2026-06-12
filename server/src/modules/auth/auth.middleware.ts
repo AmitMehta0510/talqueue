@@ -50,9 +50,45 @@ export const protect = async (
     }
 
     req.user = user;
-
     next();
   } catch {
     next(new AppError("Invalid token", 401));
+  }
+};
+
+export const optionalProtect = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    if (isTokenRevoked(token)) {
+      return next();
+    }
+
+    const decoded = verifyToken(token);
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: decoded.userId,
+      },
+      select: authUserSelect,
+    });
+
+    if (!user || user.status !== "ACTIVE") {
+      return next();
+    }
+
+    req.user = user;
+    next();
+  } catch {
+    next();
   }
 };

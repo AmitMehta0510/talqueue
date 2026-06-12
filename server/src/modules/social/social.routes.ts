@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { protect }
+import { protect, optionalProtect }
 from "modules/auth/auth.middleware";
 
 import {
@@ -43,11 +43,13 @@ router.patch(
 
 router.get(
   "/followers/:userId",
+  optionalProtect,
   getFollowersHandler
 );
 
 router.get(
   "/following/:userId",
+  optionalProtect,
   getFollowingHandler
 );
 

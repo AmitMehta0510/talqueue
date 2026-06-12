@@ -465,6 +465,7 @@ export const reviewConnectionRequest = async (
 
 export const getFollowers = async (
   userId: string,
+  viewerId?: string,
   params: PaginationParams = {},
 ) => {
   const limit = clampLimit(params.limit);
@@ -505,8 +506,35 @@ export const getFollowers = async (
 
   const page = paginate(followers, limit);
 
+  const followerUserIds = page.items.map((f) => f.follower.id);
+  const connections = viewerId && followerUserIds.length > 0
+    ? await prisma.connection.findMany({
+        where: {
+          OR: [
+            { senderId: viewerId, receiverId: { in: followerUserIds } },
+            { senderId: { in: followerUserIds }, receiverId: viewerId },
+          ],
+        },
+        select: { senderId: true, receiverId: true, status: true },
+      })
+    : [];
+
+  const connectionMap = new Map<string, string>();
+  for (const conn of connections) {
+    const targetId = conn.senderId === viewerId ? conn.receiverId : conn.senderId;
+    connectionMap.set(targetId, conn.status);
+  }
+
+  const enrichedItems = page.items.map((item) => ({
+    ...item,
+    follower: {
+      ...item.follower,
+      connectionStatus: connectionMap.get(item.follower.id) || "NONE",
+    },
+  }));
+
   return {
-    followers: page.items,
+    followers: enrichedItems,
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     limit: page.limit,
@@ -515,6 +543,7 @@ export const getFollowers = async (
 
 export const getFollowing = async (
   userId: string,
+  viewerId?: string,
   params: PaginationParams = {},
 ) => {
   const limit = clampLimit(params.limit);
@@ -555,8 +584,35 @@ export const getFollowing = async (
 
   const page = paginate(following, limit);
 
+  const followingUserIds = page.items.map((f) => f.following.id);
+  const connections = viewerId && followingUserIds.length > 0
+    ? await prisma.connection.findMany({
+        where: {
+          OR: [
+            { senderId: viewerId, receiverId: { in: followingUserIds } },
+            { senderId: { in: followingUserIds }, receiverId: viewerId },
+          ],
+        },
+        select: { senderId: true, receiverId: true, status: true },
+      })
+    : [];
+
+  const connectionMap = new Map<string, string>();
+  for (const conn of connections) {
+    const targetId = conn.senderId === viewerId ? conn.receiverId : conn.senderId;
+    connectionMap.set(targetId, conn.status);
+  }
+
+  const enrichedItems = page.items.map((item) => ({
+    ...item,
+    following: {
+      ...item.following,
+      connectionStatus: connectionMap.get(item.following.id) || "NONE",
+    },
+  }));
+
   return {
-    following: page.items,
+    following: enrichedItems,
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     limit: page.limit,

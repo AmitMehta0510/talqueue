@@ -131,7 +131,7 @@ export const sendConnectionRequestHandler =  asyncHandler(
 export const getFollowersHandler =
   asyncHandler(
     async (
-      req: Request,
+      req: any,
       res: Response
     ) => {
 
@@ -141,6 +141,7 @@ export const getFollowersHandler =
       const followers =
         await getFollowers(
           userId,
+          req.user?.id,
           getPaginationParams(req)
         );
 
@@ -155,7 +156,7 @@ export const getFollowersHandler =
 export const getFollowingHandler =
   asyncHandler(
     async (
-      req: Request,
+      req: any,
       res: Response
     ) => {
 
@@ -165,6 +166,7 @@ export const getFollowingHandler =
       const following =
         await getFollowing(
           userId,
+          req.user?.id,
           getPaginationParams(req)
         );
 

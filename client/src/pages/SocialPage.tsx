@@ -268,8 +268,8 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
               const enriched = {
                 ...item.user,
                 isFollowing: followingIds.has(item.user.id),
-                // Mark as ACCEPTED for connections so Message button is enabled
-                connectionStatus: activeTab === "connections" ? "ACCEPTED" : undefined,
+                // Mark as ACCEPTED for connections so Message button is enabled, otherwise use the backend-provided status
+                connectionStatus: activeTab === "connections" ? "ACCEPTED" : (item.user as any).connectionStatus,
               } as any;
               return (
                 <EngineerCard
