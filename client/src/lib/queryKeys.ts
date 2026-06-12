@@ -34,6 +34,7 @@ export const queryKeys = {
     detail: (slug: string) => ["communities", "detail", slug] as const,
     suggested: () => ["communities", "suggested"] as const,
     joined: () => ["communities", "joined"] as const,
+    joinRequests: (slug: string) => ["communities", "join-requests", slug] as const,
   },
   chat: {
     all: ["chat"] as const,

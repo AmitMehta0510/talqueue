@@ -46,7 +46,6 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
         applicationId,
         payload: { status: status as Exclude<JobApplicationStatus, "APPLIED" | "VIEWED"> },
       });
-      // Clear selected candidate overlay if updated
       if (selectedCandidate && selectedCandidate.id === applicationId) {
         setSelectedCandidate((prev) => (prev ? { ...prev, status } : null));
       }
@@ -56,147 +55,153 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
   };
 
   const columnsList = [
-    { key: "APPLIED", label: "Applied", color: "border-t-blue-500 bg-blue-50/20 text-blue-800" },
-    { key: "VIEWED", label: "Viewed", color: "border-t-indigo-500 bg-indigo-50/20 text-indigo-800" },
-    { key: "SHORTLISTED", label: "Shortlisted", color: "border-t-amber-500 bg-amber-50/20 text-amber-800" },
-    { key: "INTERVIEW", label: "Interviewing", color: "border-t-purple-500 bg-purple-50/20 text-purple-800" },
-    { key: "HIRED", label: "Hired", color: "border-t-emerald-500 bg-emerald-50/20 text-emerald-800" },
-    { key: "REJECTED", label: "Rejected", color: "border-t-rose-500 bg-rose-50/20 text-rose-800" },
+    { key: "APPLIED", label: "Applied", color: "border-t-blue-500", headerBg: "bg-blue-50", countBg: "bg-blue-100 text-blue-800", barColor: "bg-blue-400" },
+    { key: "VIEWED", label: "Viewed", color: "border-t-indigo-500", headerBg: "bg-indigo-50", countBg: "bg-indigo-100 text-indigo-800", barColor: "bg-indigo-400" },
+    { key: "SHORTLISTED", label: "Shortlisted", color: "border-t-amber-500", headerBg: "bg-amber-50", countBg: "bg-amber-100 text-amber-800", barColor: "bg-amber-400" },
+    { key: "INTERVIEW", label: "Interviewing", color: "border-t-purple-500", headerBg: "bg-purple-50", countBg: "bg-purple-100 text-purple-800", barColor: "bg-purple-400" },
+    { key: "HIRED", label: "Hired", color: "border-t-emerald-500", headerBg: "bg-emerald-50", countBg: "bg-emerald-100 text-emerald-800", barColor: "bg-emerald-400" },
+    { key: "REJECTED", label: "Rejected", color: "border-t-rose-500", headerBg: "bg-rose-50", countBg: "bg-rose-100 text-rose-800", barColor: "bg-rose-400" },
   ];
 
   const pipelineData = pipelineQuery.data?.pipeline || {};
   const jobTitle = pipelineQuery.data?.job?.title || "Recruiter Pipeline";
 
+  // Pipeline stats
+  const totalApplicants = columnsList.reduce((sum, col) => sum + (pipelineData[col.key]?.length || 0), 0);
+  const hired = pipelineData["HIRED"]?.length || 0;
+  const inProgress = (pipelineData["VIEWED"]?.length || 0) + (pipelineData["INTERVIEW"]?.length || 0) + (pipelineData["SHORTLISTED"]?.length || 0);
+  const conversionRate = totalApplicants > 0 ? Math.round((hired / totalApplicants) * 100) : 0;
+
+  const daysSince = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (diff === 0) return "Today";
+    if (diff === 1) return "1d ago";
+    return `${diff}d ago`;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button
-            className="icon-btn shrink-0"
-            type="button"
-            title="Back to Dashboard"
-            onClick={onBack}
-          >
+          <button className="icon-btn shrink-0" type="button" title="Back to Dashboard" onClick={onBack}>
             <ArrowLeft size={16} />
           </button>
           <div>
             <h2 className="text-xl font-bold text-slate-950">{jobTitle}</h2>
-            <p className="text-xs text-slate-500">Pipeline Tracking & AI Candidate Matches</p>
+            <p className="text-xs text-slate-500">Applicant Pipeline · {totalApplicants} total candidates</p>
           </div>
         </div>
-
-        {/* View Selection Tab */}
         <div className="flex rounded-lg bg-slate-100 p-1">
-          <button
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-              activeSubTab === "pipeline"
-                ? "bg-white text-slate-950 shadow-sm"
-                : "text-slate-600 hover:text-slate-950"
-            }`}
-            onClick={() => setActiveSubTab("pipeline")}
-          >
-            Visual Pipeline
-          </button>
-          <button
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
-              activeSubTab === "rankings"
-                ? "bg-white text-slate-950 shadow-sm"
-                : "text-slate-600 hover:text-slate-950"
-            }`}
-            onClick={() => setActiveSubTab("rankings")}
-          >
-            AI Candidate Rankings
-          </button>
+          {(["pipeline", "rankings"] as const).map((tab) => (
+            <button
+              key={tab}
+              className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition ${
+                activeSubTab === tab ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"
+              }`}
+              onClick={() => setActiveSubTab(tab)}
+            >
+              {tab === "pipeline" ? "Visual Pipeline" : "AI Candidate Rankings"}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* Naukri-style Stats Bar */}
+      {activeSubTab === "pipeline" && totalApplicants > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Total Applied", value: totalApplicants, color: "text-blue-700", bg: "bg-blue-50 border-blue-100" },
+            { label: "In Progress", value: inProgress, color: "text-purple-700", bg: "bg-purple-50 border-purple-100" },
+            { label: "Hired", value: hired, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100" },
+            { label: "Conversion", value: `${conversionRate}%`, color: "text-amber-700", bg: "bg-amber-50 border-amber-100" },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`rounded-xl border p-4 ${bg}`}>
+              <div className={`text-2xl font-bold ${color}`}>{value}</div>
+              <div className="mt-0.5 text-xs text-slate-500">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {activeSubTab === "pipeline" ? (
         pipelineQuery.isLoading ? (
-          <div className="flex justify-center py-12">
-            <InlineLoader label="Loading applicant pipeline..." />
-          </div>
+          <div className="flex justify-center py-12"><InlineLoader label="Loading applicant pipeline..." /></div>
         ) : pipelineQuery.isError ? (
-          <ErrorState
-            title="Pipeline failed to load"
-            text={pipelineQuery.error?.message}
-            onRetry={() => pipelineQuery.refetch()}
-          />
+          <ErrorState title="Pipeline failed to load" text={pipelineQuery.error?.message} onRetry={() => pipelineQuery.refetch()} />
         ) : (
-          <div className="grid gap-4 overflow-x-auto pb-4 lg:grid-cols-6 min-w-[1000px] lg:min-w-0">
+          <div className="grid gap-3 overflow-x-auto pb-4 lg:grid-cols-6 min-w-[1000px] lg:min-w-0">
             {columnsList.map((col) => {
               const cards = pipelineData[col.key] || [];
-
+              const pct = totalApplicants > 0 ? Math.round((cards.length / totalApplicants) * 100) : 0;
               return (
-                <div
-                  key={col.key}
-                  className={`flex flex-col rounded-lg border-t-4 border-slate-200 bg-white shadow-sm h-[650px] overflow-hidden ${col.color}`}
-                >
-                  <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100">
-                    <span className="font-semibold text-xs text-slate-700">{col.label}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xxs font-bold text-slate-600">
-                      {cards.length}
-                    </span>
+                <div key={col.key} className={`flex flex-col rounded-xl border-t-4 border-slate-200 bg-white shadow-sm h-[640px] overflow-hidden ${col.color}`}>
+                  {/* Column Header */}
+                  <div className={`px-3 py-2.5 border-b border-slate-100 ${col.headerBg}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-800">{col.label}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${col.countBg}`}>{cards.length}</span>
+                    </div>
+                    <div className="mt-1.5 h-1 w-full rounded-full bg-slate-200">
+                      <div className={`h-1 rounded-full ${col.barColor} transition-all`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="mt-0.5 text-[9px] text-slate-400">{pct}% of total</div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {cards.length ? (
                       cards.map((card: RecruiterJobPipelineCard) => (
                         <div
                           key={card.id}
-                          className="group relative cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-sm hover:border-emerald-300 hover:shadow-md transition"
+                          className="group relative cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all"
                           onClick={() => setSelectedCandidate(card)}
                         >
                           <div className="flex items-center gap-2">
-                            <Avatar
-                              user={
-                                {
-                                  username: card.candidate.username,
-                                  profile: {
-                                    avatarUrl: card.candidate.avatarUrl,
-                                    fullName: card.candidate.fullName,
-                                  },
-                                } as User
-                              }
-                              size="sm"
-                            />
+                            <Avatar user={{ username: card.candidate.username, profile: { avatarUrl: card.candidate.avatarUrl, fullName: card.candidate.fullName } } as User} size="sm" />
                             <div className="min-w-0 flex-1">
-                              <h4 className="truncate text-xs font-semibold text-slate-950">
-                                {card.candidate.fullName}
-                              </h4>
-                              <p className="truncate text-xxs text-slate-500 mt-0.5">
-                                {card.candidate.headline || `@${card.candidate.username}`}
-                              </p>
+                              <h4 className="truncate text-xs font-bold text-slate-950">{card.candidate.fullName}</h4>
+                              <p className="truncate text-[10px] text-slate-500 mt-0.5">{card.candidate.headline || `@${card.candidate.username}`}</p>
                             </div>
                           </div>
-
-                          <div className="mt-2.5 flex items-center justify-between gap-2">
-                            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xxs font-semibold text-emerald-800">
-                              Score: {card.candidate.engineeringScore || 0}
-                            </span>
-                            <span className="text-xxs text-slate-500 font-medium">
-                              Match: {card.skillsMatch?.matchPercentage || 0}%
-                            </span>
+                          <div className="mt-2 flex items-center justify-between text-[10px]">
+                            <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-800">⚡{card.candidate.engineeringScore || 0}</span>
+                            <span className="text-slate-400">{daysSince((card as any).appliedAt || (card as any).createdAt)}</span>
                           </div>
-
-                          {card.badges && card.badges.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {card.badges.slice(0, 2).map((b) => (
-                                <span
-                                  key={b.name}
-                                  className="rounded bg-slate-50 border border-slate-100 px-1 py-0.5 text-[9px] font-medium text-slate-500"
-                                >
-                                  {b.name}
-                                </span>
-                              ))}
+                          {(card.skillsMatch?.matchPercentage ?? 0) > 0 && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <div className="h-1 flex-1 rounded-full bg-slate-100">
+                                <div className="h-1 rounded-full bg-emerald-400" style={{ width: `${card.skillsMatch?.matchPercentage}%` }} />
+                              </div>
+                              <span className="text-[10px] text-slate-400">{card.skillsMatch?.matchPercentage}%</span>
+                            </div>
+                          )}
+                          {/* Quick-action hover buttons */}
+                          {col.key !== "HIRED" && col.key !== "REJECTED" && (
+                            <div
+                              className="absolute inset-x-2 bottom-1.5 hidden group-hover:flex gap-1 bg-white/95 backdrop-blur-sm rounded-md p-1.5 border border-slate-100 shadow-md z-10"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {col.key !== "SHORTLISTED" && (
+                                <button className="flex-1 rounded bg-amber-50 px-1 py-0.5 text-[10px] font-bold text-amber-800 hover:bg-amber-100" onClick={() => handleStatusChange(card.id, "SHORTLISTED")} disabled={updateStatusMutation.isPending}>★ List</button>
+                              )}
+                              {col.key !== "INTERVIEW" && (
+                                <button className="flex-1 rounded bg-purple-50 px-1 py-0.5 text-[10px] font-bold text-purple-800 hover:bg-purple-100" onClick={() => handleStatusChange(card.id, "INTERVIEW")} disabled={updateStatusMutation.isPending}>📅 Interview</button>
+                              )}
+                              <button className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100" onClick={() => handleStatusChange(card.id, "REJECTED")} disabled={updateStatusMutation.isPending}>✕</button>
+                            </div>
+                          )}
+                          {col.key === "HIRED" && (
+                            <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                              <UserCheck size={11} /> Hired
                             </div>
                           )}
                         </div>
                       ))
                     ) : (
-                      <div className="flex h-32 flex-col items-center justify-center text-center text-slate-400">
-                        <Clock size={16} />
-                        <span className="text-xxs mt-1.5 font-medium">Empty</span>
+                      <div className="flex h-32 flex-col items-center justify-center text-slate-300">
+                        <Clock size={20} />
+                        <span className="text-xs mt-1.5">Empty</span>
                       </div>
                     )}
                   </div>
@@ -206,15 +211,9 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
           </div>
         )
       ) : rankingsQuery.isLoading ? (
-        <div className="flex justify-center py-12">
-          <InlineLoader label="AI ranking candidates..." />
-        </div>
+        <div className="flex justify-center py-12"><InlineLoader label="AI ranking candidates..." /></div>
       ) : rankingsQuery.isError ? (
-        <ErrorState
-          title="Failed to load rankings"
-          text={rankingsQuery.error?.message}
-          onRetry={() => rankingsQuery.refetch()}
-        />
+        <ErrorState title="Failed to load rankings" text={rankingsQuery.error?.message} onRetry={() => rankingsQuery.refetch()} />
       ) : (
         <div className="space-y-4">
           <div className="panel p-5 bg-gradient-to-r from-emerald-50/20 to-teal-50/20">
@@ -222,39 +221,24 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
               <Sparkles className="text-emerald-700 mt-0.5 shrink-0" size={18} />
               <div>
                 <h3 className="text-sm font-semibold text-slate-950">Cosine Similarity Candidate Matcher</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Candidates are ranked based on their skill sets similarity and complementary capabilities relative to the job requirements.
-                </p>
+                <p className="text-xs text-slate-500 mt-0.5">Candidates ranked by skill similarity and complementary capabilities relative to job requirements.</p>
               </div>
             </div>
           </div>
-
           <div className="space-y-3">
-            {rankingsQuery.data && rankingsQuery.data.length > 0 ? (
+            {rankingsQuery.data?.length ? (
               rankingsQuery.data.map((rank: CandidateRanking, index: number) => (
-                <RankingCard
-                  key={rank.userId || index}
-                  rank={index + 1}
-                  candidate={rank}
-                  onStatusChange={handleStatusChange}
-                />
+                <RankingCard key={rank.userId || index} rank={index + 1} candidate={rank} onStatusChange={handleStatusChange} />
               ))
             ) : (
-              <div className="panel p-10 text-center text-slate-500">
-                No rankings available. Wait for candidates to apply.
-              </div>
+              <div className="panel p-10 text-center text-slate-500">No rankings available. Wait for candidates to apply.</div>
             )}
           </div>
         </div>
       )}
 
-      {/* Candidate Profile Details Drawer / Modal overlay */}
       {selectedCandidate && (
-        <CandidateDetailsOverlay
-          card={selectedCandidate}
-          onClose={() => setSelectedCandidate(null)}
-          onStatusChange={handleStatusChange}
-        />
+        <CandidateDetailsOverlay card={selectedCandidate} onClose={() => setSelectedCandidate(null)} onStatusChange={handleStatusChange} />
       )}
     </div>
   );

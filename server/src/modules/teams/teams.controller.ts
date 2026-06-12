@@ -13,7 +13,8 @@ import {
   withdrawInvite,
   removeTeamMember,
   leaveTeam,
-  deleteTeam
+  deleteTeam,
+  archiveTeam
 } from "./teams.service";
 
 import {
@@ -215,4 +216,19 @@ export const leaveTeamHandler =  asyncHandler(
         )
       );
     }
-    )
+  );
+
+  export const archiveTeamHandler = asyncHandler(
+    async(req: any,res : Response) => {
+      const result = await archiveTeam(
+        req.user.id,
+        req.params.teamId
+      );
+      res.json(
+        successResponse(
+          result,
+          "Team archived successfully"
+        )
+      );
+    }
+  );

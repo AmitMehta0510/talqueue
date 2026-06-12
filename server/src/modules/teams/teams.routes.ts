@@ -11,7 +11,8 @@ import {
   withdrawInviteHandler,
   removeMemberHandler,
   leaveTeamHandler,
-  deleteTeamHandler
+  deleteTeamHandler,
+  archiveTeamHandler
 } from "./teams.controller";
 
 const router = Router();
@@ -67,6 +68,12 @@ router.delete(
   "/:teamId/delete",
   protect,
   deleteTeamHandler
+);
+
+router.patch(
+  "/:teamId/archive",
+  protect,
+  archiveTeamHandler
 );
 
 export default router;

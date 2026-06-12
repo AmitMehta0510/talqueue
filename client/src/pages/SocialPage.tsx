@@ -159,16 +159,22 @@ function SearchPanel() {
       {search.data && (
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
           {users.length ? (
-            users.map((foundUser) => (
-              <EngineerCard
-                disabled={followUser.isPending || connectUser.isPending}
-                key={foundUser.id}
-                user={{ ...foundUser, isFollowing: followingIds.has(foundUser.id) } as any}
-                onConnect={(item) => connectUser.mutate(item.id)}
-                onFollow={(item) => followUser.mutate(item.id)}
-                onOpenProfile={(item) => navigate(`/users/${item.id}`)}
-              />
-            ))
+            users.map((foundUser) => {
+              const isReferralEligible =
+                (foundUser as any).role === "WORKING_PROFESSIONAL" ||
+                (foundUser as any).role === "RECRUITER";
+              return (
+                <EngineerCard
+                  disabled={followUser.isPending || connectUser.isPending}
+                  key={foundUser.id}
+                  user={{ ...foundUser, isFollowing: followingIds.has(foundUser.id) } as any}
+                  onConnect={(item) => connectUser.mutate(item.id)}
+                  onFollow={(item) => followUser.mutate(item.id)}
+                  onOpenProfile={(item) => navigate(`/users/${item.id}`)}
+                  onRequestReferral={isReferralEligible ? (item) => navigate(`/discover?referral=${item.id}`) : undefined}
+                />
+              );
+            })
           ) : (
             <EmptyState icon={Users} title="No engineers found" text="Try a different search term." />
           )}

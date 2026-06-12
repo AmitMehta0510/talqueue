@@ -13,6 +13,8 @@ import {
   getJoinedCommunitiesHandler,
   joinCommunityHandler,
   leaveCommunityHandler,
+  getCommunityJoinRequestsHandler,
+  reviewCommunityJoinRequestHandler,
 } from "./community.controller";
 
 const router =
@@ -70,6 +72,20 @@ router.post(
   "/:communityId/leave",
   protect,
   leaveCommunityHandler
+);
+
+// JOIN REQUESTS
+//
+router.get(
+  "/:slug/join-requests",
+  protect,
+  getCommunityJoinRequestsHandler
+);
+
+router.patch(
+  "/:slug/join-requests/:pendingUserId",
+  protect,
+  reviewCommunityJoinRequestHandler
 );
 
 export default router;

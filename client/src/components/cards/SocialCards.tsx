@@ -218,8 +218,13 @@ export function EngineerCard({
             </button>
           )}
 
-          {/* Ask Referral — ALWAYS show when handler is provided; server validates eligibility */}
-          {onRequestReferral && (
+          {/* Ask Referral — only show for Professionals/Recruiters who accept referrals */}
+          {onRequestReferral &&
+            (
+              (user as any).role === "WORKING_PROFESSIONAL" ||
+              (user as any).role === "RECRUITER"
+            ) &&
+            (user as any).acceptingReferrals !== false && (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
               type="button"

@@ -695,6 +695,9 @@ export type Community = {
   };
   createdAt?: string;
   updatedAt?: string;
+  isPendingApproval?: boolean;
+  isMember?: boolean;
+  currentUserRole?: string | null;
 };
 
 export type CommunityMutationPayload = {
@@ -1907,6 +1910,8 @@ export const api = {
     }),
   deleteTeam: (teamId: string) =>
     request<Team>(`/teams/${teamId}/delete`, { method: "DELETE" }),
+  archiveTeam: (teamId: string) =>
+    request<Team>(`/teams/${teamId}/archive`, { method: "PATCH" }),
   followUser: (userId: string) =>
     request<SocialFollow>(`/social/follow/${userId}`, { method: "POST" }),
   unfollowUser: (userId: string) =>
@@ -2274,6 +2279,13 @@ export const api = {
   leaveCommunity: (communityId: string) =>
     request<{ success: boolean }>(`/communities/${communityId}/leave`, {
       method: "POST",
+    }),
+  getCommunityJoinRequests: (slug: string) =>
+    request<any[]>(`/communities/${slug}/join-requests`),
+  reviewCommunityJoinRequest: (slug: string, pendingUserId: string, action: "approve" | "reject") =>
+    request<{ success: boolean; status: string }>(`/communities/${slug}/join-requests/${pendingUserId}`, {
+      method: "PATCH",
+      body: { action },
     }),
   trackRecommendationImpression: (body: {
     entityId: string;

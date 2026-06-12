@@ -1,16 +1,6 @@
+import { AlertTriangle, Archive, Check, Loader2, Plus, Search, Trash2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
-import {
-  Check,
-  Loader2,
-  Plus,
-  Search,
-  Trash2,
-  UserMinus,
-  UserPlus,
-  Users,
-  X,
-} from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { TeamRoleBadge } from "../components/cards/SocialCards";
 import { Avatar, EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
@@ -135,23 +125,28 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
               ))}
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {(search.data?.users || []).slice(0, 6).map((foundUser) => (
-                <button
-                  className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3 text-left hover:border-emerald-200 hover:bg-emerald-50"
-                  key={foundUser.id}
-                  type="button"
-                  onClick={() => addMember(foundUser)}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <Avatar user={foundUser} size="sm" />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</span>
-                      <span className="block truncate text-xs text-slate-500">{userHeadline(foundUser)}</span>
+              {(search.data?.users || []).slice(0, 6).map((item: any) => {
+                // Unwrap { user, relevanceScore } format from search API
+                const foundUser: User = item?.id ? item : item?.user;
+                if (!foundUser?.id) return null;
+                return (
+                  <button
+                    className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3 text-left hover:border-emerald-200 hover:bg-emerald-50"
+                    key={foundUser.id}
+                    type="button"
+                    onClick={() => addMember(foundUser)}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <Avatar user={foundUser} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</span>
+                        <span className="block truncate text-xs text-slate-500">{userHeadline(foundUser)}</span>
+                      </span>
                     </span>
-                  </span>
-                  <Plus size={15} />
-                </button>
-              ))}
+                    <Plus size={15} />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -248,26 +243,31 @@ function InviteMemberPanel({ team }: { team: Team }) {
         placeholder="Invite message"
       />
       <div className="mt-4 space-y-2">
-        {users.slice(0, 5).map((foundUser) => (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar user={foundUser} size="sm" />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</div>
-                <div className="truncate text-xs text-slate-500">{userHeadline(foundUser) || `@${foundUser.username}`}</div>
+        {users.slice(0, 5).map((item: any) => {
+          // Unwrap { user, relevanceScore } from search API
+          const foundUser: User = item?.id ? item : item?.user;
+          if (!foundUser?.id) return null;
+          return (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar user={foundUser} size="sm" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</div>
+                  <div className="truncate text-xs text-slate-500">{userHeadline(foundUser) || `@${foundUser.username}`}</div>
+                </div>
               </div>
+              <button
+                className="btn-secondary px-3 py-1.5"
+                type="button"
+                disabled={invite.isPending}
+                onClick={() => invite.mutate({ userId: foundUser.id, message })}
+              >
+                <UserPlus size={15} />
+                Invite
+              </button>
             </div>
-            <button
-              className="btn-secondary px-3 py-1.5"
-              type="button"
-              disabled={invite.isPending}
-              onClick={() => invite.mutate({ userId: foundUser.id, message })}
-            >
-              <UserPlus size={15} />
-              Invite
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -391,7 +391,19 @@ function TeamInvitesPanel({ team, currentUserId, canManage }: { team: Team; curr
 }
 
 function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: boolean; isOwner: boolean }) {
+  const navigate = useNavigate();
   const lifecycle = useTeamLifecycleMutation(team.id);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const memberCount = teamMemberCount(team);
+
+  const handleDelete = async () => {
+    try {
+      await lifecycle.mutateAsync("delete");
+      navigate("/teams");
+    } catch {
+      // toast shown by hook
+    }
+  };
 
   return (
     <div className="panel p-5">
@@ -408,22 +420,68 @@ function TeamActions({ team, canManage, isOwner }: { team: Team; canManage: bool
             Leave team
           </button>
         )}
+        {canManage && (
+          <button
+            className="btn-secondary justify-start text-amber-700 border-amber-200 hover:bg-amber-50"
+            type="button"
+            disabled={lifecycle.isPending}
+            onClick={() => lifecycle.mutate("archive" as any)}
+          >
+            <Archive size={16} />
+            Archive team
+          </button>
+        )}
         {canManage && isOwner && (
           <button
             className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
             type="button"
             disabled={lifecycle.isPending}
-            onClick={() => {
-              if (window.confirm(`Delete ${team.name}? This will remove it from active team lists.`)) {
-                lifecycle.mutate("delete");
-              }
-            }}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             <Trash2 size={16} />
             Delete team
           </button>
         )}
       </div>
+
+      {/* Production-grade delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100">
+                <AlertTriangle className="text-rose-600" size={28} />
+              </div>
+              <h3 className="mt-4 text-lg font-bold text-slate-950">Delete "{team.name}"?</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                This will permanently remove the team and all associated data. 
+                <strong className="text-slate-700"> {memberCount} member{memberCount !== 1 ? "s" : ""}</strong> will lose access.
+                This action cannot be undone.
+              </p>
+              <p className="mt-2 text-xs text-slate-400">
+                Consider <strong>archiving</strong> instead — archived teams can be restored.
+              </p>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                className="flex-1 rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 rounded-md bg-rose-600 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                type="button"
+                disabled={lifecycle.isPending}
+                onClick={handleDelete}
+              >
+                {lifecycle.isPending ? <Loader2 className="mx-auto animate-spin" size={16} /> : "Yes, delete team"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   getJoinedCommunities,
   joinCommunity,
   leaveCommunity,
+  getCommunityJoinRequests,
+  reviewCommunityJoinRequest,
 } from "./community.service";
 
 // CREATE COMMUNITY
@@ -77,6 +79,26 @@ export const joinCommunityHandler = asyncHandler(
 export const leaveCommunityHandler = asyncHandler(
   async (req: Request<{ communityId: string }>, res: Response) => {
     const result = await leaveCommunity(req.user!.id, req.params.communityId);
+    res.json(successResponse(result));
+  },
+);
+
+export const getCommunityJoinRequestsHandler = asyncHandler(
+  async (req: Request<{ slug: string }>, res: Response) => {
+    const requests = await getCommunityJoinRequests(req.user!.id, req.params.slug);
+    res.json(successResponse(requests));
+  },
+);
+
+export const reviewCommunityJoinRequestHandler = asyncHandler(
+  async (req: Request<{ slug: string; pendingUserId: string }>, res: Response) => {
+    const { action } = req.body;
+    const result = await reviewCommunityJoinRequest(
+      req.user!.id,
+      req.params.slug,
+      req.params.pendingUserId,
+      action
+    );
     res.json(successResponse(result));
   },
 );

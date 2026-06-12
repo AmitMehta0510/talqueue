@@ -776,6 +776,37 @@ export const useLeaveCommunityMutation = (slug?: string) => {
   });
 };
 
+export const useCommunityJoinRequestsQuery = (slug: string, enabled = true) => {
+  return useQuery({
+    queryKey: queryKeys.communities.joinRequests(slug),
+    queryFn: async () => {
+      const res = await api.getCommunityJoinRequests(slug);
+      return res.data;
+    },
+    enabled: !!slug && enabled,
+  });
+};
+
+export const useReviewCommunityJoinRequestMutation = (slug: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async ({ pendingUserId, action }: { pendingUserId: string; action: "approve" | "reject" }) => {
+      const res = await api.reviewCommunityJoinRequest(slug, pendingUserId, action);
+      return res.data;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.joinRequests(slug) });
+      invalidateCommunity(queryClient, slug);
+      showToast("success", `Request ${res.status === "approved" ? "approved" : "declined"} successfully`);
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+
 const invalidateCommunity = (
   queryClient: ReturnType<typeof useQueryClient>,
   slug?: string,
@@ -974,15 +1005,18 @@ export const useTeamLifecycleMutation = (teamId?: string) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  return useMutation<unknown, Error, "leave" | "delete">({
+  return useMutation<unknown, Error, "leave" | "delete" | "archive">({
     mutationFn: async (action) => {
       if (!teamId) throw new Error("Team missing");
-      return action === "leave"
-        ? api.leaveTeam(teamId)
-        : api.deleteTeam(teamId);
+      if (action === "leave") return api.leaveTeam(teamId);
+      if (action === "archive") return api.archiveTeam(teamId);
+      return api.deleteTeam(teamId);
     },
     onSuccess: (_result, action) => {
-      showToast("success", action === "leave" ? "Left team" : "Team deleted");
+      let msg = "Team deleted";
+      if (action === "leave") msg = "Left team";
+      if (action === "archive") msg = "Team archived";
+      showToast("success", msg);
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => invalidateTeams(queryClient, teamId),
@@ -2299,7 +2333,17 @@ export const usePlatformSearchMutation = () => {
           api.searchUsers({ q }),
           api.searchProjects({ q }),
         ]);
-        return { ...globalResult.data, users: userResult.data, projects: projectResult.data };
+        // Server returns { user, relevanceScore }[] — flatten to raw User[]
+        const rawUsers: any[] = userResult.data || [];
+        const flatUsers = rawUsers.map((item: any) =>
+          item?.id ? item : { ...item?.user, affinityScore: item?.relevanceScore }
+        );
+        // Server returns { project, relevanceScore }[] — flatten to raw Project[]
+        const rawProjects: any[] = projectResult.data || [];
+        const flatProjects = rawProjects.map((item: any) =>
+          item?.id ? item : { ...item?.project }
+        );
+        return { ...globalResult.data, users: flatUsers, projects: flatProjects };
       }
 
       const q = payload.q.trim();

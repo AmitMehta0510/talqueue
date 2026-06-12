@@ -38,6 +38,8 @@ import {
   useJoinedCommunitiesQuery,
   useJoinCommunityMutation,
   useLeaveCommunityMutation,
+  useCommunityJoinRequestsQuery,
+  useReviewCommunityJoinRequestMutation,
 } from "../hooks/usePlatformQueries";
 import {
   College,
@@ -313,16 +315,29 @@ function CommunityBrowseCard({
   community,
   isMember,
   isOwner,
+  isPendingApproval,
 }: {
   community: Community;
   isMember: boolean;
   isOwner: boolean;
+  isPendingApproval?: boolean;
 }) {
   const { user } = useAuth();
   const joinMutation = useJoinCommunityMutation(community.slug);
   const leaveMutation = useLeaveCommunityMutation(community.slug);
   const isPrivate = community.visibility === "PRIVATE";
   const members = community._count?.members ?? community.memberCount ?? 0;
+  const isOfficialCommunity = community.type === "COLLEGE" || community.type === "COMPANY";
+
+  // Track pending approval optimistically
+  const [pendingApproval, setPendingApproval] = useState(isPendingApproval || false);
+
+  const handleJoin = async () => {
+    const result = await joinMutation.mutateAsync(community.id);
+    if ((result as any)?.pendingApproval) {
+      setPendingApproval(true);
+    }
+  };
 
   return (
     <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-emerald-300 hover:shadow-md">
@@ -342,6 +357,11 @@ function CommunityBrowseCard({
           <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold text-white/90 backdrop-blur-sm bg-black/25`}>
             {titleCase(community.category)}
           </span>
+          {isOfficialCommunity && (
+            <span className="absolute left-2 top-2 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+              {community.type === "COLLEGE" ? "🎓 College" : "🏢 Company"}
+            </span>
+          )}
         </div>
       </Link>
 
@@ -382,7 +402,13 @@ function CommunityBrowseCard({
               Private
             </span>
           )}
-          {community.autoJoinEligible && (
+          {isOfficialCommunity && !isPrivate && (
+            <span className="flex items-center gap-1 text-amber-600">
+              <ShieldCheck size={11} />
+              Approval req.
+            </span>
+          )}
+          {community.autoJoinEligible && !isOfficialCommunity && (
             <span className="flex items-center gap-1 text-teal-600">
               <Sparkles size={11} />
               Auto-join
@@ -400,6 +426,11 @@ function CommunityBrowseCard({
               >
                 <Lock size={11} />
                 Private
+              </div>
+            ) : pendingApproval ? (
+              <div className="flex w-full items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-1.5 text-xs font-bold text-amber-700">
+                <Clock size={11} />
+                Pending Approval
               </div>
             ) : isMember && !isOwner ? (
               <button
@@ -421,6 +452,15 @@ function CommunityBrowseCard({
               >
                 View
               </Link>
+            ) : isOfficialCommunity ? (
+              <button
+                type="button"
+                disabled={joinMutation.isPending}
+                onClick={handleJoin}
+                className="w-full rounded-full border border-amber-300 bg-amber-50 py-1.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+              >
+                {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : "Request to Join"}
+              </button>
             ) : (
               <button
                 type="button"
@@ -431,6 +471,11 @@ function CommunityBrowseCard({
                 {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : "Join"}
               </button>
             )}
+            {isOfficialCommunity && !isMember && !pendingApproval && !isPrivate && (
+              <p className="mt-1.5 text-center text-[10px] text-slate-400">
+                Verified members of this {community.type === "COLLEGE" ? "college" : "company"} join instantly
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -438,9 +483,11 @@ function CommunityBrowseCard({
   );
 }
 
+
 // ---------------------------------------------------------------------------
 // CreateCommunityModal
 // ---------------------------------------------------------------------------
+
 
 function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -707,12 +754,38 @@ function CommunityDetail({ slug }: { slug: string }) {
 
   const joinedQuery = useJoinedCommunitiesQuery();
   const joinedCommunities = joinedQuery.data || [];
-  const isMember = joinedCommunities.some((jc) => jc.id === community?.id);
+
+  const isMember = useMemo(() => {
+    if (!community) return false;
+    return community.isMember || joinedCommunities.some((jc) => jc.id === community.id && !jc.isPendingApproval);
+  }, [community, joinedCommunities]);
+
+  const isPendingFromJoined = useMemo(() => {
+    if (!community) return false;
+    return community.isPendingApproval || joinedCommunities.some((jc) => jc.id === community.id && jc.isPendingApproval);
+  }, [community, joinedCommunities]);
+
   const isOwner = community?.createdById === user?.id;
   const isPrivate = community?.visibility === "PRIVATE";
 
   const joinMutation = useJoinCommunityMutation(slug);
   const leaveMutation = useLeaveCommunityMutation(slug);
+
+  const [detailPending, setDetailPending] = useState(false);
+
+  useEffect(() => {
+    if (community) {
+      setDetailPending(isPendingFromJoined || false);
+    }
+  }, [community, isPendingFromJoined]);
+
+  const handleDetailJoin = async () => {
+    if (!community) return;
+    const result = await joinMutation.mutateAsync(community.id);
+    if ((result as any)?.pendingApproval) {
+      setDetailPending(true);
+    }
+  };
 
   const canArchive = useMemo(() => {
     if (!user || !community) return false;
@@ -789,6 +862,10 @@ function CommunityDetail({ slug }: { slug: string }) {
                 <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-bold text-slate-400 cursor-not-allowed" title="Auto-joined for verified members">
                   <Lock size={13} /> Private
                 </div>
+              ) : detailPending ? (
+                <div className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-5 py-2 text-sm font-bold text-amber-700">
+                  <Clock size={13} /> Pending Approval
+                </div>
               ) : isMember && !isOwner ? (
                 <button
                   type="button"
@@ -802,10 +879,14 @@ function CommunityDetail({ slug }: { slug: string }) {
                 <button
                   type="button"
                   disabled={joinMutation.isPending}
-                  onClick={() => joinMutation.mutate(community.id)}
-                  className="rounded-full bg-emerald-700 px-6 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+                  onClick={community.type === "COLLEGE" || community.type === "COMPANY" ? handleDetailJoin : () => joinMutation.mutate(community.id)}
+                  className={`rounded-full px-6 py-2 text-sm font-bold text-white transition disabled:opacity-50 ${
+                    community.type === "COLLEGE" || community.type === "COMPANY"
+                      ? "bg-amber-600 hover:bg-amber-700"
+                      : "bg-emerald-700 hover:bg-emerald-800"
+                  }`}
                 >
-                  {joinMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : "Join"}
+                  {joinMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : (community.type === "COLLEGE" || community.type === "COMPANY" ? "Request to Join" : "Join")}
                 </button>
               ) : null
             )}
@@ -983,6 +1064,10 @@ function CommunityDetail({ slug }: { slug: string }) {
                     <div className="flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-2 text-xs font-bold text-slate-400">
                       <Lock size={11} /> Members only
                     </div>
+                  ) : detailPending ? (
+                    <div className="flex items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-2 text-xs font-bold text-amber-700">
+                      <Clock size={11} /> Pending Approval
+                    </div>
                   ) : isMember && !isOwner ? (
                     <button
                       type="button"
@@ -996,16 +1081,23 @@ function CommunityDetail({ slug }: { slug: string }) {
                     <button
                       type="button"
                       disabled={joinMutation.isPending}
-                      onClick={() => joinMutation.mutate(community.id)}
-                      className="w-full rounded-full bg-emerald-700 py-2 text-xs font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+                      onClick={community.type === "COLLEGE" || community.type === "COMPANY" ? handleDetailJoin : () => joinMutation.mutate(community.id)}
+                      className={`w-full rounded-full py-2 text-xs font-bold text-white transition disabled:opacity-50 ${
+                        community.type === "COLLEGE" || community.type === "COMPANY"
+                          ? "bg-amber-600 hover:bg-amber-700"
+                          : "bg-emerald-700 hover:bg-emerald-800"
+                      }`}
                     >
-                      {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : "Join Community"}
+                      {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : (community.type === "COLLEGE" || community.type === "COMPANY" ? "Request to Join" : "Join Community")}
                     </button>
                   ) : null}
                 </div>
               )}
             </div>
           </div>
+
+          {/* Pending Join Requests for Admin/Owner */}
+          {canArchive && <ReviewJoinRequestPanel slug={slug} />}
 
           {/* Moderators / Members */}
           {(community.members || []).length > 0 && (
@@ -1033,6 +1125,81 @@ function CommunityDetail({ slug }: { slug: string }) {
         </aside>
       </div>
     </section>
+  );
+}
+
+function ReviewJoinRequestPanel({ slug }: { slug: string }) {
+  const { data: requests, isLoading } = useCommunityJoinRequestsQuery(slug);
+  const reviewMutation = useReviewCommunityJoinRequestMutation(slug);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 animate-pulse">
+        <div className="h-4 w-32 rounded bg-slate-100" />
+        <div className="h-10 w-full rounded bg-slate-100" />
+      </div>
+    );
+  }
+
+  if (!requests || requests.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+          Pending Join Requests
+        </p>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+          {requests.length}
+        </span>
+      </div>
+      <div className="space-y-3 divide-y divide-slate-100">
+        {requests.map((req: any, idx: number) => {
+          const reqUser = req.user;
+          const reqProfile = reqUser?.profile;
+          return (
+            <div key={req.id} className={`flex flex-col gap-2 ${idx > 0 ? "pt-3" : ""}`}>
+              <div className="flex items-center gap-2.5">
+                <Avatar user={reqUser} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-slate-800">
+                    {reqProfile?.fullName || reqUser?.username || "Anonymous"}
+                  </p>
+                  <p className="truncate text-[10px] text-slate-400">
+                    @{reqUser?.username || "user"}
+                  </p>
+                </div>
+              </div>
+
+              {reqProfile?.headline && (
+                <p className="text-[10px] italic text-slate-500 line-clamp-1 pl-1 border-l-2 border-slate-200 bg-slate-50/50 py-0.5 px-1.5 rounded">
+                  "{reqProfile.headline}"
+                </p>
+              )}
+
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  disabled={reviewMutation.isPending}
+                  onClick={() => reviewMutation.mutate({ pendingUserId: req.userId, action: "reject" })}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white py-1 text-[10px] font-bold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  disabled={reviewMutation.isPending}
+                  onClick={() => reviewMutation.mutate({ pendingUserId: req.userId, action: "approve" })}
+                  className="flex-1 rounded-lg bg-emerald-600 py-1 text-[10px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1082,7 +1249,8 @@ export function CommunitiesPage() {
     });
   }, [currentList, query, categoryFilter, typeFilter]);
 
-  const joinedSet = useMemo(() => new Set(joinedCommunities.map((c) => c.id)), [joinedCommunities]);
+  const joinedSet = useMemo(() => new Set(joinedCommunities.filter((c) => !c.isPendingApproval).map((c) => c.id)), [joinedCommunities]);
+  const pendingSet = useMemo(() => new Set(joinedCommunities.filter((c) => c.isPendingApproval).map((c) => c.id)), [joinedCommunities]);
   const isLoading = (activeTab === "joined" ? joinedQuery : suggestedQuery).isLoading;
 
   if (communitySlug) return <CommunityDetail slug={communitySlug} />;
@@ -1204,6 +1372,7 @@ export function CommunitiesPage() {
                 community={community}
                 isMember={joinedSet.has(community.id)}
                 isOwner={community.createdById === user.id}
+                isPendingApproval={pendingSet.has(community.id)}
               />
             ))}
           </div>
