@@ -8,10 +8,12 @@ export function ProjectCard({
   project,
   onJoin,
   currentUserId,
+  hasPendingRequest,
 }: {
   project: Project;
   onJoin: (project: Project) => void;
   currentUserId?: string;
+  hasPendingRequest?: boolean;
 }) {
   const techStack = Array.isArray(project.techStack)
     ? project.techStack
@@ -110,13 +112,22 @@ export function ProjectCard({
             </a>
           )}
           <button
-            className="btn-secondary px-3 py-1.5"
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
+              isOwner || hasPendingRequest
+                ? "border-slate-200 bg-slate-50 text-slate-400 cursor-default"
+                : "btn-secondary"
+            }`}
             type="button"
-            disabled={isOwner}
-            onClick={() => onJoin(project)}
+            disabled={isOwner || hasPendingRequest}
+            onClick={() => !isOwner && !hasPendingRequest && onJoin(project)}
           >
-            <Plus size={15} />
-            {isOwner ? "Owner" : "Join"}
+            {isOwner ? (
+              <><Users size={15} /> Owner</>
+            ) : hasPendingRequest ? (
+              <><Check size={15} /> Request Sent</>
+            ) : (
+              <><Plus size={15} /> Join</>
+            )}
           </button>
         </div>
       </div>

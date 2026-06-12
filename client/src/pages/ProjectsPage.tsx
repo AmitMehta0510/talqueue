@@ -411,33 +411,38 @@ function InviteUserPanel({ project }: { project: Project }) {
         placeholder="Invite message"
       />
       <div className="mt-4 space-y-2">
-        {users.slice(0, 5).map((foundUser: User) => (
-          <div
-            className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
-            key={foundUser.id}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar user={foundUser} size="sm" />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">
-                  {userName(foundUser)}
-                </div>
-                <div className="truncate text-xs text-slate-500">
-                  {userHeadline(foundUser) || `@${foundUser.username}`}
+        {users.slice(0, 5).map((item: any) => {
+          // API returns { user, relevanceScore } or raw user — handle both
+          const foundUser: User = item?.id ? item : item?.user;
+          if (!foundUser) return null;
+          return (
+            <div
+              className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
+              key={foundUser.id}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar user={foundUser} size="sm" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900">
+                    {userName(foundUser)}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">
+                    {userHeadline(foundUser) || `@${foundUser.username}`}
+                  </div>
                 </div>
               </div>
+              <button
+                className="btn-secondary px-3 py-1.5"
+                type="button"
+                disabled={invite.isPending}
+                onClick={() => invite.mutate({ userId: foundUser.id, message })}
+              >
+                <UserPlus size={15} />
+                Invite
+              </button>
             </div>
-            <button
-              className="btn-secondary px-3 py-1.5"
-              type="button"
-              disabled={invite.isPending}
-              onClick={() => invite.mutate({ userId: foundUser.id, message })}
-            >
-              <UserPlus size={15} />
-              Invite
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -794,6 +799,7 @@ export function ProjectsPage() {
   const joinProject = useJoinProjectMutation();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [pendingJoinIds, setPendingJoinIds] = useState<Set<string>>(new Set());
   const projects = projectsQuery.data || [];
   const filteredProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -898,7 +904,13 @@ export function ProjectsPage() {
               currentUserId={user?.id}
               key={project.id}
               project={project}
-              onJoin={(item) => joinProject.mutate(item)}
+              hasPendingRequest={pendingJoinIds.has(project.id)}
+              onJoin={async (item) => {
+                try {
+                  await joinProject.mutateAsync(item);
+                  setPendingJoinIds((prev) => new Set([...prev, item.id]));
+                } catch { /* toast shown by hook */ }
+              }}
             />
           ))
         ) : (

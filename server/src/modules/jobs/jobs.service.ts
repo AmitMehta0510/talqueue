@@ -59,6 +59,28 @@ export const createJob = async (userId: string, data: any) => {
   }
 
   //
+  // COMPANY MEMBERSHIP CHECK
+  // Recruiter must have a work experience at this company OR be a company admin
+  //
+  const [experienceRecord, adminRecord] = await Promise.all([
+    prisma.experience.findFirst({
+      where: { userId, companyId: company.id },
+      select: { id: true },
+    }),
+    prisma.companyAdmin.findFirst({
+      where: { userId, companyId: company.id },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!experienceRecord && !adminRecord) {
+    throw new AppError(
+      "You can only post jobs for companies you are part of. Add this company to your work experience first.",
+      403,
+    );
+  }
+
+  //
   // SLUG
   //
   const baseSlug = generateSlug(`${data.title}-${company.name}`);

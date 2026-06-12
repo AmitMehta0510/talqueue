@@ -255,7 +255,7 @@ export const applyToJob = async (
 
       actorId: userId,
 
-      type: "JOB",
+      type: "JOB_APPLIED",
 
       title: "New Job Application",
 
@@ -493,7 +493,7 @@ export const updateApplicationStatus = async (
 
     actorId: recruiterId,
 
-    type: "JOB",
+    type: "JOB_APPLICATION_UPDATE",
 
     title: "Application Status Updated",
 
@@ -689,7 +689,7 @@ export const markApplicationViewed = async (
   createNotification({
     userId: application.applicantId,
 
-    type: "JOB",
+    type: "JOB_APPLICATION_UPDATE",
 
     title: "Application Viewed",
 

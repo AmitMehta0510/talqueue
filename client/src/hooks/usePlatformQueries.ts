@@ -3083,8 +3083,27 @@ export const useSaveJobMutation = () => {
       if (!user) throw new Error("Login required");
       return api.saveJob(jobId);
     },
+    onMutate: async (jobId: string) => {
+      // Cancel in-flight refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.recommendations.savedJobs() });
+      // Snapshot current data
+      const previousSaved = queryClient.getQueryData<any[]>(queryKeys.recommendations.savedJobs());
+      // Optimistic toggle
+      queryClient.setQueryData<any[]>(queryKeys.recommendations.savedJobs(), (old) => {
+        if (!old) return [];
+        const alreadySaved = old.some((j) => j.id === jobId);
+        return alreadySaved ? old.filter((j) => j.id !== jobId) : [...old, { id: jobId } as any];
+      });
+      return { previousSaved };
+    },
+    onError: (_err, _jobId, context: any) => {
+      // Roll back on error
+      if (context?.previousSaved !== undefined) {
+        queryClient.setQueryData(queryKeys.recommendations.savedJobs(), context.previousSaved);
+      }
+      showToast("error", getErrorMessage(_err));
+    },
     onSuccess: () => showToast("success", "Saved jobs updated"),
-    onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.recommendations.savedJobs(),
