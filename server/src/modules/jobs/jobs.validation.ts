@@ -1,62 +1,50 @@
 import { z } from "zod";
 
-export const createJobSchema =
-  z.object({
-    companyId:
-      z.string(),
+// Schema for posting a job against an existing company
+export const createJobSchema = z.object({
+  companyId: z.string().optional(),
 
-    title:
-      z.string().min(2),
+  // For requesting a new (unverified) company
+  companyName: z.string().optional(),
 
-    description:
-      z.string().min(10),
+  title: z.string().min(2),
 
-    requirements:
-      z.string().optional(),
+  description: z.string().min(10),
 
-    responsibilities:
-      z.string().optional(),
+  requirements: z.string().optional(),
 
-    perks:
-      z.string().optional(),
+  responsibilities: z.string().optional(),
 
-    location:
-      z.string().optional(),
+  perks: z.string().optional(),
 
-    workMode:
-      z.enum([
-        "REMOTE",
-        "HYBRID",
-        "ONSITE",
-      ]).optional(),
+  location: z.string().optional(),
 
-    type:
-      z.enum([
-        "FULL_TIME",
-        "INTERNSHIP",
-        "PART_TIME",
-        "CONTRACT",
-        "FREELANCE",
-      ]),
+  workMode: z
+    .enum(["REMOTE", "HYBRID", "ONSITE"])
+    .optional(),
 
-    experienceLevel:
-      z.string().optional(),
+  type: z.enum([
+    "FULL_TIME",
+    "INTERNSHIP",
+    "PART_TIME",
+    "CONTRACT",
+    "FREELANCE",
+  ]),
 
-    salaryMin:
-      z.number().optional(),
+  experienceLevel: z.string().optional(),
 
-    salaryMax:
-      z.number().optional(),
+  salaryMin: z.number().optional(),
 
-    openings:
-      z.number().optional(),
+  salaryMax: z.number().optional(),
 
-    skillsRequired:
-      z.array(z.string()),
+  openings: z.number().optional(),
 
-    applicationDeadline:
-      z.string().optional(),
+  skillsRequired: z.array(z.string()).default([]),
 
-    applyUrl:
-      z.string().optional(),
-  });
+  applicationDeadline: z.string().optional(),
+
+  applyUrl: z.string().optional(),
+}).refine(
+  (data) => data.companyId || data.companyName,
+  { message: "Either companyId or companyName is required" }
+);

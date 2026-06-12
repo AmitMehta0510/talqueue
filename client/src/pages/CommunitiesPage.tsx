@@ -66,6 +66,23 @@ const communityCategories: CommunityCategory[] = [
   "INTERVIEWS", "SALARIES", "ANNOUNCEMENTS", "RESOURCES", "EVENTS",
 ];
 
+// Role helpers
+const PLATFORM_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN", "COLLEGE_ADMIN", "COMPANY_ADMIN"]);
+
+function isPlatformAdmin(user: any): boolean {
+  if (!user?.roles) return false;
+  return (user.roles as Array<{ role?: { name?: string } }>).some(
+    (r) => r.role?.name && PLATFORM_ADMIN_ROLES.has(r.role.name)
+  );
+}
+
+function isSuperOrPlatformAdmin(user: any): boolean {
+  if (!user?.roles) return false;
+  return (user.roles as Array<{ role?: { name?: string } }>).some(
+    (r) => r.role?.name && new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]).has(r.role.name ?? "")
+  );
+}
+
 const TYPE_GRADIENT: Record<CommunityType, string> = {
   COLLEGE: "from-emerald-600 to-teal-700",
   COMPANY: "from-blue-600 to-indigo-700",
@@ -427,6 +444,7 @@ function CommunityBrowseCard({
 
 function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const createCommunity = useCreateCommunityMutation();
   const companiesQuery = useCompaniesQuery({ page: 1, limit: 100 });
   const collegesQuery = useCollegesQuery(100);
@@ -488,8 +506,18 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Type *</label>
               <select className="field" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as CommunityType, collegeId: "", departmentId: "", companyId: "", city: "" }))}>
-                {communityTypes.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+                {/* Normal users can only create GENERAL communities */}
+                <option value="GENERAL">General</option>
+                {isPlatformAdmin(user) && (
+                  <>
+                    <option value="COLLEGE">College (Admin Only)</option>
+                    <option value="COMPANY">Company (Admin Only)</option>
+                  </>
+                )}
               </select>
+              {!isPlatformAdmin(user) && (
+                <p className="mt-1 text-[10px] text-slate-400">College &amp; Company communities are created by verified admins only.</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Category *</label>

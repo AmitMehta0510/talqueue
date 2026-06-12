@@ -670,3 +670,139 @@ export const adminListDepartments = async (collegeId: string) => {
     orderBy: { name: "asc" },
   });
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPANY REQUEST MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const adminListCompanyRequests = async (status?: string) => {
+  return prisma.companyRequest.findMany({
+    where: status ? { status: status as any } : {},
+    orderBy: { createdAt: "desc" },
+    include: {
+      requestedBy: {
+        select: {
+          id: true,
+          username: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+    },
+  });
+};
+
+export const adminApproveCompanyRequest = async (
+  adminId: string,
+  requestId: string,
+  options?: { logoUrl?: string; websiteUrl?: string; headquarters?: string; industry?: string }
+) => {
+  const request = await prisma.companyRequest.findUnique({ where: { id: requestId } });
+  if (!request) throw new AppError("Company request not found", 404);
+  if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
+
+  const jobData = request.pendingJobData as any;
+
+  // Create the company
+  const slugBase = request.companyName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = `${slugBase}-${Date.now()}`;
+
+  const company = await prisma.company.create({
+    data: {
+      name: request.companyName,
+      slug,
+      verified: true,
+      logoUrl: options?.logoUrl,
+      websiteUrl: options?.websiteUrl,
+      headquarters: options?.headquarters,
+      industry: options?.industry,
+    },
+  });
+
+  // Generate job slug
+  const jobSlugBase = `${jobData.title}-${company.name}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const jobSlug = `${jobSlugBase}-${Date.now()}`;
+
+  // Create the job
+  const job = await prisma.job.create({
+    data: {
+      companyId: company.id,
+      postedById: request.requestedById,
+      title: jobData.title,
+      slug: jobSlug,
+      description: jobData.description,
+      requirements: jobData.requirements,
+      responsibilities: jobData.responsibilities,
+      location: jobData.location,
+      workMode: jobData.workMode,
+      type: jobData.type,
+      experienceLevel: jobData.experienceLevel,
+      salaryMin: jobData.salaryMin,
+      salaryMax: jobData.salaryMax,
+      currency: jobData.currency || "INR",
+      skillsRequired: jobData.skillsRequired || [],
+      applicationDeadline: jobData.applicationDeadline ? new Date(jobData.applicationDeadline) : null,
+      applyUrl: jobData.applyUrl,
+      featured: jobData.featured || false,
+    },
+    select: { id: true, title: true },
+  });
+
+  // Update company request status
+  await prisma.companyRequest.update({
+    where: { id: requestId },
+    data: {
+      status: "APPROVED",
+      companyId: company.id,
+      jobId: job.id,
+      reviewedById: adminId,
+      reviewedAt: new Date(),
+    },
+  });
+
+  // Notify the recruiter
+  await prisma.notification.create({
+    data: {
+      userId: request.requestedById,
+      type: "SYSTEM",
+      title: "Company Approved & Job Posted!",
+      message: `Your company "${request.companyName}" has been verified. Your job "${job.title}" is now live.`,
+      entityType: "JOB",
+      entityId: job.id,
+    },
+  });
+
+  return { success: true, company, job };
+};
+
+export const adminRejectCompanyRequest = async (
+  adminId: string,
+  requestId: string,
+  reviewNotes?: string,
+) => {
+  const request = await prisma.companyRequest.findUnique({ where: { id: requestId } });
+  if (!request) throw new AppError("Company request not found", 404);
+  if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
+
+  await prisma.companyRequest.update({
+    where: { id: requestId },
+    data: {
+      status: "REJECTED",
+      reviewedById: adminId,
+      reviewNotes: reviewNotes || null,
+      reviewedAt: new Date(),
+    },
+  });
+
+  // Notify the recruiter
+  await prisma.notification.create({
+    data: {
+      userId: request.requestedById,
+      type: "SYSTEM",
+      title: "Company Request Rejected",
+      message: `Your request to add "${request.companyName}" was rejected.${reviewNotes ? ` Reason: ${reviewNotes}` : ""}`,
+    },
+  });
+
+  return { success: true };
+};
+

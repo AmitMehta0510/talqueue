@@ -34,6 +34,9 @@ import {
   adminListReferrals,
   adminCreateDepartment,
   adminListDepartments,
+  adminListCompanyRequests,
+  adminApproveCompanyRequest,
+  adminRejectCompanyRequest,
 } from "./admin.service";
 
 // ============================================================
@@ -309,5 +312,35 @@ export const adminListDepartmentsHandler = asyncHandler(
     const { collegeId } = req.params;
     const departments = await adminListDepartments(collegeId);
     res.json(successResponse(departments));
+  },
+);
+
+// ============================================================
+// COMPANY REQUEST HANDLERS
+// ============================================================
+
+export const adminListCompanyRequestsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { status } = req.query as any;
+    const requests = await adminListCompanyRequests(status);
+    res.json(successResponse(requests));
+  },
+);
+
+export const adminApproveCompanyRequestHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { requestId } = req.params;
+    const options = req.body || {};
+    const result = await adminApproveCompanyRequest(req.user.id, requestId, options);
+    res.json(successResponse(result, "Company approved and job posted successfully"));
+  },
+);
+
+export const adminRejectCompanyRequestHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { requestId } = req.params;
+    const { reviewNotes } = req.body || {};
+    const result = await adminRejectCompanyRequest(req.user.id, requestId, reviewNotes);
+    res.json(successResponse(result, "Company request rejected"));
   },
 );

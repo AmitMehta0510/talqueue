@@ -28,6 +28,9 @@ import {
   adminListReferralsHandler,
   adminCreateDepartmentHandler,
   adminListDepartmentsHandler,
+  adminListCompanyRequestsHandler,
+  adminApproveCompanyRequestHandler,
+  adminRejectCompanyRequestHandler,
 } from "./admin.controller";
 
 const router = Router();
@@ -93,5 +96,13 @@ router.patch("/content/communities/:communityId", adminUpdateCommunityHandler);
 
 // Referrals
 router.get("/content/referrals", adminListReferralsHandler);
+
+// ============================================================
+// COMPANY REQUESTS (recruiter-submitted, pending admin approval)
+// ============================================================
+
+router.get("/company-requests", adminListCompanyRequestsHandler);
+router.post("/company-requests/:requestId/approve", adminApproveCompanyRequestHandler);
+router.post("/company-requests/:requestId/reject", adminRejectCompanyRequestHandler);
 
 export default router;

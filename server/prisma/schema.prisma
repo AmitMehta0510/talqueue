@@ -274,6 +274,8 @@ enum ActivityType {
   JOB_SHORTLISTED
   JOB_INTERVIEW
   JOB_HIRED
+  JOB_ARCHIVED
+  JOB_DELETED
 
   HACKATHON_JUDGE_ASSIGNED
   HACKATHON_SUBMISSION_REVIEWED
@@ -290,6 +292,8 @@ enum ActivityType {
 
   COLLEGE_JOINED
   COMMUNITY_JOINED
+  COMMUNITY_CREATED
+  COMMUNITY_ARCHIVED
 
   CONNECTION_REQUEST_SENT
   CONNECTION_ACCEPTED
@@ -544,11 +548,12 @@ model User {
   messageReactions MessageReaction[]
 
   // Admin assignments
-  collegeAdminGrants   CollegeAdmin[] @relation("CollegeAdminGrantor")
-  collegeAdminships    CollegeAdmin[] @relation("CollegeAdminUser")
-  companyAdminGrants   CompanyAdmin[] @relation("CompanyAdminGrantor")
-  companyAdminships    CompanyAdmin[] @relation("CompanyAdminUser")
-  createdCommunities   Community[]    @relation("CommunityCreator")
+  collegeAdminGrants   CollegeAdmin[]     @relation("CollegeAdminGrantor")
+  collegeAdminships    CollegeAdmin[]     @relation("CollegeAdminUser")
+  companyAdminGrants   CompanyAdmin[]     @relation("CompanyAdminGrantor")
+  companyAdminships    CompanyAdmin[]     @relation("CompanyAdminUser")
+  createdCommunities   Community[]        @relation("CommunityCreator")
+  companyRequests      CompanyRequest[]
 }
 
 model UserRecommendation {
@@ -2013,6 +2018,8 @@ model Company {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+
+  companyRequests CompanyRequest[]
 }
 
 model Job {
@@ -2080,6 +2087,51 @@ model Job {
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
   deletedAt  DateTime?
+
+  companyRequest CompanyRequest?
+}
+
+enum CompanyRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CompanyRequest {
+  id String @id @default(uuid())
+
+  requestedById String
+
+  companyName String
+
+  // Pending job payload stored as JSON
+  pendingJobData Json
+
+  status CompanyRequestStatus @default(PENDING)
+
+  // Set after approval — points to the created company
+  companyId String?
+
+  // Set after approval — points to the posted job
+  jobId String? @unique
+
+  reviewedById String?
+
+  reviewNotes String?
+
+  reviewedAt DateTime?
+
+  requestedBy User @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  job Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([requestedById])
+  @@index([status])
 }
 
 model JobApplication {

@@ -5,6 +5,7 @@ import {
   Check,
   ExternalLink,
   Github,
+  Info,
   Linkedin,
   Loader2,
   MapPin,
@@ -45,6 +46,15 @@ const companyTypes: CompanyType[] = [
 const companySizes: CompanySize[] = [
   "SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE",
 ];
+
+// Role helpers
+const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
+function isSuperOrPlatformAdmin(user: any): boolean {
+  if (!user?.roles) return false;
+  return (user.roles as Array<{ role?: { name?: string } }>).some(
+    (r) => r.role?.name && SUPER_ADMIN_ROLES.has(r.role.name)
+  );
+}
 
 const TYPE_COLOR: Record<string, string> = {
   STARTUP:       "bg-violet-50 text-violet-700 border-violet-200",
@@ -551,11 +561,19 @@ export function CompaniesPage() {
             Explore hiring teams, employee signals, and referral-friendly companies.
           </p>
         </div>
-        {user && (
+        {/* Platform/super admins can add companies directly */}
+        {isSuperOrPlatformAdmin(user) ? (
           <button type="button" className="btn-primary" onClick={() => setShowCreateModal(true)}>
             <Plus size={16} /> Add Company
           </button>
-        )}
+        ) : user ? (
+          <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+            <Info size={15} className="shrink-0 text-blue-600" />
+            <p className="text-xs font-semibold text-blue-700">
+              To register your company, contact a platform admin.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {/* Naukri-style search + filter bar */}

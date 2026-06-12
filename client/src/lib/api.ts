@@ -2015,8 +2015,26 @@ export const api = {
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
   jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
-  createJob: (body: Partial<Job>) =>
-    request<Job>("/jobs", { method: "POST", body }),
+  createJob: (body: {
+    companyId?: string;
+    companyName?: string;
+    title: string;
+    description: string;
+    requirements?: string;
+    responsibilities?: string;
+    location?: string;
+    workMode?: string;
+    type: string;
+    experienceLevel?: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    currency?: string;
+    openings?: number;
+    skillsRequired?: string[];
+    applicationDeadline?: string;
+    applyUrl?: string;
+  }) =>
+    request<any>("/jobs", { method: "POST", body }),
   job: (slug: string, options?: EndpointOptions) =>
     request<Job>(`/jobs/${slug}`, options),
   companyJobs: (companyId: string, options?: EndpointOptions) =>
@@ -2268,4 +2286,12 @@ export const api = {
       method: "POST",
       body,
     }),
+
+  // Admin: Company Requests
+  adminCompanyRequests: (status?: string, options?: EndpointOptions) =>
+    request<any[]>(`/admin/company-requests${status ? `?status=${status}` : ""}`, options),
+  adminApproveCompanyRequest: (requestId: string, body?: { logoUrl?: string; websiteUrl?: string; headquarters?: string; industry?: string }) =>
+    request<{ success: boolean; company: any; job: any }>(`/admin/company-requests/${requestId}/approve`, { method: "POST", body: body || {} }),
+  adminRejectCompanyRequest: (requestId: string, reviewNotes?: string) =>
+    request<{ success: boolean }>(`/admin/company-requests/${requestId}/reject`, { method: "POST", body: { reviewNotes } }),
 };

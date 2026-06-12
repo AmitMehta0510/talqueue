@@ -142,7 +142,7 @@ export const createJob = async (userId: string, data: any) => {
   createActivity(
     userId,
 
-    "JOB_CREATED",
+    "JOB_POSTED",
 
     "Created a new job",
 
@@ -628,4 +628,50 @@ export const deleteJob = async (
   ).catch(console.error);
 
   return job;
+};
+// REQUEST COMPANY AND CREATE JOB (pending admin approval)
+//
+export const requestCompanyAndCreateJob = async (
+  userId: string,
+  data: any,
+) => {
+  // Store the entire job payload for later posting
+  const pendingJobData = {
+    title: data.title,
+    description: data.description,
+    requirements: data.requirements,
+    responsibilities: data.responsibilities,
+    location: data.location,
+    workMode: data.workMode,
+    type: data.type,
+    experienceLevel: data.experienceLevel,
+    salaryMin: data.salaryMin,
+    salaryMax: data.salaryMax,
+    currency: data.currency || "INR",
+    openings: data.openings,
+    skillsRequired: data.skillsRequired || [],
+    applicationDeadline: data.applicationDeadline,
+    applyUrl: data.applyUrl,
+    featured: data.featured || false,
+  };
+
+  const request = await prisma.companyRequest.create({
+    data: {
+      requestedById: userId,
+      companyName: data.companyName,
+      pendingJobData,
+    },
+    select: {
+      id: true,
+      companyName: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    pending: true,
+    requestId: request.id,
+    message: `Company "${data.companyName}" is pending admin verification. Your job will be posted automatically once approved.`,
+  };
 };

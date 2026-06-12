@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Building2, GraduationCap, Loader2, Plus, Search, Users } from "lucide-react";
+import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
@@ -11,6 +11,15 @@ import {
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate } from "../lib/format";
+
+// Role helpers
+const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
+function isSuperOrPlatformAdmin(user: any): boolean {
+  if (!user?.roles) return false;
+  return (user.roles as Array<{ role?: { name?: string } }>).some(
+    (r) => r.role?.name && SUPER_ADMIN_ROLES.has(r.role.name)
+  );
+}
 
 const flattenColleges = (pages?: Array<{ colleges: College[] }>) =>
   (pages || []).flatMap((page) => page.colleges || []);
@@ -136,6 +145,28 @@ function CreateCollegePanel({ disabled }: { disabled?: boolean }) {
           </button>
         </form>
       )}
+    </div>
+  );
+}
+
+// Request college panel — shown to non-admin users
+function RequestCollegePanel() {
+  return (
+    <div className="panel p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-slate-950">College catalog</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Browse institutions, departments, and official campus communities.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+          <Info size={15} className="shrink-0 text-blue-600" />
+          <p className="text-xs font-semibold text-blue-700">
+            To add your college, contact a platform admin or email <span className="underline">admin@platform.com</span>.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -293,6 +324,7 @@ export function CollegesPage() {
   const [query, setQuery] = useState("");
   const collegesQuery = useCollegesQuery(40);
   const colleges = flattenColleges(collegesQuery.data?.pages);
+  const isAdmin = isSuperOrPlatformAdmin(user);
 
   const filteredColleges = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -309,7 +341,8 @@ export function CollegesPage() {
 
   return (
     <section className="space-y-5">
-      <CreateCollegePanel disabled={!user} />
+      {/* Admin sees Add College; normal users see info panel */}
+      {isAdmin ? <CreateCollegePanel disabled={!user} /> : <RequestCollegePanel />}
 
       <div className="panel p-4">
         <div className="relative">
