@@ -136,8 +136,9 @@ export type Experience = {
 
 export type Education = {
   id: string;
-  collegeId?: string;
-  departmentId?: string;
+  collegeId?: string | null;
+  customCollegeName?: string | null;
+  departmentId?: string | null;
   degree?: string | null;
   fieldOfStudy?: string | null;
   startYear?: number | null;
@@ -1470,7 +1471,8 @@ export const api = {
     teamSize?: number;
   }) => request<Experience>("/users/me/experiences", { method: "POST", body }),
   addEducation: (body: {
-    collegeId: string;
+    collegeId?: string;
+    customCollegeName?: string;
     departmentId?: string;
     degree?: string;
     fieldOfStudy?: string;
@@ -1506,6 +1508,7 @@ export const api = {
   }) => request<Experience>(`/users/me/experiences/${experienceId}`, { method: "PUT", body }),
   updateEducation: (educationId: string, body: {
     collegeId?: string;
+    customCollegeName?: string;
     departmentId?: string;
     degree?: string;
     fieldOfStudy?: string;

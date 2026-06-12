@@ -336,8 +336,10 @@ export const getSuggestedCommunities = async (userId: string) => {
     (m) => m.communityId,
   );
 
-  // COLLEGE IDS
-  const collegeIds = user.educations.map((e) => e.collegeId);
+  // COLLEGE IDS (filter out nulls from educations with custom/unlisted colleges)
+  const collegeIds = user.educations
+    .map((e) => e.collegeId)
+    .filter((id): id is string => id !== null);
 
   // COMPANY IDS
   const companyIds = user.experiences.map((e) => e.companyId);

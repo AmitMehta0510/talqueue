@@ -32,6 +32,9 @@ export interface UpdateProfileData {
   collegeId?: string;
   departmentId?: string | null;
   acceptingReferrals?: boolean;
+  openToWork?: boolean;
+  openToInternship?: boolean;
+  availabilityStatus?: string;
 }
 
 export interface AddSkillData {
@@ -60,7 +63,8 @@ export interface AddExperienceData {
 }
 
 export interface AddEducationData {
-  collegeId: string;
+  collegeId?: string | null;
+  customCollegeName?: string | null;
   departmentId?: string | null;
   degree?: string;
   fieldOfStudy?: string;
@@ -308,7 +312,7 @@ const assertNoDuplicateEducation = async (
     where: {
       userId,
 
-      collegeId: data.collegeId,
+      collegeId: data.collegeId ?? null,
 
       departmentId: data.departmentId ?? null,
 
@@ -725,6 +729,9 @@ export const updateProfile = async (
   const {
     username,
     acceptingReferrals,
+    openToWork,
+    openToInternship,
+    availabilityStatus,
 
     ...profileData
   } = data;
@@ -778,13 +785,21 @@ export const updateProfile = async (
       });
     }
 
-    if (acceptingReferrals !== undefined) {
+    if (
+      acceptingReferrals !== undefined ||
+      openToWork !== undefined ||
+      openToInternship !== undefined ||
+      availabilityStatus !== undefined
+    ) {
       await tx.user.update({
         where: {
           id: userId,
         },
         data: {
-          acceptingReferrals,
+          ...(acceptingReferrals !== undefined && { acceptingReferrals }),
+          ...(openToWork !== undefined && { openToWork }),
+          ...(openToInternship !== undefined && { openToInternship }),
+          ...(availabilityStatus !== undefined && { availabilityStatus }),
         },
       });
     }
@@ -1113,86 +1128,120 @@ export const addExperience = async (
 };
 
 export const addEducation = async (userId: string, data: AddEducationData) => {
+  // Guard: must have either a known college OR a custom name
+  const hasKnownCollege = Boolean(data.collegeId);
+  const hasCustomCollege = Boolean(data.customCollegeName?.trim());
+
+  if (!hasKnownCollege && !hasCustomCollege) {
+    throw new AppError(
+      "Please select a college or provide a college name",
+      400,
+    );
+  }
+
   if (data.startYear && data.endYear && data.endYear < data.startYear) {
     throw new AppError("End year cannot be before start year", 400);
   }
 
   return prisma.$transaction(async (tx) => {
-    const college = await tx.college.findUnique({
-      where: {
-        id: data.collegeId,
-      },
+    // ── Track A: Known college in DB ─────────────────────────────────────
+    if (hasKnownCollege) {
+      const college = await tx.college.findUnique({
+        where: { id: data.collegeId! },
+        select: { id: true },
+      });
 
-      select: {
-        id: true,
-      },
-    });
+      if (!college) {
+        throw new AppError("College not found", 404);
+      }
 
-    if (!college) {
-      throw new AppError("College not found", 404);
+      await assertDepartmentBelongsToCollege(
+        tx,
+        data.collegeId!,
+        data.departmentId,
+      );
+
+      await assertNoDuplicateEducation(tx, userId, data);
+
+      if (data.current) {
+        await tx.education.updateMany({
+          where: { userId, current: true },
+          data: { current: false },
+        });
+      }
+
+      const education = await tx.education.create({
+        data: {
+          userId,
+          collegeId: data.collegeId!,
+          departmentId: data.departmentId,
+          degree: data.degree,
+          fieldOfStudy: data.fieldOfStudy,
+          startYear: data.startYear,
+          endYear: data.endYear,
+          current: data.current || false,
+        },
+        include: compactEducationInclude,
+      });
+
+      // Sync to user's profile
+      await tx.profile.upsert({
+        where: { userId },
+        update: { collegeId: data.collegeId!, departmentId: data.departmentId || null },
+        create: {
+          userId,
+          fullName: "",
+          collegeId: data.collegeId!,
+          departmentId: data.departmentId || null,
+        },
+      });
+
+      await autoJoinUserCommunities(
+        userId,
+        { collegeId: data.collegeId!, departmentId: data.departmentId },
+        tx,
+      );
+
+      return education;
     }
 
-    await assertDepartmentBelongsToCollege(
-      tx,
-      data.collegeId,
-      data.departmentId,
-    );
+    // ── Track B: Custom (unlisted) college ───────────────────────────────
+    const customName = data.customCollegeName!.trim();
 
     await assertNoDuplicateEducation(tx, userId, data);
 
     if (data.current) {
       await tx.education.updateMany({
-        where: {
-          userId,
-          current: true,
-        },
-
-        data: {
-          current: false,
-        },
+        where: { userId, current: true },
+        data: { current: false },
       });
     }
 
     const education = await tx.education.create({
       data: {
         userId,
-
-        collegeId: data.collegeId,
-        departmentId: data.departmentId,
-
+        collegeId: null,
+        customCollegeName: customName,
+        departmentId: null,
         degree: data.degree,
         fieldOfStudy: data.fieldOfStudy,
-
         startYear: data.startYear,
         endYear: data.endYear,
-
         current: data.current || false,
       },
-
       include: compactEducationInclude,
     });
 
-    // Sync to user's profile
-    await tx.profile.upsert({
-      where: { userId },
-      update: { collegeId: data.collegeId, departmentId: data.departmentId || null },
-      create: {
-        userId,
-        fullName: "",
-        collegeId: data.collegeId,
-        departmentId: data.departmentId || null,
-      },
+    // Create a CollegeRequest for admin review (deduplicate same name per user)
+    const existingRequest = await tx.collegeRequest.findFirst({
+      where: { userId, name: customName, status: "PENDING" },
+      select: { id: true },
     });
-
-    await autoJoinUserCommunities(
-      userId,
-      {
-        collegeId: data.collegeId,
-
-        departmentId: data.departmentId,
-      },
-      tx,
-    );
+    if (!existingRequest) {
+      await tx.collegeRequest.create({
+        data: { userId, name: customName },
+      });
+    }
 
     return education;
   });

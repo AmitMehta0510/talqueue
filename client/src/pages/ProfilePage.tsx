@@ -77,6 +77,7 @@ import {
   useUpdateEducationMutation,
   useUpdateExperienceMutation,
   useUpdateProfileMutation,
+  useCompaniesQuery,
 } from "../hooks/usePlatformQueries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -106,6 +107,8 @@ const emptyExperienceForm = {
 const emptyEducationForm = {
   collegeId: "",
   collegeName: "",
+  isOtherCollege: false,
+  customCollegeName: "",
   departmentId: "",
   degree: "",
   fieldOfStudy: "",
@@ -232,6 +235,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     portfolioUrl: profile.profile?.portfolioUrl || "",
     graduationYear: profile.profile?.graduationYear?.toString() || "",
     acceptingReferrals: profile.acceptingReferrals || false,
+    openToWork: profile.openToWork || false,
+    openToInternship: profile.openToInternship || false,
+    availabilityStatus: profile.availabilityStatus || "NOT_AVAILABLE",
   });
   const [experienceForm, setExperienceForm] = useState(emptyExperienceForm);
   const [educationForm, setEducationForm] = useState(emptyEducationForm);
@@ -264,6 +270,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       portfolioUrl: profile.profile?.portfolioUrl || "",
       graduationYear: profile.profile?.graduationYear?.toString() || "",
       acceptingReferrals: profile.acceptingReferrals || false,
+      openToWork: profile.openToWork || false,
+      openToInternship: profile.openToInternship || false,
+      availabilityStatus: profile.availabilityStatus || "NOT_AVAILABLE",
     });
   }, [profile, profileQuery.data]);
 
@@ -305,12 +314,34 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
           ...e,
           collegeId: "",
           collegeName: "",
+          isOtherCollege: false,
           departmentId: "",
           fieldOfStudy: "",
         };
       }
       return e;
     });
+  };
+
+  const selectOtherCollege = () => {
+    setCollegeQuery("");
+    setCollegeResults([]);
+    setEducationForm((e) => ({
+      ...e,
+      collegeId: "",
+      collegeName: "",
+      isOtherCollege: true,
+      departmentId: "",
+      fieldOfStudy: "",
+    }));
+  };
+
+  const cancelOtherCollege = () => {
+    setEducationForm((e) => ({
+      ...e,
+      isOtherCollege: false,
+      customCollegeName: "",
+    }));
   };
 
   const saveProfile = (event: FormEvent) => {
@@ -388,8 +419,13 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const submitEducation = async (event: FormEvent) => {
     event.preventDefault();
-    if (!educationForm.collegeId) {
-      showToast("error", "Select a college from the list first");
+    // Validate: need either a selected college OR a custom name
+    if (!educationForm.isOtherCollege && !educationForm.collegeId) {
+      showToast("error", "Select a college from the list, or choose 'My college isn't listed'");
+      return;
+    }
+    if (educationForm.isOtherCollege && !educationForm.customCollegeName.trim()) {
+      showToast("error", "Please enter your college name");
       return;
     }
     if (
@@ -406,7 +442,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
         await updateEducation.mutateAsync({
           id: editingEducationId,
           ...compactPayload({
-            collegeId: educationForm.collegeId,
+            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId,
+            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName : undefined,
             departmentId: educationForm.departmentId || undefined,
             degree: educationForm.degree,
             fieldOfStudy: educationForm.fieldOfStudy,
@@ -420,8 +457,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
         });
       } else {
         await addEducation.mutateAsync({
-          collegeId: educationForm.collegeId,
           ...compactPayload({
+            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId,
+            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName : undefined,
             departmentId: educationForm.departmentId || undefined,
             degree: educationForm.degree,
             fieldOfStudy: educationForm.fieldOfStudy,
@@ -480,9 +518,12 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   };
 
   const setFormFromEdu = (edu: any) => {
+    const isOther = !edu.collegeId && Boolean(edu.customCollegeName);
     setEducationForm({
       collegeId: edu.collegeId || "",
       collegeName: edu.college?.name || "",
+      isOtherCollege: isOther,
+      customCollegeName: edu.customCollegeName || "",
       departmentId: edu.departmentId || "",
       degree: edu.degree || "",
       fieldOfStudy: edu.fieldOfStudy || "",
@@ -621,12 +662,14 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             isPending={addEducation.isPending || updateEducation.isPending}
             editingId={editingEducationId}
             onEdit={handleEditEducation}
-            onDelete={(edu) => setConfirmDelete({ type: "education", id: edu.id, label: edu.degree || edu.college?.name || "" })}
+            onDelete={(edu) => setConfirmDelete({ type: "education", id: edu.id, label: edu.degree || edu.college?.name || edu.customCollegeName || "" })}
             onCancel={handleCancelEducation}
             collegeQuery={collegeQuery}
             onCollegeQueryChange={changeCollegeQuery}
             collegeResults={collegeResults}
             onSelectCollege={selectCollege}
+            onSelectOtherCollege={selectOtherCollege}
+            onCancelOtherCollege={cancelOtherCollege}
             departments={departments}
             departmentsLoading={departmentsQuery.isFetching}
           />
@@ -942,7 +985,7 @@ function AboutTab({
             <InfoRow icon={GraduationCap}>
               {profile.profile?.department?.name || "No department"}
             </InfoRow>
-            {profile.profile?.githubUrl && (
+{profile.profile?.githubUrl && (
               <InfoRow icon={Github}>
                 <a
                   href={profile.profile.githubUrl}
@@ -1017,6 +1060,21 @@ function ExperienceTab({
   onDelete: (exp: any) => void;
   onCancel: () => void;
 }) {
+  const { data: companyPage } = useCompaniesQuery({ limit: 100 });
+  const companies = companyPage?.companies || [];
+
+  const [isOther, setIsOther] = useState(false);
+
+  // Sync isOther state when editingId changes or form switches
+  useEffect(() => {
+    if (form.companyName) {
+      const exists = companies.some((c) => c.name === form.companyName);
+      setIsOther(!exists);
+    } else {
+      setIsOther(false);
+    }
+  }, [editingId, companies, showForm]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -1044,14 +1102,47 @@ function ExperienceTab({
           <form onSubmit={onSubmit}>
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Company *">
-                <input
+                <select
                   className="field"
-                  value={form.companyName}
-                  onChange={(e) => onFormChange({ ...form, companyName: e.target.value })}
-                  placeholder="Company name"
+                  value={isOther ? "OTHER" : (form.companyName || "")}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "OTHER") {
+                      setIsOther(true);
+                      onFormChange({ ...form, companyName: "" });
+                    } else {
+                      setIsOther(false);
+                      const matched = companies.find((c) => c.name === val);
+                      onFormChange({
+                        ...form,
+                        companyName: val,
+                        companyWebsiteUrl: matched?.websiteUrl || form.companyWebsiteUrl || "",
+                      });
+                    }
+                  }}
                   required
-                />
+                >
+                  <option value="" disabled>Select a company</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="OTHER">Other (specify name)...</option>
+                </select>
               </Field>
+
+              {isOther && (
+                <Field label="Specify Company Name *">
+                  <input
+                    className="field"
+                    value={form.companyName}
+                    onChange={(e) => onFormChange({ ...form, companyName: e.target.value })}
+                    placeholder="E.g. Acme Corp"
+                    required
+                  />
+                </Field>
+              )}
               <Field label="Company website URL">
                 <input
                   className="field"
@@ -1136,14 +1227,7 @@ function ExperienceTab({
                   placeholder="manager@company.com"
                 />
               </Field>
-              <Field label="Manager LinkedIn">
-                <input
-                  className="field"
-                  value={form.managerLinkedinUrl}
-                  onChange={(e) => onFormChange({ ...form, managerLinkedinUrl: e.target.value })}
-                  placeholder="linkedin.com/in/..."
-                />
-              </Field>
+              {/* Manager LinkedIn field hidden in UI to avoid direct competing links, preserved in model state */}
               <Field label="Tech stack (comma separated)">
                 <input
                   className="field"
@@ -1319,6 +1403,8 @@ function EducationTab({
   onCollegeQueryChange,
   collegeResults,
   onSelectCollege,
+  onSelectOtherCollege,
+  onCancelOtherCollege,
   departments,
   departmentsLoading,
 }: {
@@ -1341,6 +1427,8 @@ function EducationTab({
   onCollegeQueryChange: (v: string) => void;
   collegeResults: College[];
   onSelectCollege: (college: College) => void;
+  onSelectOtherCollege: () => void;
+  onCancelOtherCollege: () => void;
   departments: Department[];
   departmentsLoading: boolean;
 }) {
@@ -1370,67 +1458,120 @@ function EducationTab({
           </h3>
           <form onSubmit={onSubmit}>
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="relative">
-                <Field label="College *">
-                  <input
-                    className="field"
-                    value={collegeQuery}
-                    onChange={(e) => onCollegeQueryChange(e.target.value)}
-                    placeholder="Search college name..."
-                    required
-                  />
-                </Field>
-                {collegeResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                    {collegeResults.map((college) => (
-                      <button
-                        key={college.id}
-                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
-                        type="button"
-                        onClick={() => onSelectCollege(college)}
-                      >
-                        <span className="font-medium text-slate-800">{college.name}</span>
-                        {college.city && (
-                          <span className="text-xs text-slate-400">
-                            {college.city}, {college.state}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+              {/* College selection — normal search OR custom name */}
+              <div className="space-y-2">
+                {!form.isOtherCollege ? (
+                  <div className="relative">
+                    <Field label="College *">
+                      <input
+                        className="field"
+                        value={collegeQuery}
+                        onChange={(e) => onCollegeQueryChange(e.target.value)}
+                        placeholder="Search college name..."
+                      />
+                    </Field>
+                    {collegeResults.length > 0 && (
+                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                        {collegeResults.map((college) => (
+                          <button
+                            key={college.id}
+                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                            type="button"
+                            onClick={() => onSelectCollege(college)}
+                          >
+                            <span className="font-medium text-slate-800">{college.name}</span>
+                            {college.city && (
+                              <span className="text-xs text-slate-400">
+                                {college.city}, {college.state}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* "Not listed" trigger */}
+                    <button
+                      type="button"
+                      className="mt-1.5 text-xs text-slate-500 underline underline-offset-2 hover:text-emerald-700 transition"
+                      onClick={onSelectOtherCollege}
+                    >
+                      My college isn't listed
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Field label="College name *">
+                      <input
+                        className="field"
+                        value={form.customCollegeName}
+                        onChange={(e) => onFormChange({ ...form, customCollegeName: e.target.value })}
+                        placeholder="Enter your college name exactly"
+                        required
+                        autoFocus
+                      />
+                    </Field>
+                    <button
+                      type="button"
+                      className="text-xs text-slate-500 underline underline-offset-2 hover:text-emerald-700 transition"
+                      onClick={onCancelOtherCollege}
+                    >
+                      ← Search from listed colleges instead
+                    </button>
+                    {/* Info callout */}
+                    <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <span className="mt-0.5 text-amber-500">ℹ</span>
+                      <p className="text-xs leading-relaxed text-amber-800">
+                        We'll save your education immediately. Our admin team will review and officially add this college within 1–3 days, after which it will be fully linked to your profile.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <Field label="Department/Branch *">
-                <select
-                  className="field"
-                  value={form.departmentId}
-                  onChange={(e) => {
-                    const deptId = e.target.value;
-                    const dept = departments.find((d) => d.id === deptId);
-                    onFormChange({
-                      ...form,
-                      departmentId: deptId,
-                      fieldOfStudy: dept ? dept.name : "",
-                    });
-                  }}
-                  disabled={!form.collegeId || departmentsLoading}
-                  required
-                >
-                  <option value="">
-                    {!form.collegeId
-                      ? "Select a college first"
-                      : departmentsLoading
-                      ? "Loading departments..."
-                      : "Select Department/Branch"}
-                  </option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
+              {/* Department — only when a listed college is selected */}
+              {!form.isOtherCollege && (
+                <Field label="Department/Branch">
+                  <select
+                    className="field"
+                    value={form.departmentId}
+                    onChange={(e) => {
+                      const deptId = e.target.value;
+                      const dept = departments.find((d) => d.id === deptId);
+                      onFormChange({
+                        ...form,
+                        departmentId: deptId,
+                        fieldOfStudy: dept ? dept.name : "",
+                      });
+                    }}
+                    disabled={!form.collegeId || departmentsLoading}
+                  >
+                    <option value="">
+                      {!form.collegeId
+                        ? "Select a college first"
+                        : departmentsLoading
+                        ? "Loading departments..."
+                        : "Select Department/Branch (optional)"}
                     </option>
-                  ))}
-                </select>
-              </Field>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+
+              {/* If other college — allow freetext branch */}
+              {form.isOtherCollege && (
+                <Field label="Department/Branch">
+                  <input
+                    className="field"
+                    value={form.fieldOfStudy}
+                    onChange={(e) => onFormChange({ ...form, fieldOfStudy: e.target.value })}
+                    placeholder="e.g. Computer Science"
+                  />
+                </Field>
+              )}
 
               <Field label="Degree">
                 <input
@@ -1478,7 +1619,11 @@ function EducationTab({
               <button
                 className="btn-primary"
                 type="submit"
-                disabled={isPending || !form.collegeId}
+                disabled={
+                  isPending ||
+                  (!form.isOtherCollege && !form.collegeId) ||
+                  (form.isOtherCollege && !form.customCollegeName.trim())
+                }
               >
                 {isPending ? <Loader2 className="animate-spin" size={15} /> : editingId ? <Save size={15} /> : <Plus size={15} />}
                 {editingId ? "Save Education" : "Add Education"}
@@ -1609,23 +1754,41 @@ function SettingsTab({
           <Field label="Bio" className="md:col-span-2">
             <textarea className="field min-h-28" value={profileForm.bio} onChange={set("bio")} placeholder="What you build, what you're learning, what kind of work you want..." maxLength={1000} />
           </Field>
-          <Field label="Availability" className="md:col-span-2">
+          <Field label="Availability Status">
+            <select
+              className="field"
+              value={profileForm.availabilityStatus || "NOT_AVAILABLE"}
+              onChange={(e) => {
+                const val = e.target.value;
+                onProfileFormChange({
+                  ...profileForm,
+                  availabilityStatus: val,
+                  openToWork: val === "OPEN_TO_WORK" || val === "OPEN_TO_BOTH",
+                  openToInternship: val === "OPEN_TO_INTERNSHIP" || val === "OPEN_TO_BOTH",
+                });
+              }}
+            >
+              <option value="NOT_AVAILABLE">Not Available / Paused</option>
+              <option value="OPEN_TO_WORK">Open to Work (Full-Time)</option>
+              <option value="OPEN_TO_INTERNSHIP">Open to Internships</option>
+              <option value="OPEN_TO_BOTH">Open to Both (Jobs &amp; Internships)</option>
+            </select>
+          </Field>
+          <Field label="Accepting Referrals">
+            <select
+              className="field"
+              value={profileForm.acceptingReferrals ? "true" : "false"}
+              onChange={(e) =>
+                onProfileFormChange({ ...profileForm, acceptingReferrals: e.target.value === "true" })
+              }
+            >
+              <option value="false">No (Inactive / Paused)</option>
+              <option value="true">Yes (Active / Accepting Requests)</option>
+            </select>
+          </Field>
+          <Field label="Availability custom note" className="md:col-span-2">
             <input className="field" value={profileForm.availabilityText} onChange={set("availabilityText")} placeholder="Open to internships, referrals, mentoring..." maxLength={240} />
           </Field>
-          <div className="md:col-span-2 flex items-center gap-2 mt-1">
-            <input
-              type="checkbox"
-              id="settings-accepting-referrals"
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-              checked={Boolean(profileForm.acceptingReferrals)}
-              onChange={(e) =>
-                onProfileFormChange({ ...profileForm, acceptingReferrals: e.target.checked })
-              }
-            />
-            <label htmlFor="settings-accepting-referrals" className="text-sm font-semibold text-slate-600 cursor-pointer">
-              Accepting Referrals (Allow other engineers to request job referrals from you)
-            </label>
-          </div>
         </div>
       </SettingsSection>
 
@@ -1642,12 +1805,6 @@ function SettingsTab({
             <div className="relative">
               <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
               <input className="field pl-8" value={profileForm.githubUrl} onChange={set("githubUrl")} placeholder="https://github.com/..." type="url" />
-            </div>
-          </Field>
-          <Field label="LinkedIn URL">
-            <div className="relative">
-              <Linkedin size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-              <input className="field pl-8" value={profileForm.linkedinUrl} onChange={set("linkedinUrl")} placeholder="https://linkedin.com/in/..." type="url" />
             </div>
           </Field>
           <Field label="Portfolio URL">

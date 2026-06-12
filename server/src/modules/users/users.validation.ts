@@ -30,6 +30,9 @@ export const updateProfileSchema = z.object({
   collegeId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
   acceptingReferrals: z.boolean().optional(),
+  openToWork: z.boolean().optional(),
+  openToInternship: z.boolean().optional(),
+  availabilityStatus: z.string().optional(),
 });
 
 export const addSkillSchema = z.object({
@@ -84,21 +87,33 @@ export const addExperienceSchema = z.object({
   teamSize: z.number().int().positive().optional(),
 });
 
-export const addEducationSchema = z.object({
-  collegeId: z.string().uuid(),
+export const addEducationSchema = z
+  .object({
+    collegeId: z.string().uuid().optional(),
 
-  departmentId: z.string().uuid().optional(),
+    customCollegeName: z.string().min(2).max(120).optional(),
 
-  degree: z.string().optional(),
+    departmentId: z.string().uuid().optional(),
 
-  fieldOfStudy: z.string().optional(),
+    degree: z.string().optional(),
 
-  startYear: z.number().int().optional(),
+    fieldOfStudy: z.string().optional(),
 
-  endYear: z.number().int().optional(),
+    startYear: z.number().int().optional(),
 
-  current: z.boolean().optional(),
-});
+    endYear: z.number().int().optional(),
+
+    current: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.collegeId && !val.customCollegeName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either collegeId or customCollegeName is required",
+        path: ["collegeId"],
+      });
+    }
+  });
 
 export const updateExperienceSchema = z.object({
   title: z.string().min(1).optional(),
@@ -138,6 +153,8 @@ export const updateExperienceSchema = z.object({
 
 export const updateEducationSchema = z.object({
   collegeId: z.string().uuid().optional(),
+
+  customCollegeName: z.string().min(2).max(120).optional(),
 
   departmentId: z.string().uuid().optional(),
 

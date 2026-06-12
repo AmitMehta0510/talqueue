@@ -554,6 +554,7 @@ model User {
   companyAdminships    CompanyAdmin[]     @relation("CompanyAdminUser")
   createdCommunities   Community[]        @relation("CommunityCreator")
   companyRequests      CompanyRequest[]
+  collegeRequests      CollegeRequest[]
 }
 
 model UserRecommendation {
@@ -829,8 +830,11 @@ model Education {
 
   userId String
 
-  collegeId    String
+  collegeId    String?
   departmentId String?
+
+  // Freetext name used when user's college is not yet in the DB
+  customCollegeName String?
 
   degree       String?
   fieldOfStudy String?
@@ -842,7 +846,7 @@ model Education {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  college College @relation(fields: [collegeId], references: [id])
+  college College? @relation(fields: [collegeId], references: [id])
 
   department Department? @relation(fields: [departmentId], references: [id])
 
@@ -852,6 +856,35 @@ model Education {
   @@index([collegeId])
   @@index([departmentId])
   @@index([userId, collegeId, departmentId])
+}
+
+enum CollegeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DUPLICATE
+}
+
+model CollegeRequest {
+  id      String               @id @default(uuid())
+  userId  String
+  name    String
+  city    String?
+  state   String?
+  country String?
+  website String?
+
+  status    CollegeRequestStatus @default(PENDING)
+  adminNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([name])
 }
 
 model Post {
