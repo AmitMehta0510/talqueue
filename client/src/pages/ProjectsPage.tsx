@@ -383,6 +383,8 @@ function InviteUserPanel({ project }: { project: Project }) {
   const [message, setMessage] = useState("");
   const search = usePlatformSearchMutation();
   const invite = useInviteUserToProjectMutation(project.id);
+  const invitesQuery = useSentProjectInvitesQuery(project.id);
+  const invites = invitesQuery.data || [];
   const users = search.data?.users || [];
 
   const submit = (event: FormEvent) => {
@@ -415,6 +417,10 @@ function InviteUserPanel({ project }: { project: Project }) {
           // API returns { user, relevanceScore } or raw user — handle both
           const foundUser: User = item?.id ? item : item?.user;
           if (!foundUser) return null;
+          const isPending = invites.some(
+            (inv) => inv.invitedUserId === foundUser.id && inv.status === "PENDING"
+          );
+
           return (
             <div
               className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
@@ -431,15 +437,26 @@ function InviteUserPanel({ project }: { project: Project }) {
                   </div>
                 </div>
               </div>
-              <button
-                className="btn-secondary px-3 py-1.5"
-                type="button"
-                disabled={invite.isPending}
-                onClick={() => invite.mutate({ userId: foundUser.id, message })}
-              >
-                <UserPlus size={15} />
-                Invite
-              </button>
+              {isPending ? (
+                <button
+                  className="btn-secondary px-3 py-1.5 text-slate-400 cursor-not-allowed"
+                  type="button"
+                  disabled
+                >
+                  <CheckCircle2 size={15} className="text-emerald-600" />
+                  Invitation sent
+                </button>
+              ) : (
+                <button
+                  className="btn-secondary px-3 py-1.5"
+                  type="button"
+                  disabled={invite.isPending}
+                  onClick={() => invite.mutate({ userId: foundUser.id, message })}
+                >
+                  <UserPlus size={15} />
+                  Invite
+                </button>
+              )}
             </div>
           );
         })}

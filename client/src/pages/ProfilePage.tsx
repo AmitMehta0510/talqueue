@@ -231,6 +231,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     linkedinUrl: profile.profile?.linkedinUrl || "",
     portfolioUrl: profile.profile?.portfolioUrl || "",
     graduationYear: profile.profile?.graduationYear?.toString() || "",
+    acceptingReferrals: profile.acceptingReferrals || false,
   });
   const [experienceForm, setExperienceForm] = useState(emptyExperienceForm);
   const [educationForm, setEducationForm] = useState(emptyEducationForm);
@@ -262,6 +263,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       linkedinUrl: profile.profile?.linkedinUrl || "",
       portfolioUrl: profile.profile?.portfolioUrl || "",
       graduationYear: profile.profile?.graduationYear?.toString() || "",
+      acceptingReferrals: profile.acceptingReferrals || false,
     });
   }, [profile, profileQuery.data]);
 
@@ -1576,7 +1578,7 @@ function SettingsTab({
   onSave,
   isSavePending,
 }: {
-  profileForm: Record<string, string>;
+  profileForm: Record<string, any>;
   onProfileFormChange: (f: any) => void;
   onSave: (e: FormEvent) => void;
   isSavePending: boolean;
@@ -1610,6 +1612,20 @@ function SettingsTab({
           <Field label="Availability" className="md:col-span-2">
             <input className="field" value={profileForm.availabilityText} onChange={set("availabilityText")} placeholder="Open to internships, referrals, mentoring..." maxLength={240} />
           </Field>
+          <div className="md:col-span-2 flex items-center gap-2 mt-1">
+            <input
+              type="checkbox"
+              id="settings-accepting-referrals"
+              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              checked={Boolean(profileForm.acceptingReferrals)}
+              onChange={(e) =>
+                onProfileFormChange({ ...profileForm, acceptingReferrals: e.target.checked })
+              }
+            />
+            <label htmlFor="settings-accepting-referrals" className="text-sm font-semibold text-slate-600 cursor-pointer">
+              Accepting Referrals (Allow other engineers to request job referrals from you)
+            </label>
+          </div>
         </div>
       </SettingsSection>
 

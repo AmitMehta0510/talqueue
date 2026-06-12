@@ -224,14 +224,14 @@ export function EngineerCard({
               (user as any).role === "WORKING_PROFESSIONAL" ||
               (user as any).role === "RECRUITER"
             ) &&
-            (user as any).acceptingReferrals !== false && (
+            (user as any).acceptingReferrals === true && (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
               type="button"
               disabled={disabled}
               onClick={handleReferral}
             >
-              <Gift size={14} />
+               <Gift size={14} />
               Ask Referral
             </button>
           )}

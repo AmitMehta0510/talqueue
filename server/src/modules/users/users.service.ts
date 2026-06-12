@@ -31,6 +31,7 @@ export interface UpdateProfileData {
   graduationYear?: number;
   collegeId?: string;
   departmentId?: string | null;
+  acceptingReferrals?: boolean;
 }
 
 export interface AddSkillData {
@@ -723,6 +724,7 @@ export const updateProfile = async (
 ) => {
   const {
     username,
+    acceptingReferrals,
 
     ...profileData
   } = data;
@@ -772,6 +774,17 @@ export const updateProfile = async (
 
         data: {
           username,
+        },
+      });
+    }
+
+    if (acceptingReferrals !== undefined) {
+      await tx.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          acceptingReferrals,
         },
       });
     }

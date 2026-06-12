@@ -29,6 +29,7 @@ export const updateProfileSchema = z.object({
 
   collegeId: z.string().uuid().optional(),
   departmentId: z.string().uuid().optional(),
+  acceptingReferrals: z.boolean().optional(),
 });
 
 export const addSkillSchema = z.object({

@@ -1449,6 +1449,7 @@ export const api = {
     graduationYear?: number;
     collegeId?: string;
     departmentId?: string;
+    acceptingReferrals?: boolean;
   }) => request<User>("/users/me", { method: "PUT", body }),
   addExperience: (body: {
     companyName: string;
