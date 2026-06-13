@@ -83,18 +83,25 @@ export const assignJudgeHandler = asyncHandler(
 );
 
 export const getHackathonsHandler = asyncHandler(
-  async (_req: Request, res: Response) => {
-    const hackathons = await getHackathons();
+  async (req: any, res: Response) => {
+    const isAdmin = req.user?.roles?.some(
+      (ur: any) => ur.role?.name === "SUPER_ADMIN" || ur.role?.name === "PLATFORM_ADMIN",
+    );
+    const hackathons = await getHackathons(req.user?.id, isAdmin);
 
     res.json(successResponse(hackathons));
   },
 );
 
 export const getHackathonHandler = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: any, res: Response) => {
+    const isAdmin = req.user?.roles?.some(
+      (ur: any) => ur.role?.name === "SUPER_ADMIN" || ur.role?.name === "PLATFORM_ADMIN",
+    );
     const hackathon = await getHackathonById(
       req.user?.id,
       req.params.id as string,
+      isAdmin,
     );
 
     res.json(successResponse(hackathon));

@@ -170,15 +170,24 @@ const calculateHackathonRankingScore = (hackathon: any) => {
   return score;
 };
 
-export const getHackathons = async () => {
-  const hackathons = await prisma.hackathon.findMany({
-    where: {
-      deletedAt: null,
+export const getHackathons = async (userId?: string, isAdmin?: boolean) => {
+  const whereClause: Prisma.HackathonWhereInput = {
+    deletedAt: null,
 
-      NOT: {
-        status: "DELETED",
-      },
+    NOT: {
+      status: "DELETED",
     },
+  };
+
+  if (!isAdmin) {
+    whereClause.OR = [
+      { verified: true },
+      userId ? { createdById: userId } : undefined,
+    ].filter(Boolean) as Prisma.HackathonWhereInput[];
+  }
+
+  const hackathons = await prisma.hackathon.findMany({
+    where: whereClause,
 
     include: {
       _count: {
@@ -213,6 +222,7 @@ export const getHackathons = async () => {
 export const getHackathonById = async (
   userId: string | undefined,
   hackathonId: string,
+  isAdmin?: boolean,
 ) => {
   const hackathon = await prisma.hackathon.findUnique({
     where: {
@@ -236,6 +246,10 @@ export const getHackathonById = async (
   });
 
   if (!hackathon) {
+    throw new AppError("Hackathon not found", 404);
+  }
+
+  if (!hackathon.verified && hackathon.createdById !== userId && !isAdmin) {
     throw new AppError("Hackathon not found", 404);
   }
 

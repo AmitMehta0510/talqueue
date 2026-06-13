@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { protect } from "modules/auth/auth.middleware";
+import { protect, optionalProtect } from "modules/auth/auth.middleware";
 
 import {
   createHackathonHandler,
@@ -33,11 +33,13 @@ router.post(
 
 router.get(
   "/",
+  optionalProtect,
   getHackathonsHandler
 );
 
 router.get(
   "/:id",
+  optionalProtect,
   getHackathonHandler
 );
 
