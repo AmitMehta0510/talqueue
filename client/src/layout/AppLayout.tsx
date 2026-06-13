@@ -57,6 +57,13 @@ const sections: NavSection[] = [
 
 export function AppLayout() {
   const { user, apiOnline, apiStatus, logout } = useAuth();
+
+  const isUserAdmin =
+    user && (
+      user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN") ||
+      user.primaryRole === "PLATFORM_ADMIN" ||
+      user.primaryRole === "SUPER_ADMIN"
+    );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -228,6 +235,14 @@ export function AppLayout() {
 
           {/* Right Area: Actions, Notification Center, Profile Dropdown */}
           <div className="flex items-center gap-3 shrink-0">
+            {/* API Health Monitor widget — only visible to PLATFORM_ADMIN / SUPER_ADMIN */}
+            {isUserAdmin && (
+              <div className="hidden xl:flex items-center gap-1.5 bg-slate-50 border border-slate-150 rounded-full px-2.5 py-1 text-xxs font-medium text-slate-500">
+                <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-500" : "bg-rose-500 animate-ping"}`} />
+                <span>{apiStatus === "checking" ? "Ping" : apiOnline ? "API OK" : "API Offline"}</span>
+              </div>
+            )}
+
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
