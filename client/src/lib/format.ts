@@ -151,6 +151,15 @@ const HTTP_MESSAGES: Record<number, string> = {
 /** Returns a user-friendly, plain-English error message. */
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
+    if (error.errors && error.errors.length > 0) {
+      return error.errors
+        .map((e) => {
+          const field = e.path ? titleCase(e.path) : "";
+          return field ? `${field}: ${e.message}` : e.message;
+        })
+        .join("\n");
+    }
+
     // Prefer the server's own message when it's meaningful (not a raw status text)
     const serverMsg = error.message;
     const isGeneric =

@@ -5,7 +5,10 @@ export const updateProfileSchema = z.object({
   username: z.string()
   .min(3)
   .max(30)
-  .regex(/^[a-zA-Z0-9_]+$/)
+  .regex(
+    /^[a-zA-Z0-9_@.-]+$/,
+    "Username can only contain letters, numbers, underscores, dots, hyphens, and at (@) signs",
+  )
   .optional(),
   bio: z.string().max(1000).optional(),
 

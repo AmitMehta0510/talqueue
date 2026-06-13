@@ -1319,10 +1319,12 @@ type CursorOptions = EndpointOptions & {
 
 export class ApiError extends Error {
   status: number;
+  errors?: Array<{ path: string; message: string }>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errors?: Array<{ path: string; message: string }>) {
     super(message);
     this.status = status;
+    this.errors = errors;
   }
 }
 
@@ -1384,6 +1386,7 @@ async function request<T>(path: string, options: RequestOptions = {}) {
       throw new ApiError(
         payload?.message || response.statusText || "Request failed",
         response.status,
+        payload?.errors,
       );
     }
 
