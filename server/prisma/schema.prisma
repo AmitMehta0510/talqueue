@@ -1470,6 +1470,8 @@ model Hackathon {
 
   isExternal Boolean @default(false)
 
+  sourceId String?
+
   sourcePlatform String?
 
   externalUrl String?
@@ -1519,6 +1521,8 @@ model Hackathon {
   deletedAt     DateTime?
   posts         Post[]
   conversations Conversation[]
+
+  @@unique([sourceId, sourcePlatform])
 }
 
 model HackathonRegistration {
