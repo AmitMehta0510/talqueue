@@ -1,20 +1,20 @@
 /**
  * hackathon-scraper.cron.ts
  *
- * Schedules the Devpost hackathon scraper to run daily at 2:00 AM.
+ * Schedules the hackathon scraper to run daily at 2:00 AM.
  * Follows the same cron pattern used by trending.cron.ts.
  */
 
 import cron from "node-cron";
-import { runDevpostScraper } from "./hackathon-scraper.service";
+import { runAllScrapers } from "./hackathon-scraper.service";
 
 export const startHackathonScraperCron = () => {
   // Daily at 2:00 AM
   cron.schedule("0 2 * * *", async () => {
-    console.log("[HackathonScraper] Starting Devpost scrape...");
+    console.log("[HackathonScraper] Starting daily unified scrape...");
 
     try {
-      const result = await runDevpostScraper();
+      const result = await runAllScrapers();
 
       console.log(
         `[HackathonScraper] Done — fetched: ${result.totalFetched}, created: ${result.created}, updated: ${result.updated}, errors: ${result.errors}`,
@@ -28,3 +28,4 @@ export const startHackathonScraperCron = () => {
     "[HackathonScraper] Cron scheduled — runs daily at 2:00 AM",
   );
 };
+
