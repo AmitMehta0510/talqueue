@@ -23,8 +23,30 @@ export const initials = (name?: string | null) => {
 export const userName = (user?: User | null) =>
   user?.profile?.fullName || user?.username || "Engineer";
 
+// Priority order for platform roles — highest first
+const ROLE_PRIORITY = [
+  "SUPER_ADMIN",
+  "PLATFORM_ADMIN",
+  "COLLEGE_ADMIN",
+  "COMPANY_ADMIN",
+  "COLLEGE_DIRECTOR",
+];
+
+/**
+ * Returns the highest-privilege platform role name from the user's roles[] array.
+ * Falls back to primaryRole (the static DB column) if no platform role is found.
+ */
+export const getHighestPrivilegeRole = (user?: User | null): string | undefined => {
+  if (!user?.roles || user.roles.length === 0) return user?.primaryRole ?? undefined;
+  for (const roleName of ROLE_PRIORITY) {
+    if (user.roles.some((ur: any) => ur.role?.name === roleName)) return roleName;
+  }
+  // No recognised platform role — fall back to primaryRole
+  return user.primaryRole ?? undefined;
+};
+
 export const userHeadline = (user?: User | null) =>
-  user?.profile?.headline || user?.primaryRole || user?.roles?.[0]?.role?.name;
+  user?.profile?.headline || getHighestPrivilegeRole(user) || user?.roles?.[0]?.role?.name;
 
 export const formatCount = (value?: number) =>
   new Intl.NumberFormat("en", { notation: "compact" }).format(value || 0);

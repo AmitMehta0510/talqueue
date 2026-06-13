@@ -43,7 +43,7 @@ import {
   useAdminCreateDepartmentMutation,
   useAdminDepartmentsQuery,
 } from "../hooks/usePlatformQueries";
-import { titleCase, userName } from "../lib/format";
+import { titleCase, userName, getHighestPrivilegeRole } from "../lib/format";
 import { College, Company, User } from "../lib/api";
 
 type Tab = "overview" | "users" | "moderation" | "colleges" | "companies" | "communities" | "referrals" | "company_requests";
@@ -551,6 +551,7 @@ function UsersPanel({ onAction, currentUserId, isSuperAdmin }: {
           <div className="divide-y divide-zinc-800/60">
             {users.map((u) => {
               const isBanned = u.status === "BANNED";
+              const isSuperAdminUser = u.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN");
               const isPlatformAdmin = u.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
               const isCollegeAdmin = u.roles?.some((ur: any) => ur.role?.name === "COLLEGE_ADMIN");
               const isCompanyAdmin = u.roles?.some((ur: any) => ur.role?.name === "COMPANY_ADMIN");
@@ -567,7 +568,12 @@ function UsersPanel({ onAction, currentUserId, isSuperAdmin }: {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm text-white truncate">{label}</span>
-                        {isPlatformAdmin && (
+                        {isSuperAdminUser && (
+                          <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-black bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                            <ShieldCheck size={8} /> SUPER_ADMIN
+                          </span>
+                        )}
+                        {isPlatformAdmin && !isSuperAdminUser && (
                           <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-black bg-red-500/15 text-red-400 border border-red-500/20">
                             <ShieldCheck size={8} /> PLATFORM_ADMIN
                           </span>
@@ -621,7 +627,7 @@ function UsersPanel({ onAction, currentUserId, isSuperAdmin }: {
                         >
                           <CheckCircle size={11} /> Activate
                         </button>
-                      ) : (
+                      ) : !isSuperAdminUser && (
                         <button
                           className="flex items-center gap-1 rounded-lg border border-rose-700/50 bg-rose-500/10 px-2.5 py-1.5 text-[11px] font-bold text-rose-400 hover:bg-rose-500/20 transition disabled:opacity-30"
                           onClick={() => onAction("ban", u.id, label)}
@@ -662,7 +668,8 @@ function UsersPanel({ onAction, currentUserId, isSuperAdmin }: {
                           <div className="mb-2 font-bold uppercase tracking-wider text-zinc-500 text-[10px]">Identity</div>
                           <div className="space-y-1">
                             <div><span className="text-zinc-600">Trust Level: </span><span className="text-zinc-200 font-semibold">{titleCase(u.trustLevel || "BEGINNER")}</span></div>
-                            <div><span className="text-zinc-600">Role: </span><span className="text-zinc-200 font-semibold">{titleCase(u.primaryRole || "USER")}</span></div>
+                            <div><span className="text-zinc-600">Type: </span><span className="text-zinc-200 font-semibold">{titleCase(u.primaryRole || "USER")}</span></div>
+                            <div><span className="text-zinc-600">Highest Role: </span><span className="text-zinc-200 font-semibold">{titleCase(getHighestPrivilegeRole(u) || "USER")}</span></div>
                             <div><span className="text-zinc-600">Joined: </span><span className="text-zinc-200">{u.createdAt ? fmtDate(u.createdAt) : ""}</span></div>
                           </div>
                         </div>

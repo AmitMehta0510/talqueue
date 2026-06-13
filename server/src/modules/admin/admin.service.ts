@@ -418,6 +418,18 @@ export const updateUserStatus = async (
   status: "ACTIVE" | "INACTIVE" | "BANNED"
 ) => {
   await ensureUserExists(userId);
+
+  // Guard: SUPER_ADMIN accounts cannot have their status changed via the admin panel
+  const superAdminRole = await prisma.role.findUnique({ where: { name: "SUPER_ADMIN" } });
+  if (superAdminRole) {
+    const isSuperAdmin = await prisma.userRole.findFirst({
+      where: { userId, roleId: superAdminRole.id },
+    });
+    if (isSuperAdmin) {
+      throw new AppError("Super Admin accounts cannot be banned or deactivated", 403);
+    }
+  }
+
   return prisma.user.update({
     where: { id: userId },
     data: { status },
