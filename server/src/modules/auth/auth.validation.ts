@@ -15,8 +15,8 @@ export const registerSchema = z.object({
     .min(3)
     .max(30)
     .regex(
-      /^[a-zA-Z0-9_@.-]+$/,
-      "Username can only contain letters, numbers, underscores, dots, hyphens, and at (@) signs",
+      /^[a-zA-Z0-9_.]+$/,
+      "Username can only contain letters, numbers, underscores, and dots",
     )
     .transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(128),
