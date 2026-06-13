@@ -222,9 +222,14 @@ export const listCompanyAdmins = async (companyId: string) => {
   });
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLATFORM STATS
-// ─────────────────────────────────────────────────────────────────────────────
+const PLATFORM_ADMIN_ROLES_LIST = [
+  "PLATFORM_ADMIN",
+  "SUPER_ADMIN",
+  "ADMIN",
+  "COLLEGE_ADMIN",
+  "COLLEGE_DIRECTOR",
+  "COMPANY_ADMIN",
+];
 
 export const getAdminStats = async () => {
   const now = new Date();
@@ -273,6 +278,13 @@ export const getAdminStats = async () => {
     prisma.userRole.groupBy({
       by: ["roleId"],
       _count: true,
+      where: {
+        role: {
+          name: {
+            in: PLATFORM_ADMIN_ROLES_LIST,
+          },
+        },
+      },
     }),
     prisma.user.groupBy({ by: ["primaryRole"], _count: true }),
   ]);
@@ -310,10 +322,12 @@ export const getAdminStats = async () => {
       roleName: roleMap[g.roleId] || g.roleId,
       count: (g._count as any)._all ?? g._count,
     })),
-    userRoleDistribution: userRoleDistribution.map((g: any) => ({
-      role: g.primaryRole,
-      count: (g._count as any)._all ?? g._count,
-    })),
+    userRoleDistribution: userRoleDistribution
+      .filter((g: any) => g.primaryRole !== null && g.primaryRole !== undefined)
+      .map((g: any) => ({
+        role: g.primaryRole,
+        count: (g._count as any)._all ?? g._count,
+      })),
   };
 };
 
@@ -412,6 +426,16 @@ export const updateUserStatus = async (
 };
 
 export const assignPlatformAdmin = async (actorId: string, userId: string) => {
+  // Defence-in-depth: verify actor is SUPER_ADMIN at the service layer
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { roles: { select: { role: { select: { name: true } } } } },
+  });
+  const actorRoles = new Set((actor?.roles || []).map((ur: any) => ur.role?.name));
+  if (!actorRoles.has("SUPER_ADMIN")) {
+    throw new AppError("Only SUPER_ADMIN can grant platform admin privileges", 403);
+  }
+
   await ensureUserExists(userId);
   await grantRole(userId, "PLATFORM_ADMIN");
   return { message: "PLATFORM_ADMIN role granted successfully" };
@@ -419,6 +443,17 @@ export const assignPlatformAdmin = async (actorId: string, userId: string) => {
 
 export const removePlatformAdmin = async (userId: string, actorId: string) => {
   if (userId === actorId) throw new AppError("Cannot revoke your own admin role", 403);
+
+  // Defence-in-depth: verify actor is SUPER_ADMIN at the service layer
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { roles: { select: { role: { select: { name: true } } } } },
+  });
+  const actorRoles = new Set((actor?.roles || []).map((ur: any) => ur.role?.name));
+  if (!actorRoles.has("SUPER_ADMIN")) {
+    throw new AppError("Only SUPER_ADMIN can revoke platform admin privileges", 403);
+  }
+
   const role = await prisma.role.findUnique({ where: { name: "PLATFORM_ADMIN" } });
   if (!role) throw new AppError("PLATFORM_ADMIN role does not exist", 404);
   await prisma.userRole.deleteMany({ where: { userId, roleId: role.id } });

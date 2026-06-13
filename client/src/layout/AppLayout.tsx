@@ -41,7 +41,7 @@ type NavSection = {
 const sections: NavSection[] = [
   { to: "/feed", label: "Home", icon: Compass },
   { to: "/discover", label: "Discover", icon: Search },
-  { to: "/chat", label: "Chat", icon: MessageSquare, requiresAuth: true },
+  { to: "/chat", label: "Chats", icon: MessageSquare, requiresAuth: true },
   { to: "/social", label: "My Network", icon: UserRound, requiresAuth: true },
   { to: "/referrals", label: "Referrals", icon: Send, requiresAuth: true },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
@@ -68,7 +68,7 @@ export function AppLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  
+
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,7 @@ export function AppLayout() {
       {/* 1. STICKY TOP NAVIGATION BAR */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          
+
           {/* Logo & Global Search */}
           <div className="flex items-center gap-3 flex-1 md:flex-initial">
             <Link to="/feed" className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function AppLayout() {
               </div>
             </Link>
 
-            {/* Global Search Bar (LinkedIn inspired) */}
+            {/* Global Search Bar */}
             <div className="relative hidden md:block w-64 max-w-xs ml-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <input
@@ -157,17 +157,16 @@ export function AppLayout() {
                 index >= 6
                   ? "hidden"
                   : index >= 4
-                  ? "hidden xl:flex"
-                  : "flex";
+                    ? "hidden xl:flex"
+                    : "flex";
 
               return (
                 <NavLink
                   key={section.to}
                   className={({ isActive }) =>
-                    `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none ${
-                      isActive
-                        ? "border-emerald-700 text-emerald-800"
-                        : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
+                    `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none ${isActive
+                      ? "border-emerald-700 text-emerald-800"
+                      : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
                     }`
                   }
                   to={locked ? "/auth" : section.to}
@@ -183,11 +182,10 @@ export function AppLayout() {
             <div className="relative h-full flex items-center" ref={moreDropdownRef}>
               <button
                 onClick={() => setMoreMenuOpen((open) => !open)}
-                className={`flex flex-col items-center justify-center gap-1 px-3.5 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none focus:outline-none ${
-                  moreMenuOpen
-                    ? "border-emerald-700 text-emerald-800"
-                    : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
-                }`}
+                className={`flex flex-col items-center justify-center gap-1 px-3.5 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none focus:outline-none ${moreMenuOpen
+                  ? "border-emerald-700 text-emerald-800"
+                  : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
+                  }`}
                 type="button"
               >
                 <Menu size={19} className="stroke-[2px]" />
@@ -206,17 +204,16 @@ export function AppLayout() {
                         index < 4
                           ? "hidden"
                           : index < 6
-                          ? "block xl:hidden"
-                          : "block";
+                            ? "block xl:hidden"
+                            : "block";
 
                       return (
                         <NavLink
                           key={section.to}
                           className={({ isActive }) =>
-                            `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
-                              isActive
-                                ? "bg-emerald-50 text-emerald-900 font-bold"
-                                : "text-slate-650 hover:bg-slate-50 hover:text-slate-950"
+                            `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${isActive
+                              ? "bg-emerald-50 text-emerald-900 font-bold"
+                              : "text-slate-650 hover:bg-slate-50 hover:text-slate-950"
                             }`
                           }
                           to={locked ? "/auth" : section.to}
@@ -369,7 +366,7 @@ export function AppLayout() {
                 }}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold py-2 border-b border-slate-100">
               {visibleSections.map((section) => {
                 const Icon = section.icon;
@@ -379,10 +376,9 @@ export function AppLayout() {
                   <NavLink
                     key={section.to}
                     className={({ isActive }) =>
-                      `flex items-center gap-2 p-2.5 rounded-lg border transition ${
-                        isActive
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-extrabold"
-                          : "border-slate-100 text-slate-600 hover:bg-slate-50"
+                      `flex items-center gap-2 p-2.5 rounded-lg border transition ${isActive
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-extrabold"
+                        : "border-slate-100 text-slate-600 hover:bg-slate-50"
                       }`
                     }
                     to={locked ? "/auth" : section.to}

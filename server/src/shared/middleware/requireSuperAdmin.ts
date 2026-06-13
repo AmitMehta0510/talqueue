@@ -1,16 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import AppError from "shared/errors/AppError";
 
-const PLATFORM_ADMIN_ROLES = new Set([
-  "PLATFORM_ADMIN",
-  "SUPER_ADMIN",
-]);
-
 /**
- * Express middleware that blocks non-platform-admin users.
+ * Express middleware that restricts access exclusively to SUPER_ADMIN users.
+ * PLATFORM_ADMIN users are denied — use `requirePlatformAdmin` for general admin routes.
  * Must be used AFTER the `protect` middleware.
  */
-export const requirePlatformAdmin = (
+export const requireSuperAdmin = (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -27,10 +23,13 @@ export const requirePlatformAdmin = (
       .filter(Boolean),
   );
 
-  const isAdmin = [...PLATFORM_ADMIN_ROLES].some((r) => roleNames.has(r));
-
-  if (!isAdmin) {
-    return next(new AppError("Access restricted to PLATFORM_ADMIN or SUPER_ADMIN", 403));
+  if (!roleNames.has("SUPER_ADMIN")) {
+    return next(
+      new AppError(
+        "Access restricted to SUPER_ADMIN. This action requires elevated privileges.",
+        403,
+      ),
+    );
   }
 
   next();

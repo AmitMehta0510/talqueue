@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { protect } from "modules/auth/auth.middleware";
 import { requirePlatformAdmin } from "shared/middleware/requirePlatformAdmin";
+import { requireSuperAdmin } from "shared/middleware/requireSuperAdmin";
 
 import {
   assignCollegeAdminHandler,
@@ -47,8 +48,9 @@ router.get("/stats", getAdminStatsHandler);
 router.get("/users", listUsersHandler);
 router.get("/users/:userId", getUserDetailHandler);
 router.patch("/users/:userId/status", updateUserStatusHandler);
-router.post("/users/:userId/platform-admin", assignPlatformAdminHandler);
-router.delete("/users/:userId/platform-admin", removePlatformAdminHandler);
+// ⬇ Super-admin only: granting/revoking platform admin is a privileged escalation action
+router.post("/users/:userId/platform-admin", requireSuperAdmin, assignPlatformAdminHandler);
+router.delete("/users/:userId/platform-admin", requireSuperAdmin, removePlatformAdminHandler);
 
 // ============================================================
 // COLLEGE ADMIN ROUTES

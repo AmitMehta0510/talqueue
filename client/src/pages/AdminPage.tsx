@@ -193,6 +193,13 @@ export function AdminPage() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
+  // Compute role flags from the authenticated user
+  const isSuperAdmin = !!(currentUser?.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN"));
+  const isPlatformAdminOrHigher = !!(currentUser?.roles?.some(
+    (ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN"
+  ));
+  void isPlatformAdminOrHigher; // may be used for future conditional sections
+
   const updateUserStatus = useUpdateUserStatusMutation();
   const assignPlatformAdmin = useAssignPlatformAdminMutation();
   const removePlatformAdmin = useRemovePlatformAdminMutation();
@@ -263,7 +270,7 @@ export function AdminPage() {
             </button>
             <div className="flex items-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400">
               <ShieldCheck size={12} />
-              Super Admin
+              {isSuperAdmin ? "Super Admin" : "Platform Admin"}
             </div>
           </div>
         </div>
@@ -317,6 +324,7 @@ export function AdminPage() {
               <UsersPanel
                 onAction={(type, userId, label) => setConfirmAction({ type, userId, label })}
                 currentUserId={currentUser?.id}
+                isSuperAdmin={isSuperAdmin}
               />
             )}
             {activeTab === "moderation" && <ModerationPanel />}
@@ -508,9 +516,10 @@ function OverviewPanel({ stats, loading, error, onRetry }: { stats: any; loading
 
 // ─── USERS PANEL ───────────────────────────────────────────────────────────────
 
-function UsersPanel({ onAction, currentUserId }: {
+function UsersPanel({ onAction, currentUserId, isSuperAdmin }: {
   onAction: (type: "ban" | "activate" | "grant_admin" | "revoke_admin", userId: string, label: string) => void;
   currentUserId?: string;
+  isSuperAdmin?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -622,22 +631,25 @@ function UsersPanel({ onAction, currentUserId }: {
                         </button>
                       )}
 
-                      {isPlatformAdmin ? (
-                        <button
-                          className="flex items-center gap-1 rounded-lg border border-red-700/50 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-400 hover:bg-red-500/20 transition disabled:opacity-30"
-                          onClick={() => onAction("revoke_admin", u.id, label)}
-                          disabled={u.id === currentUserId}
-                        >
-                          <ShieldAlert size={11} /> Revoke Admin
-                        </button>
-                      ) : (
-                        <button
-                          className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2.5 py-1.5 text-[11px] font-bold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-30"
-                          onClick={() => onAction("grant_admin", u.id, label)}
-                          disabled={isBanned}
-                        >
-                          <ShieldCheck size={11} /> Make Admin
-                        </button>
+                      {/* Admin grant/revoke — SUPER_ADMIN only */}
+                      {isSuperAdmin && (
+                        isPlatformAdmin ? (
+                          <button
+                            className="flex items-center gap-1 rounded-lg border border-red-700/50 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-400 hover:bg-red-500/20 transition disabled:opacity-30"
+                            onClick={() => onAction("revoke_admin", u.id, label)}
+                            disabled={u.id === currentUserId}
+                          >
+                            <ShieldAlert size={11} /> Revoke Admin
+                          </button>
+                        ) : (
+                          <button
+                            className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-2.5 py-1.5 text-[11px] font-bold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-30"
+                            onClick={() => onAction("grant_admin", u.id, label)}
+                            disabled={isBanned}
+                          >
+                            <ShieldCheck size={11} /> Make Admin
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
