@@ -100,6 +100,16 @@ const getRecommendedUsers = async (userId: string) => {
         status: "ACTIVE",
 
         searchVisibility: true,
+
+        roles: {
+          none: {
+            role: {
+              name: {
+                in: ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+              },
+            },
+          },
+        },
       },
 
       include: {

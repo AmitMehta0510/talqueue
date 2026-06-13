@@ -746,6 +746,17 @@ export const getSuggestedConnections = async (
       targetUserId: {
         notIn: [...excludedUserIds],
       },
+      targetUser: {
+        roles: {
+          none: {
+            role: {
+              name: {
+                in: ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+              },
+            },
+          },
+        },
+      },
     },
 
     select: {

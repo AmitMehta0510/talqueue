@@ -30,6 +30,16 @@ export const searchUsers =  async (
 
           searchVisibility: true,
 
+          roles: {
+            none: {
+              role: {
+                name: {
+                  in: ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+                },
+              },
+            },
+          },
+
           ...(filters.query && {
             OR: [
 
