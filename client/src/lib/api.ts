@@ -973,6 +973,14 @@ export type HackathonMutationPayload = {
   endDate: string;
   registrationDeadline: string;
   maxTeamSize: number;
+  isExternal?: boolean;
+  externalUrl?: string;
+  sourcePlatform?: string;
+  organizerName?: string;
+  organizerWebsite?: string;
+  mode?: "ONLINE" | "OFFLINE" | "HYBRID";
+  location?: string;
+  tags?: string[];
 };
 
 export type HackathonSubmissionPayload = {

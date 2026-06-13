@@ -17,6 +17,30 @@ export const createHackathonSchema =
 
     maxTeamSize:
       z.number().min(1),
+
+    isExternal:
+      z.boolean().optional(),
+
+    externalUrl:
+      z.string().optional().nullable(),
+
+    sourcePlatform:
+      z.string().optional().nullable(),
+
+    organizerName:
+      z.string().optional().nullable(),
+
+    organizerWebsite:
+      z.string().optional().nullable(),
+
+    mode:
+      z.enum(["ONLINE", "OFFLINE", "HYBRID"]).optional().nullable(),
+
+    location:
+      z.string().optional().nullable(),
+
+    tags:
+      z.array(z.string()).optional(),
   });
 
 export const registerTeamSchema =

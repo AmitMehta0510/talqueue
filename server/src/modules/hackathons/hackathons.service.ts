@@ -26,9 +26,19 @@ export const createHackathon = async (userId: string, data: any) => {
     trim: true,
   });
 
+  const userRoles = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true },
+  });
+  const isAdmin = userRoles.some(
+    (ur) => ur.role.name === "SUPER_ADMIN" || ur.role.name === "PLATFORM_ADMIN"
+  );
+
   const hackathon = await prisma.hackathon.create({
     data: {
       title: data.title,
+
+      verified: isAdmin,
 
       slug,
 
@@ -77,6 +87,8 @@ export const createHackathon = async (userId: string, data: any) => {
       externalUrl: data.externalUrl,
 
       status: data.status || "DRAFT",
+
+      tags: data.tags,
 
       createdById: userId,
     },

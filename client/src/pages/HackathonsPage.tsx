@@ -40,6 +40,7 @@ import {
 import {
   Hackathon,
   HackathonEvaluationPayload,
+  HackathonMutationPayload,
   HackathonRegistration,
   HackathonSubmission,
   Project,
@@ -97,6 +98,26 @@ function StatusBadge({ value }: { value?: string | null }) {
   return <span className="chip">{titleCase(value) || "Unknown"}</span>;
 }
 
+const inferSourcePlatform = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    const domain = new URL(url.includes("://") ? url : `https://${url}`).hostname.toLowerCase();
+    if (domain.includes("devpost.com")) return "Devpost";
+    if (domain.includes("devfolio.co")) return "Devfolio";
+    if (domain.includes("hackerearth.com")) return "HackerEarth";
+    if (domain.includes("mlh.io")) return "MLH";
+    if (domain.includes("unstop.com")) return "Unstop";
+
+    const parts = domain.replace("www.", "").split(".");
+    if (parts[0]) {
+      return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    }
+    return "External";
+  } catch {
+    return "External";
+  }
+};
+
 function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
   const createHackathon = useCreateHackathonMutation();
   const [open, setOpen] = useState(false);
@@ -108,28 +129,49 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
     endDate: dateTimeValue(12),
     registrationDeadline: dateTimeValue(8),
     maxTeamSize: 4,
+    isExternal: false,
+    externalUrl: "",
+    organizerName: "",
+    organizerWebsite: "",
+    mode: "ONLINE" as "ONLINE" | "OFFLINE" | "HYBRID",
+    location: "",
+    tags: "",
   });
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
     try {
-      await createHackathon.mutateAsync({
-        ...compactPayload({
-          title: form.title,
-          description: form.description,
-          bannerUrl: form.bannerUrl,
-          startDate: form.startDate,
-          endDate: form.endDate,
-          registrationDeadline: form.registrationDeadline,
-        }),
+      const payload: HackathonMutationPayload = {
         title: form.title,
         description: form.description,
         startDate: form.startDate,
         endDate: form.endDate,
         registrationDeadline: form.registrationDeadline,
-        maxTeamSize: Number(form.maxTeamSize),
-      });
+        maxTeamSize: form.isExternal ? 1 : Number(form.maxTeamSize),
+        isExternal: form.isExternal,
+        ...compactPayload({
+          bannerUrl: form.bannerUrl || undefined,
+          externalUrl: form.isExternal ? (form.externalUrl.includes("://") ? form.externalUrl : `https://${form.externalUrl}`) : undefined,
+          organizerName: form.organizerName || undefined,
+          organizerWebsite: form.organizerWebsite || undefined,
+          mode: form.mode || undefined,
+          location: (form.mode !== "ONLINE" && form.location) ? form.location : undefined,
+        }),
+      };
+
+      if (form.isExternal) {
+        payload.sourcePlatform = inferSourcePlatform(form.externalUrl);
+      }
+
+      if (form.tags) {
+        payload.tags = form.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+      }
+
+      await createHackathon.mutateAsync(payload);
 
       setForm({
         title: "",
@@ -139,6 +181,13 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
         endDate: dateTimeValue(12),
         registrationDeadline: dateTimeValue(8),
         maxTeamSize: 4,
+        isExternal: false,
+        externalUrl: "",
+        organizerName: "",
+        organizerWebsite: "",
+        mode: "ONLINE",
+        location: "",
+        tags: "",
       });
       setOpen(false);
     } catch {
@@ -174,17 +223,19 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
               placeholder="Hackathon title"
               required
             />
-            <input
-              className="field"
-              min={1}
-              type="number"
-              value={form.maxTeamSize}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, maxTeamSize: Number(event.target.value) }))
-              }
-              placeholder="Team size"
-              required
-            />
+            {!form.isExternal && (
+              <input
+                className="field"
+                min={1}
+                type="number"
+                value={form.maxTeamSize}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, maxTeamSize: Number(event.target.value) }))
+                }
+                placeholder="Team size"
+                required
+              />
+            )}
           </div>
           <textarea
             className="field min-h-28"
@@ -201,6 +252,100 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
             onChange={(event) => setForm((current) => ({ ...current, bannerUrl: event.target.value }))}
             placeholder="Banner URL"
           />
+
+          <div className="flex items-center gap-2 py-1">
+            <input
+              id="isExternal"
+              type="checkbox"
+              checked={form.isExternal}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  isExternal: event.target.checked,
+                }))
+              }
+            />
+            <label htmlFor="isExternal" className="text-sm font-semibold text-slate-700 select-none cursor-pointer">
+              This is an external hackathon (hosted on another site)
+            </label>
+          </div>
+
+          {form.isExternal && (
+            <div className="grid gap-3 md:grid-cols-2 border border-slate-100 rounded-md p-4 bg-slate-50/50">
+              <label className="text-xs font-semibold text-slate-500">
+                External Registration URL *
+                <input
+                  className="field mt-1"
+                  value={form.externalUrl}
+                  onChange={(event) => setForm((current) => ({ ...current, externalUrl: event.target.value }))}
+                  placeholder="e.g. https://devpost.com/hackathons/my-hack"
+                  required={form.isExternal}
+                />
+              </label>
+              <label className="text-xs font-semibold text-slate-500">
+                Organizer Name
+                <input
+                  className="field mt-1"
+                  value={form.organizerName}
+                  onChange={(event) => setForm((current) => ({ ...current, organizerName: event.target.value }))}
+                  placeholder="e.g. MLH, Google, Devpost"
+                />
+              </label>
+              <label className="text-xs font-semibold text-slate-500">
+                Organizer Website
+                <input
+                  className="field mt-1"
+                  value={form.organizerWebsite}
+                  onChange={(event) => setForm((current) => ({ ...current, organizerWebsite: event.target.value }))}
+                  placeholder="e.g. https://google.com"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-semibold text-slate-500">
+                  Mode
+                  <select
+                    className="field mt-1"
+                    value={form.mode}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        mode: event.target.value as "ONLINE" | "OFFLINE" | "HYBRID",
+                      }))
+                    }
+                  >
+                    <option value="ONLINE">Online</option>
+                    <option value="OFFLINE">Offline</option>
+                    <option value="HYBRID">Hybrid</option>
+                  </select>
+                </label>
+                {form.mode !== "ONLINE" ? (
+                  <label className="text-xs font-semibold text-slate-500">
+                    Location
+                    <input
+                      className="field mt-1"
+                      value={form.location}
+                      onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))}
+                      placeholder="e.g. San Francisco, CA"
+                      required={true}
+                    />
+                  </label>
+                ) : (
+                  <div />
+                )}
+              </div>
+            </div>
+          )}
+
+          <label className="text-xs font-semibold text-slate-500 block">
+            Tags (comma-separated)
+            <input
+              className="field mt-1"
+              value={form.tags}
+              onChange={(event) => setForm((current) => ({ ...current, tags: event.target.value }))}
+              placeholder="e.g. AI, React, Rust, Web3"
+            />
+          </label>
+
           <div className="grid gap-3 md:grid-cols-3">
             <label className="text-xs font-semibold text-slate-500">
               Registration deadline
@@ -844,7 +989,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
   const hackathon = hackathonQuery.data;
   const owner = isOwner(hackathon, user?.id);
   const judge = isJudge(hackathon, user?.id);
-  const canParticipate = Boolean(user && hackathon && !owner);
+  const canParticipate = Boolean(user && hackathon && !owner && !hackathon.isExternal);
 
   if (hackathonQuery.isLoading) {
     return (
@@ -880,6 +1025,11 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
                     Verified
                   </span>
                 )}
+                {hackathon.isExternal && (
+                  <span className="chip bg-blue-50 text-blue-700 border border-blue-200">
+                    External
+                  </span>
+                )}
                 <StatusBadge value={hackathon.status} />
               </div>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
@@ -890,7 +1040,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
               {hackathon.externalUrl && (
                 <a className="btn-secondary" href={hackathon.externalUrl} rel="noreferrer" target="_blank">
                   <ExternalLink size={16} />
-                  External
+                  External Website
                 </a>
               )}
             </div>
@@ -919,9 +1069,9 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
           </div>
 
           <DetailLists hackathon={hackathon} />
-          <LeaderboardPanel hackathon={hackathon} />
-          {owner && <RegistrationsPanel hackathon={hackathon} />}
-          {judge && <JudgingPanel hackathon={hackathon} />}
+          {!hackathon.isExternal && <LeaderboardPanel hackathon={hackathon} />}
+          {owner && !hackathon.isExternal && <RegistrationsPanel hackathon={hackathon} />}
+          {judge && !hackathon.isExternal && <JudgingPanel hackathon={hackathon} />}
         </div>
 
         <aside className="space-y-5">
@@ -930,7 +1080,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
             <div className="mt-4 flex items-center gap-3">
               <Avatar user={hackathon.createdBy} />
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-950">
+                <div className="truncate text-sm font-semibold text-slate-955">
                   {hackathon.organizerName || userName(hackathon.createdBy)}
                 </div>
                 <div className="truncate text-xs text-slate-500">
@@ -945,10 +1095,29 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
             </div>
           </div>
 
+          {hackathon.isExternal && hackathon.externalUrl && (
+            <div className="panel p-5 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 border border-blue-100/60">
+              <h3 className="text-sm font-semibold text-slate-950">External registration</h3>
+              <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                This hackathon is hosted externally on <strong>{hackathon.sourcePlatform || "another site"}</strong>. 
+                Register directly on their platform to participate.
+              </p>
+              <a
+                className="btn-primary w-full mt-4 flex items-center justify-center gap-2"
+                href={hackathon.externalUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <ExternalLink size={16} />
+                Register on {hackathon.sourcePlatform || "External Site"}
+              </a>
+            </div>
+          )}
+
           {canParticipate && <RegistrationPanel hackathon={hackathon} />}
           {canParticipate && <SubmissionPanel hackathon={hackathon} />}
-          {owner && <OwnerActions hackathon={hackathon} />}
-          {owner && <JudgeAssignmentPanel hackathon={hackathon} />}
+          {owner && !hackathon.isExternal && <OwnerActions hackathon={hackathon} />}
+          {owner && !hackathon.isExternal && <JudgeAssignmentPanel hackathon={hackathon} />}
         </aside>
       </div>
     </section>
@@ -961,6 +1130,7 @@ export function HackathonsPage() {
   const hackathonsQuery = useHackathonsQuery();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof statusFilters)[number]>("ALL");
+  const [externalOnly, setExternalOnly] = useState(false);
 
   const filteredHackathons = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -968,6 +1138,7 @@ export function HackathonsPage() {
 
     return hackathons.filter((hackathon) => {
       const matchesStatus = status === "ALL" || hackathon.status === status;
+      const matchesExternal = !externalOnly || hackathon.isExternal;
       const haystack = [
         hackathon.title,
         hackathon.description,
@@ -979,9 +1150,9 @@ export function HackathonsPage() {
         .join(" ")
         .toLowerCase();
 
-      return matchesStatus && (!normalizedQuery || haystack.includes(normalizedQuery));
+      return matchesStatus && matchesExternal && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [hackathonsQuery.data, query, status]);
+  }, [hackathonsQuery.data, query, status, externalOnly]);
 
   if (hackathonId) {
     return <HackathonDetail hackathonId={hackathonId} />;
@@ -1002,7 +1173,18 @@ export function HackathonsPage() {
               placeholder="Search hackathons"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex flex-wrap gap-2 overflow-x-auto">
+            <button
+              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                externalOnly
+                  ? "bg-blue-600 text-white border border-blue-600"
+                  : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"
+              }`}
+              type="button"
+              onClick={() => setExternalOnly((prev) => !prev)}
+            >
+              External Only
+            </button>
             {statusFilters.map((item) => (
               <button
                 className={`rounded-md px-3 py-2 text-sm font-semibold transition ${

@@ -51,7 +51,12 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
               {hackathon.shortDescription || hackathon.description}
             </p>
           </div>
-          <span className="chip shrink-0">{titleCase(hackathon.status || "DRAFT")}</span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {hackathon.isExternal && (
+              <span className="chip bg-blue-50 text-blue-700 border border-blue-200">External</span>
+            )}
+            <span className="chip">{titleCase(hackathon.status || "DRAFT")}</span>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
