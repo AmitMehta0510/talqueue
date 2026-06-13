@@ -42,16 +42,16 @@ const sections: NavSection[] = [
   { to: "/feed", label: "Home", icon: Compass },
   { to: "/discover", label: "Discover", icon: Search },
   { to: "/chat", label: "Chat", icon: MessageSquare, requiresAuth: true },
-  { to: "/projects", label: "Projects", icon: Rocket },
+  { to: "/social", label: "My Network", icon: UserRound, requiresAuth: true },
+  { to: "/referrals", label: "Referrals", icon: Send, requiresAuth: true },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { to: "/projects", label: "Projects", icon: Rocket },
   { to: "/communities", label: "Communities", icon: Hash },
   { to: "/teams", label: "Teams", icon: Users, requiresAuth: true },
   { to: "/colleges", label: "Colleges", icon: GraduationCap },
   { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/referrals", label: "Referrals", icon: Send, requiresAuth: true },
   { to: "/reputation", label: "Reputation", icon: Award, requiresAuth: true },
   { to: "/hackathons", label: "Hackathons", icon: Gavel },
-  { to: "/social", label: "Social", icon: UserRound, requiresAuth: true },
   { to: "/recruiter", label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
 ];
 
@@ -66,6 +66,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // Close overlays on navigation
   useEffect(() => {
@@ -83,6 +84,9 @@ export function AppLayout() {
       }
       if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
         setMoreMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -224,14 +228,8 @@ export function AppLayout() {
 
           {/* Right Area: Actions, Notification Center, Profile Dropdown */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* API Health Monitor widget */}
-            <div className="hidden xl:flex items-center gap-1.5 bg-slate-50 border border-slate-150 rounded-full px-2.5 py-1 text-xxs font-medium text-slate-500">
-              <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-500" : "bg-rose-500 animate-ping"}`} />
-              <span>{apiStatus === "checking" ? "Ping" : apiOnline ? "API OK" : "API Offline"}</span>
-            </div>
-
             {/* Notification Bell */}
-            <div className="relative">
+            <div className="relative" ref={notificationRef}>
               <button
                 className="icon-btn rounded-full border-slate-100 hover:bg-slate-50 relative"
                 type="button"
@@ -244,7 +242,7 @@ export function AppLayout() {
               {user && notificationsOpen && <NotificationPreview />}
             </div>
 
-            {/* User Profile / Login Dropdown (LinkedIn "Me" Dropdown style) */}
+            {/* User Profile / Login Dropdown */}
             {user ? (
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -254,9 +252,6 @@ export function AppLayout() {
                   title="My Account"
                 >
                   <Avatar user={user} size="sm" />
-                  <span className="hidden sm:inline-flex items-center gap-0.5 text-[9px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
-                    Me <X size={6} className={`transform transition ${profileDropdownOpen ? "rotate-180" : ""}`} />
-                  </span>
                 </button>
 
                 {profileDropdownOpen && (
