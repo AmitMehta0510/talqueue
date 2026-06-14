@@ -1605,8 +1605,8 @@ export const api = {
     request<any>(`/admin/content/hackathons/${hackathonId}/status`, { method: "PATCH", body }),
   adminUpdateHackathon: (hackathonId: string, body: any) =>
     request<any>(`/admin/content/hackathons/${hackathonId}`, { method: "PATCH", body }),
-  adminTriggerScraper: () =>
-    request<any>(`/admin/scraper/run`, { method: "POST" }),
+  adminTriggerScraper: (options?: EndpointOptions) =>
+    request<any>(`/admin/scraper/run`, { method: "POST", ...options }),
   adminListProjects: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ projects: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/projects${toQuery(params)}`, options),
   adminUpdateProjectStatus: (projectId: string, body: { status: string }) =>

@@ -3798,7 +3798,7 @@ export const useAdminTriggerScraperMutation = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   return useMutation({
-    mutationFn: () => api.adminTriggerScraper(),
+    mutationFn: () => api.adminTriggerScraper({ timeoutMs: 120000 }),
     onSuccess: (result) => {
       const stats = result.data;
       showToast(
