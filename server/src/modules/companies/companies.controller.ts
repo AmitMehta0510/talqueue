@@ -11,6 +11,8 @@ import {
   getCompanies,
   getCompanyBySlug,
   getCompanyEmployees,
+  seedCompanies,
+  getCompanyReferrers,
 } from "./companies.service";
 
 import { createCompanySchema } from "./companies.validation";
@@ -94,3 +96,19 @@ export const getCompanyEmployeesHandler = asyncHandler(
     res.json(successResponse(employees));
   },
 );
+
+export const seedCompaniesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await seedCompanies(req.user.id);
+    res.json(successResponse(result, "Company directory seeded successfully"));
+  },
+);
+
+export const getCompanyReferrersHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const companyId = req.params.companyId as string;
+    const referrers = await getCompanyReferrers(companyId);
+    res.json(successResponse(referrers));
+  },
+);
+

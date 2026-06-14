@@ -7,6 +7,7 @@ import { trackInteraction } from "modules/interaction/interaction-tracking.servi
 import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";
 
 import slugify from "slugify";
+import { runCompanySeed } from "./scraper/company-scraper.service";
 
 //
 // HELPERS
@@ -540,3 +541,70 @@ export const getCompanyEmployees = async (
     employees,
   };
 };
+
+//
+// SEED COMPANIES
+//
+export const seedCompanies = async (userId: string) => {
+  await assertIsPlatformAdmin(userId);
+  return await runCompanySeed();
+};
+
+//
+// GET COMPANY REFERRERS
+//
+export const getCompanyReferrers = async (companyId: string) => {
+  const companyExists = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true },
+  });
+
+  if (!companyExists) {
+    throw new AppError("Company not found", 404);
+  }
+
+  const referrers = await prisma.experience.findMany({
+    where: {
+      companyId,
+      isCurrent: true,
+      user: {
+        acceptingReferrals: true,
+      },
+    },
+    orderBy: [
+      {
+        user: {
+          engineeringScore: "desc",
+        },
+      },
+      {
+        verified: "desc",
+      },
+    ],
+    select: {
+      id: true,
+      title: true,
+      verified: true,
+      workEmailVerified: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          engineeringScore: true,
+          reputationScore: true,
+          acceptingReferrals: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+              headline: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return referrers;
+};
+

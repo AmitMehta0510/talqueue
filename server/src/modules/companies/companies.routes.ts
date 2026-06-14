@@ -9,6 +9,8 @@ import {
   getCompaniesHandler,
   getCompanyBySlugHandler,
   getCompanyEmployeesHandler,
+  seedCompaniesHandler,
+  getCompanyReferrersHandler,
 } from "./companies.controller";
 
 const router = Router();
@@ -17,6 +19,12 @@ router.post(
   "/",
   protect,
   createCompanyHandler
+);
+
+router.post(
+  "/seed",
+  protect,
+  seedCompaniesHandler
 );
 
 router.get(
@@ -32,6 +40,12 @@ router.get(
 router.get(
   "/:companyId/employees",
   getCompanyEmployeesHandler
+);
+
+router.get(
+  "/:companyId/referrers",
+  protect,
+  getCompanyReferrersHandler
 );
 
 export default router;
