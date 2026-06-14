@@ -842,6 +842,7 @@ export type Hackathon = {
   endDate?: string;
   registrationDeadline?: string;
   maxTeamSize?: number;
+  minTeamSize?: number;
   tracks?: unknown;
   rules?: unknown;
   prizes?: unknown;
@@ -973,6 +974,7 @@ export type HackathonMutationPayload = {
   endDate: string;
   registrationDeadline: string;
   maxTeamSize: number;
+  minTeamSize?: number;
   isExternal?: boolean;
   externalUrl?: string;
   sourcePlatform?: string;
@@ -1987,8 +1989,10 @@ export const api = {
       requestOptions,
     );
   },
-  hackathons: (options?: EndpointOptions) =>
-    request<Hackathon[]>("/hackathons", options),
+  hackathons: (
+    params?: { status?: string; isExternal?: boolean; q?: string },
+    options?: EndpointOptions,
+  ) => request<Hackathon[]>(`/hackathons${toQuery(params || {})}`, options),
   hackathon: (id: string, options?: EndpointOptions) =>
     request<Hackathon>(`/hackathons/${id}`, options),
   createHackathon: (body: HackathonMutationPayload) =>

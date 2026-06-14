@@ -13,6 +13,34 @@ import prisma from "shared/database/prisma";
 const CRAWL_DELAY_MS = 1000; // 1 second between requests — respectful crawling
 
 // -------------------------
+// HTML → plain-text stripper
+// -------------------------
+
+/**
+ * Strips HTML tags and decodes common HTML entities to plain text.
+ * Safe to call on any string; returns the input unchanged if it contains no HTML.
+ */
+function stripHtml(html: string): string {
+  if (!html) return "";
+  // Decode common entities first
+  const decoded = html
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
+    .replace(/&bull;/g, "•");
+  // Strip tags and collapse whitespace
+  return decoded
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// -------------------------
 // System bot user resolver
 // -------------------------
 
@@ -57,6 +85,7 @@ async function upsertScrapedHackathon(data: {
   mode: string | null;
   location: string | null;
   tags: string[];
+  minTeamSize: number;
   maxTeamSize: number;
   startDate: Date;
   endDate: Date;
@@ -92,6 +121,7 @@ async function upsertScrapedHackathon(data: {
         location: data.location,
         status: data.status as any,
         verified: data.verified,
+        minTeamSize: data.minTeamSize,
         maxTeamSize: data.maxTeamSize,
       },
     });
@@ -115,6 +145,7 @@ async function upsertScrapedHackathon(data: {
         mode: data.mode as any,
         location: data.location,
         tags: data.tags,
+        minTeamSize: data.minTeamSize,
         maxTeamSize: data.maxTeamSize,
         startDate: data.startDate,
         endDate: data.endDate,
@@ -175,7 +206,13 @@ function parseDevpostDateRange(dateStr: string): {
 } {
   const now = new Date();
   try {
-    const sameMonthMatch = dateStr.match(
+    // If the date string doesn't contain a 4-digit year, append the current year
+    let modifiedDateStr = dateStr;
+    if (!/\b\d{4}\b/.test(dateStr)) {
+      modifiedDateStr = `${dateStr}, ${now.getFullYear()}`;
+    }
+
+    const sameMonthMatch = modifiedDateStr.match(
       /([A-Za-z]+)\s+(\d+)\s*-\s*(\d+),\s*(\d{4})/,
     );
     if (sameMonthMatch) {
@@ -189,7 +226,7 @@ function parseDevpostDateRange(dateStr: string): {
       }
     }
 
-    const crossMonthMatch = dateStr.match(
+    const crossMonthMatch = modifiedDateStr.match(
       /([A-Za-z]+)\s+(\d+)\s*-\s*([A-Za-z]+)\s+(\d+),\s*(\d{4})/,
     );
     if (crossMonthMatch) {
@@ -205,6 +242,7 @@ function parseDevpostDateRange(dateStr: string): {
   } catch {
     // fallback
   }
+
 
   const startDate = new Date(now);
   const endDate = new Date(now);
@@ -253,22 +291,27 @@ export async function runDevpostScraper(createdById: string, result: ScraperResu
             trim: true,
           });
 
+          const now = new Date();
+          const isClosed = item.open_state && !["open", "upcoming"].includes(item.open_state.toLowerCase());
+          const status = isClosed || now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
           const isCreated = await upsertScrapedHackathon({
             sourceId: String(item.id),
             sourcePlatform: "Devpost",
-            title: item.title,
+            title: stripHtml(item.title),
             slug,
-            description: item.title,
+            description: stripHtml(item.title),
             bannerUrl,
             organizerName: item.organization_name || null,
             externalUrl: item.url,
             isExternal: true,
             verified: true,
-            status: "OPEN",
+            status,
             mode: isOnline ? "ONLINE" : "OFFLINE",
             location: isOnline ? null : locationText || null,
             tags,
-            maxTeamSize: 1,
+            minTeamSize: 1,
+            maxTeamSize: 4,
             startDate,
             endDate,
             registrationDeadline,
@@ -326,6 +369,7 @@ interface DevfolioHackathon {
   is_hybrid: boolean;
   location: string;
   team_size: number;
+  team_min?: number;
   hackathon_setting: DevfolioHackathonSetting | null;
   themes: DevfolioHackathonTheme[];
 }
@@ -373,23 +417,27 @@ export async function runDevfolioScraper(createdById: string, result: ScraperRes
             trim: true,
           });
 
+          const now = new Date();
+          const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
           const isCreated = await upsertScrapedHackathon({
             sourceId: item.uuid,
             sourcePlatform: "Devfolio",
-            title: item.name,
+            title: stripHtml(item.name),
             slug,
-            description: item.desc || item.tagline || item.name,
-            shortDescription: item.tagline || null,
+            description: stripHtml(item.desc || item.tagline || item.name),
+            shortDescription: item.tagline ? stripHtml(item.tagline) : null,
             bannerUrl: item.cover_img || null,
             logoUrl: item.hackathon_setting?.logo || null,
             organizerName: item.hackathon_setting?.subdomain || "Devfolio Organizer",
             externalUrl: item.hackathon_setting?.site || `https://devfolio.co/hackathons/${item.slug}`,
             isExternal: true,
             verified: true,
-            status: "OPEN",
+            status,
             mode,
             location: item.location || null,
             tags,
+            minTeamSize: item.team_min || 1,
             maxTeamSize: item.team_size || 1,
             startDate,
             endDate,
@@ -427,6 +475,7 @@ interface UnstopRegnRequirements {
   start_regn_dt: string;
   end_regn_dt: string;
   max_team_size?: number;
+  min_team_size?: number;
 }
 
 interface UnstopOrganisation {
@@ -502,21 +551,25 @@ export async function runUnstopScraper(createdById: string, result: ScraperResul
             trim: true,
           });
 
+          const now = new Date();
+          const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
           const isCreated = await upsertScrapedHackathon({
             sourceId: String(item.id),
             sourcePlatform: "Unstop",
-            title: item.title,
+            title: stripHtml(item.title),
             slug,
-            description: item.details || item.title,
+            description: stripHtml(item.details || item.title),
             bannerUrl: item.thumb || item.logoUrl2 || null,
             organizerName: item.organisation?.name || "Unstop Organizer",
             externalUrl: item.seo_url || `https://unstop.com/hackathons/${item.id}`,
             isExternal: true,
             verified: true,
-            status: "OPEN",
+            status,
             mode: isOnline ? "ONLINE" : "OFFLINE",
             location: isOnline ? null : locationText || null,
             tags,
+            minTeamSize: item.regnRequirements?.min_team_size || 1,
             maxTeamSize: item.regnRequirements?.max_team_size || 1,
             startDate,
             endDate,
@@ -661,12 +714,15 @@ export async function runTaikaiScraper(createdById: string, result: ScraperResul
             trim: true,
           });
 
-          const isCreated = await upsertScrapedHackathon({
+           const now = new Date();
+           const status = item.isClosed || now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
+           const isCreated = await upsertScrapedHackathon({
             sourceId: item.id,
             sourcePlatform: "TAIKAI",
-            title: item.name,
+            title: stripHtml(item.name),
             slug,
-            description: item.shortDescription || item.name,
+            description: stripHtml(item.shortDescription || item.name),
             bannerUrl: item.cardImageFile?.url || null,
             logoUrl: item.logoImageFile?.url || null,
             organizerName: item.organization?.name || "TAIKAI Organizer",
@@ -675,11 +731,12 @@ export async function runTaikaiScraper(createdById: string, result: ScraperResul
               : `https://taikai.network/en/hackathons/${item.slug}`,
             isExternal: true,
             verified: true,
-            status: item.isClosed ? "COMPLETED" : "OPEN",
+            status,
             mode: "ONLINE", // TAIKAI is natively online
             location: null,
             tags,
-            maxTeamSize: 1,
+            minTeamSize: 1,
+            maxTeamSize: 4,
             startDate,
             endDate,
             registrationDeadline,
@@ -723,6 +780,7 @@ interface HackerEarthChallenge {
   image_url?: string;
   listing_image?: string;
   max_team_size?: number;
+  min_team_size?: number;
 }
 
 interface HackerEarthResponse {
@@ -766,22 +824,26 @@ export async function runHackerEarthScraper(createdById: string, result: Scraper
           trim: true,
         });
 
+        const now = new Date();
+        const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
         const isCreated = await upsertScrapedHackathon({
           sourceId: item.slug,
           sourcePlatform: "HackerEarth",
-          title: item.title,
+          title: stripHtml(item.title),
           slug,
-          description: item.title,
+          description: stripHtml(item.title),
           bannerUrl: item.listing_image || null,
           logoUrl: item.image_url || null,
           organizerName: item.company_name || "HackerEarth Organizer",
           externalUrl,
           isExternal: true,
           verified: true,
-          status: new Date() > endDate ? "COMPLETED" : "OPEN",
+          status,
           mode: "ONLINE", // HackerEarth is online by default
           location: null,
           tags,
+          minTeamSize: item.min_team_size || 1,
           maxTeamSize: item.max_team_size || 1,
           startDate,
           endDate,
@@ -898,22 +960,26 @@ export async function runReskilllScraper(createdById: string, result: ScraperRes
           trim: true,
         });
 
+        const now = new Date();
+        const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+
         const isCreated = await upsertScrapedHackathon({
           sourceId: item.id,
           sourcePlatform: "Reskilll",
-          title: item.title,
+          title: stripHtml(item.title),
           slug,
-          description: item.title,
+          description: stripHtml(item.title),
           bannerUrl,
           organizerName: item.organizer || "Reskilll Organizer",
           externalUrl: `https://reskilll.com/hack/${item.slug}`,
           isExternal: true,
           verified: true,
-          status: new Date() > endDate ? "COMPLETED" : "OPEN",
+          status,
           mode: isOnline ? "ONLINE" : "OFFLINE",
           location: isOnline ? null : item.location || null,
           tags,
-          maxTeamSize: 1,
+          minTeamSize: 1,
+          maxTeamSize: 4,
           startDate,
           endDate,
           registrationDeadline,

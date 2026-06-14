@@ -18,6 +18,9 @@ export const createHackathonSchema =
     maxTeamSize:
       z.number().min(1),
 
+    minTeamSize:
+      z.number().min(1).optional(),
+
     isExternal:
       z.boolean().optional(),
 

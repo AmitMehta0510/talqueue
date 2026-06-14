@@ -94,8 +94,17 @@ const jsonItems = (value: unknown) => {
   return [];
 };
 
+const STATUS_CHIP_CLASSES: Record<string, string> = {
+  LIVE: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  OPEN: "bg-blue-50 text-blue-700 border border-blue-200",
+  COMPLETED: "bg-slate-100 text-slate-500 border border-slate-200",
+  DRAFT: "bg-amber-50 text-amber-700 border border-amber-200",
+  ARCHIVED: "bg-rose-50 text-rose-600 border border-rose-200",
+};
+
 function StatusBadge({ value }: { value?: string | null }) {
-  return <span className="chip">{titleCase(value) || "Unknown"}</span>;
+  const cls = STATUS_CHIP_CLASSES[(value || "").toUpperCase()] ?? "bg-slate-50 text-slate-500 border border-slate-200";
+  return <span className={`chip ${cls}`}>{titleCase(value) || "Unknown"}</span>;
 }
 
 const inferSourcePlatform = (url?: string): string | undefined => {
@@ -128,6 +137,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
     startDate: dateTimeValue(10),
     endDate: dateTimeValue(12),
     registrationDeadline: dateTimeValue(8),
+    minTeamSize: 1,
     maxTeamSize: 4,
     isExternal: false,
     externalUrl: "",
@@ -148,6 +158,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
         startDate: form.startDate,
         endDate: form.endDate,
         registrationDeadline: form.registrationDeadline,
+        minTeamSize: form.isExternal ? 1 : Number(form.minTeamSize),
         maxTeamSize: form.isExternal ? 1 : Number(form.maxTeamSize),
         isExternal: form.isExternal,
         ...compactPayload({
@@ -180,6 +191,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
         startDate: dateTimeValue(10),
         endDate: dateTimeValue(12),
         registrationDeadline: dateTimeValue(8),
+        minTeamSize: 1,
         maxTeamSize: 4,
         isExternal: false,
         externalUrl: "",
@@ -224,17 +236,30 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
               required
             />
             {!form.isExternal && (
-              <input
-                className="field"
-                min={1}
-                type="number"
-                value={form.maxTeamSize}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, maxTeamSize: Number(event.target.value) }))
-                }
-                placeholder="Team size"
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  className="field w-1/2"
+                  min={1}
+                  type="number"
+                  value={form.minTeamSize}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, minTeamSize: Number(event.target.value) }))
+                  }
+                  placeholder="Min size"
+                  required
+                />
+                <input
+                  className="field w-1/2"
+                  min={1}
+                  type="number"
+                  value={form.maxTeamSize}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, maxTeamSize: Number(event.target.value) }))
+                  }
+                  placeholder="Max size"
+                  required
+                />
+              </div>
             )}
           </div>
           <textarea
@@ -1046,14 +1071,43 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            <Metric label="Registrations" value={formatCount(hackathonMetric(hackathon, "registrations"))} />
-            <Metric label="Submissions" value={formatCount(hackathonMetric(hackathon, "submissions"))} />
-            <Metric label="Judges" value={formatCount(hackathonMetric(hackathon, "judges"))} />
-            <Metric label="Winners" value={formatCount(hackathonMetric(hackathon, "winners"))} />
-            <Metric label="Max team" value={hackathon.maxTeamSize || 0} />
-            <Metric label="Views" value={formatCount(hackathon.viewCount)} />
-          </div>
+          {hackathon.isExternal ? (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Metric label="Host Platform" value={hackathon.sourcePlatform || "External"} />
+              <Metric label="Registration Deadline" value={formatDate(hackathon.registrationDeadline)} />
+              <Metric
+                label="Team size"
+                value={(() => {
+                  const min = hackathon.minTeamSize ?? 1;
+                  const max = hackathon.maxTeamSize ?? 1;
+                  if (min === max) {
+                    return max === 1 ? "Solo" : `${max} members`;
+                  }
+                  return `${min} - ${max} members`;
+                })()}
+              />
+              <Metric label="Views" value={formatCount(hackathon.viewCount)} />
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+              <Metric label="Registrations" value={formatCount(hackathonMetric(hackathon, "registrations"))} />
+              <Metric label="Submissions" value={formatCount(hackathonMetric(hackathon, "submissions"))} />
+              <Metric label="Judges" value={formatCount(hackathonMetric(hackathon, "judges"))} />
+              <Metric label="Winners" value={formatCount(hackathonMetric(hackathon, "winners"))} />
+              <Metric
+                label="Team size"
+                value={(() => {
+                  const min = hackathon.minTeamSize ?? 1;
+                  const max = hackathon.maxTeamSize ?? 1;
+                  if (min === max) {
+                    return max === 1 ? "Solo" : `${max} members`;
+                  }
+                  return `${min} - ${max} members`;
+                })()}
+              />
+              <Metric label="Views" value={formatCount(hackathon.viewCount)} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1127,99 +1181,104 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 export function HackathonsPage() {
   const { hackathonId } = useParams();
   const { user } = useAuth();
-  const hackathonsQuery = useHackathonsQuery();
+  
+  // Search and filter states
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<(typeof statusFilters)[number]>("ALL");
   const [externalOnly, setExternalOnly] = useState(false);
 
-  const filteredHackathons = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const hackathons = hackathonsQuery.data || [];
+  // Pass active filters directly to the backend query
+  const queryParams = useMemo(() => ({
+    ...(query.trim() ? { q: query.trim() } : {}),
+    ...(status !== "ALL" ? { status } : {}),
+    ...(externalOnly ? { isExternal: true } : {}),
+  }), [query, status, externalOnly]);
 
-    return hackathons.filter((hackathon) => {
-      const matchesStatus = status === "ALL" || hackathon.status === status;
-      const matchesExternal = !externalOnly || hackathon.isExternal;
-      const haystack = [
-        hackathon.title,
-        hackathon.description,
-        hackathon.shortDescription,
-        hackathon.organizerName,
-        ...(hackathon.tags || []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return matchesStatus && matchesExternal && (!normalizedQuery || haystack.includes(normalizedQuery));
-    });
-  }, [hackathonsQuery.data, query, status, externalOnly]);
+  const hackathonsQuery = useHackathonsQuery(queryParams);
+  const hackathons = hackathonsQuery.data || [];
 
   if (hackathonId) {
     return <HackathonDetail hackathonId={hackathonId} />;
   }
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-6">
       <CreateHackathonPanel disabled={!user} />
 
-      <div className="panel p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      {/* Premium Search and Filter Bar */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
               className="field pl-9"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search hackathons"
+              placeholder="Search hackathons by title, tags, organizer..."
             />
           </div>
-          <div className="flex flex-wrap gap-2 overflow-x-auto">
+
+          {/* Status Dropdown */}
+          <select
+            className="field w-auto min-w-[150px]"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as (typeof statusFilters)[number])}
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="LIVE">Live</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="DRAFT">Draft</option>
+          </select>
+
+          {/* Toggle buttons */}
+          <button
+            type="button"
+            onClick={() => setExternalOnly((prev) => !prev)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+              externalOnly
+                ? "border-blue-400 bg-blue-600 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+            }`}
+          >
+            External Only
+          </button>
+
+          {/* Clear button if any filter is active */}
+          {(query || status !== "ALL" || externalOnly) && (
             <button
-              className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                externalOnly
-                  ? "bg-blue-600 text-white border border-blue-600"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"
-              }`}
               type="button"
-              onClick={() => setExternalOnly((prev) => !prev)}
+              onClick={() => {
+                setQuery("");
+                setStatus("ALL");
+                setExternalOnly(false);
+              }}
+              className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition flex items-center gap-1 ml-auto"
             >
-              External Only
+              <X size={12} /> Clear
             </button>
-            {statusFilters.map((item) => (
-              <button
-                className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                  status === item
-                    ? "bg-emerald-700 text-white"
-                    : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-800"
-                }`}
-                key={item}
-                type="button"
-                onClick={() => setStatus(item)}
-              >
-                {titleCase(item)}
-              </button>
-            ))}
-          </div>
+          )}
         </div>
       </div>
 
       {hackathonsQuery.isFetching && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="animate-spin" size={16} />
-          Loading hackathons
+          <Loader2 className="animate-spin text-emerald-700" size={16} />
+          Loading hackathons...
         </div>
       )}
 
       <div className="grid gap-5 xl:grid-cols-2">
-        {filteredHackathons.length ? (
-          filteredHackathons.map((hackathon) => (
+        {hackathons.length ? (
+          hackathons.map((hackathon) => (
             <HackathonCard hackathon={hackathon} key={hackathon.id} />
           ))
         ) : (
           <EmptyState
             icon={CalendarDays}
             title="No hackathons found"
-            text="Hackathons created from the backend will appear here."
+            text="Try adjusting your filters or search query."
           />
         )}
       </div>

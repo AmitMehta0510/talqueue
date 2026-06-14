@@ -1069,11 +1069,15 @@ export const useMyPendingTeamInvitesQuery = () => {
   });
 };
 
-export const useHackathonsQuery = () =>
+export const useHackathonsQuery = (params?: {
+  status?: string;
+  isExternal?: boolean;
+  q?: string;
+}) =>
   useQuery({
-    queryKey: queryKeys.hackathons.list(),
+    queryKey: queryKeys.hackathons.list(params),
     queryFn: async ({ signal }) => {
-      const result = await api.hackathons({ signal });
+      const result = await api.hackathons(params, { signal });
       return result.data || [];
     },
   });

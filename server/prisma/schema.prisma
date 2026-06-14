@@ -1442,6 +1442,8 @@ model Hackathon {
 
   maxTeamSize Int
 
+  minTeamSize Int @default(1)
+
   tracks Json?
 
   rules Json?

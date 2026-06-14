@@ -80,7 +80,7 @@ export const queryKeys = {
   },
   hackathons: {
     all: ["hackathons"] as const,
-    list: () => ["hackathons", "list"] as const,
+    list: (params?: Record<string, unknown>) => ["hackathons", "list", params || {}] as const,
     detail: (id: string) => ["hackathons", "detail", id] as const,
     leaderboard: (id: string) => ["hackathons", "leaderboard", id] as const,
   },

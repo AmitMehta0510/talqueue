@@ -58,6 +58,8 @@ export const createHackathon = async (userId: string, data: any) => {
 
       maxTeamSize: data.maxTeamSize,
 
+      minTeamSize: data.minTeamSize !== undefined ? data.minTeamSize : 1,
+
       tracks: data.tracks,
 
       rules: data.rules,
@@ -155,11 +157,15 @@ const calculateHackathonRankingScore = (hackathon: any) => {
 
   switch (hackathon.status) {
     case "LIVE":
-      score += 50;
+      score += 100;
+      break;
+
+    case "OPEN":
+      score += 80;
       break;
 
     case "COMPLETED":
-      score += 30;
+      score += 10;
       break;
 
     case "ARCHIVED":
@@ -170,24 +176,88 @@ const calculateHackathonRankingScore = (hackathon: any) => {
   return score;
 };
 
-export const getHackathons = async (userId?: string, isAdmin?: boolean) => {
-  const whereClause: Prisma.HackathonWhereInput = {
-    deletedAt: null,
+export const getHackathons = async (
+  userId?: string,
+  isAdmin?: boolean,
+  filters?: { status?: string; isExternal?: boolean; q?: string },
+) => {
+  // Automatically update statuses of hackathons based on current date/time
+  try {
+    const now = new Date();
+    await prisma.hackathon.updateMany({
+      where: {
+        endDate: { lt: now },
+        status: { in: ["OPEN", "LIVE"] },
+      },
+      data: {
+        status: "COMPLETED",
+      },
+    });
 
-    NOT: {
-      status: "DELETED",
+    await prisma.hackathon.updateMany({
+      where: {
+        startDate: { lte: now },
+        endDate: { gte: now },
+        status: "OPEN",
+      },
+      data: {
+        status: "LIVE",
+      },
+    });
+  } catch (error) {
+    console.error("[getHackathons] Failed to auto-transition hackathon statuses:", error);
+  }
+
+
+  const andClauses: Prisma.HackathonWhereInput[] = [
+    { deletedAt: null },
+    {
+      NOT: {
+        status: "DELETED",
+      },
     },
-  };
+  ];
 
   if (!isAdmin) {
-    whereClause.OR = [
-      { verified: true },
-      userId ? { createdById: userId } : undefined,
-    ].filter(Boolean) as Prisma.HackathonWhereInput[];
+    andClauses.push({
+      OR: [
+        { verified: true },
+        userId ? { createdById: userId } : undefined,
+      ].filter(Boolean) as Prisma.HackathonWhereInput[],
+    });
+  }
+
+  if (filters?.status && filters.status !== "ALL") {
+    andClauses.push({ status: filters.status as any });
+  }
+
+  if (filters?.isExternal !== undefined) {
+    andClauses.push({ isExternal: filters.isExternal });
+  }
+
+  if (filters?.q) {
+    const searchVal = filters.q.trim();
+    if (searchVal) {
+      andClauses.push({
+        OR: [
+          { title: { contains: searchVal, mode: "insensitive" } },
+          { description: { contains: searchVal, mode: "insensitive" } },
+          { shortDescription: { contains: searchVal, mode: "insensitive" } },
+          { organizerName: { contains: searchVal, mode: "insensitive" } },
+          {
+            tags: {
+              has: searchVal,
+            },
+          },
+        ],
+      });
+    }
   }
 
   const hackathons = await prisma.hackathon.findMany({
-    where: whereClause,
+    where: {
+      AND: andClauses,
+    },
 
     include: {
       _count: {
@@ -224,6 +294,30 @@ export const getHackathonById = async (
   hackathonId: string,
   isAdmin?: boolean,
 ) => {
+  // Dynamic status transition check for this specific hackathon
+  try {
+    const now = new Date();
+    const existing = await prisma.hackathon.findUnique({
+      where: { id: hackathonId },
+      select: { id: true, startDate: true, endDate: true, status: true },
+    });
+    if (existing && ["OPEN", "LIVE"].includes(existing.status)) {
+      if (now > existing.endDate) {
+        await prisma.hackathon.update({
+          where: { id: hackathonId },
+          data: { status: "COMPLETED" },
+        });
+      } else if (existing.status === "OPEN" && now >= existing.startDate) {
+        await prisma.hackathon.update({
+          where: { id: hackathonId },
+          data: { status: "LIVE" },
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[getHackathonById] Failed to auto-transition status:", error);
+  }
+
   const hackathon = await prisma.hackathon.findUnique({
     where: {
       id: hackathonId,
@@ -515,6 +609,7 @@ export const registerTeamForHackathon = async (
         createdById: true,
         registrationDeadline: true,
         maxTeamSize: true,
+        minTeamSize: true,
         status: true,
       },
     }),
@@ -598,6 +693,10 @@ export const registerTeamForHackathon = async (
 
   if (team.members.length > hackathon.maxTeamSize) {
     throw new AppError("Team exceeds maximum allowed size", 400);
+  }
+
+  if (team.members.length < hackathon.minTeamSize) {
+    throw new AppError(`Team size must be at least ${hackathon.minTeamSize} members`, 400);
   }
 
   // Credibility score

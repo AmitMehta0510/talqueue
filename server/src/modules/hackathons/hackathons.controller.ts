@@ -87,7 +87,13 @@ export const getHackathonsHandler = asyncHandler(
     const isAdmin = req.user?.roles?.some(
       (ur: any) => ur.role?.name === "SUPER_ADMIN" || ur.role?.name === "PLATFORM_ADMIN",
     );
-    const hackathons = await getHackathons(req.user?.id, isAdmin);
+    const { status, isExternal, q } = req.query;
+
+    const hackathons = await getHackathons(req.user?.id, isAdmin, {
+      status: status ? String(status) : undefined,
+      isExternal: isExternal !== undefined ? isExternal === "true" : undefined,
+      q: q ? String(q) : undefined,
+    });
 
     res.json(successResponse(hackathons));
   },

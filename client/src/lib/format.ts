@@ -51,12 +51,13 @@ export const userHeadline = (user?: User | null) =>
 export const formatCount = (value?: number) =>
   new Intl.NumberFormat("en", { notation: "compact" }).format(value || 0);
 
-export const formatDate = (value?: string) => {
+export const formatDate = (value?: string, includeYear = true) => {
   if (!value) return "";
 
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
   }).format(new Date(value));
 };
 
