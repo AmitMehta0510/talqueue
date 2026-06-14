@@ -7,38 +7,16 @@
  */
 
 import axios from "axios";
-import slugify from "slugify";
 import prisma from "shared/database/prisma";
+import {
+  stripHtml,
+  sleep,
+  generateScraperSlug,
+  calculateScraperStatus,
+} from "./scraper.utils";
 
 const CRAWL_DELAY_MS = 1000; // 1 second between requests — respectful crawling
 
-// -------------------------
-// HTML → plain-text stripper
-// -------------------------
-
-/**
- * Strips HTML tags and decodes common HTML entities to plain text.
- * Safe to call on any string; returns the input unchanged if it contains no HTML.
- */
-function stripHtml(html: string): string {
-  if (!html) return "";
-  // Decode common entities first
-  const decoded = html
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&ndash;/g, "–")
-    .replace(/&mdash;/g, "—")
-    .replace(/&bull;/g, "•");
-  // Strip tags and collapse whitespace
-  return decoded
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 // -------------------------
 // System bot user resolver
@@ -157,9 +135,6 @@ async function upsertScrapedHackathon(data: {
   }
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // -------------------------
 // 1. Devpost Scraper
@@ -285,15 +260,10 @@ export async function runDevpostScraper(createdById: string, result: ScraperResu
           const bannerUrl = rawThumbnail.startsWith("//") ? `https:${rawThumbnail}` : rawThumbnail || null;
 
           const tags = (item.themes || []).map((t) => t.name).filter(Boolean);
-          const slug = slugify(`${item.title}-devpost-${item.id}`, {
-            lower: true,
-            strict: true,
-            trim: true,
-          });
+          const slug = generateScraperSlug(item.title, "Devpost", item.id);
 
-          const now = new Date();
-          const isClosed = item.open_state && !["open", "upcoming"].includes(item.open_state.toLowerCase());
-          const status = isClosed || now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+          const isClosed = Boolean(item.open_state && !["open", "upcoming"].includes(item.open_state.toLowerCase()));
+          const status = calculateScraperStatus(startDate, endDate, isClosed);
 
           const isCreated = await upsertScrapedHackathon({
             sourceId: String(item.id),
@@ -411,14 +381,9 @@ export async function runDevfolioScraper(createdById: string, result: ScraperRes
 
           const mode = item.is_online ? "ONLINE" : item.is_hybrid ? "HYBRID" : "OFFLINE";
           const tags = (item.themes || []).map((t) => t.name).filter(Boolean);
-          const slug = slugify(`${item.name}-devfolio-${item.uuid}`, {
-            lower: true,
-            strict: true,
-            trim: true,
-          });
+          const slug = generateScraperSlug(item.name, "Devfolio", item.uuid);
 
-          const now = new Date();
-          const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+          const status = calculateScraperStatus(startDate, endDate);
 
           const isCreated = await upsertScrapedHackathon({
             sourceId: item.uuid,
@@ -545,14 +510,9 @@ export async function runUnstopScraper(createdById: string, result: ScraperResul
               tags = item.tags.split(",").map((t) => t.trim()).filter(Boolean);
             }
           }
-          const slug = slugify(`${item.title}-unstop-${item.id}`, {
-            lower: true,
-            strict: true,
-            trim: true,
-          });
+          const slug = generateScraperSlug(item.title, "Unstop", item.id);
 
-          const now = new Date();
-          const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+          const status = calculateScraperStatus(startDate, endDate);
 
           const isCreated = await upsertScrapedHackathon({
             sourceId: String(item.id),
@@ -708,14 +668,9 @@ export async function runTaikaiScraper(createdById: string, result: ScraperResul
           const registrationDeadline = sortedSteps.length > 1 ? sortedSteps[1] : new Date(endDate);
 
           const tags = (item.industries || []).map((i) => i.title).filter(Boolean);
-          const slug = slugify(`${item.name}-taikai-${item.id}`, {
-            lower: true,
-            strict: true,
-            trim: true,
-          });
+          const slug = generateScraperSlug(item.name, "TAIKAI", item.id);
 
-           const now = new Date();
-           const status = item.isClosed || now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+           const status = calculateScraperStatus(startDate, endDate, item.isClosed);
 
            const isCreated = await upsertScrapedHackathon({
             sourceId: item.id,
@@ -818,14 +773,9 @@ export async function runHackerEarthScraper(createdById: string, result: Scraper
         }
 
         const tags = [item.type];
-        const slug = slugify(`${item.title}-hackerearth-${item.slug}`, {
-          lower: true,
-          strict: true,
-          trim: true,
-        });
+        const slug = generateScraperSlug(item.title, "HackerEarth", item.slug);
 
-        const now = new Date();
-        const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+        const status = calculateScraperStatus(startDate, endDate);
 
         const isCreated = await upsertScrapedHackathon({
           sourceId: item.slug,
@@ -954,14 +904,9 @@ export async function runReskilllScraper(createdById: string, result: ScraperRes
 
         const isOnline = item.mode?.toLowerCase() === "online";
         const tags = Array.isArray(item.tags) ? item.tags : ["Reskilll"];
-        const slug = slugify(`${item.title}-reskilll-${item.id}`, {
-          lower: true,
-          strict: true,
-          trim: true,
-        });
+        const slug = generateScraperSlug(item.title, "Reskilll", item.id);
 
-        const now = new Date();
-        const status = now > endDate ? "COMPLETED" : (now >= startDate && now <= endDate ? "LIVE" : "OPEN");
+        const status = calculateScraperStatus(startDate, endDate);
 
         const isCreated = await upsertScrapedHackathon({
           sourceId: item.id,

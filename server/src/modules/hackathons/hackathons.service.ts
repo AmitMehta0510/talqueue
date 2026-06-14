@@ -19,6 +19,99 @@ import { trackInteraction } from "modules/interaction/interaction-tracking.servi
 
 import slugify from "slugify";
 
+const HACKATHON_DEFAULT_INCLUDE = {
+  createdBy: {
+    include: {
+      profile: true,
+    },
+  },
+};
+
+const HACKATHON_WITH_COUNTS_INCLUDE = {
+  ...HACKATHON_DEFAULT_INCLUDE,
+  _count: {
+    select: {
+      registrations: true,
+      submissions: true,
+      judges: true,
+      winners: true,
+    },
+  },
+};
+
+const PROFILE_NAME_SELECT = {
+  select: {
+    fullName: true,
+  },
+};
+
+const USER_BASIC_SELECT = {
+  select: {
+    id: true,
+    username: true,
+    profile: PROFILE_NAME_SELECT,
+  },
+};
+
+const PROJECT_OWNER_MEMBER_SELECT = {
+  select: {
+    id: true,
+    title: true,
+    verified: true,
+    status: true,
+    contributorsCount: true,
+    deploymentStatus: true,
+    owner: USER_BASIC_SELECT,
+    members: {
+      select: {
+        user: USER_BASIC_SELECT,
+      },
+    },
+  },
+};
+
+const TEAM_MEMBERS_SELECT = {
+  select: {
+    id: true,
+    members: {
+      select: {
+        userId: true,
+        role: true,
+        user: USER_BASIC_SELECT,
+      },
+    },
+  },
+};
+
+export const calculateSubmissionRankingScore = (submission: {
+  finalScore?: number | null;
+  project?: {
+    verified?: boolean;
+    status?: string | null;
+    contributorsCount?: number;
+    deploymentStatus?: string | null;
+  } | null;
+}) => {
+  let rankingScore = submission.finalScore || 0;
+
+  if (submission.project?.verified) {
+    rankingScore += 2;
+  }
+
+  if (submission.project?.status === "COMPLETED") {
+    rankingScore += 1;
+  }
+
+  rankingScore +=
+    Math.min(submission.project?.contributorsCount || 0, 5) * 0.2;
+
+  if (submission.project?.deploymentStatus === "LIVE") {
+    rankingScore += 1;
+  }
+
+  return rankingScore;
+};
+
 export const createHackathon = async (userId: string, data: any) => {
   const slug = slugify(data.title, {
     lower: true,
@@ -95,13 +188,7 @@ export const createHackathon = async (userId: string, data: any) => {
       createdById: userId,
     },
 
-    include: {
-      createdBy: {
-        include: {
-          profile: true,
-        },
-      },
-    },
+    include: HACKATHON_DEFAULT_INCLUDE,
   });
 
   // Non-blocking side effects
@@ -176,37 +263,41 @@ const calculateHackathonRankingScore = (hackathon: any) => {
   return score;
 };
 
+export const autoTransitionHackathonStatuses = async () => {
+  const now = new Date();
+  
+  const completed = await prisma.hackathon.updateMany({
+    where: {
+      endDate: { lt: now },
+      status: { in: ["OPEN", "LIVE"] },
+    },
+    data: {
+      status: "COMPLETED",
+    },
+  });
+
+  const live = await prisma.hackathon.updateMany({
+    where: {
+      startDate: { lte: now },
+      endDate: { gte: now },
+      status: "OPEN",
+    },
+    data: {
+      status: "LIVE",
+    },
+  });
+
+  return {
+    completedCount: completed.count,
+    liveCount: live.count,
+  };
+};
+
 export const getHackathons = async (
   userId?: string,
   isAdmin?: boolean,
   filters?: { status?: string; isExternal?: boolean; q?: string },
 ) => {
-  // Automatically update statuses of hackathons based on current date/time
-  try {
-    const now = new Date();
-    await prisma.hackathon.updateMany({
-      where: {
-        endDate: { lt: now },
-        status: { in: ["OPEN", "LIVE"] },
-      },
-      data: {
-        status: "COMPLETED",
-      },
-    });
-
-    await prisma.hackathon.updateMany({
-      where: {
-        startDate: { lte: now },
-        endDate: { gte: now },
-        status: "OPEN",
-      },
-      data: {
-        status: "LIVE",
-      },
-    });
-  } catch (error) {
-    console.error("[getHackathons] Failed to auto-transition hackathon statuses:", error);
-  }
 
 
   const andClauses: Prisma.HackathonWhereInput[] = [
@@ -259,23 +350,7 @@ export const getHackathons = async (
       AND: andClauses,
     },
 
-    include: {
-      _count: {
-        select: {
-          registrations: true,
-          submissions: true,
-          judges: true,
-          winners: true,
-        },
-      },
-
-      createdBy: {
-        include: {
-          profile: true,
-        },
-      },
-    },
-
+    include: HACKATHON_WITH_COUNTS_INCLUDE,
     take: 100,
   });
 
@@ -294,49 +369,12 @@ export const getHackathonById = async (
   hackathonId: string,
   isAdmin?: boolean,
 ) => {
-  // Dynamic status transition check for this specific hackathon
-  try {
-    const now = new Date();
-    const existing = await prisma.hackathon.findUnique({
-      where: { id: hackathonId },
-      select: { id: true, startDate: true, endDate: true, status: true },
-    });
-    if (existing && ["OPEN", "LIVE"].includes(existing.status)) {
-      if (now > existing.endDate) {
-        await prisma.hackathon.update({
-          where: { id: hackathonId },
-          data: { status: "COMPLETED" },
-        });
-      } else if (existing.status === "OPEN" && now >= existing.startDate) {
-        await prisma.hackathon.update({
-          where: { id: hackathonId },
-          data: { status: "LIVE" },
-        });
-      }
-    }
-  } catch (error) {
-    console.error("[getHackathonById] Failed to auto-transition status:", error);
-  }
 
   const hackathon = await prisma.hackathon.findUnique({
     where: {
       id: hackathonId,
     },
-    include: {
-      createdBy: {
-        include: {
-          profile: true,
-        },
-      },
-      _count: {
-        select: {
-          registrations: true,
-          submissions: true,
-          judges: true,
-          winners: true,
-        },
-      },
-    },
+    include: HACKATHON_WITH_COUNTS_INCLUDE,
   });
 
   if (!hackathon) {
@@ -1854,62 +1892,8 @@ export const getHackathonLeaderboard = async (hackathonId: string) => {
       teamId: true,
       finalScore: true,
       rankingPosition: true,
-      project: {
-        select: {
-          id: true,
-          title: true,
-          verified: true,
-          status: true,
-          contributorsCount: true,
-          deploymentStatus: true,
-          owner: {
-            select: {
-              id: true,
-              username: true,
-              profile: {
-                select: {
-                  fullName: true,
-                },
-              },
-            },
-          },
-          members: {
-            select: {
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  profile: {
-                    select: {
-                      fullName: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      team: {
-        select: {
-          id: true,
-          members: {
-            select: {
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  profile: {
-                    select: {
-                      fullName: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      project: PROJECT_OWNER_MEMBER_SELECT,
+      team: TEAM_MEMBERS_SELECT,
       evaluations: {
         select: {
           id: true,
@@ -1922,29 +1906,10 @@ export const getHackathonLeaderboard = async (hackathonId: string) => {
   });
 
   const rankedSubmissions = submissions
-    .map((submission) => {
-      let rankingScore = submission.finalScore || 0;
-
-      if (submission.project.verified) {
-        rankingScore += 2;
-      }
-
-      if (submission.project.status === "COMPLETED") {
-        rankingScore += 1;
-      }
-
-      rankingScore +=
-        Math.min(submission.project.contributorsCount || 0, 5) * 0.2;
-
-      if (submission.project.deploymentStatus === "LIVE") {
-        rankingScore += 1;
-      }
-
-      return {
-        ...submission,
-        rankingScore,
-      };
-    })
+    .map((submission) => ({
+      ...submission,
+      rankingScore: calculateSubmissionRankingScore(submission),
+    }))
     .sort((a, b) => b.rankingScore - a.rankingScore)
     .map((submission, index) => ({
       rank: index + 1,
@@ -2008,26 +1973,8 @@ export const declareHackathonWinners = async (
       id: true,
       teamId: true,
       finalScore: true,
-      project: {
-        select: {
-          id: true,
-          title: true,
-          verified: true,
-          status: true,
-          contributorsCount: true,
-          deploymentStatus: true,
-        },
-      },
-      team: {
-        select: {
-          id: true,
-          members: {
-            select: {
-              userId: true,
-            },
-          },
-        },
-      },
+      project: PROJECT_OWNER_MEMBER_SELECT,
+      team: TEAM_MEMBERS_SELECT,
       evaluations: {
         select: {
           id: true,
@@ -2045,29 +1992,10 @@ export const declareHackathonWinners = async (
   }
 
   const rankedSubmissions = submissions
-    .map((submission) => {
-      let rankingScore = submission.finalScore || 0;
-
-      if (submission.project.verified) {
-        rankingScore += 2;
-      }
-
-      if (submission.project.status === "COMPLETED") {
-        rankingScore += 1;
-      }
-
-      rankingScore +=
-        Math.min(submission.project.contributorsCount || 0, 5) * 0.2;
-
-      if (submission.project.deploymentStatus === "LIVE") {
-        rankingScore += 1;
-      }
-
-      return {
-        ...submission,
-        rankingScore,
-      };
-    })
+    .map((submission) => ({
+      ...submission,
+      rankingScore: calculateSubmissionRankingScore(submission),
+    }))
     .sort((a, b) => b.rankingScore - a.rankingScore);
 
   //

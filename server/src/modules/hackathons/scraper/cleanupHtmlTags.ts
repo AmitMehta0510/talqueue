@@ -1,22 +1,6 @@
 import prisma from "shared/database/prisma";
+import { stripHtml } from "./scraper.utils";
 
-function stripHtml(html: string): string {
-  if (!html) return "";
-  const decoded = html
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&ndash;/g, "–")
-    .replace(/&mdash;/g, "—")
-    .replace(/&bull;/g, "•");
-  return decoded
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 async function main() {
   console.log("[Maintenance] Starting database cleanup...");

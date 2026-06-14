@@ -61,6 +61,15 @@ export const formatDate = (value?: string, includeYear = true) => {
   }).format(new Date(value));
 };
 
+export const STATUS_CHIP_CLASSES: Record<string, string> = {
+  LIVE: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  OPEN: "bg-blue-50 text-blue-700 border border-blue-200",
+  COMPLETED: "bg-slate-100 text-slate-500 border border-slate-200",
+  DRAFT: "bg-amber-50 text-amber-700 border border-amber-200",
+  ARCHIVED: "bg-rose-50 text-rose-600 border border-rose-200",
+};
+
+
 /** Returns time only, e.g. "5:37 PM" — used inside message bubbles */
 export const formatMessageTime = (value?: string | null): string => {
   if (!value) return "";
