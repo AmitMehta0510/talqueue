@@ -1,4 +1,5 @@
 import prisma from "shared/database/prisma";
+import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 
 import AppError from "shared/errors/AppError";
 
@@ -697,3 +698,27 @@ export const requestCompanyAndCreateJob = async (
     message: `Company "${data.companyName}" is pending admin verification. Your job will be posted automatically once approved.`,
   };
 };
+
+const assertIsPlatformAdmin = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      roles: {
+        select: { role: { select: { name: true } } },
+      },
+    },
+  });
+  const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
+  if (!roleNames.has("PLATFORM_ADMIN")) {
+    throw new AppError("Only the platform administrator (PLATFORM_ADMIN) can seed jobs", 403);
+  }
+};
+
+//
+// SEED JOBS
+//
+export const seedJobs = async (userId: string) => {
+  await assertIsPlatformAdmin(userId);
+  return await runJobScrape();
+};
+

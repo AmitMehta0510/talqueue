@@ -5,7 +5,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "ts-node-dev --respawn -r tsconfig-paths/register src/server.ts",
-    "seed:companies": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualSeed.ts"
+    "seed:companies": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualSeed.ts",
+    "seed:jobs": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualJobSeed.ts"
   },
   "keywords": [],
   "author": "",

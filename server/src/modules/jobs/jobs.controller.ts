@@ -8,6 +8,7 @@ import {
   getJobBySlug,
   getCompanyJobs,
   getRecruiterJobs,
+  seedJobs,
 } from "./jobs.service";
 import { createJobSchema } from "./jobs.validation";
 
@@ -48,4 +49,9 @@ export const getCompanyJobsHandler = asyncHandler(async (req: Request, res: Resp
 export const getRecruiterJobsHandler = asyncHandler(async (req: any, res: Response) => {
   const jobs = await getRecruiterJobs(req.user.id);
   res.json(successResponse(jobs));
+});
+
+export const seedJobsHandler = asyncHandler(async (req: any, res: Response) => {
+  const result = await seedJobs(req.user.id);
+  res.json(successResponse(result, "Jobs seeded successfully"));
 });

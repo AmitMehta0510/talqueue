@@ -10,6 +10,7 @@ import {
   getJobBySlugHandler,
   getCompanyJobsHandler,
   getRecruiterJobsHandler,
+  seedJobsHandler,
 } from "./jobs.controller";
 
 const router = Router();
@@ -18,6 +19,12 @@ router.post(
   "/",
   protect,
   createJobHandler
+);
+
+router.post(
+  "/seed",
+  protect,
+  seedJobsHandler
 );
 
 router.get(
