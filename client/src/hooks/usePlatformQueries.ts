@@ -3780,6 +3780,37 @@ export const useAdminUpdateHackathonStatusMutation = () => {
   });
 };
 
+export const useAdminUpdateHackathonMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ hackathonId, payload }: { hackathonId: string; payload: any }) =>
+      api.adminUpdateHackathon(hackathonId, payload),
+    onSuccess: () => {
+      showToast("success", "Hackathon updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "hackathons"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminTriggerScraperMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: () => api.adminTriggerScraper(),
+    onSuccess: (result) => {
+      const stats = result.data;
+      showToast(
+        "success",
+        `Scraper run complete! Fetched: ${stats.totalFetched}, Created: ${stats.created}, Updated: ${stats.updated}, Errors: ${stats.errors}`
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "hackathons"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 export const useAdminProjectsQuery = (q: string) => {
   const { user } = useAuth();
   const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");

@@ -25,6 +25,7 @@ import {
   adminDeletePost,
   adminListHackathons,
   adminUpdateHackathonStatus,
+  adminUpdateHackathon,
   adminListProjects,
   adminUpdateProjectStatus,
   adminListJobs,
@@ -38,6 +39,8 @@ import {
   adminApproveCompanyRequest,
   adminRejectCompanyRequest,
 } from "./admin.service";
+
+import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
 
 // ============================================================
 // COLLEGE ADMIN HANDLERS
@@ -342,5 +345,20 @@ export const adminRejectCompanyRequestHandler = asyncHandler(
     const { reviewNotes } = req.body || {};
     const result = await adminRejectCompanyRequest(req.user.id, requestId, reviewNotes);
     res.json(successResponse(result, "Company request rejected"));
+  },
+);
+
+export const adminUpdateHackathonHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { hackathonId } = req.params;
+    const result = await adminUpdateHackathon(hackathonId, req.body);
+    res.json(successResponse(result, "Hackathon updated successfully"));
+  },
+);
+
+export const adminTriggerScraperHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await runAllScrapers();
+    res.json(successResponse(result, "Scraper run completed successfully"));
   },
 );

@@ -1603,6 +1603,10 @@ export const api = {
     request<{ hackathons: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/hackathons${toQuery(params)}`, options),
   adminUpdateHackathonStatus: (hackathonId: string, body: { status: string }) =>
     request<any>(`/admin/content/hackathons/${hackathonId}/status`, { method: "PATCH", body }),
+  adminUpdateHackathon: (hackathonId: string, body: any) =>
+    request<any>(`/admin/content/hackathons/${hackathonId}`, { method: "PATCH", body }),
+  adminTriggerScraper: () =>
+    request<any>(`/admin/scraper/run`, { method: "POST" }),
   adminListProjects: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ projects: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/projects${toQuery(params)}`, options),
   adminUpdateProjectStatus: (projectId: string, body: { status: string }) =>

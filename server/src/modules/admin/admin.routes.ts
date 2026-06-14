@@ -20,6 +20,7 @@ import {
   adminDeletePostHandler,
   adminListHackathonsHandler,
   adminUpdateHackathonStatusHandler,
+  adminUpdateHackathonHandler,
   adminListProjectsHandler,
   adminUpdateProjectStatusHandler,
   adminListJobsHandler,
@@ -32,6 +33,7 @@ import {
   adminListCompanyRequestsHandler,
   adminApproveCompanyRequestHandler,
   adminRejectCompanyRequestHandler,
+  adminTriggerScraperHandler,
 } from "./admin.controller";
 
 const router = Router();
@@ -83,6 +85,8 @@ router.delete("/content/posts/:postId", adminDeletePostHandler);
 // Hackathons
 router.get("/content/hackathons", adminListHackathonsHandler);
 router.patch("/content/hackathons/:hackathonId/status", adminUpdateHackathonStatusHandler);
+router.patch("/content/hackathons/:hackathonId", adminUpdateHackathonHandler);
+router.post("/scraper/run", adminTriggerScraperHandler);
 
 // Projects
 router.get("/content/projects", adminListProjectsHandler);

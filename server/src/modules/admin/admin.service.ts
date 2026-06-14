@@ -853,3 +853,28 @@ export const adminRejectCompanyRequest = async (
   return { success: true };
 };
 
+export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
+  const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId } });
+  if (!hackathon) throw new AppError("Hackathon not found", 404);
+
+  return prisma.hackathon.update({
+    where: { id: hackathonId },
+    data: {
+      title: data.title !== undefined ? data.title : undefined,
+      description: data.description !== undefined ? data.description : undefined,
+      shortDescription: data.shortDescription !== undefined ? data.shortDescription : undefined,
+      externalUrl: data.externalUrl !== undefined ? data.externalUrl : undefined,
+      mode: data.mode !== undefined ? data.mode : undefined,
+      location: data.location !== undefined ? data.location : undefined,
+      minTeamSize: data.minTeamSize !== undefined ? Number(data.minTeamSize) : undefined,
+      maxTeamSize: data.maxTeamSize !== undefined ? Number(data.maxTeamSize) : undefined,
+      startDate: data.startDate ? new Date(data.startDate) : undefined,
+      endDate: data.endDate ? new Date(data.endDate) : undefined,
+      registrationDeadline: data.registrationDeadline ? new Date(data.registrationDeadline) : undefined,
+      verified: data.verified !== undefined ? Boolean(data.verified) : undefined,
+      featured: data.featured !== undefined ? Boolean(data.featured) : undefined,
+      status: data.status !== undefined ? data.status : undefined,
+    },
+  });
+};
+
