@@ -91,3 +91,8 @@ docker-data/
 # LOCAL CONFIG
 # =========================
 *.local
+
+# =========================
+# SCRAPER DEBUG FILES
+# =========================
+src/modules/hackathons/scraper/debug/
