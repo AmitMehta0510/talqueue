@@ -537,7 +537,21 @@ export const adminListHackathons = async (params: { q?: string; limit?: number; 
 export const adminUpdateHackathonStatus = async (hackathonId: string, status: string) => {
   const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId } });
   if (!hackathon) throw new AppError("Hackathon not found", 404);
-  return prisma.hackathon.update({ where: { id: hackathonId }, data: { status: status as any } });
+  
+  let targetStatus = status;
+  if (status === "ACTIVE") {
+    targetStatus = "OPEN";
+  }
+  
+  const isActivating = hackathon.status === "DRAFT" && (targetStatus === "OPEN" || targetStatus === "LIVE");
+  
+  return prisma.hackathon.update({
+    where: { id: hackathonId },
+    data: {
+      status: targetStatus as any,
+      ...(isActivating ? { verified: true } : {}),
+    },
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

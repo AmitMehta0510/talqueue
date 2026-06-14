@@ -1031,14 +1031,26 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 
       <div className="panel overflow-hidden">
         {hackathon.bannerUrl && (
-          <img className="h-48 w-full object-cover sm:h-64" src={hackathon.bannerUrl} alt={hackathon.title} />
+          <div className="relative h-48 w-full overflow-hidden bg-slate-950 sm:h-64 flex items-center justify-center border-b border-slate-100">
+            {/* Blurred ambient background copy */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center blur-lg scale-110 opacity-30 pointer-events-none"
+              style={{ backgroundImage: `url(${hackathon.bannerUrl})` }}
+            />
+            {/* Foreground contained image */}
+            <img 
+              className="relative z-10 max-h-full max-w-full object-contain p-2" 
+              src={hackathon.bannerUrl} 
+              alt={hackathon.title} 
+            />
+          </div>
         )}
         <div className="p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-2xl font-bold text-slate-950">{hackathon.title}</h2>
-                {hackathon.verified && (
+                {hackathon.verified && hackathon.status !== "DRAFT" && (
                   <span className="chip text-emerald-700">
                     <ShieldCheck size={13} />
                     Verified

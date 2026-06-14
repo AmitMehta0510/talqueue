@@ -32,19 +32,31 @@ export const trackRecommendationImpression = async (
     hidden?: boolean;
   },
 ) => {
-  return prisma.recommendationImpression.create({
-    data: {
+  return prisma.recommendationImpression.upsert({
+    where: {
+      userId_entityType_entityId: {
+        userId,
+        entityType: data.entityType,
+        entityId: data.entityId,
+      },
+    },
+    create: {
       userId,
-
       entityId: data.entityId,
-
       entityType: data.entityType,
-
       position: data.position,
-
       clicked: data.clicked || false,
-
       hidden: data.hidden || false,
+      shownCount: 1,
+    },
+    update: {
+      position: data.position !== undefined ? data.position : undefined,
+      clicked: data.clicked !== undefined ? data.clicked : undefined,
+      hidden: data.hidden !== undefined ? data.hidden : undefined,
+      shownCount: {
+        increment: 1,
+      },
+      lastShownAt: new Date(),
     },
   });
 };

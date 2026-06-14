@@ -18,6 +18,7 @@ import {
   Send,
   Users,
   History,
+  CalendarDays,
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
 import { ComposePost } from "../components/forms/ComposePost";
@@ -33,8 +34,9 @@ import {
   useRepostMutation,
   useMyReputationQuery,
   useReputationLeaderboardQuery,
+  useHackathonsQuery,
 } from "../hooks/usePlatformQueries";
-import { titleCase, userName, formatCount, userHeadline } from "../lib/format";
+import { titleCase, userName, formatCount, userHeadline, formatDate } from "../lib/format";
 
 type FeedCategory = "all" | "recommended" | "discussions" | "projects" | "jobs";
 
@@ -53,6 +55,7 @@ export function FeedPage() {
   const jobsQuery = useJobsQuery();
   const leaderboardQuery = useReputationLeaderboardQuery();
   const myReputationQuery = useMyReputationQuery();
+  const hackathonsQuery = useHackathonsQuery({ status: "ACTIVE" });
 
   const createPost = useCreatePostMutation();
   const postReaction = usePostReactionMutation();
@@ -63,13 +66,15 @@ export function FeedPage() {
   const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
   const jobs = useMemo(() => jobsQuery.data || [], [jobsQuery.data]);
   const leaders = useMemo(() => leaderboardQuery.data || [], [leaderboardQuery.data]);
+  const featuredHackathons = useMemo(() => hackathonsQuery.data || [], [hackathonsQuery.data]);
 
   const refreshing =
     feedQuery.isFetching ||
     projectsQuery.isFetching ||
     jobsQuery.isFetching ||
     leaderboardQuery.isFetching ||
-    myReputationQuery.isFetching;
+    myReputationQuery.isFetching ||
+    hackathonsQuery.isFetching;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -106,6 +111,7 @@ export function FeedPage() {
     projectsQuery.refetch();
     jobsQuery.refetch();
     leaderboardQuery.refetch();
+    hackathonsQuery.refetch();
     if (user) {
       myReputationQuery.refetch();
     }
@@ -463,6 +469,79 @@ export function FeedPage() {
               </div>
             ) : (
               <div className="text-xs text-slate-400 text-center py-4">No active projects available.</div>
+            )}
+          </div>
+
+          {/* Featured Hackathons Card */}
+          <div className="panel p-4 bg-white border-slate-200 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.03)] hover:shadow-md transition-shadow duration-300">
+            <div className="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
+              <div className="flex items-center justify-center p-1 rounded bg-amber-50 text-amber-500">
+                <Trophy size={14} className="stroke-[2.5]" />
+              </div>
+              <h3 className="text-[10px] font-extrabold text-slate-900 uppercase tracking-wider">
+                Featured Hackathons
+              </h3>
+            </div>
+
+            {hackathonsQuery.isLoading ? (
+              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
+                <Loader2 size={12} className="animate-spin text-emerald-600" />
+                <span>Loading hackathons...</span>
+              </div>
+            ) : featuredHackathons.length > 0 ? (
+              <div className="space-y-1">
+                {featuredHackathons.slice(0, 3).map((hackathon) => (
+                  <div
+                    key={hackathon.id}
+                    className="group/item -mx-2 p-2.5 rounded-lg border border-transparent hover:bg-slate-50/80 hover:border-slate-100 hover:pl-3.5 transition-all duration-300 border-l-2 hover:border-l-emerald-500 flex flex-col"
+                  >
+                    <Link
+                      to={`/hackathons/${hackathon.id}`}
+                      className="block text-xs font-bold text-slate-800 hover:text-emerald-700 transition truncate"
+                    >
+                      {hackathon.title}
+                    </Link>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                      {hackathon.shortDescription || hackathon.description || "Active collaboration hackathon"}
+                    </p>
+                    <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex flex-wrap gap-1">
+                        {hackathon.sourcePlatform ? (
+                          <span className={`chip text-[8px] py-0 px-1.5 font-bold uppercase tracking-wide border ${
+                            hackathon.sourcePlatform === "Devpost"
+                              ? "bg-cyan-50 text-cyan-700 border-cyan-100"
+                              : hackathon.sourcePlatform === "Devfolio"
+                              ? "bg-blue-50 text-blue-700 border-blue-100"
+                              : hackathon.sourcePlatform === "Unstop"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                              : "bg-slate-50 text-slate-600 border-slate-100"
+                          }`}>
+                            {hackathon.sourcePlatform}
+                          </span>
+                        ) : (
+                          <span className="chip text-[8px] py-0 px-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 font-semibold">
+                            Internal
+                          </span>
+                        )}
+                        {hackathon.mode && (
+                          <span className="chip text-[8px] py-0 px-1.5 bg-slate-50 border border-slate-100/60 text-slate-500">
+                            {titleCase(hackathon.mode)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {hackathon.startDate && (
+                        <span className="text-[9px] text-slate-400 font-medium flex items-center gap-0.5">
+                          <CalendarDays size={10} className="text-slate-350" />
+                          Starts {formatDate(hackathon.startDate)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 text-center py-4">No active hackathons available.</div>
             )}
           </div>
 

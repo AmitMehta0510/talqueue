@@ -245,6 +245,12 @@ export const generateFeedCandidates = async (
       where: {
         deletedAt: null,
 
+        NOT: {
+          status: {
+            in: ["DRAFT", "DELETED", "ARCHIVED"],
+          },
+        },
+
         registrationDeadline: {
           gte: new Date(),
         },

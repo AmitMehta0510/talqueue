@@ -6,6 +6,7 @@ import { useImpressionTracking } from "../../hooks/useImpressionTracking";
 import { usePostQuery } from "../../hooks/usePlatformQueries";
 import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName } from "../../lib/format";
 import { Avatar } from "../ui";
+import { HackathonCard } from "./HackathonCard";
 
 const projectTags = (project: Project) =>
   Array.isArray(project.techStack) ? project.techStack.map(String) : project.searchTags || [];
@@ -97,6 +98,14 @@ export function FeedCard({
 
     setSubmittingRepost(false);
   };
+
+  if (item.type === "HACKATHON") {
+    return (
+      <div ref={impressionRef as any}>
+        <HackathonCard hackathon={item.data as any} />
+      </div>
+    );
+  }
 
   return (
     <article className="panel p-5" ref={impressionRef}>

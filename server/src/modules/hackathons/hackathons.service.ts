@@ -312,14 +312,23 @@ export const getHackathons = async (
   if (!isAdmin) {
     andClauses.push({
       OR: [
-        { verified: true },
+        {
+          verified: true,
+          status: {
+            not: "DRAFT",
+          },
+        },
         userId ? { createdById: userId } : undefined,
       ].filter(Boolean) as Prisma.HackathonWhereInput[],
     });
   }
 
   if (filters?.status && filters.status !== "ALL") {
-    andClauses.push({ status: filters.status as any });
+    if (filters.status === "ACTIVE") {
+      andClauses.push({ status: { in: ["LIVE", "OPEN"] } });
+    } else {
+      andClauses.push({ status: filters.status as any });
+    }
   }
 
   if (filters?.isExternal !== undefined) {
@@ -381,8 +390,14 @@ export const getHackathonById = async (
     throw new AppError("Hackathon not found", 404);
   }
 
-  if (!hackathon.verified && hackathon.createdById !== userId && !isAdmin) {
+  if (hackathon.status === "DELETED" || hackathon.deletedAt) {
     throw new AppError("Hackathon not found", 404);
+  }
+
+  if (!isAdmin && hackathon.createdById !== userId) {
+    if (hackathon.status === "DRAFT" || !hackathon.verified) {
+      throw new AppError("Hackathon not found", 404);
+    }
   }
 
   const [registrations, submissions, judges, winners] = await Promise.all([

@@ -1011,11 +1011,11 @@ function HackathonsPanel() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      {h.status !== "ACTIVE" && h.status !== "LIVE" && (
+                      {h.status === "DRAFT" && (
                         <button
                           type="button"
                           className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
-                          onClick={() => updateStatus.mutateAsync({ hackathonId: h.id, status: "ACTIVE" })}
+                          onClick={() => updateStatus.mutateAsync({ hackathonId: h.id, status: "OPEN" })}
                         >
                           Activate
                         </button>
