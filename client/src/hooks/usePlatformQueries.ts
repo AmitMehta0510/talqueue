@@ -3751,17 +3751,15 @@ export const useAdminDeletePostMutation = () => {
   });
 };
 
-export const useAdminHackathonsQuery = (q: string) => {
+export const useAdminHackathonsQuery = (q: string, cursor?: string) => {
   const { user } = useAuth();
   const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
-  return useInfiniteQuery({
-    queryKey: ["admin", "content", "hackathons", q],
-    queryFn: async ({ pageParam, signal }) => {
-      const result = await api.adminListHackathons({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+  return useQuery({
+    queryKey: ["admin", "content", "hackathons", q, cursor],
+    queryFn: async ({ signal }) => {
+      const result = await api.adminListHackathons({ q: q || undefined, limit: 20, cursor }, { signal });
       return result.data;
     },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
     enabled: Boolean(user && isPlatformAdmin),
   });
 };

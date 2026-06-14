@@ -856,14 +856,23 @@ function PostsModerationTab({ q }: { q: string }) {
 
 function HackathonsPanel() {
   const [q, setQ] = useState("");
-  const query = useAdminHackathonsQuery(q);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [history, setHistory] = useState<(string | undefined)[]>([]);
+
+  const handleSearchChange = (newVal: string) => {
+    setQ(newVal);
+    setCursor(undefined);
+    setHistory([]);
+  };
+
+  const query = useAdminHackathonsQuery(q, cursor);
   const updateStatus = useAdminUpdateHackathonStatusMutation();
   const updateHackathon = useAdminUpdateHackathonMutation();
   const runScraper = useAdminTriggerScraperMutation();
   
   const [editingHackathon, setEditingHackathon] = useState<any | null>(null);
 
-  const hackathons = query.data?.pages.flatMap((p) => p?.hackathons ?? []) ?? [];
+  const hackathons = query.data?.hackathons ?? [];
 
   const handleToggleVerified = async (h: any) => {
     try {
@@ -926,7 +935,7 @@ function HackathonsPanel() {
 
       <SearchBar
         value={q}
-        onChange={setQ}
+        onChange={handleSearchChange}
         placeholder="Search hackathons by title or organizer..."
       />
 
@@ -1043,8 +1052,35 @@ function HackathonsPanel() {
                 </tr>
               ))}
             </DataTable>
-            <div className="p-3">
-              <LoadMoreBtn query={query} />
+            <div className="flex items-center justify-between border-t border-zinc-800/60 px-4 py-3 bg-zinc-900/40">
+              <div className="text-xs font-semibold text-zinc-500">
+                Page {history.length + 1}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prev = history[history.length - 1];
+                    setHistory(history.slice(0, -1));
+                    setCursor(prev);
+                  }}
+                  disabled={history.length === 0 || query.isFetching}
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistory([...history, cursor]);
+                    setCursor(query.data?.nextCursor || undefined);
+                  }}
+                  disabled={!query.data?.hasNextPage || query.isFetching}
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </>
         )}
