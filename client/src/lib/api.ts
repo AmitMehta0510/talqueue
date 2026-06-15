@@ -1736,12 +1736,18 @@ export const api = {
     request<any>(`/admin/content/hackathons/${hackathonId}`, { method: "PATCH", body }),
   adminTriggerScraper: (options?: EndpointOptions) =>
     request<any>(`/admin/scraper/run`, { method: "POST", ...options }),
+  adminTriggerJobScraper: (options?: EndpointOptions) =>
+    request<any>(`/admin/scraper/jobs`, { method: "POST", ...options }),
   adminListProjects: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ projects: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/projects${toQuery(params)}`, options),
   adminUpdateProjectStatus: (projectId: string, body: { status: string }) =>
     request<any>(`/admin/content/projects/${projectId}/status`, { method: "PATCH", body }),
   adminListJobs: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ jobs: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/jobs${toQuery(params)}`, options),
+  adminCreateJob: (body: any) =>
+    request<any>("/admin/content/jobs", { method: "POST", body }),
+  adminUpdateJob: (jobId: string, body: any) =>
+    request<any>(`/admin/content/jobs/${jobId}`, { method: "PATCH", body }),
   adminDeleteJob: (jobId: string) =>
     request<{ message: string }>(`/admin/content/jobs/${jobId}`, { method: "DELETE" }),
   adminListCommunities: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>

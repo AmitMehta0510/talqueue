@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
-  Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw,
+  Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -27,19 +27,21 @@ import { CompaniesPanel } from "./AdminPages/CompaniesPanel";
 import { CommunitiesPanel } from "./AdminPages/CommunitiesPanel";
 import { ReferralsPanel } from "./AdminPages/ReferralsPanel";
 import { CompanyRequestsPanel } from "./AdminPages/CompanyRequestsPanel";
+import { JobsPanel } from "./AdminPages/JobsPanel";
 
-type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests";
+type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "jobs";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users },
+  { id: "jobs", label: "Jobs", icon: Briefcase },
   { id: "moderation", label: "Moderation", icon: Shield },
   { id: "hackathons", label: "Hackathons", icon: Trophy },
   { id: "colleges", label: "Colleges", icon: GraduationCap },
   { id: "companies", label: "Companies", icon: Building2 },
   { id: "communities", label: "Communities", icon: Hash },
   { id: "referrals", label: "Referrals", icon: GitBranch },
-  { id: "company_requests", label: "Co. Requests", icon: Briefcase },
+  { id: "company_requests", label: "Co. Requests", icon: ClipboardList },
 ];
 
 export function AdminPage() {
@@ -217,6 +219,7 @@ export function AdminPage() {
             {activeTab === "communities" && <CommunitiesPanel />}
             {activeTab === "referrals" && <ReferralsPanel />}
             {activeTab === "company_requests" && <CompanyRequestsPanel />}
+            {activeTab === "jobs" && <JobsPanel />}
           </div>
         </div>
       </div>

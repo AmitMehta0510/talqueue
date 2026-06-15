@@ -30,6 +30,8 @@ import {
   adminUpdateProjectStatus,
   adminListJobs,
   adminDeleteJob,
+  adminUpdateJob,
+  adminCreateJob,
   adminListCommunities,
   adminUpdateCommunity,
   adminListReferrals,
@@ -41,6 +43,7 @@ import {
 } from "./admin.service";
 
 import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
+import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 
 // ============================================================
 // COLLEGE ADMIN HANDLERS
@@ -264,6 +267,21 @@ export const adminDeleteJobHandler = asyncHandler(
   },
 );
 
+export const adminUpdateJobHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { jobId } = req.params;
+    const result = await adminUpdateJob(jobId, req.body);
+    res.json(successResponse(result, "Job updated successfully"));
+  },
+);
+
+export const adminCreateJobHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await adminCreateJob(req.user.id, req.body);
+    res.status(201).json(successResponse(result, "Job created successfully"));
+  },
+);
+
 export const adminListCommunitiesHandler = asyncHandler(
   async (req: any, res: Response) => {
     const { q, limit, cursor } = req.query as any;
@@ -360,5 +378,12 @@ export const adminTriggerScraperHandler = asyncHandler(
   async (req: any, res: Response) => {
     const result = await runAllScrapers();
     res.json(successResponse(result, "Scraper run completed successfully"));
+  },
+);
+
+export const adminTriggerJobScraperHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await runJobScrape();
+    res.json(successResponse(result, "Job scraper run completed successfully"));
   },
 );

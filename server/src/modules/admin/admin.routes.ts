@@ -23,8 +23,10 @@ import {
   adminUpdateHackathonHandler,
   adminListProjectsHandler,
   adminUpdateProjectStatusHandler,
-  adminListJobsHandler,
+   adminListJobsHandler,
   adminDeleteJobHandler,
+  adminUpdateJobHandler,
+  adminCreateJobHandler,
   adminListCommunitiesHandler,
   adminUpdateCommunityHandler,
   adminListReferralsHandler,
@@ -34,6 +36,7 @@ import {
   adminApproveCompanyRequestHandler,
   adminRejectCompanyRequestHandler,
   adminTriggerScraperHandler,
+  adminTriggerJobScraperHandler,
 } from "./admin.controller";
 
 const router = Router();
@@ -87,6 +90,7 @@ router.get("/content/hackathons", adminListHackathonsHandler);
 router.patch("/content/hackathons/:hackathonId/status", adminUpdateHackathonStatusHandler);
 router.patch("/content/hackathons/:hackathonId", adminUpdateHackathonHandler);
 router.post("/scraper/run", adminTriggerScraperHandler);
+router.post("/scraper/jobs", adminTriggerJobScraperHandler);
 
 // Projects
 router.get("/content/projects", adminListProjectsHandler);
@@ -94,6 +98,8 @@ router.patch("/content/projects/:projectId/status", adminUpdateProjectStatusHand
 
 // Jobs
 router.get("/content/jobs", adminListJobsHandler);
+router.post("/content/jobs", adminCreateJobHandler);
+router.patch("/content/jobs/:jobId", adminUpdateJobHandler);
 router.delete("/content/jobs/:jobId", adminDeleteJobHandler);
 
 // Communities

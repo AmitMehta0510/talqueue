@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Loader2, FileText, GitBranch, Briefcase, Trash2, Archive,
 } from "lucide-react";
@@ -184,11 +184,20 @@ function ProjectsModerationTab({ q }: { q: string }) {
 }
 
 function JobsModerationTab({ q }: { q: string }) {
-  const query = useAdminJobsQuery(q);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [history, setHistory] = useState<(string | undefined)[]>([]);
+
+  // Reset pagination on search change
+  useEffect(() => {
+    setCursor(undefined);
+    setHistory([]);
+  }, [q]);
+
+  const query = useAdminJobsQuery(q, cursor);
   const deleteJob = useAdminDeleteJobMutation();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const jobs = query.data?.pages.flatMap((p) => p?.jobs ?? []) ?? [];
+  const jobs = query.data?.jobs ?? [];
 
   return (
     <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
@@ -236,7 +245,36 @@ function JobsModerationTab({ q }: { q: string }) {
               </tr>
             ))}
           </DataTable>
-          <div className="p-3"><LoadMoreBtn query={query} /></div>
+          <div className="flex items-center justify-between border-t border-zinc-800/60 px-4 py-3 bg-zinc-900/40">
+            <div className="text-xs font-semibold text-zinc-500">
+              Page {history.length + 1}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const prev = history[history.length - 1];
+                  setHistory(history.slice(0, -1));
+                  setCursor(prev);
+                }}
+                disabled={history.length === 0 || query.isFetching}
+                className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHistory([...history, cursor]);
+                  setCursor(query.data?.nextCursor || undefined);
+                }}
+                disabled={!query.data?.hasNextPage || query.isFetching}
+                className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </>
       )}
     </div>

@@ -2,6 +2,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { JobStatus } from "@prisma/client";
 import { createNotification } from "modules/notificatios/notifications.service";
+import slugify from "slugify";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL HELPERS
@@ -643,8 +644,81 @@ export const adminListJobs = async (params: { q?: string; limit?: number; cursor
 export const adminDeleteJob = async (jobId: string) => {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) throw new AppError("Job not found", 404);
-  await prisma.job.delete({ where: { id: jobId } });
-  return { message: "Job removed successfully" };
+  await prisma.job.update({
+    where: { id: jobId },
+    data: {
+      status: "DELETED",
+      deletedAt: new Date(),
+    },
+  });
+  return { message: "Job removed successfully (soft deleted)" };
+};
+
+export const adminUpdateJob = async (jobId: string, data: any) => {
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) throw new AppError("Job not found", 404);
+
+  return prisma.job.update({
+    where: { id: jobId },
+    data: {
+      title: data.title !== undefined ? data.title : undefined,
+      description: data.description !== undefined ? data.description : undefined,
+      requirements: data.requirements !== undefined ? data.requirements : undefined,
+      responsibilities: data.responsibilities !== undefined ? data.responsibilities : undefined,
+      perks: data.perks !== undefined ? data.perks : undefined,
+      location: data.location !== undefined ? data.location : undefined,
+      workMode: data.workMode !== undefined ? data.workMode : undefined,
+      type: data.type !== undefined ? data.type : undefined,
+      experienceLevel: data.experienceLevel !== undefined ? data.experienceLevel : undefined,
+      salaryMin: data.salaryMin !== undefined ? (data.salaryMin === "" || data.salaryMin === null ? null : Number(data.salaryMin)) : undefined,
+      salaryMax: data.salaryMax !== undefined ? (data.salaryMax === "" || data.salaryMax === null ? null : Number(data.salaryMax)) : undefined,
+      currency: data.currency !== undefined ? data.currency : undefined,
+      openings: data.openings !== undefined ? (data.openings === "" || data.openings === null ? null : Number(data.openings)) : undefined,
+      skillsRequired: data.skillsRequired !== undefined ? data.skillsRequired : undefined,
+      applicationDeadline: data.applicationDeadline !== undefined ? (data.applicationDeadline ? new Date(data.applicationDeadline) : null) : undefined,
+      applyUrl: data.applyUrl !== undefined ? data.applyUrl : undefined,
+      featured: data.featured !== undefined ? Boolean(data.featured) : undefined,
+      status: data.status !== undefined ? data.status : undefined,
+    },
+  });
+};
+
+export const adminCreateJob = async (adminId: string, data: any) => {
+  const company = await prisma.company.findUnique({
+    where: { id: data.companyId },
+    select: { id: true, name: true },
+  });
+  if (!company) throw new AppError("Company not found", 404);
+
+  const cleanTitle = data.title.normalize("NFKC").trim().replace(/\s+/g, " ");
+  const baseSlug = slugify(cleanTitle, { lower: true, strict: true, trim: true });
+  const slug = `${baseSlug}-${Date.now()}`;
+
+  return prisma.job.create({
+    data: {
+      companyId: company.id,
+      postedById: adminId,
+      title: data.title,
+      slug,
+      description: data.description,
+      requirements: data.requirements || null,
+      responsibilities: data.responsibilities || null,
+      perks: data.perks || null,
+      location: data.location || null,
+      workMode: data.workMode || null,
+      type: data.type,
+      experienceLevel: data.experienceLevel || null,
+      salaryMin: data.salaryMin ? Number(data.salaryMin) : null,
+      salaryMax: data.salaryMax ? Number(data.salaryMax) : null,
+      currency: data.currency || "INR",
+      openings: data.openings ? Number(data.openings) : null,
+      skillsRequired: data.skillsRequired || [],
+      applicationDeadline: data.applicationDeadline ? new Date(data.applicationDeadline) : null,
+      applyUrl: data.applyUrl || null,
+      featured: data.featured || false,
+      status: data.status || "OPEN",
+    },
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

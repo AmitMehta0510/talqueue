@@ -3929,6 +3929,23 @@ export const useAdminTriggerScraperMutation = () => {
   });
 };
 
+export const useAdminTriggerJobScraperMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: () => api.adminTriggerJobScraper({ timeoutMs: 120000 }),
+    onSuccess: (result) => {
+      const stats = result.data;
+      showToast(
+        "success",
+        `Job scraper complete! Processed: ${stats.totalProcessed} companies. Created: ${stats.created}, Updated: ${stats.updated}, Stale Cleaned: ${stats.staleArchived}`
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 export const useAdminProjectsQuery = (q: string) => {
   const { user } = useAuth();
   const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
@@ -3958,17 +3975,15 @@ export const useAdminUpdateProjectStatusMutation = () => {
   });
 };
 
-export const useAdminJobsQuery = (q: string) => {
+export const useAdminJobsQuery = (q: string, cursor?: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
-  return useInfiniteQuery({
-    queryKey: ["admin", "content", "jobs", q],
-    queryFn: async ({ pageParam, signal }) => {
-      const result = await api.adminListJobs({ q: q || undefined, limit: 20, cursor: pageParam }, { signal });
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
+  return useQuery({
+    queryKey: ["admin", "content", "jobs", q, cursor],
+    queryFn: async ({ signal }) => {
+      const result = await api.adminListJobs({ q: q || undefined, limit: 20, cursor }, { signal });
       return result.data;
     },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
     enabled: Boolean(user && isPlatformAdmin),
   });
 };
@@ -3980,6 +3995,32 @@ export const useAdminDeleteJobMutation = () => {
     mutationFn: (jobId: string) => api.adminDeleteJob(jobId),
     onSuccess: (result) => {
       showToast("success", result.message || "Job removed");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminUpdateJobMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ jobId, data }: { jobId: string; data: any }) => api.adminUpdateJob(jobId, data),
+    onSuccess: () => {
+      showToast("success", "Job updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminCreateJobMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (data: any) => api.adminCreateJob(data),
+    onSuccess: () => {
+      showToast("success", "Job created successfully");
       queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
