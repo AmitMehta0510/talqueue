@@ -46,7 +46,23 @@ export function CollegesPanel({
           return;
         }
 
-        await importColleges.mutateAsync(payload);
+        // Map alternate fields (e.g. college -> name, district -> city, country -> India)
+        const mappedPayload = payload.map((item: any) => {
+          if (item.college && !item.name) {
+            return {
+              name: item.college,
+              city: item.district || item.city || undefined,
+              state: item.state || undefined,
+              country: "India",
+              emailDomains: item.emailDomains || [],
+              website: item.website || undefined,
+              logoUrl: item.logoUrl || undefined,
+            };
+          }
+          return item;
+        });
+
+        await importColleges.mutateAsync(mappedPayload);
       } catch (err: any) {
         alert("Failed to parse JSON file: " + err.message);
       }
