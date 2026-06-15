@@ -47,7 +47,7 @@ export async function runCompanySeed() {
       });
 
       if (existing) {
-        // Update existing record (do not overwrite slug or verified flag)
+        // Update existing record (do not overwrite slug)
         await prisma.company.update({
           where: { id: existing.id },
           data: {
@@ -63,6 +63,7 @@ export async function runCompanySeed() {
             industry: comp.industry || null,
             type: comp.type || null,
             size: comp.size || null,
+            verified: true,
           },
         });
         updated++;
@@ -99,7 +100,7 @@ export async function runCompanySeed() {
             industry: comp.industry || null,
             type: comp.type || null,
             size: comp.size || null,
-            verified: false,
+            verified: true,
           },
         });
         created++;

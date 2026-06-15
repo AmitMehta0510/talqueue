@@ -1,7 +1,7 @@
 import { Router }
 from "express";
 
-import { protect }
+import { protect, optionalProtect }
 from "modules/auth/auth.middleware";
 
 import { requireCompanyGlobalAdmin }
@@ -65,6 +65,7 @@ router.get(
 
 router.get(
   "/:slug",
+  optionalProtect,
   getCompanyBySlugHandler
 );
 
