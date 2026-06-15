@@ -12,6 +12,7 @@ import {
   LogIn,
   LogOut,
   LockKeyhole,
+  ShieldCheck,
   MessageSquare,
   Rocket,
   Search,
@@ -315,6 +316,16 @@ export function AppLayout() {
                           Recruiter Console
                         </Link>
                       )}
+                      {user.companyAdminships?.filter((a: any) => !a.officeCity).map((adminship: any) => (
+                        <Link
+                          key={adminship.id}
+                          to={`/companies/${adminship.companyId}/admin`}
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                        >
+                          <ShieldCheck size={13} className="text-emerald-600" />
+                          {adminship.company?.name || "Company"} Console
+                        </Link>
+                      ))}
                       {user.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN") ? (
                         <Link to="/admin" className="block px-2 py-1.5 rounded hover:bg-purple-50 hover:text-purple-900 transition font-bold text-purple-800">
                           Super Admin Console
