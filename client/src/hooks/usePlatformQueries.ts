@@ -553,6 +553,26 @@ export const useDeleteConversationMutation = () => {
   });
 };
 
+export const useAdminCollegesQuery = (limit = 20, cursor?: string) =>
+  useQuery({
+    queryKey: ["colleges", "admin", limit, cursor],
+    queryFn: async ({ signal }) => {
+      const result = await api.colleges(limit, { cursor, signal });
+      return result.data;
+    },
+  });
+
+export const useSearchCollegesQuery = (q: string) =>
+  useQuery({
+    queryKey: ["colleges", "search", q],
+    queryFn: async ({ signal }) => {
+      const result = await api.searchColleges(q);
+      return result.data || [];
+    },
+    enabled: q.trim().length >= 2,
+  });
+
+
 export const useCollegesQuery = (limit = 50) =>
   useInfiniteQuery({
     queryKey: queryKeys.colleges.list(limit),

@@ -91,6 +91,7 @@ export type College = {
   name: string;
   city?: string | null;
   state?: string | null;
+  country?: string | null;
   website?: string | null;
   logoUrl?: string | null;
   normalizedKey?: string;
