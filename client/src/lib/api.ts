@@ -1783,6 +1783,8 @@ export const api = {
   },
   createCollege: (body: CollegeMutationPayload) =>
     request<College>("/colleges", { method: "POST", body }),
+  deleteCollege: (collegeId: string) =>
+    request<{ message: string }>(`/colleges/${collegeId}`, { method: "DELETE" }),
   createDepartment: (body: DepartmentMutationPayload) =>
     request<Department>("/colleges/departments", { method: "POST", body }),
   departments: (collegeId: string, options?: EndpointOptions) =>

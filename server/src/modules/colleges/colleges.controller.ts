@@ -12,6 +12,7 @@ import {
   searchColleges,
   importColleges,
   getStandardDepartments,
+  deleteCollege,
 } from "./colleges.service";
 
 import {
@@ -143,4 +144,19 @@ export const getStandardDepartmentsHandler =
       );
     }
   );
+
+export const deleteCollegeHandler =
+  asyncHandler(
+    async (req: any, res: Response) => {
+      const { collegeId } = req.params;
+      await deleteCollege(req.user, collegeId);
+      res.json(
+        successResponse(
+          null,
+          "College deleted successfully!"
+        )
+      );
+    }
+  );
+
 

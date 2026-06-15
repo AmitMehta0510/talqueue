@@ -606,6 +606,29 @@ export const useCreateCollegeMutation = () => {
   });
 };
 
+export const useDeleteCollegeMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (collegeId: string) => {
+      if (!user) {
+        throw new Error("Login required");
+      }
+
+      return api.deleteCollege(collegeId);
+    },
+    onSuccess: () => showToast("success", "College deleted successfully"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+    },
+  });
+};
+
+
 export const useCreateDepartmentMutation = (collegeId?: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();

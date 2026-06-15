@@ -10,6 +10,7 @@ import {
   searchCollegesHandler,
   importCollegesHandler,
   getStandardDepartmentsHandler,
+  deleteCollegeHandler,
 } from "./colleges.controller";
 
 const router = Router();
@@ -44,6 +45,12 @@ router.get(
 router.get(
   "/:collegeId/departments",
   getDepartmentsHandler
+);
+
+router.delete(
+  "/:collegeId",
+  protect,
+  deleteCollegeHandler
 );
 
 export default router;

@@ -9,6 +9,7 @@ import {
   useAdminDepartmentsQuery,
   useAdminCreateDepartmentMutation,
   useImportCollegesMutation,
+  useDeleteCollegeMutation,
 } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
 import { cleanLogoUrl, userName } from "../../lib/format";
@@ -29,6 +30,7 @@ export function CollegesPanel({
   const collegesQuery = useCollegesQuery(100);
   const createCollege = useCreateCollegeMutation();
   const importColleges = useImportCollegesMutation();
+  const deleteCollege = useDeleteCollegeMutation();
 
   const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,6 +202,23 @@ export function CollegesPanel({
                           <ExternalLink size={10} />
                         </a>
                       )}
+                      <button
+                        className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Are you sure you want to delete ${c.name}? All departments will be deleted, and students' colleges will be set to None.`)) {
+                            deleteCollege.mutate(c.id);
+                          }
+                        }}
+                        disabled={deleteCollege.isPending}
+                        title="Delete College"
+                      >
+                        {deleteCollege.isPending && deleteCollege.variables === c.id ? (
+                          <Loader2 size={12} className="animate-spin text-rose-500" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                      </button>
                       <ChevronRight size={12} className={`transition-transform ${selectedCollege?.id === c.id ? "rotate-90 text-emerald-400" : ""}`} />
                     </div>
                   </div>

@@ -479,3 +479,53 @@ export const getStandardDepartments = async () => {
   });
 };
 
+export const deleteCollege = async (user: AuthUser, collegeId: string) => {
+  assertCanManageCollegeCatalog(user);
+
+  const college = await prisma.college.findUnique({
+    where: { id: collegeId },
+    select: { id: true },
+  });
+
+  if (!college) {
+    throw new AppError("College not found", 404);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.profile.updateMany({
+      where: { collegeId },
+      data: { collegeId: null },
+    });
+
+    await tx.education.updateMany({
+      where: { collegeId },
+      data: { collegeId: null },
+    });
+
+    await tx.event.updateMany({
+      where: { collegeId },
+      data: { collegeId: null },
+    });
+
+    await tx.post.updateMany({
+      where: { collegeId },
+      data: { collegeId: null },
+    });
+
+    await tx.conversation.updateMany({
+      where: { collegeId },
+      data: { collegeId: null },
+    });
+
+    await tx.community.updateMany({
+      where: { collegeId },
+      data: { collegeId: null, departmentId: null },
+    });
+
+    await tx.college.delete({
+      where: { id: collegeId },
+    });
+  });
+};
+
+
