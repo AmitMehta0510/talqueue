@@ -319,7 +319,7 @@ export function AppLayout() {
                       {user.companyAdminships?.filter((a: any) => !a.officeCity).map((adminship: any) => (
                         <Link
                           key={adminship.id}
-                          to={`/companies/${adminship.companyId}/admin`}
+                          to={`/companies/${adminship.company?.slug || adminship.companyId}/admin`}
                           className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />

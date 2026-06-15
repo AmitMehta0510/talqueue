@@ -10,6 +10,8 @@ import { Avatar } from "../components/ui";
 import { userName } from "../lib/format";
 import { UserSearchAutocomplete } from "./AdminPages/shared";
 import {
+  useCompanyQuery,
+  useCompanyJobsQuery,
   useCompanyAdminStatsQuery,
   useCompanyAdminsForDashboardQuery,
   useCompanyRecruitersQuery,
@@ -22,14 +24,20 @@ import {
 type Tab = "overview" | "managers" | "recruiters" | "jobs";
 
 export function CompanyAdminPage() {
-  const { companyId } = useParams<{ companyId: string }>();
+  const { companySlug } = useParams<{ companySlug: string }>();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [jobPage, setJobPage] = useState(1);
+
+  const companyQuery = useCompanyQuery(companySlug);
+  const company = companyQuery.data;
+  const companyId = company?.id;
 
   // Queries
   const statsQuery = useCompanyAdminStatsQuery(companyId || "");
   const adminsQuery = useCompanyAdminsForDashboardQuery(companyId || "");
   const recruitersQuery = useCompanyRecruitersQuery(companyId || "");
+  const companyJobsQuery = useCompanyJobsQuery(companyId, jobPage, 10);
 
   // Mutations
   const assignAdmin = useAssignCompanyAdminFromDashboardMutation();
@@ -138,9 +146,14 @@ export function CompanyAdminPage() {
     setShowAddForm(false);
   };
 
-  const loading = statsQuery.isFetching || adminsQuery.isFetching || recruitersQuery.isFetching;
+  const loading =
+    companyQuery.isFetching ||
+    statsQuery.isFetching ||
+    adminsQuery.isFetching ||
+    recruitersQuery.isFetching ||
+    companyJobsQuery.isFetching;
 
-  if (statsQuery.isLoading) {
+  if (companyQuery.isLoading || (companyId && statsQuery.isLoading)) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3 bg-zinc-950 text-zinc-400">
         <Loader2 className="animate-spin text-emerald-500" size={32} />
@@ -149,7 +162,7 @@ export function CompanyAdminPage() {
     );
   }
 
-  if (statsQuery.isError || !stats) {
+  if (companyQuery.isError || !company || statsQuery.isError || !stats) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 text-center mt-20 text-zinc-100">
         <Shield size={36} className="mx-auto text-rose-500 mb-3" />
@@ -163,8 +176,6 @@ export function CompanyAdminPage() {
       </div>
     );
   }
-
-  const company = stats.company;
 
   // Render Visual Pipeline Funnel
   const pipelineStatuses = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "REJECTED", "HIRED"];
@@ -206,9 +217,11 @@ export function CompanyAdminPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
+                companyQuery.refetch();
                 statsQuery.refetch();
                 adminsQuery.refetch();
                 recruitersQuery.refetch();
+                companyJobsQuery.refetch();
               }}
               className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-zinc-700 transition"
             >
@@ -655,7 +668,11 @@ export function CompanyAdminPage() {
 
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">All Company Job Postings</h3>
-                  {stats.recentJobs?.length === 0 ? (
+                  {companyJobsQuery.isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="animate-spin text-emerald-500" size={20} />
+                    </div>
+                  ) : !companyJobsQuery.data || companyJobsQuery.data.jobs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
                       <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
                         <Briefcase size={18} />
@@ -672,30 +689,57 @@ export function CompanyAdminPage() {
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {stats.recentJobs?.map((job: any) => (
-                        <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-4">
-                          <div>
-                            <div className="text-xs font-bold text-white flex items-center gap-2">
-                              {job.title}
-                              <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-400">
-                                {job.status}
-                              </span>
+                    <>
+                      <div className="space-y-3">
+                        {companyJobsQuery.data.jobs.map((job: any) => (
+                          <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-4">
+                            <div>
+                              <div className="text-xs font-bold text-white flex items-center gap-2">
+                                {job.title}
+                                <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-400">
+                                  {job.status || "OPEN"}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-zinc-550 mt-1">
+                                {job.location || "Remote"} · {job.type} · Posted {new Date(job.createdAt).toLocaleDateString()}
+                              </p>
                             </div>
-                            <p className="text-[10px] text-zinc-500 mt-1">
-                              {job.location || "Remote"} · {job.type} · Posted {new Date(job.createdAt).toLocaleDateString()}
-                            </p>
+                            
+                            <Link
+                              to="/jobs"
+                              className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-0.5"
+                            >
+                              Manage <ChevronRight size={12} />
+                            </Link>
                           </div>
-                          
-                          <Link
-                            to="/jobs"
-                            className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-0.5"
-                          >
-                            Manage <ChevronRight size={12} />
-                          </Link>
+                        ))}
+                      </div>
+
+                      {companyJobsQuery.data.totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t border-zinc-800 pt-4 mt-4 text-xs">
+                          <div className="text-zinc-500">
+                            Showing page <span className="font-bold text-zinc-350">{jobPage}</span> of{" "}
+                            <span className="font-bold text-zinc-350">{companyJobsQuery.data.totalPages}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setJobPage((p) => Math.max(1, p - 1))}
+                              disabled={jobPage === 1}
+                              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              onClick={() => setJobPage((p) => Math.min(companyJobsQuery.data.totalPages, p + 1))}
+                              disabled={jobPage === companyJobsQuery.data.totalPages}
+                              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
+                            >
+                              Next
+                            </button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

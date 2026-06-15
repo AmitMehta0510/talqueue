@@ -3022,12 +3022,14 @@ export const useJobQuery = (slug?: string) =>
     enabled: Boolean(slug),
   });
 
-export const useCompanyJobsQuery = (companyId?: string) =>
+export const useCompanyJobsQuery = (companyId?: string, page = 1, limit = 10) =>
   useQuery({
-    queryKey: queryKeys.jobs.company(companyId || ""),
+    queryKey: [...queryKeys.jobs.company(companyId || ""), { page, limit }],
     queryFn: async ({ signal }) => {
-      const result = await api.companyJobs(companyId || "", { signal });
-      return result.data || [];
+      const result = await api.companyJobs(companyId || "", page, limit, {
+        signal,
+      });
+      return result.data;
     },
     enabled: Boolean(companyId),
   });

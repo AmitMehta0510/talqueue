@@ -481,42 +481,60 @@ export const getCompanyJobs = async (
   limit = 20,
 ) => {
   const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
 
-  return prisma.job.findMany({
-    where: {
-      companyId,
+  const [total, jobs] = await Promise.all([
+    prisma.job.count({
+      where: {
+        companyId,
+        status: "OPEN",
+        deletedAt: null,
+      },
+    }),
+    prisma.job.findMany({
+      where: {
+        companyId,
 
-      status: "OPEN",
+        status: "OPEN",
 
-      deletedAt: null,
-    },
+        deletedAt: null,
+      },
 
-    select: {
-      id: true,
+      select: {
+        id: true,
 
-      title: true,
+        title: true,
 
-      slug: true,
+        slug: true,
 
-      location: true,
+        location: true,
 
-      type: true,
+        type: true,
 
-      workMode: true,
+        workMode: true,
 
-      experienceLevel: true,
+        experienceLevel: true,
 
-      createdAt: true,
-    },
+        createdAt: true,
+      },
 
-    orderBy: {
-      createdAt: "desc",
-    },
+      orderBy: {
+        createdAt: "desc",
+      },
 
-    skip: (page - 1) * safeLimit,
+      skip,
 
-    take: safeLimit,
-  });
+      take: safeLimit,
+    }),
+  ]);
+
+  return {
+    jobs,
+    total,
+    page,
+    limit: safeLimit,
+    totalPages: Math.ceil(total / safeLimit),
+  };
 };
 
 //

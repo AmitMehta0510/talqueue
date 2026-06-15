@@ -215,7 +215,7 @@ function AppRoutes() {
             }
           />
           <Route
-            path="/companies/:companyId/admin"
+            path="/companies/:companySlug/admin"
             element={
               <RequireAuth>
                 <CompanyAdminPage />

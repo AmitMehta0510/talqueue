@@ -2144,8 +2144,19 @@ export const api = {
     request<any>("/jobs", { method: "POST", body }),
   job: (slug: string, options?: EndpointOptions) =>
     request<Job>(`/jobs/${slug}`, options),
-  companyJobs: (companyId: string, options?: EndpointOptions) =>
-    request<Job[]>(`/jobs/company/${companyId}`, options),
+  companyJobs: (
+    companyId: string,
+    page?: number,
+    limit?: number,
+    options?: EndpointOptions,
+  ) =>
+    request<{
+      jobs: Job[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/jobs/company/${companyId}${toQuery({ page, limit })}`, options),
   recruiterJobs: (options?: EndpointOptions) =>
     request<Job[]>("/jobs/my/jobs", options),
   applyToJob: (jobId: string, body: JobApplicationPayload) =>

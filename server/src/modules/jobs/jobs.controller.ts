@@ -44,8 +44,10 @@ export const getJobBySlugHandler = asyncHandler(async (req: Request, res: Respon
 
 export const getCompanyJobsHandler = asyncHandler(async (req: Request, res: Response) => {
   const companyId = req.params.companyId as string;
-  const jobs = await getCompanyJobs(companyId);
-  res.json(successResponse(jobs));
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
+  const result = await getCompanyJobs(companyId, page, limit);
+  res.json(successResponse(result));
 });
 
 export const getRecruiterJobsHandler = asyncHandler(async (req: any, res: Response) => {
