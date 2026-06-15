@@ -4235,7 +4235,7 @@ export const useImportCollegesMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (body: any) => api.importColleges(body),
+    mutationFn: (body: any) => api.importColleges(body, { timeoutMs: 600000 }),
     onSuccess: (result) => {
       showToast("success", result.message || "Colleges imported successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });

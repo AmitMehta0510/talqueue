@@ -2503,8 +2503,8 @@ export const api = {
     request<any>(`/companies/${companyId}/unfollow`, { method: "POST" }),
 
   // College import, email verification, events & RSVPs
-  importColleges: (body: any) =>
-    request<College[]>("/colleges/import", { method: "POST", body }),
+  importColleges: (body: any, options?: EndpointOptions) =>
+    request<College[]>("/colleges/import", { method: "POST", body, ...options }),
   verifyCollegeEmail: (educationId: string, email: string, code?: string) =>
     request<any>(`/users/me/educations/${educationId}/verify`, { method: "POST", body: { email, code } }),
   verifyWorkEmail: (experienceId: string, email: string, code?: string) =>
