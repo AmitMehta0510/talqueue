@@ -21,7 +21,9 @@ const GREENHOUSE_TOKENS: Record<string, string> = {
   "clerk": "clerk",
   "docker": "docker",
   "vercel": "vercel",
-  "retool": "retool"
+  "retool": "retool",
+  "razorpay": "razorpay",
+  "inmobi": "inmobi"
 };
 
 // Mapping of seeded companies to their public Ashby board tokens
