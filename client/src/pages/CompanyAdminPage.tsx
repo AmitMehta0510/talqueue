@@ -272,30 +272,80 @@ export function CompanyAdminPage() {
                 </div>
 
                 {/* Pipeline Funnel Visualizer */}
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-yellow-400" />
-                      Candidate Pipeline Funnel
-                    </h3>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">Visual stage-by-stage analysis of current job applications.</p>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-6">
+                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-emerald-400" />
+                        Recruitment Pipeline Funnel
+                      </h3>
+                      <p className="text-[11px] text-zinc-550 mt-0.5">Visual stage-by-stage conversion analysis of current job applications.</p>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-lg bg-rose-500/5 border border-rose-500/10 px-3 py-1.5 text-xs text-rose-400">
+                      <span className="font-black">{pipelineCounts.find((p: any) => p.status === "REJECTED")?.count || 0}</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Rejected / Drop-offs</span>
+                    </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-6">
-                    {pipelineStatuses.map((status) => {
-                      const record = pipelineCounts.find((p: any) => p.status === status);
-                      const count = record ? record.count : 0;
-                      return (
-                        <div key={status} className="rounded-lg border border-zinc-850 bg-zinc-900/60 p-3 flex flex-col justify-between">
-                          <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                            status === "HIRED" ? "text-emerald-400" :
-                            status === "REJECTED" ? "text-rose-400" :
-                            status === "INTERVIEW" ? "text-amber-400" : "text-zinc-400"
-                          }`}>{status}</span>
-                          <span className="text-xl font-black text-white mt-2">{count}</span>
-                        </div>
-                      );
-                    })}
+                  {/* Funnel Stepper Flow */}
+                  <div className="grid gap-4 md:grid-cols-5">
+                    {(() => {
+                      const funnelOrder = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "HIRED"];
+                      return funnelOrder.map((status, index) => {
+                        const count = pipelineCounts.find((p: any) => p.status === status)?.count || 0;
+                        const prevStatus = index > 0 ? funnelOrder[index - 1] : null;
+                        const prevCount = prevStatus ? (pipelineCounts.find((p: any) => p.status === prevStatus)?.count || 0) : 0;
+                        
+                        // Calculate percentage of total applied
+                        const totalApplied = pipelineCounts.find((p: any) => p.status === "APPLIED")?.count || 0;
+                        const pctOfTotal = totalApplied > 0 ? Math.round((count / totalApplied) * 100) : 0;
+
+                        // Calculate conversion from previous stage
+                        const stepConversion = prevCount > 0 ? Math.round((count / prevCount) * 100) : 100;
+
+                        return (
+                          <div key={status} className="relative flex flex-col justify-between rounded-xl border border-zinc-850 bg-zinc-900/20 p-4 transition hover:border-zinc-700">
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${
+                                  status === "HIRED" ? "text-emerald-400" :
+                                  status === "INTERVIEW" ? "text-amber-400" :
+                                  status === "SHORTLISTED" ? "text-indigo-400" : "text-zinc-500"
+                                }`}>
+                                  Stage {index + 1}: {status}
+                                </span>
+                              </div>
+                              <div className="mt-3 flex items-baseline gap-1.5">
+                                <span className="text-2xl font-black text-white">{count}</span>
+                                <span className="text-[10px] text-zinc-550 font-medium">candidates</span>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 space-y-1.5">
+                              {/* Progress bar */}
+                              <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    status === "HIRED" ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
+                                    status === "INTERVIEW" ? "bg-amber-500" :
+                                    status === "SHORTLISTED" ? "bg-indigo-500" : "bg-zinc-600"
+                                  }`}
+                                  style={{ width: `${pctOfTotal}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[9px] font-bold text-zinc-550">
+                                <span>{pctOfTotal}% of total</span>
+                                {index > 0 && (
+                                  <span className="text-emerald-500">
+                                    ↑ {stepConversion}% conv.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 
@@ -436,7 +486,21 @@ export function CompanyAdminPage() {
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Office Scope Managers ({officeManagers.length})</h3>
                     {officeManagers.length === 0 ? (
-                      <p className="text-xs text-zinc-600 italic">No office-scoped managers assigned.</p>
+                      <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
+                          <MapPin size={18} />
+                        </div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Office-Scoped Managers</h4>
+                        <p className="text-[11px] text-zinc-550 max-w-xs mt-1.5 mb-4">
+                          Assign managers to specific office locations (e.g. Bangalore, London) to distribute moderation and recruiter invitation privileges.
+                        </p>
+                        <button
+                          onClick={() => setShowAddForm(true)}
+                          className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition"
+                        >
+                          Assign First Manager
+                        </button>
+                      </div>
                     ) : (
                       <div className="grid gap-3 sm:grid-cols-2">
                         {officeManagers.map((admin: any) => {
@@ -528,7 +592,21 @@ export function CompanyAdminPage() {
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Assigned Seats ({recruiters.length})</h3>
                   {recruiters.length === 0 ? (
-                    <p className="text-xs text-zinc-600 italic">No recruiters assigned to this company yet.</p>
+                    <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
+                        <Users size={18} />
+                      </div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Recruiters Assigned</h4>
+                      <p className="text-[11px] text-zinc-550 max-w-xs mt-1.5 mb-4">
+                        Add recruiter seats to allocate licenses for members of your talent acquisition team so they can post jobs and view candidate profiles.
+                      </p>
+                      <button
+                        onClick={() => setShowAddForm(true)}
+                        className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition"
+                      >
+                        Add First Recruiter
+                      </button>
+                    </div>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {recruiters.map((rec: any) => {
@@ -578,7 +656,21 @@ export function CompanyAdminPage() {
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">All Company Job Postings</h3>
                   {stats.recentJobs?.length === 0 ? (
-                    <p className="text-xs text-zinc-600 italic">No job postings created.</p>
+                    <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
+                        <Briefcase size={18} />
+                      </div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Job Postings Found</h4>
+                      <p className="text-[11px] text-zinc-550 max-w-xs mt-1.5 mb-4">
+                        Once recruiters from your company post open roles, they will appear here along with live candidate counts.
+                      </p>
+                      <Link
+                        to="/jobs"
+                        className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition"
+                      >
+                        Go to Jobs Hub
+                      </Link>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {stats.recentJobs?.map((job: any) => (
