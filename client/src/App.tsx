@@ -29,6 +29,7 @@ import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReputationPage } from "./pages/ReputationPage";
 import { RecruiterPage } from "./pages/RecruiterPage";
 import { AdminPage } from "./pages/AdminPage";
+import { CompanyAdminPage } from "./pages/CompanyAdminPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -210,6 +211,14 @@ function AppRoutes() {
             element={
               <RequireAuth>
                 <RecruiterPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/companies/:companyId/admin"
+            element={
+              <RequireAuth>
+                <CompanyAdminPage />
               </RequireAuth>
             }
           />

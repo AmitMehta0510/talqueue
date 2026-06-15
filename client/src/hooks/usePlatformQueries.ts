@@ -3653,15 +3653,35 @@ export const useAdminUsersQuery = (search: string, limit = 50) => {
   return useInfiniteQuery({
     queryKey: queryKeys.admin.users(search),
     queryFn: async ({ pageParam, signal }) => {
-      const result = await api.listAdminUsers(
-        { search, limit, cursor: pageParam },
-        { signal }
-      );
-      return result.data;
+      if (isPlatformAdmin) {
+        const result = await api.listAdminUsers(
+          { search, limit, cursor: pageParam },
+          { signal }
+        );
+        return result.data;
+      } else {
+        const result = await api.searchUsers(
+          { q: search, limit },
+          { signal }
+        );
+        const raw = result.data || [];
+        const flattened = raw.map((item: any) => {
+          if (item?.id) return item;
+          return {
+            ...item.user,
+            affinityScore: item.relevanceScore,
+          };
+        });
+        return {
+          users: flattened,
+          nextCursor: null,
+          hasNextPage: false,
+        };
+      }
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
-    enabled: Boolean(user && isPlatformAdmin),
+    enabled: Boolean(user && (isPlatformAdmin || search.trim().length >= 1)),
   });
 };
 
@@ -4020,6 +4040,114 @@ export const useAdminDepartmentsQuery = (collegeId: string) => {
       return result.data || [];
     },
     enabled: Boolean(user && collegeId),
+  });
+};
+
+export const useCompanyAdminStatsQuery = (companyId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["company-admin", "stats", companyId],
+    queryFn: async ({ signal }) => {
+      const result = await api.getCompanyAdminStats(companyId, { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && companyId),
+  });
+};
+
+export const useCompanyAdminsForDashboardQuery = (companyId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["company-admin", "admins", companyId],
+    queryFn: async ({ signal }) => {
+      const result = await api.listCompanyAdminsForDashboard(companyId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && companyId),
+  });
+};
+
+export const useAssignCompanyAdminFromDashboardMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId, officeCity }: { companyId: string; userId: string; officeCity?: string }) =>
+      api.assignCompanyAdminFromDashboard(companyId, { userId, officeCity }),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Admin assigned successfully");
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "admins", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "stats", companyId] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRemoveCompanyAdminFromDashboardMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId, officeCity }: { companyId: string; userId: string; officeCity?: string }) =>
+      api.removeCompanyAdminFromDashboard(companyId, userId, officeCity),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Admin removed successfully");
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "admins", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "stats", companyId] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useCompanyRecruitersQuery = (companyId: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["company-admin", "recruiters", companyId],
+    queryFn: async ({ signal }) => {
+      const result = await api.listCompanyRecruiters(companyId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && companyId),
+  });
+};
+
+export const useAssignCompanyRecruiterMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId, title }: { companyId: string; userId: string; title?: string }) =>
+      api.assignCompanyRecruiter(companyId, { userId, title }),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Recruiter assigned successfully");
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "recruiters", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "stats", companyId] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRemoveCompanyRecruiterMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, userId }: { companyId: string; userId: string }) =>
+      api.removeCompanyRecruiter(companyId, userId),
+    onSuccess: (result, { companyId }) => {
+      showToast("success", result.message || "Recruiter removed successfully");
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "recruiters", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["company-admin", "stats", companyId] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
   });
 };
 

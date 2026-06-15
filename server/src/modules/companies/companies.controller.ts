@@ -16,7 +16,17 @@ import {
   requestCompanyRegistration,
   followCompany,
   unfollowCompany,
+  getCompanyAdminStats,
+  listCompanyRecruiters,
+  assignCompanyRecruiter,
+  removeCompanyRecruiter,
 } from "./companies.service";
+
+import {
+  listCompanyAdmins,
+  assignCompanyAdmin,
+  removeCompanyAdmin,
+} from "modules/admin/admin.service";
 
 import { createCompanySchema } from "./companies.validation";
 
@@ -138,6 +148,65 @@ export const unfollowCompanyHandler = asyncHandler(
     const result = await unfollowCompany(req.user.id, companyId);
     res.json(successResponse(result, result.message));
   },
+);
+
+export const getCompanyAdminStatsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const stats = await getCompanyAdminStats(companyId);
+    res.json(successResponse(stats));
+  }
+);
+
+export const listCompanyAdminsForDashboardHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const admins = await listCompanyAdmins(companyId);
+    res.json(successResponse(admins));
+  }
+);
+
+export const assignCompanyAdminFromDashboardHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const { userId, officeCity } = req.body;
+    const result = await assignCompanyAdmin(req.user.id, userId, companyId, officeCity);
+    res.json(successResponse(result, "Company admin assigned successfully"));
+  }
+);
+
+export const removeCompanyAdminFromDashboardHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId, userId } = req.params;
+    const { officeCity } = req.query;
+    const result = await removeCompanyAdmin(userId, companyId, officeCity as string | undefined);
+    res.json(successResponse(result, "Company admin removed successfully"));
+  }
+);
+
+export const listCompanyRecruitersHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const recruiters = await listCompanyRecruiters(companyId);
+    res.json(successResponse(recruiters));
+  }
+);
+
+export const assignCompanyRecruiterHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const { userId, title } = req.body;
+    const result = await assignCompanyRecruiter(req.user.id, companyId, userId, title);
+    res.json(successResponse(result, "Recruiter assigned successfully"));
+  }
+);
+
+export const removeCompanyRecruiterHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId, userId } = req.params;
+    const result = await removeCompanyRecruiter(companyId, userId);
+    res.json(successResponse(result, "Recruiter removed successfully"));
+  }
 );
 
 

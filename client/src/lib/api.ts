@@ -34,6 +34,17 @@ export type User = {
     department?: Department | null;
   } | null;
   roles?: Array<{ role?: { name?: string } }>;
+  companyAdminships?: Array<{
+    id: string;
+    companyId: string;
+    officeCity?: string | null;
+    company?: {
+      id: string;
+      name: string;
+      slug: string;
+      logoUrl?: string | null;
+    } | null;
+  }>;
   followersCount?: number;
   followingCount?: number;
   connectionCount?: number;
@@ -1623,6 +1634,31 @@ export const api = {
     }),
   listCompanyAdmins: (companyId: string, options?: EndpointOptions) =>
     request<any[]>(`/admin/companies/${companyId}/admins`, options),
+  // Company Admin Dashboard
+  getCompanyAdminStats: (companyId: string, options?: EndpointOptions) =>
+    request<any>(`/companies/${companyId}/admin-dashboard/stats`, options),
+  listCompanyAdminsForDashboard: (companyId: string, options?: EndpointOptions) =>
+    request<any[]>(`/companies/${companyId}/admin-dashboard/admins`, options),
+  assignCompanyAdminFromDashboard: (companyId: string, body: { userId: string; officeCity?: string }) =>
+    request<{ message: string; assignment: any }>(`/companies/${companyId}/admin-dashboard/admins`, {
+      method: "POST",
+      body,
+    }),
+  removeCompanyAdminFromDashboard: (companyId: string, userId: string, officeCity?: string) =>
+    request<{ message: string }>(`/companies/${companyId}/admin-dashboard/admins/${userId}${officeCity ? `?officeCity=${encodeURIComponent(officeCity)}` : ""}`, {
+      method: "DELETE",
+    }),
+  listCompanyRecruiters: (companyId: string, options?: EndpointOptions) =>
+    request<any[]>(`/companies/${companyId}/admin-dashboard/recruiters`, options),
+  assignCompanyRecruiter: (companyId: string, body: { userId: string; title?: string }) =>
+    request<{ message: string }>(`/companies/${companyId}/admin-dashboard/recruiters`, {
+      method: "POST",
+      body,
+    }),
+  removeCompanyRecruiter: (companyId: string, userId: string) =>
+    request<{ message: string }>(`/companies/${companyId}/admin-dashboard/recruiters/${userId}`, {
+      method: "DELETE",
+    }),
   // Content Moderation
   adminListPosts: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ posts: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/posts${toQuery(params)}`, options),

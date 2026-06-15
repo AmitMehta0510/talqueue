@@ -61,6 +61,22 @@ export const authUserSelect = {
       },
     },
   },
+
+  companyAdminships: {
+    select: {
+      id: true,
+      companyId: true,
+      officeCity: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 export type AuthenticatedUser = Prisma.UserGetPayload<{

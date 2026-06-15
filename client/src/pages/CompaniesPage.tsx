@@ -347,6 +347,13 @@ function CompanyDetail({ slug }: { slug: string }) {
   const followMutation = useFollowCompanyMutation();
   const unfollowMutation = useUnfollowCompanyMutation();
 
+  const isGlobalCompanyAdmin = useMemo(() => {
+    if (!user || !company) return false;
+    return user.companyAdminships?.some(
+      (a) => a.companyId === company.id && !a.officeCity
+    );
+  }, [user, company]);
+
   const handleFollowToggle = () => {
     if (!user) {
       showToast("error", "Please log in to follow companies");
@@ -433,6 +440,15 @@ function CompanyDetail({ slug }: { slug: string }) {
                   "Follow"
                 )}
               </button>
+
+              {isGlobalCompanyAdmin && (
+                <Link
+                  to={`/companies/${company.id}/admin`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 hover:text-white transition"
+                >
+                  <ShieldCheck size={13} className="text-emerald-500" /> Admin Console
+                </Link>
+              )}
 
               {company.websiteUrl && (
                 <a className="btn-secondary" href={company.websiteUrl} target="_blank" rel="noreferrer">

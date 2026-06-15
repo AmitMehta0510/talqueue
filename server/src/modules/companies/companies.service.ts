@@ -1,7 +1,7 @@
 import { CompanySize, CompanyType, Prisma } from "@prisma/client";
 import prisma from "shared/database/prisma";
-
 import AppError from "shared/errors/AppError";
+import { createNotification } from "modules/notificatios/notifications.service";
 
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";
@@ -732,6 +732,197 @@ export const unfollowCompany = async (userId: string, companyId: string) => {
   });
 
   return { success: true, message: "Successfully unfollowed company" };
+};
+
+export const getCompanyAdminStats = async (companyId: string) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { name: true, slug: true, logoUrl: true }
+  });
+  if (!company) throw new AppError("Company not found", 404);
+
+  const jobsCount = await prisma.job.count({
+    where: { companyId, deletedAt: null }
+  });
+
+  const applicantsCount = await prisma.jobApplication.count({
+    where: { job: { companyId } }
+  });
+
+  const officeManagersCount = await prisma.companyAdmin.count({
+    where: { companyId, officeCity: { not: null } }
+  });
+
+  const recruitersCount = await prisma.experience.count({
+    where: {
+      companyId,
+      isCurrent: true,
+      user: {
+        roles: {
+          some: {
+            role: {
+              name: "RECRUITER"
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const pipelineBreakdown = await prisma.jobApplication.groupBy({
+    by: ["status"],
+    where: { job: { companyId } },
+    _count: true
+  });
+
+  const pipeline = pipelineBreakdown.map((g) => ({
+    status: g.status,
+    count: g._count
+  }));
+
+  const recentApplicants = await prisma.jobApplication.findMany({
+    where: { job: { companyId } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: {
+      job: { select: { title: true } },
+      applicant: {
+        select: {
+          id: true,
+          username: true,
+          profile: { select: { fullName: true, avatarUrl: true } }
+        }
+      }
+    }
+  });
+
+  const recentJobs = await prisma.job.findMany({
+    where: { companyId, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: {
+      _count: { select: { applications: true } }
+    }
+  });
+
+  return {
+    company,
+    jobsCount,
+    applicantsCount,
+    officeManagersCount,
+    recruitersCount,
+    pipeline,
+    recentApplicants,
+    recentJobs
+  };
+};
+
+export const listCompanyRecruiters = async (companyId: string) => {
+  return prisma.experience.findMany({
+    where: {
+      companyId,
+      isCurrent: true,
+      user: {
+        roles: {
+          some: {
+            role: {
+              name: "RECRUITER"
+            }
+          }
+        }
+      }
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+};
+
+export const assignCompanyRecruiter = async (actorId: string, companyId: string, userId: string, title?: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError("User not found", 404);
+
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new AppError("Company not found", 404);
+
+  let role = await prisma.role.findUnique({ where: { name: "RECRUITER" } });
+  if (!role) {
+    role = await prisma.role.create({ data: { name: "RECRUITER" } });
+  }
+  const existingRole = await prisma.userRole.findFirst({
+    where: { userId, roleId: role.id }
+  });
+  if (!existingRole) {
+    await prisma.userRole.create({ data: { userId, roleId: role.id } });
+  }
+
+  const existingExp = await prisma.experience.findFirst({
+    where: { userId, companyId, isCurrent: true }
+  });
+  if (!existingExp) {
+    await prisma.experience.create({
+      data: {
+        userId,
+        companyId,
+        title: title || "Recruiter",
+        employmentType: "FULL_TIME",
+        startDate: new Date(),
+        isCurrent: true,
+        description: `Recruitment team member at ${company.name}`
+      }
+    });
+  }
+
+  await createNotification({
+    userId,
+    actorId,
+    type: "SYSTEM",
+    title: "Recruiter Role Assigned",
+    message: `You have been assigned as a recruiter for ${company.name}.`,
+    entityType: "COMPANY",
+    entityId: companyId
+  });
+
+  return { message: "Recruiter assigned successfully" };
+};
+
+export const removeCompanyRecruiter = async (companyId: string, userId: string) => {
+  await prisma.experience.updateMany({
+    where: { userId, companyId, isCurrent: true },
+    data: { isCurrent: false, endDate: new Date() }
+  });
+
+  const otherRecruiterJobs = await prisma.experience.count({
+    where: {
+      userId,
+      isCurrent: true,
+      companyId: { not: companyId }
+    }
+  });
+
+  if (otherRecruiterJobs === 0) {
+    const role = await prisma.role.findUnique({ where: { name: "RECRUITER" } });
+    if (role) {
+      await prisma.userRole.deleteMany({
+        where: { userId, roleId: role.id }
+      });
+    }
+  }
+
+  return { message: "Recruiter removed successfully" };
 };
 
 

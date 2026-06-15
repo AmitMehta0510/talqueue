@@ -1,0 +1,648 @@
+import { useState, useMemo, FormEvent } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+  Building2, Users, Briefcase, Shield, ShieldCheck, Plus, Trash2, MapPin, Loader2,
+  TrendingUp, ArrowLeft, RefreshCw, Sparkles, UserPlus, Info, CheckCircle2, ChevronRight, X
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { Avatar } from "../components/ui";
+import { userName } from "../lib/format";
+import { UserSearchAutocomplete } from "./AdminPages/shared";
+import {
+  useCompanyAdminStatsQuery,
+  useCompanyAdminsForDashboardQuery,
+  useCompanyRecruitersQuery,
+  useAssignCompanyAdminFromDashboardMutation,
+  useRemoveCompanyAdminFromDashboardMutation,
+  useAssignCompanyRecruiterMutation,
+  useRemoveCompanyRecruiterMutation
+} from "../hooks/usePlatformQueries";
+
+type Tab = "overview" | "managers" | "recruiters" | "jobs";
+
+export function CompanyAdminPage() {
+  const { companyId } = useParams<{ companyId: string }>();
+  const { user: currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
+
+  // Queries
+  const statsQuery = useCompanyAdminStatsQuery(companyId || "");
+  const adminsQuery = useCompanyAdminsForDashboardQuery(companyId || "");
+  const recruitersQuery = useCompanyRecruitersQuery(companyId || "");
+
+  // Mutations
+  const assignAdmin = useAssignCompanyAdminFromDashboardMutation();
+  const removeAdmin = useRemoveCompanyAdminFromDashboardMutation();
+  const assignRecruiter = useAssignCompanyRecruiterMutation();
+  const removeRecruiter = useRemoveCompanyRecruiterMutation();
+
+  // Dialog State
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "assign_manager" | "revoke_manager" | "assign_recruiter" | "revoke_recruiter";
+    userId: string;
+    label: string;
+    officeCity?: string;
+    recruiterTitle?: string;
+  } | null>(null);
+
+  // Form inputs inside tabs
+  const [targetUserId, setTargetUserId] = useState("");
+  const [targetUserLabel, setTargetUserLabel] = useState("");
+  const [officeCity, setOfficeCity] = useState("");
+  const [recruiterTitle, setRecruiterTitle] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const stats = statsQuery.data;
+  const admins = adminsQuery.data || [];
+  const recruiters = recruitersQuery.data || [];
+
+  const globalAdmins = admins.filter((a: any) => !a.officeCity);
+  const officeManagers = admins.filter((a: any) => a.officeCity);
+
+  const isPending =
+    assignAdmin.isPending ||
+    removeAdmin.isPending ||
+    assignRecruiter.isPending ||
+    removeRecruiter.isPending;
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction || !companyId) return;
+
+    try {
+      if (confirmAction.type === "assign_manager") {
+        await assignAdmin.mutateAsync({
+          companyId,
+          userId: confirmAction.userId,
+          officeCity: confirmAction.officeCity || undefined
+        });
+      } else if (confirmAction.type === "revoke_manager") {
+        await removeAdmin.mutateAsync({
+          companyId,
+          userId: confirmAction.userId,
+          officeCity: confirmAction.officeCity || undefined
+        });
+      } else if (confirmAction.type === "assign_recruiter") {
+        await assignRecruiter.mutateAsync({
+          companyId,
+          userId: confirmAction.userId,
+          title: confirmAction.recruiterTitle || undefined
+        });
+      } else if (confirmAction.type === "revoke_recruiter") {
+        await removeRecruiter.mutateAsync({
+          companyId,
+          userId: confirmAction.userId
+        });
+      }
+      // Refetch stats and panels
+      statsQuery.refetch();
+    } catch { /* shows query error toast */ }
+    finally {
+      setConfirmAction(null);
+    }
+  };
+
+  const handleAddManagerSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!targetUserId.trim() || !companyId) return;
+
+    setConfirmAction({
+      type: "assign_manager",
+      userId: targetUserId.trim(),
+      label: targetUserLabel || targetUserId.trim(),
+      officeCity: officeCity.trim() || undefined
+    });
+
+    // Reset inputs
+    setTargetUserId("");
+    setTargetUserLabel("");
+    setOfficeCity("");
+    setShowAddForm(false);
+  };
+
+  const handleAddRecruiterSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!targetUserId.trim() || !companyId) return;
+
+    setConfirmAction({
+      type: "assign_recruiter",
+      userId: targetUserId.trim(),
+      label: targetUserLabel || targetUserId.trim(),
+      recruiterTitle: recruiterTitle.trim() || undefined
+    });
+
+    // Reset inputs
+    setTargetUserId("");
+    setTargetUserLabel("");
+    setRecruiterTitle("");
+    setShowAddForm(false);
+  };
+
+  const loading = statsQuery.isFetching || adminsQuery.isFetching || recruitersQuery.isFetching;
+
+  if (statsQuery.isLoading) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-3 bg-zinc-950 text-zinc-400">
+        <Loader2 className="animate-spin text-emerald-500" size={32} />
+        <p className="text-sm font-semibold">Loading Admin Dashboard...</p>
+      </div>
+    );
+  }
+
+  if (statsQuery.isError || !stats) {
+    return (
+      <div className="mx-auto max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 text-center mt-20 text-zinc-100">
+        <Shield size={36} className="mx-auto text-rose-500 mb-3" />
+        <h3 className="font-bold text-lg">Access Denied / Load Failed</h3>
+        <p className="text-sm text-zinc-500 mt-2 mb-4">
+          You must be a Global Administrator of the company to view this dashboard, or the server failed to respond.
+        </p>
+        <Link to="/companies" className="inline-flex items-center gap-1 text-xs text-emerald-400 font-bold hover:underline">
+          <ArrowLeft size={12} /> Back to Companies
+        </Link>
+      </div>
+    );
+  }
+
+  const company = stats.company;
+
+  // Render Visual Pipeline Funnel
+  const pipelineStatuses = ["APPLIED", "VIEWED", "SHORTLISTED", "INTERVIEW", "REJECTED", "HIRED"];
+  const pipelineCounts = stats.pipeline || [];
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 px-4 py-6">
+      <div className="mx-auto max-w-screen-xl space-y-6">
+
+        {/* ── Navigation back ── */}
+        <Link
+          to={`/companies/${company.slug}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition"
+        >
+          <ArrowLeft size={12} /> Back to {company.name} profile
+        </Link>
+
+        {/* ── Console Header ── */}
+        <div className="flex flex-col gap-4 border-b border-zinc-800 pb-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            {company.logoUrl ? (
+              <img src={company.logoUrl} alt={company.name} className="h-12 w-12 rounded-xl object-contain bg-zinc-900 border border-zinc-800 p-1" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-blue-600/20 border border-indigo-600/30">
+                <Building2 size={20} className="text-indigo-400" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                {company.name} Admin Portal
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                  <ShieldCheck size={10} /> Global Scope
+                </span>
+              </h1>
+              <p className="text-xs text-zinc-500 mt-0.5">Configure access permissions and audit recruitment pipeline statistics.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                statsQuery.refetch();
+                adminsQuery.refetch();
+                recruitersQuery.refetch();
+              }}
+              className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-zinc-700 transition"
+            >
+              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+              Sync Data
+            </button>
+          </div>
+        </div>
+
+        {/* ── Layout Panels ── */}
+        <div className="flex flex-col gap-6 md:flex-row">
+          
+          {/* ── Sidebar Nav ── */}
+          <div className="w-full shrink-0 md:w-48">
+            <nav className="flex flex-row overflow-x-auto gap-1 border-b border-zinc-800 pb-2 md:flex-col md:border-none md:pb-0 md:space-y-1">
+              {([
+                { id: "overview", label: "Stats & Funnel", icon: TrendingUp },
+                { id: "managers", label: "Office Managers", icon: Shield },
+                { id: "recruiters", label: "Recruiter Seats", icon: Users },
+                { id: "jobs", label: "Job Postings", icon: Briefcase }
+              ] as const).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => { setActiveTab(id); setShowAddForm(false); }}
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap md:whitespace-normal
+                    ${activeTab === id
+                      ? "bg-emerald-600/10 text-emerald-400 border border-emerald-600/20"
+                      : "text-zinc-500 hover:bg-zinc-900/60 hover:text-zinc-300 border border-transparent"
+                    }`}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* ── Main View Panel ── */}
+          <div className="flex-1 min-w-0">
+
+            {/* ── VIEW: OVERVIEW/FUNNEL ── */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                
+                {/* Metrics Grid */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { label: "Job Postings", value: stats.jobsCount, icon: Briefcase, color: "from-blue-500/20 to-indigo-500/20 text-blue-400" },
+                    { label: "Pipeline Applicants", value: stats.applicantsCount, icon: Users, color: "from-purple-500/20 to-violet-500/20 text-purple-400" },
+                    { label: "Office Scopes", value: stats.officeManagersCount, icon: MapPin, color: "from-amber-500/20 to-orange-500/20 text-amber-400" },
+                    { label: "Recruiter Seats", value: stats.recruitersCount, icon: Shield, color: "from-emerald-500/20 to-teal-500/20 text-emerald-400" }
+                  ].map((m, idx) => (
+                    <div key={idx} className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 transition-all duration-300 hover:border-zinc-700">
+                      <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${m.color}`}>
+                        <m.icon size={16} />
+                      </div>
+                      <div className="text-2xl font-black text-white">{m.value}</div>
+                      <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-1">{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pipeline Funnel Visualizer */}
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-yellow-400" />
+                      Candidate Pipeline Funnel
+                    </h3>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">Visual stage-by-stage analysis of current job applications.</p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-6">
+                    {pipelineStatuses.map((status) => {
+                      const record = pipelineCounts.find((p: any) => p.status === status);
+                      const count = record ? record.count : 0;
+                      return (
+                        <div key={status} className="rounded-lg border border-zinc-850 bg-zinc-900/60 p-3 flex flex-col justify-between">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                            status === "HIRED" ? "text-emerald-400" :
+                            status === "REJECTED" ? "text-rose-400" :
+                            status === "INTERVIEW" ? "text-amber-400" : "text-zinc-400"
+                          }`}>{status}</span>
+                          <span className="text-xl font-black text-white mt-2">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Recent Jobs */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Recent Postings</h3>
+                    {stats.recentJobs?.length === 0 ? (
+                      <p className="text-xs text-zinc-600 italic">No jobs posted yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {stats.recentJobs?.map((job: any) => (
+                          <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-900 bg-zinc-900/20 p-3">
+                            <div>
+                              <div className="text-xs font-semibold text-white">{job.title}</div>
+                              <div className="text-[10px] text-zinc-500 mt-0.5">{job.location || "Remote"} · {job.type}</div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 rounded bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-400">
+                              {job._count?.applications} applicants
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent Applicants */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Recent Applications</h3>
+                    {stats.recentApplicants?.length === 0 ? (
+                      <p className="text-xs text-zinc-600 italic">No applications received yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {stats.recentApplicants?.map((app: any) => {
+                          const u = app.applicant;
+                          const label = userName(u);
+                          return (
+                            <div key={app.id} className="flex items-center justify-between rounded-lg border border-zinc-900 bg-zinc-900/20 p-3">
+                              <div className="flex items-center gap-2">
+                                <Avatar user={u} size="sm" />
+                                <div>
+                                  <div className="text-xs font-semibold text-white">{label}</div>
+                                  <div className="text-[10px] text-zinc-500 mt-0.5">Applied for {app.job?.title}</div>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-bold uppercase text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded">
+                                {app.status}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* ── VIEW: OFFICE MANAGERS ── */}
+            {activeTab === "managers" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Office Scope managers</h2>
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                  >
+                    <Plus size={12} /> Assign Manager
+                  </button>
+                </div>
+
+                {showAddForm && (
+                  <form onSubmit={handleAddManagerSubmit} className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-4 space-y-3">
+                    <div className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <UserPlus size={13} className="text-emerald-500" />
+                      Add Office Manager
+                    </div>
+
+                    <UserSearchAutocomplete
+                      value={targetUserId}
+                      onChange={(userId, label) => {
+                        setTargetUserId(userId);
+                        setTargetUserLabel(label);
+                      }}
+                      placeholder="Search users on platform..."
+                    />
+
+                    <input
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                      value={officeCity}
+                      onChange={(e) => setOfficeCity(e.target.value)}
+                      placeholder="Office City Scope (e.g. Bangalore, London) *"
+                      required
+                    />
+
+                    <div className="flex gap-2">
+                      <button className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition" type="submit">
+                        Assign Manager
+                      </button>
+                      <button type="button" className="rounded-lg border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition" onClick={() => setShowAddForm(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="space-y-4">
+                  {/* Global Admins read-only preview */}
+                  {globalAdmins.length > 0 && (
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-2">
+                      <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-2">
+                        <ShieldCheck size={11} />
+                        Global Admins ({globalAdmins.length})
+                      </div>
+                      {globalAdmins.map((admin: any) => {
+                        const u = admin.user;
+                        const label = userName(u);
+                        return (
+                          <div key={admin.id} className="flex items-center justify-between border-b border-zinc-850 pb-2 last:border-b-0 last:pb-0">
+                            <div className="flex items-center gap-2">
+                              <Avatar user={u} size="sm" />
+                              <div>
+                                <div className="text-xs font-semibold text-white">{label}</div>
+                                <div className="text-[10px] text-zinc-550">@{u.username}</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                              Global Privileges
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Scoped Managers */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Office Scope Managers ({officeManagers.length})</h3>
+                    {officeManagers.length === 0 ? (
+                      <p className="text-xs text-zinc-600 italic">No office-scoped managers assigned.</p>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {officeManagers.map((admin: any) => {
+                          const u = admin.user;
+                          const label = userName(u);
+                          return (
+                            <div key={admin.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-3">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar user={u} size="sm" />
+                                <div>
+                                  <div className="text-xs font-semibold text-white">{label}</div>
+                                  <div className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                    <span>@{u.username}</span>
+                                    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/15 px-1 py-0.2 text-[8px] font-bold text-amber-400">
+                                      📍 {admin.officeCity}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setConfirmAction({
+                                  type: "revoke_manager",
+                                  userId: u.id,
+                                  label,
+                                  officeCity: admin.officeCity
+                                })}
+                                className="rounded p-1.5 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── VIEW: RECRUITERS ── */}
+            {activeTab === "recruiters" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Recruiter Seats</h2>
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                  >
+                    <Plus size={12} /> Add Recruiter
+                  </button>
+                </div>
+
+                {showAddForm && (
+                  <form onSubmit={handleAddRecruiterSubmit} className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-4 space-y-3">
+                    <div className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <UserPlus size={13} className="text-emerald-500" />
+                      Add Recruiter Seat
+                    </div>
+
+                    <UserSearchAutocomplete
+                      value={targetUserId}
+                      onChange={(userId, label) => {
+                        setTargetUserId(userId);
+                        setTargetUserLabel(label);
+                      }}
+                      placeholder="Search users on platform..."
+                    />
+
+                    <input
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                      value={recruiterTitle}
+                      onChange={(e) => setRecruiterTitle(e.target.value)}
+                      placeholder="Job Title (e.g. Technical Recruiter, Talent Acquisition) *"
+                      required
+                    />
+
+                    <div className="flex gap-2">
+                      <button className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition" type="submit">
+                        Assign Seat
+                      </button>
+                      <button type="button" className="rounded-lg border border-zinc-800 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition" onClick={() => setShowAddForm(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Assigned Seats ({recruiters.length})</h3>
+                  {recruiters.length === 0 ? (
+                    <p className="text-xs text-zinc-600 italic">No recruiters assigned to this company yet.</p>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {recruiters.map((rec: any) => {
+                        const u = rec.user;
+                        const label = userName(u);
+                        return (
+                          <div key={rec.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar user={u} size="sm" />
+                              <div>
+                                <div className="text-xs font-semibold text-white">{label}</div>
+                                <div className="text-[10px] text-zinc-500">{rec.title || "Recruiter"} · @{u.username}</div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setConfirmAction({
+                                type: "revoke_recruiter",
+                                userId: u.id,
+                                label
+                              })}
+                              className="rounded p-1.5 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── VIEW: JOBS DIRECTORY ── */}
+            {activeTab === "jobs" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Jobs Postings</h2>
+                  <Link
+                    to="/jobs"
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                  >
+                    Open Jobs Portal
+                  </Link>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">All Company Job Postings</h3>
+                  {stats.recentJobs?.length === 0 ? (
+                    <p className="text-xs text-zinc-600 italic">No job postings created.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {stats.recentJobs?.map((job: any) => (
+                        <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-4">
+                          <div>
+                            <div className="text-xs font-bold text-white flex items-center gap-2">
+                              {job.title}
+                              <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-400">
+                                {job.status}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-zinc-500 mt-1">
+                              {job.location || "Remote"} · {job.type} · Posted {new Date(job.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          
+                          <Link
+                            to="/jobs"
+                            className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-0.5"
+                          >
+                            Manage <ChevronRight size={12} />
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ── Confirmation Dialog ── */}
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={
+          confirmAction?.type === "assign_manager" ? "Assign Office Manager" :
+          confirmAction?.type === "revoke_manager" ? "Revoke Office Scope" :
+          confirmAction?.type === "assign_recruiter" ? "Add Recruiter Seat" : "Revoke Recruiter Seat"
+        }
+        message={
+          confirmAction?.type === "assign_manager" ? (
+            <p>Are you sure you want to assign <strong>{confirmAction.label}</strong> as Manager for the <strong>{confirmAction.officeCity}</strong> office? They will receive a notification.</p>
+          ) : confirmAction?.type === "revoke_manager" ? (
+            <p>Revoke office manager privileges from <strong>{confirmAction.label}</strong> for the <strong>{confirmAction.officeCity}</strong> office?</p>
+          ) : confirmAction?.type === "assign_recruiter" ? (
+            <p>Are you sure you want to assign recruiter seat to <strong>{confirmAction.label}</strong> as <strong>{confirmAction.recruiterTitle}</strong>? They will receive a notification.</p>
+          ) : (
+            <p>Revoke recruiter privileges from <strong>{confirmAction?.label}</strong>? They will no longer be able to post jobs.</p>
+          )
+        }
+        confirmLabel={
+          confirmAction?.type === "assign_manager" || confirmAction?.type === "assign_recruiter" ? "Assign Seat" : "Revoke"
+        }
+        variant={confirmAction?.type?.startsWith("revoke") ? "danger" : "default"}
+        isPending={isPending}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmAction(null)}
+      />
+
+    </div>
+  );
+}
