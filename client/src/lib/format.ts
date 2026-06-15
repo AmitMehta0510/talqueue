@@ -214,3 +214,16 @@ export const getErrorMessage = (error: unknown): string => {
 
   return "Something went wrong. Please try again.";
 };
+
+/**
+ * Substitutes defunct/legacy logo hosting services (like Clearbit)
+ * with free, live ones (like Hunter.io) to prevent broken/invisible logos.
+ */
+export const cleanLogoUrl = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.includes("logo.clearbit.com")) {
+    return url.replace("logo.clearbit.com", "logos.hunter.io");
+  }
+  return url;
+};
+

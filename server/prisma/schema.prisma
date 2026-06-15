@@ -555,6 +555,7 @@ model User {
   createdCommunities   Community[]        @relation("CommunityCreator")
   companyRequests      CompanyRequest[]
   collegeRequests      CollegeRequest[]
+  followedCompanies    Company[]          @relation("CompanyFollowers")
 }
 
 model UserRecommendation {
@@ -2059,6 +2060,7 @@ model Company {
   updatedAt DateTime @updatedAt
 
   companyRequests CompanyRequest[]
+  followers       User[]           @relation("CompanyFollowers")
 }
 
 model Job {

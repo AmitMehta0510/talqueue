@@ -154,6 +154,8 @@ export const createJob = async (userId: string, data: any) => {
           name: true,
 
           logoUrl: true,
+
+          slug: true,
         },
       },
     },
@@ -321,6 +323,22 @@ export const getJobs = async (page = 1, limit = 20) => {
 
       featured: true,
 
+      description: true,
+
+      requirements: true,
+
+      responsibilities: true,
+
+      perks: true,
+
+      skillsRequired: true,
+
+      applyUrl: true,
+
+      currency: true,
+
+      openings: true,
+
       company: {
         select: {
           id: true,
@@ -330,6 +348,8 @@ export const getJobs = async (page = 1, limit = 20) => {
           logoUrl: true,
 
           verified: true,
+
+          slug: true,
         },
       },
     },
@@ -403,6 +423,8 @@ export const getJobBySlug = async (slug: string) => {
           verified: true,
 
           websiteUrl: true,
+
+          slug: true,
         },
       },
 
@@ -538,6 +560,8 @@ export const getRecruiterJobs = async (
           name: true,
 
           logoUrl: true,
+
+          slug: true,
         },
       },
     },

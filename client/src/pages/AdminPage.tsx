@@ -45,7 +45,7 @@ import {
   useAdminUpdateHackathonMutation,
   useAdminTriggerScraperMutation,
 } from "../hooks/usePlatformQueries";
-import { titleCase, userName, getHighestPrivilegeRole } from "../lib/format";
+import { titleCase, userName, getHighestPrivilegeRole, cleanLogoUrl } from "../lib/format";
 import { College, Company, User } from "../lib/api";
 
 type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests";
@@ -1390,8 +1390,8 @@ function JobsModerationTab({ q }: { q: string }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    {j.company?.logoUrl && (
-                      <img src={j.company.logoUrl} alt="" className="h-5 w-5 rounded object-contain" />
+                    {cleanLogoUrl(j.company?.logoUrl) && (
+                      <img src={cleanLogoUrl(j.company.logoUrl)!} alt="" className="h-5 w-5 rounded object-contain" />
                     )}
                     <span className="text-zinc-300">{j.company?.name}</span>
                   </div>
@@ -1532,8 +1532,8 @@ function CollegesPanel({ selectedCollege, onSelectCollege, onRevokeAdmin }: {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {c.logoUrl ? (
-                        <img src={c.logoUrl} alt={c.name} className="h-8 w-8 rounded-lg object-contain bg-zinc-700" />
+                      {cleanLogoUrl(c.logoUrl) ? (
+                        <img src={cleanLogoUrl(c.logoUrl)!} alt={c.name} className="h-8 w-8 rounded-lg object-contain bg-zinc-700" />
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/20 to-blue-600/20 border border-indigo-600/20">
                           <GraduationCap size={14} className="text-indigo-400" />
@@ -1820,8 +1820,8 @@ function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin }: {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {c.logoUrl ? (
-                    <img src={c.logoUrl} alt={c.name} className="h-8 w-8 rounded-lg object-contain bg-zinc-700" />
+                  {cleanLogoUrl(c.logoUrl) ? (
+                    <img src={cleanLogoUrl(c.logoUrl)!} alt={c.name} className="h-8 w-8 rounded-lg object-contain bg-zinc-700" />
                   ) : (
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-violet-600/20 border border-purple-600/20">
                       <Building2 size={14} className="text-purple-400" />

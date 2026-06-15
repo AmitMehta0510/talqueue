@@ -101,6 +101,27 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
             <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.description}</p>
           </div>
 
+          {job.responsibilities && (
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950 mb-2">Responsibilities</h3>
+              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.responsibilities}</p>
+            </div>
+          )}
+
+          {job.requirements && (
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950 mb-2">Requirements</h3>
+              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.requirements}</p>
+            </div>
+          )}
+
+          {job.perks && (
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950 mb-2">Perks & Benefits</h3>
+              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.perks}</p>
+            </div>
+          )}
+
           {/* Skills Required */}
           {job.skillsRequired && job.skillsRequired.length > 0 && (
             <div>
@@ -117,9 +138,27 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
 
           <hr className="border-slate-100" />
 
-          {/* Apply Form / Status Section */}
+          {/* Apply Form / Status Section / External Apply */}
           <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
-            {applied ? (
+            {job.applyUrl ? (
+              <div className="text-center py-4 space-y-3">
+                <Globe size={24} className="mx-auto text-blue-600 animate-pulse" />
+                <div>
+                  <h4 className="font-semibold text-sm text-slate-900">External Job Application</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    This job listing is sourced externally. Applications are processed directly on the company's hiring portal.
+                  </p>
+                </div>
+                <a
+                  href={job.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary inline-flex items-center gap-1.5 mt-2"
+                >
+                  Apply on Company Portal <Globe size={13} />
+                </a>
+              </div>
+            ) : applied ? (
               <div className="flex items-center gap-3 text-emerald-800">
                 <CheckCircle2 size={24} className="shrink-0 text-emerald-600" />
                 <div>

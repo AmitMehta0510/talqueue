@@ -761,7 +761,8 @@ export const adminApproveCompanyRequest = async (
   if (!request) throw new AppError("Company request not found", 404);
   if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
 
-  const jobData = request.pendingJobData as any;
+  const pendingData = request.pendingJobData as any;
+  const companyDetails = pendingData?.companyDetails || {};
 
   // Create the company
   const slugBase = request.companyName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -772,41 +773,50 @@ export const adminApproveCompanyRequest = async (
       name: request.companyName,
       slug,
       verified: true,
-      logoUrl: options?.logoUrl,
-      websiteUrl: options?.websiteUrl,
-      headquarters: options?.headquarters,
-      industry: options?.industry,
+      logoUrl: options?.logoUrl || companyDetails.logoUrl || null,
+      websiteUrl: options?.websiteUrl || companyDetails.websiteUrl || null,
+      headquarters: options?.headquarters || companyDetails.headquarters || null,
+      industry: options?.industry || companyDetails.industry || null,
+      description: companyDetails.description || null,
+      tagline: companyDetails.tagline || null,
+      foundedYear: companyDetails.foundedYear ? Number(companyDetails.foundedYear) : null,
+      type: companyDetails.type || null,
+      size: companyDetails.size || null,
+      careersPageUrl: companyDetails.careersPageUrl || null,
+      githubUrl: companyDetails.githubUrl || null,
     },
   });
 
-  // Generate job slug
-  const jobSlugBase = `${jobData.title}-${company.name}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const jobSlug = `${jobSlugBase}-${Date.now()}`;
+  // Create the job if a title exists (it's a job post request)
+  let job = null;
+  if (pendingData && pendingData.title) {
+    const jobSlugBase = `${pendingData.title}-${company.name}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const jobSlug = `${jobSlugBase}-${Date.now()}`;
 
-  // Create the job
-  const job = await prisma.job.create({
-    data: {
-      companyId: company.id,
-      postedById: request.requestedById,
-      title: jobData.title,
-      slug: jobSlug,
-      description: jobData.description,
-      requirements: jobData.requirements,
-      responsibilities: jobData.responsibilities,
-      location: jobData.location,
-      workMode: jobData.workMode,
-      type: jobData.type,
-      experienceLevel: jobData.experienceLevel,
-      salaryMin: jobData.salaryMin,
-      salaryMax: jobData.salaryMax,
-      currency: jobData.currency || "INR",
-      skillsRequired: jobData.skillsRequired || [],
-      applicationDeadline: jobData.applicationDeadline ? new Date(jobData.applicationDeadline) : null,
-      applyUrl: jobData.applyUrl,
-      featured: jobData.featured || false,
-    },
-    select: { id: true, title: true },
-  });
+    job = await prisma.job.create({
+      data: {
+        companyId: company.id,
+        postedById: request.requestedById,
+        title: pendingData.title,
+        slug: jobSlug,
+        description: pendingData.description,
+        requirements: pendingData.requirements,
+        responsibilities: pendingData.responsibilities,
+        location: pendingData.location,
+        workMode: pendingData.workMode,
+        type: pendingData.type,
+        experienceLevel: pendingData.experienceLevel,
+        salaryMin: pendingData.salaryMin,
+        salaryMax: pendingData.salaryMax,
+        currency: pendingData.currency || "INR",
+        skillsRequired: pendingData.skillsRequired || [],
+        applicationDeadline: pendingData.applicationDeadline ? new Date(pendingData.applicationDeadline) : null,
+        applyUrl: pendingData.applyUrl,
+        featured: pendingData.featured || false,
+      },
+      select: { id: true, title: true },
+    });
+  }
 
   // Update company request status
   await prisma.companyRequest.update({
@@ -814,21 +824,23 @@ export const adminApproveCompanyRequest = async (
     data: {
       status: "APPROVED",
       companyId: company.id,
-      jobId: job.id,
+      jobId: job ? job.id : null,
       reviewedById: adminId,
       reviewedAt: new Date(),
     },
   });
 
-  // Notify the recruiter
+  // Notify the requester
   await prisma.notification.create({
     data: {
       userId: request.requestedById,
       type: "SYSTEM",
-      title: "Company Approved & Job Posted!",
-      message: `Your company "${request.companyName}" has been verified. Your job "${job.title}" is now live.`,
-      entityType: "JOB",
-      entityId: job.id,
+      title: job ? "Company Approved & Job Posted!" : "Company Registration Approved!",
+      message: job 
+        ? `Your company "${request.companyName}" has been verified. Your job "${job.title}" is now live.`
+        : `Your registration request for "${request.companyName}" has been verified and approved.`,
+      entityType: job ? "JOB" : "COMPANY",
+      entityId: job ? job.id : company.id,
     },
   });
 

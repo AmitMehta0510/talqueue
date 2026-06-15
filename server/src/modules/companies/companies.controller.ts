@@ -13,6 +13,9 @@ import {
   getCompanyEmployees,
   seedCompanies,
   getCompanyReferrers,
+  requestCompanyRegistration,
+  followCompany,
+  unfollowCompany,
 } from "./companies.service";
 
 import { createCompanySchema } from "./companies.validation";
@@ -54,6 +57,7 @@ export const getCompaniesHandler = asyncHandler(
     const hiringEnabled = parseBoolean(
       req.query.hiringEnabled as string | undefined,
     );
+    const hasJobs = parseBoolean(req.query.hasJobs as string | undefined);
 
     const companies = await getCompanies(page, limit, {
       q: search,
@@ -63,6 +67,7 @@ export const getCompaniesHandler = asyncHandler(
       location,
       type,
       size,
+      hasJobs,
     });
 
     res.json(successResponse(companies));
@@ -111,4 +116,28 @@ export const getCompanyReferrersHandler = asyncHandler(
     res.json(successResponse(referrers));
   },
 );
+
+export const requestCompanyRegistrationHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await requestCompanyRegistration(req.user.id, req.body);
+    res.status(202).json(successResponse(result, result.message));
+  },
+);
+
+export const followCompanyHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const companyId = req.params.companyId as string;
+    const result = await followCompany(req.user.id, companyId);
+    res.json(successResponse(result, result.message));
+  },
+);
+
+export const unfollowCompanyHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const companyId = req.params.companyId as string;
+    const result = await unfollowCompany(req.user.id, companyId);
+    res.json(successResponse(result, result.message));
+  },
+);
+
 

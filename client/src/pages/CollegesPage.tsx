@@ -10,7 +10,7 @@ import {
   useDepartmentsQuery,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
-import { compactPayload, formatCount, formatDate } from "../lib/format";
+import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
 
 // Role helpers
 const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
@@ -34,11 +34,12 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, "");
 
 function CollegeLogo({ college }: { college: College }) {
-  if (college.logoUrl) {
+  const logoUrl = cleanLogoUrl(college.logoUrl);
+  if (logoUrl) {
     return (
       <img
         className="h-11 w-11 rounded-md object-cover"
-        src={college.logoUrl}
+        src={logoUrl}
         alt={college.name}
       />
     );

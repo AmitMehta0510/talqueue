@@ -30,7 +30,9 @@ export const createJobHandler = asyncHandler(async (req: any, res: Response) => 
 });
 
 export const getJobsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const jobs = await getJobs();
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const jobs = await getJobs(page, limit);
   res.json(successResponse(jobs));
 });
 

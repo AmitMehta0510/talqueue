@@ -634,6 +634,7 @@ export const useCompaniesQuery = (
     size?: CompanySize;
     verified?: boolean;
     hiringEnabled?: boolean;
+    hasJobs?: boolean;
   } = {},
 ) =>
   useQuery({
@@ -702,6 +703,57 @@ export const useCreateCompanyMutation = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+    },
+  });
+};
+
+export const useRequestCompanyRegistrationMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: any) => {
+      if (!user) throw new Error("Login required");
+      return api.requestCompanyRegistration(payload);
+    },
+    onSuccess: (res) => showToast("success", res.message || "Request submitted successfully"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useFollowCompanyMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (companyId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.followCompany(companyId);
+    },
+    onSuccess: (res) => showToast("success", res.message || "Following company"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+    },
+  });
+};
+
+export const useUnfollowCompanyMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (companyId: string) => {
+      if (!user) throw new Error("Login required");
+      return api.unfollowCompany(companyId);
+    },
+    onSuccess: (res) => showToast("success", res.message || "Unfollowed company"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     },
   });
 };
@@ -1332,11 +1384,11 @@ export const useHackathonLifecycleMutation = (hackathonId?: string) => {
   });
 };
 
-export const useJobsQuery = () =>
+export const useJobsQuery = (params?: { page?: number; limit?: number }) =>
   useQuery({
-    queryKey: queryKeys.jobs.list(),
+    queryKey: [...queryKeys.jobs.list(), params],
     queryFn: async ({ signal }) => {
-      const result = await api.jobs({ signal });
+      const result = await api.jobs(params, { signal });
       return result.data || [];
     },
   });

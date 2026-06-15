@@ -140,6 +140,7 @@ export const getCompanies = async (
     location?: string;
     type?: CompanyType;
     size?: CompanySize;
+    hasJobs?: boolean;
   } = {},
 ) => {
   const skip = (page - 1) * limit;
@@ -211,6 +212,22 @@ export const getCompanies = async (
     where.size = filters.size;
   }
 
+  if (filters.hasJobs !== undefined) {
+    if (filters.hasJobs) {
+      where.jobs = {
+        some: {
+          status: "OPEN",
+        },
+      };
+    } else {
+      where.jobs = {
+        none: {
+          status: "OPEN",
+        },
+      };
+    }
+  }
+
   const [total, companies] = await Promise.all([
     prisma.company.count({ where }),
     prisma.company.findMany({
@@ -220,10 +237,16 @@ export const getCompanies = async (
       take: limit,
 
       orderBy: [
+        ...(filters.hasJobs ? [
+          {
+            jobs: {
+              _count: "desc" as const,
+            },
+          },
+        ] : []),
         {
           verified: "desc",
         },
-
         {
           createdAt: "desc",
         },
@@ -299,8 +322,6 @@ export const getCompanyBySlug = async (
       coverImageUrl: true,
 
       websiteUrl: true,
-
-      linkedinUrl: true,
 
       twitterUrl: true,
 
@@ -409,6 +430,8 @@ export const getCompanyBySlug = async (
           experiences: true,
 
           referralRequests: true,
+
+          followers: true,
         },
       },
     },
@@ -432,7 +455,23 @@ export const getCompanyBySlug = async (
     }).catch(console.error);
   }
 
-  return company;
+  let isFollowing = false;
+  if (userId && company) {
+    const followCount = await prisma.company.count({
+      where: {
+        id: company.id,
+        followers: {
+          some: { id: userId }
+        }
+      }
+    });
+    isFollowing = followCount > 0;
+  }
+
+  return {
+    ...company,
+    isFollowing
+  };
 };
 
 //
@@ -607,4 +646,92 @@ export const getCompanyReferrers = async (companyId: string) => {
 
   return referrers;
 };
+
+//
+// REQUEST COMPANY REGISTRATION
+//
+export const requestCompanyRegistration = async (userId: string, data: any) => {
+  const request = await prisma.companyRequest.create({
+    data: {
+      requestedById: userId,
+      companyName: data.name,
+      pendingJobData: {
+        companyDetails: {
+          tagline: data.tagline || null,
+          description: data.description || null,
+          headquarters: data.headquarters || null,
+          industry: data.industry || null,
+          foundedYear: data.foundedYear ? Number(data.foundedYear) : null,
+          type: data.type || null,
+          size: data.size || null,
+          websiteUrl: data.websiteUrl || null,
+          careersPageUrl: data.careersPageUrl || null,
+          logoUrl: data.logoUrl || null,
+          githubUrl: data.githubUrl || null,
+        }
+      }
+    },
+    select: {
+      id: true,
+      companyName: true,
+      status: true,
+      createdAt: true,
+    }
+  });
+
+  return {
+    pending: true,
+    requestId: request.id,
+    message: `Registration request for "${data.name}" has been submitted for admin approval.`
+  };
+};
+
+//
+// FOLLOW COMPANY
+//
+export const followCompany = async (userId: string, companyId: string) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true }
+  });
+  if (!company) {
+    throw new AppError("Company not found", 404);
+  }
+
+  await prisma.company.update({
+    where: { id: companyId },
+    data: {
+      followers: {
+        connect: { id: userId }
+      }
+    }
+  });
+
+  return { success: true, message: "Successfully followed company" };
+};
+
+//
+// UNFOLLOW COMPANY
+//
+export const unfollowCompany = async (userId: string, companyId: string) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true }
+  });
+  if (!company) {
+    throw new AppError("Company not found", 404);
+  }
+
+  await prisma.company.update({
+    where: { id: companyId },
+    data: {
+      followers: {
+        disconnect: { id: userId }
+      }
+    }
+  });
+
+  return { success: true, message: "Successfully unfollowed company" };
+};
+
 

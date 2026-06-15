@@ -11,6 +11,9 @@ import {
   getCompanyEmployeesHandler,
   seedCompaniesHandler,
   getCompanyReferrersHandler,
+  requestCompanyRegistrationHandler,
+  followCompanyHandler,
+  unfollowCompanyHandler,
 } from "./companies.controller";
 
 const router = Router();
@@ -25,6 +28,24 @@ router.post(
   "/seed",
   protect,
   seedCompaniesHandler
+);
+
+router.post(
+  "/request",
+  protect,
+  requestCompanyRegistrationHandler
+);
+
+router.post(
+  "/:companyId/follow",
+  protect,
+  followCompanyHandler
+);
+
+router.post(
+  "/:companyId/unfollow",
+  protect,
+  unfollowCompanyHandler
 );
 
 router.get(

@@ -22,12 +22,16 @@ import {
 import { Link, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import {
   useCompaniesQuery,
   useCompanyEmployeesQuery,
   useCompanyQuery,
   useCreateCompanyMutation,
   useSuggestedCompaniesQuery,
+  useRequestCompanyRegistrationMutation,
+  useFollowCompanyMutation,
+  useUnfollowCompanyMutation,
 } from "../hooks/usePlatformQueries";
 import { Company, CompanySize, CompanyType, User } from "../lib/api";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
@@ -38,10 +42,11 @@ import {
   titleCase,
   userHeadline,
   userName,
+  cleanLogoUrl,
 } from "../lib/format";
 
 const companyTypes: CompanyType[] = [
-  "STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "ENTERPRISE", "MNC", "OTHER",
+  "STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "MNC", "OTHER",
 ];
 const companySizes: CompanySize[] = [
   "SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE",
@@ -71,8 +76,9 @@ const TYPE_COLOR: Record<string, string> = {
 function CompanyLogo({ company, size = "md" }: { company: Company; size?: "sm" | "md" | "lg" }) {
   const dims = { sm: "h-9 w-9", md: "h-12 w-12", lg: "h-16 w-16" };
   const dim = dims[size];
-  if (company.logoUrl) {
-    return <img className={`${dim} rounded-xl object-cover border border-slate-100`} src={company.logoUrl} alt={company.name} />;
+  const logoUrl = cleanLogoUrl(company.logoUrl);
+  if (logoUrl) {
+    return <img className={`${dim} rounded-xl object-cover border border-slate-100`} src={logoUrl} alt={company.name} />;
   }
   return (
     <div className={`inline-flex ${dim} shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500`}>
@@ -136,11 +142,11 @@ function CompanyCard({ company }: { company: Company }) {
       <div className="mt-3 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
         <span className="flex items-center gap-1">
           <BriefcaseBusiness size={11} />
-          <strong className="text-slate-800">{formatCount(company._count?.jobs)}</strong> Jobs
+          <strong className="text-slate-800">{formatCount(company._count?.jobs)}</strong> {company._count?.jobs === 1 ? "Job" : "Jobs"}
         </span>
         <span className="flex items-center gap-1">
           <Users size={11} />
-          <strong className="text-slate-800">{formatCount(company._count?.experiences)}</strong> Employees
+          <strong className="text-slate-800">{formatCount(company._count?.experiences)}</strong> {company._count?.experiences === 1 ? "employee" : "employees"} on Eng Hub
         </span>
         {company.rating != null && (
           <span className="flex items-center gap-1 ml-auto">
@@ -164,7 +170,7 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
   const createCompany = useCreateCompanyMutation();
   const [form, setForm] = useState({
     name: "", tagline: "", description: "", headquarters: "", industry: "",
-    websiteUrl: "", careersPageUrl: "", logoUrl: "", linkedinUrl: "", githubUrl: "",
+    websiteUrl: "", careersPageUrl: "", logoUrl: "", githubUrl: "",
     foundedYear: "", type: "" as "" | CompanyType, size: "" as "" | CompanySize,
     hiringEnabled: true, referralEnabled: true,
   });
@@ -179,7 +185,7 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
         ...compactPayload({
           tagline: form.tagline, description: form.description, headquarters: form.headquarters,
           industry: form.industry, websiteUrl: form.websiteUrl, careersPageUrl: form.careersPageUrl,
-          logoUrl: form.logoUrl, linkedinUrl: form.linkedinUrl, githubUrl: form.githubUrl,
+          logoUrl: form.logoUrl, githubUrl: form.githubUrl,
           type: form.type || undefined, size: form.size || undefined,
         }),
         foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
@@ -221,8 +227,7 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
             <input className="field" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="Website URL" />
             <input className="field" value={form.careersPageUrl} onChange={(e) => set("careersPageUrl", e.target.value)} placeholder="Careers URL" />
             <input className="field" value={form.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="Logo URL" />
-            <input className="field" value={form.linkedinUrl} onChange={(e) => set("linkedinUrl", e.target.value)} placeholder="LinkedIn URL" />
-            <input className="field md:col-span-2" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
+            <input className="field" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
           </div>
           <div className="flex gap-6 text-sm text-slate-600">
             <label className="flex cursor-pointer items-center gap-2">
@@ -248,15 +253,112 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
+// Request Company Registration Modal (normal users)
+// ---------------------------------------------------------------------------
+function RequestCompanyModal({ onClose }: { onClose: () => void }) {
+  const requestCompany = useRequestCompanyRegistrationMutation();
+  const [form, setForm] = useState({
+    name: "", tagline: "", description: "", headquarters: "", industry: "",
+    websiteUrl: "", careersPageUrl: "", logoUrl: "", githubUrl: "",
+    foundedYear: "", type: "" as "" | CompanyType, size: "" as "" | CompanySize,
+  });
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+    setForm((p) => ({ ...p, [k]: v }));
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await requestCompany.mutateAsync({
+        name: form.name,
+        ...compactPayload({
+          tagline: form.tagline, description: form.description, headquarters: form.headquarters,
+          industry: form.industry, websiteUrl: form.websiteUrl, careersPageUrl: form.careersPageUrl,
+          logoUrl: form.logoUrl, githubUrl: form.githubUrl,
+          type: form.type || undefined, size: form.size || undefined,
+        }),
+        foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
+      });
+      onClose();
+    } catch { return; }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Request Company Registration</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Submit details of your company for platform admin review.</p>
+          </div>
+          <button onClick={onClose} type="button" className="icon-btn"><X size={16} /></button>
+        </div>
+        <form className="space-y-4 p-6" onSubmit={submit}>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
+            <input className="field" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Company name *" required />
+            <input className="field" value={form.tagline} onChange={(e) => set("tagline", e.target.value)} placeholder="Tagline" />
+            <input className="field" type="number" min={1800} value={form.foundedYear} onChange={(e) => set("foundedYear", e.target.value)} placeholder="Founded Year" />
+          </div>
+          <textarea className="field min-h-24 resize-none" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Tell us about the company (description)" />
+          <div className="grid gap-3 md:grid-cols-4">
+            <input className="field" value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="Industry (e.g. Fintech)" />
+            <input className="field" value={form.headquarters} onChange={(e) => set("headquarters", e.target.value)} placeholder="HQ City" />
+            <select className="field" value={form.type} onChange={(e) => set("type", e.target.value as "" | CompanyType)}>
+              <option value="">Type</option>
+              {companyTypes.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+            </select>
+            <select className="field" value={form.size} onChange={(e) => set("size", e.target.value as "" | CompanySize)}>
+              <option value="">Size</option>
+              {companySizes.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <input className="field" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="Website URL" />
+            <input className="field" value={form.careersPageUrl} onChange={(e) => set("careersPageUrl", e.target.value)} placeholder="Careers Page URL" />
+            <input className="field" value={form.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="Logo Image URL" />
+            <input className="field" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
+          </div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={requestCompany.isPending}>
+              {requestCompany.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+              Submit Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Company Detail Page
 // ---------------------------------------------------------------------------
 function CompanyDetail({ slug }: { slug: string }) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const companyQuery = useCompanyQuery(slug);
   const company = companyQuery.data;
   const [employeePage, setEmployeePage] = useState(1);
   const [selectedReferralUser, setSelectedReferralUser] = useState<User | null>(null);
   const employeesQuery = useCompanyEmployeesQuery(company?.id, employeePage, 10);
   const employees = employeesQuery.data?.employees || [];
+
+  const followMutation = useFollowCompanyMutation();
+  const unfollowMutation = useUnfollowCompanyMutation();
+
+  const handleFollowToggle = () => {
+    if (!user) {
+      showToast("error", "Please log in to follow companies");
+      return;
+    }
+    if (!company) return;
+    if (company.isFollowing) {
+      unfollowMutation.mutate(company.id);
+    } else {
+      followMutation.mutate(company.id);
+    }
+  };
 
   if (companyQuery.isLoading) {
     return (
@@ -311,15 +413,30 @@ function CompanyDetail({ slug }: { slug: string }) {
                 {[company.industry, company.headquarters].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              {/* Follow/Following Button */}
+              <button
+                type="button"
+                onClick={handleFollowToggle}
+                disabled={followMutation.isPending || unfollowMutation.isPending}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 ${
+                  company.isFollowing
+                    ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                    : "bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:shadow-sm"
+                }`}
+              >
+                {followMutation.isPending || unfollowMutation.isPending ? (
+                  <Loader2 className="animate-spin text-current" size={13} />
+                ) : company.isFollowing ? (
+                  "Following"
+                ) : (
+                  "Follow"
+                )}
+              </button>
+
               {company.websiteUrl && (
                 <a className="btn-secondary" href={company.websiteUrl} target="_blank" rel="noreferrer">
                   <ExternalLink size={14} /> Website
-                </a>
-              )}
-              {company.linkedinUrl && (
-                <a className="icon-btn" href={company.linkedinUrl} target="_blank" rel="noreferrer" title="LinkedIn">
-                  <Linkedin size={15} />
                 </a>
               )}
               {company.githubUrl && (
@@ -335,9 +452,10 @@ function CompanyDetail({ slug }: { slug: string }) {
           )}
 
           {/* Key metrics */}
-          <div className="mt-5 grid grid-cols-3 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-6">
+          <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-4 lg:grid-cols-7">
+            <Metric label="Followers" value={formatCount(company._count?.followers ?? 0)} />
             <Metric label="Open Jobs" value={formatCount(company._count?.jobs)} />
-            <Metric label="Employees" value={formatCount(company._count?.experiences)} />
+            <Metric label="Employees on Eng Hub" value={formatCount(company._count?.experiences)} />
             <Metric label="Referrals" value={formatCount(company._count?.referralRequests)} />
             <Metric label="Rating" value={company.rating ? `${company.rating.toFixed(1)} ★` : "New"} />
             <Metric label="Founded" value={company.foundedYear?.toString() || "—"} />
@@ -520,15 +638,17 @@ export function CompaniesPage() {
   const { companySlug } = useParams();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
   // Filter state
   const [searchQ, setSearchQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<CompanyType | "">("");
+  const [sizeFilter, setSizeFilter] = useState<CompanySize | "">("");
   const [hiringOnly, setHiringOnly] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState<Record<string, unknown>>({});
-  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, ...appliedFilters });
+  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, hasJobs: true, ...appliedFilters });
   const suggestedQuery = useSuggestedCompaniesQuery();
   const companies = companiesQuery.data?.companies || [];
   const suggested = suggestedQuery.data || [];
@@ -537,17 +657,18 @@ export function CompaniesPage() {
     setAppliedFilters({
       ...(searchQ.trim() ? { q: searchQ.trim() } : {}),
       ...(typeFilter ? { type: typeFilter } : {}),
+      ...(sizeFilter ? { size: sizeFilter } : {}),
       ...(hiringOnly ? { hiringEnabled: true } : {}),
       ...(verifiedOnly ? { verified: true } : {}),
     });
   };
 
   const clearFilters = () => {
-    setSearchQ(""); setTypeFilter(""); setHiringOnly(false); setVerifiedOnly(false);
+    setSearchQ(""); setTypeFilter(""); setSizeFilter(""); setHiringOnly(false); setVerifiedOnly(false);
     setAppliedFilters({});
   };
 
-  const hasFilters = Boolean(searchQ || typeFilter || hiringOnly || verifiedOnly);
+  const hasFilters = Boolean(searchQ || typeFilter || sizeFilter || hiringOnly || verifiedOnly);
 
   if (companySlug) return <CompanyDetail slug={companySlug} />;
 
@@ -567,12 +688,9 @@ export function CompaniesPage() {
             <Plus size={16} /> Add Company
           </button>
         ) : user ? (
-          <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
-            <Info size={15} className="shrink-0 text-blue-600" />
-            <p className="text-xs font-semibold text-blue-700">
-              To register your company, contact a platform admin.
-            </p>
-          </div>
+          <button type="button" className="btn-primary" onClick={() => setShowRequestModal(true)}>
+            <Plus size={16} /> Request Registration
+          </button>
         ) : null}
       </div>
 
@@ -599,6 +717,16 @@ export function CompaniesPage() {
           >
             <option value="">All Types</option>
             {companyTypes.map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
+          </select>
+
+          {/* Size filter */}
+          <select
+            className="field w-auto min-w-[130px]"
+            value={sizeFilter}
+            onChange={(e) => setSizeFilter(e.target.value as CompanySize | "")}
+          >
+            <option value="">All Sizes</option>
+            {companySizes.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
           </select>
 
           {/* Toggle chips */}
@@ -666,6 +794,7 @@ export function CompaniesPage() {
       </div>
 
       {showCreateModal && <CreateCompanyModal onClose={() => setShowCreateModal(false)} />}
+      {showRequestModal && <RequestCompanyModal onClose={() => setShowRequestModal(false)} />}
     </section>
   );
 }

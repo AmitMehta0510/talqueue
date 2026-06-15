@@ -63,6 +63,7 @@ import {
   titleCase,
   userHeadline,
   userName,
+  cleanLogoUrl,
 } from "../lib/format";
 
 type TabKey =
@@ -1168,8 +1169,8 @@ function CompanySuggestionCard({ company }: { company: Company }) {
   return (
     <article className="panel p-5">
       <div className="flex items-start gap-4">
-        {company.logoUrl ? (
-          <img className="h-11 w-11 rounded-md object-cover" src={company.logoUrl} alt={company.name} />
+        {cleanLogoUrl(company.logoUrl) ? (
+          <img className="h-11 w-11 rounded-md object-cover" src={cleanLogoUrl(company.logoUrl)!} alt={company.name} />
         ) : (
           <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
             <Building2 size={20} />

@@ -499,6 +499,9 @@ export type Job = {
   title?: string;
   slug?: string;
   description?: string;
+  requirements?: string | null;
+  responsibilities?: string | null;
+  perks?: string | null;
   location?: string | null;
   workMode?: string | null;
   type?: string;
@@ -507,13 +510,19 @@ export type Job = {
   salaryMin?: number | null;
   salaryMax?: number | null;
   currency?: string | null;
+  openings?: number | null;
+  applyUrl?: string | null;
+  applicationDeadline?: string | null;
   featured?: boolean;
   applicationsCount?: number;
+  companyId?: string;
   company?: {
+    id?: string;
     name?: string;
     logoUrl?: string | null;
     verified?: boolean;
     tagline?: string | null;
+    slug?: string;
   };
   createdAt?: string;
 };
@@ -570,7 +579,9 @@ export type Company = {
     jobs?: number;
     experiences?: number;
     referralRequests?: number;
+    followers?: number;
   };
+  isFollowing?: boolean;
   createdAt?: string;
 };
 
@@ -1663,6 +1674,7 @@ export const api = {
       size?: CompanySize;
       verified?: boolean;
       hiringEnabled?: boolean;
+      hasJobs?: boolean;
     } = {},
     options?: EndpointOptions,
   ) => request<CompanyPage>(`/companies${toQuery(params)}`, options),
@@ -2054,7 +2066,8 @@ export const api = {
     }),
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
-  jobs: (options?: EndpointOptions) => request<Job[]>("/jobs", options),
+  jobs: (params?: { page?: number; limit?: number }, options?: EndpointOptions) =>
+    request<Job[]>(`/jobs${toQuery(params || {})}`, options),
   createJob: (body: {
     companyId?: string;
     companyName?: string;
@@ -2341,4 +2354,12 @@ export const api = {
     request<{ success: boolean; company: any; job: any }>(`/admin/company-requests/${requestId}/approve`, { method: "POST", body: body || {} }),
   adminRejectCompanyRequest: (requestId: string, reviewNotes?: string) =>
     request<{ success: boolean }>(`/admin/company-requests/${requestId}/reject`, { method: "POST", body: { reviewNotes } }),
+
+  // Companies Follow/Request
+  requestCompanyRegistration: (body: any) =>
+    request<any>("/companies/request", { method: "POST", body }),
+  followCompany: (companyId: string) =>
+    request<any>(`/companies/${companyId}/follow`, { method: "POST" }),
+  unfollowCompany: (companyId: string) =>
+    request<any>(`/companies/${companyId}/unfollow`, { method: "POST" }),
 };
