@@ -1,6 +1,8 @@
 import { Response } from "express";
 
+import prisma from "shared/database/prisma";
 import asyncHandler from "shared/utils/asyncHandler";
+import { verifyUserSkills } from "./skill-verification.service";
 
 import { successResponse } from "shared/utils/apiResponse";
 
@@ -74,7 +76,24 @@ export const getUserFull = asyncHandler(
   async (req: any, res: Response) => {
     const profile = await getUserFullProfile(
       req.params.userId,
-    );
+    ) as any;
+
+    const roles = req.user?.roles?.map((r: any) => r.role?.name) || [];
+    const isRecruiter = roles.includes("RECRUITER");
+    const isPremiumRecruiter = roles.includes("PREMIUM_RECRUITER");
+
+    // If standard recruiter, hide verificationProof details
+    if (isRecruiter && !isPremiumRecruiter && profile.skills) {
+      profile.skills = profile.skills.map((us: any) => {
+        if (us.verified) {
+          return {
+            ...us,
+            verificationProof: { locked: true, message: "Upgrade to Recruiter Premium to see verification repository details." }
+          };
+        }
+        return us;
+      });
+    }
 
     res.json(
       successResponse(profile)
@@ -315,3 +334,41 @@ export const getMyProjectsHandler = asyncHandler(
     );
   }
 );
+
+export const verifyMySkills = asyncHandler(
+  async (req: any, res: Response) => {
+    const result = await verifyUserSkills(req.user.id);
+    res.json(successResponse(result, result.message));
+  }
+);
+
+export const upgradeToPremiumRecruiter = asyncHandler(
+  async (req: any, res: Response) => {
+    // Find the Role record for "PREMIUM_RECRUITER" or create it, then assign it to the user.
+    const premiumRole = await prisma.role.upsert({
+      where: { name: "PREMIUM_RECRUITER" },
+      update: {},
+      create: { name: "PREMIUM_RECRUITER" },
+    });
+
+    // Add UserRole relation if not exists
+    const existingRole = await prisma.userRole.findFirst({
+      where: {
+        userId: req.user.id,
+        roleId: premiumRole.id,
+      },
+    });
+
+    if (!existingRole) {
+      await prisma.userRole.create({
+        data: {
+          userId: req.user.id,
+          roleId: premiumRole.id,
+        },
+      });
+    }
+
+    res.json(successResponse(null, "Successfully upgraded to Recruiter Premium!"));
+  }
+);
+

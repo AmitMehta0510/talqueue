@@ -104,6 +104,9 @@ export const searchUsersHandler =asyncHandler(
           acceptingReferrals:
             req.query.acceptingReferrals === "true" ? true : undefined,
 
+          verifiedSkillsOnly:
+            req.query.verifiedSkillsOnly === "true" ? true : undefined,
+
           limit:
             req.query.limit
               ? Number(

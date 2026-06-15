@@ -1718,6 +1718,38 @@ export const useRemoveSkillMutation = () => {
   });
 };
 
+export const useVerifySkillsMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: () => api.verifySkills(),
+    onSuccess: (res) => showToast("success", res.message || "Skills verification complete"),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.skills });
+      invalidateUserProfile(queryClient, user);
+    },
+  });
+};
+
+export const useUpgradePremiumMutation = () => {
+  const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: () => api.upgradePremium(),
+    onSuccess: async (res) => {
+      showToast("success", res.message || "Successfully upgraded to Recruiter Premium!");
+      await refreshUser();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 export const useRemoveExperienceMutation = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -2413,7 +2445,7 @@ export const useReviewConnectionMutation = () => {
 
 export type PlatformSearchPayload =
   | { tab: "all"; q: string }
-  | { tab: "people"; q: string; people?: { college?: string; year?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean } }
+  | { tab: "people"; q: string; people?: { college?: string; year?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; verifiedSkillsOnly?: boolean } }
   | { tab: "projects"; q: string; project?: { techStack?: string; status?: string; acceptingCollaborators?: boolean } }
   | { tab: "jobs"; q: string; job?: { company?: string; location?: string; workMode?: string; experienceLevel?: string; salaryMin?: string; salaryMax?: string; skills?: string; freshness?: string } }
   | { tab: "hackathons"; q: string; hack?: { tags?: string; upcomingOnly?: boolean } }
@@ -2480,6 +2512,7 @@ export const usePlatformSearchMutation = () => {
           ...(f.openToWork && { openToWork: true }),
           ...(f.acceptingReferrals && { acceptingReferrals: true }),
           ...(f.role && { role: f.role }),
+          ...(f.verifiedSkillsOnly && { verifiedSkillsOnly: true }),
         });
         return { users: flattenUsers(result.data as any) };
       }

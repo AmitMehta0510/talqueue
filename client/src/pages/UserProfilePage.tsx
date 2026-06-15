@@ -22,6 +22,7 @@ import {
   User,
   UserPlus,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
@@ -39,6 +40,7 @@ import {
   useFollowingQuery,
   useMutualConnectionsQuery,
   useUserProfileQuery,
+  useUpgradePremiumMutation,
 } from "../hooks/usePlatformQueries";
 import { FollowingPage } from "../lib/api";
 import {
@@ -62,6 +64,7 @@ export function UserProfilePage() {
   const followingQuery = useFollowingQuery(user?.id, 20);
   const mutualQuery = useMutualConnectionsQuery(userId, 12);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [selectedVerificationSkill, setSelectedVerificationSkill] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const followUser = useFollowUserMutation();
   const createDirectConversation = useCreateDirectConversationMutation();
@@ -401,7 +404,16 @@ export function UserProfilePage() {
             {(profile.skills || []).length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {(profile.skills || []).map((skill) => (
-                  <SkillPill key={skill.id} skill={skill} large />
+                  <SkillPill
+                    key={skill.id}
+                    skill={skill}
+                    large
+                    onClick={() => {
+                      if (skill.verified) {
+                        setSelectedVerificationSkill(skill);
+                      }
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -502,6 +514,14 @@ export function UserProfilePage() {
           onClose={() => setShowReferralModal(false)}
         />
       )}
+
+      {/* Verification details modal */}
+      {selectedVerificationSkill && (
+        <SkillVerificationModal
+          skill={selectedVerificationSkill}
+          onClose={() => setSelectedVerificationSkill(null)}
+        />
+      )}
     </div>
   );
 }
@@ -578,6 +598,156 @@ function BlankSection({
       <div>
         <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
         <p className="mt-1 max-w-xs text-xs text-slate-500">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function SkillVerificationModal({
+  skill,
+  onClose,
+}: {
+  skill: any;
+  onClose: () => void;
+}) {
+  const proof = skill.verificationProof;
+  const isLocked = proof?.locked === true;
+  const upgradeMutation = useUpgradePremiumMutation();
+
+  const handleUpgrade = () => {
+    upgradeMutation.mutate(undefined, {
+      onSuccess: () => {
+        onClose();
+      },
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-emerald-700" />
+            <h3 className="font-bold text-slate-900">
+              {skill.skill?.name || "Skill"} Verification
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-150 hover:text-slate-700 transition"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6">
+          {isLocked ? (
+            <div className="text-center space-y-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-4 ring-amber-100">
+                <ShieldCheck size={24} />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-base font-bold text-slate-900">Unlock Verification Proof</h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  Unlock Recruiter Premium to inspect detailed repository statistics, code byte counts, and platform activity data that validated this skill.
+                </p>
+              </div>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgradeMutation.isPending}
+                className="btn-primary w-full bg-amber-600 hover:bg-amber-700 ring-amber-100 flex items-center justify-center gap-2"
+              >
+                {upgradeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Upgrade to Premium"
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 text-sm text-slate-600">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="font-semibold text-slate-700">Verification Source:</span>
+                <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                  {skill.verificationSource || "External Profiles"}
+                </span>
+              </div>
+
+              {/* GitHub Proof Details */}
+              {proof?.repositories && (
+                <div className="space-y-2">
+                  <span className="font-semibold text-slate-700 block">Verified GitHub repositories:</span>
+                  <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+                    {proof.repositories.map((repo: any) => (
+                      <div key={repo.name} className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-emerald-800 break-all">{repo.name}</span>
+                        <span className="text-slate-400 shrink-0">{(repo.bytes / 1024).toFixed(1)} KB code</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-slate-200 pt-2 flex justify-between text-xs text-slate-400">
+                      <span>Total analyzed size:</span>
+                      <span className="font-bold text-slate-600">{(proof.totalBytes / 1024).toFixed(1)} KB</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* LeetCode Proof Details */}
+              {proof?.leetcode && (
+                <div className="space-y-2">
+                  <span className="font-semibold text-slate-700 block">LeetCode metrics:</span>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">LeetCode Username:</span>
+                      <span className="font-semibold text-slate-700">@{proof.leetcode.username}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Problems Solved in language:</span>
+                      <span className="font-bold text-slate-700">{proof.leetcode.problemsSolved} questions</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* HackerRank/GFG Proof Details */}
+              {(proof?.hackerrank || proof?.geeksforgeeks || proof?.codingninjas) && (
+                <div className="space-y-2">
+                  <span className="font-semibold text-slate-700 block">Coding Platform Profile:</span>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 space-y-1.5 text-xs">
+                    {proof.hackerrank && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">HackerRank Username:</span>
+                        <span className="font-semibold text-slate-700">@{proof.hackerrank.username}</span>
+                      </div>
+                    )}
+                    {proof.geeksforgeeks && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">GeeksforGeeks Username:</span>
+                        <span className="font-semibold text-slate-700">@{proof.geeksforgeeks.username}</span>
+                      </div>
+                    )}
+                    {proof.codingninjas && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Coding Ninjas Username:</span>
+                        <span className="font-semibold text-slate-700">@{proof.codingninjas.username}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-emerald-700 font-semibold">
+                      <span>Verification Status:</span>
+                      <span>{proof.hackerrank?.status || proof.geeksforgeeks?.status || proof.codingninjas?.status}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-[10px] text-slate-400 leading-normal">
+                This verification is based on public source code repositories and profile analytics fetched from connected accounts.
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -736,6 +736,11 @@ model UserSkill {
 
   level SkillLevel @default(BEGINNER)
 
+  // Verification details
+  verified           Boolean    @default(false)
+  verificationSource String?
+  verificationProof  Json?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)

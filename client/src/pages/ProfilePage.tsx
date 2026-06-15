@@ -73,6 +73,7 @@ import {
   useRemoveEducationMutation,
   useRemoveExperienceMutation,
   useRemoveSkillMutation,
+  useVerifySkillsMutation,
   useSkillSearchQuery,
   useUpdateEducationMutation,
   useUpdateExperienceMutation,
@@ -189,6 +190,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const removeEducation = useRemoveEducationMutation();
   const updateExperience = useUpdateExperienceMutation();
   const updateEducation = useUpdateEducationMutation();
+  const verifySkills = useVerifySkillsMutation();
 
   const profile = profileQuery.data || fallbackUser;
 
@@ -217,6 +219,10 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     setConfirmDelete(null);
   }, [confirmDelete, removeSkill, removeExperience, removeEducation]);
 
+  const leetcodeProfile = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "leetcode");
+  const hackerrankProfile = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "hackerrank");
+  const gfgProfile = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "geeksforgeeks");
+
   // Profile form state
   const [collegeQuery, setCollegeQuery] = useState("");
   const [collegeResults, setCollegeResults] = useState<College[]>([]);
@@ -233,6 +239,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     githubUrl: profile.profile?.githubUrl || "",
     linkedinUrl: profile.profile?.linkedinUrl || "",
     portfolioUrl: profile.profile?.portfolioUrl || "",
+    leetcodeUrl: leetcodeProfile?.url || "",
+    hackerrankUrl: hackerrankProfile?.url || "",
+    gfgUrl: gfgProfile?.url || "",
     graduationYear: profile.profile?.graduationYear?.toString() || "",
     acceptingReferrals: profile.acceptingReferrals || false,
     openToWork: profile.openToWork || false,
@@ -255,6 +264,10 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   // Sync form when profile loads
   useEffect(() => {
     if (!profileQuery.data) return;
+    const lc = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "leetcode");
+    const hr = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "hackerrank");
+    const gfg = profile.codingProfiles?.find((p: any) => p.platform.toLowerCase() === "geeksforgeeks");
+
     setProfileForm({
       fullName: profile.profile?.fullName || "",
       username: profile.username || "",
@@ -268,6 +281,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       githubUrl: profile.profile?.githubUrl || "",
       linkedinUrl: profile.profile?.linkedinUrl || "",
       portfolioUrl: profile.profile?.portfolioUrl || "",
+      leetcodeUrl: lc?.url || "",
+      hackerrankUrl: hr?.url || "",
+      gfgUrl: gfg?.url || "",
       graduationYear: profile.profile?.graduationYear?.toString() || "",
       acceptingReferrals: profile.acceptingReferrals || false,
       openToWork: profile.openToWork || false,
@@ -637,6 +653,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             onAddSkill={addSkill.mutateAsync}
             isAdding={addSkill.isPending}
             onRemove={(skill) => setConfirmDelete({ type: "skill", id: skill.skill?.id || "", label: skill.skill?.name || "" })}
+            onVerify={() => verifySkills.mutate()}
+            isVerifying={verifySkills.isPending}
           />
         )}
 
@@ -1322,6 +1340,8 @@ function SkillsTab({
   onAddSkill,
   isAdding,
   onRemove,
+  onVerify,
+  isVerifying,
 }: {
   skills: any[];
   isFetching: boolean;
@@ -1331,15 +1351,31 @@ function SkillsTab({
   onAddSkill: (payload: { skillId: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" }) => Promise<unknown>;
   isAdding: boolean;
   onRemove: (skill: any) => void;
+  onVerify: () => void;
+  isVerifying: boolean;
 }) {
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold text-slate-900">Skills</h2>
-        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-          {skills.length} / {MAX_SKILLS}
-        </span>
-        {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">Skills</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+            {skills.length} / {MAX_SKILLS}
+          </span>
+          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        </div>
+        <button
+          onClick={onVerify}
+          disabled={isVerifying}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {isVerifying ? (
+            <Loader2 className="animate-spin" size={15} />
+          ) : (
+            <ShieldCheck size={15} />
+          )}
+          {isVerifying ? "Verifying..." : "Verify & Sync Skills"}
+        </button>
       </div>
 
       {/* Add skill widget */}
@@ -1811,6 +1847,24 @@ function SettingsTab({
             <div className="relative">
               <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
               <input className="field pl-8" value={profileForm.portfolioUrl} onChange={set("portfolioUrl")} placeholder="https://yoursite.com" type="url" />
+            </div>
+          </Field>
+          <Field label="LeetCode Profile URL">
+            <div className="relative">
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.leetcodeUrl} onChange={set("leetcodeUrl")} placeholder="https://leetcode.com/username" type="url" />
+            </div>
+          </Field>
+          <Field label="HackerRank Profile URL">
+            <div className="relative">
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.hackerrankUrl} onChange={set("hackerrankUrl")} placeholder="https://hackerrank.com/username" type="url" />
+            </div>
+          </Field>
+          <Field label="GeeksforGeeks Profile URL">
+            <div className="relative">
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <input className="field pl-8" value={profileForm.gfgUrl} onChange={set("gfgUrl")} placeholder="https://geeksforgeeks.org/user/username" type="url" />
             </div>
           </Field>
           <Field label="Resume URL">

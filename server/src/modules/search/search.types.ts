@@ -15,6 +15,7 @@ export interface SearchUsersFilters {
   acceptingCollaborators?: boolean;
   acceptingReferrals?: boolean;
   verifiedOnly?: boolean;
+  verifiedSkillsOnly?: boolean;
   sortBy?: "RELEVANCE" | "ENGINEERING_SCORE" | "REPUTATION" | "RECENT";
   page?: number;
   limit?: number;

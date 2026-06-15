@@ -21,6 +21,8 @@ import {
   updateEducationHandler,
   updateExperienceHandler,
   updateMe,
+  verifyMySkills,
+  upgradeToPremiumRecruiter,
 } from "./users.controller";
 
 const router = Router();
@@ -44,6 +46,8 @@ router.post("/skills/create-custom", protect, createCustomSkillHandler);
 router.put("/me", protect, updateMe);
 
 router.post("/me/skills", protect, createSkill);
+router.post("/me/skills/verify", protect, verifyMySkills);
+router.post("/me/upgrade-premium", protect, upgradeToPremiumRecruiter);
 
 router.post("/me/experiences", protect, createExperience);
 

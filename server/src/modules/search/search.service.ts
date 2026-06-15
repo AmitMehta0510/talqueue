@@ -139,6 +139,14 @@ export const searchUsers =  async (
             },
           }),
 
+          ...(filters.verifiedSkillsOnly && {
+            skills: {
+              some: {
+                verified: true,
+              },
+            },
+          }),
+
           ...(filters.trustLevels
             ?.length && {
 

@@ -7,6 +7,7 @@ import { calculateEngineeringScore } from "../reputation/engineering-score.servi
 import { autoJoinUserCommunities } from "modules/community/community.service";
 import { createHash, randomBytes } from "crypto";
 import slugify from "slugify";
+import { verifyUserSkills } from "./skill-verification.service";
 
 type UserWriteClient = Prisma.TransactionClient | typeof prisma;
 
@@ -28,6 +29,9 @@ export interface UpdateProfileData {
   githubUrl?: string;
   linkedinUrl?: string;
   portfolioUrl?: string;
+  leetcodeUrl?: string | null;
+  hackerrankUrl?: string | null;
+  gfgUrl?: string | null;
   graduationYear?: number;
   collegeId?: string;
   departmentId?: string | null;
@@ -200,6 +204,13 @@ const userFullProfileSelect = {
       createdAt: "desc",
     },
     take: 10,
+  },
+  codingProfiles: {
+    select: {
+      platform: true,
+      url: true,
+      username: true,
+    },
   },
 } satisfies Prisma.UserSelect;
 
@@ -732,6 +743,9 @@ export const updateProfile = async (
     openToWork,
     openToInternship,
     availabilityStatus,
+    leetcodeUrl,
+    hackerrankUrl,
+    gfgUrl,
 
     ...profileData
   } = data;
@@ -875,6 +889,60 @@ export const updateProfile = async (
       );
     }
 
+    // Sync LeetCode URL
+    if (leetcodeUrl !== undefined) {
+      await tx.codingProfile.deleteMany({
+        where: { userId, platform: "LeetCode" },
+      });
+      if (leetcodeUrl) {
+        const usernameLC = leetcodeUrl.replace(/\/$/, "").split("/").pop() || "";
+        await tx.codingProfile.create({
+          data: {
+            userId,
+            platform: "LeetCode",
+            url: leetcodeUrl,
+            username: usernameLC,
+          },
+        });
+      }
+    }
+
+    // Sync HackerRank URL
+    if (hackerrankUrl !== undefined) {
+      await tx.codingProfile.deleteMany({
+        where: { userId, platform: "HackerRank" },
+      });
+      if (hackerrankUrl) {
+        const usernameHR = hackerrankUrl.replace(/\/$/, "").split("/").pop() || "";
+        await tx.codingProfile.create({
+          data: {
+            userId,
+            platform: "HackerRank",
+            url: hackerrankUrl,
+            username: usernameHR,
+          },
+        });
+      }
+    }
+
+    // Sync GeeksforGeeks URL
+    if (gfgUrl !== undefined) {
+      await tx.codingProfile.deleteMany({
+        where: { userId, platform: "GeeksforGeeks" },
+      });
+      if (gfgUrl) {
+        const usernameGFG = gfgUrl.replace(/\/$/, "").split("/").pop() || "";
+        await tx.codingProfile.create({
+          data: {
+            userId,
+            platform: "GeeksforGeeks",
+            url: gfgUrl,
+            username: usernameGFG,
+          },
+        });
+      }
+    }
+
     return tx.user.findUnique({
       where: {
         id: userId,
@@ -883,6 +951,19 @@ export const updateProfile = async (
       select: userProfileSelect,
     });
   });
+
+  // Trigger skill verification asynchronously in the background
+  const hasProfileLinksUpdated =
+    data.githubUrl !== undefined ||
+    leetcodeUrl !== undefined ||
+    hackerrankUrl !== undefined ||
+    gfgUrl !== undefined;
+
+  if (hasProfileLinksUpdated) {
+    verifyUserSkills(userId).catch((err) => {
+      console.error("Skill verification background job error:", err);
+    });
+  }
 };
 
 export const addSkill = async (userId: string, data: AddSkillData) => {

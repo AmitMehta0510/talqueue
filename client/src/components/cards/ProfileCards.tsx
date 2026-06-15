@@ -196,17 +196,35 @@ export function SkillPill({
   skill,
   large = false,
   onRemove,
+  onClick,
 }: {
   skill: UserSkill;
   large?: boolean;
   onRemove?: () => void;
+  onClick?: () => void;
 }) {
   const levelClass = skill.level ? (LEVEL_COLORS[skill.level] || LEVEL_COLORS.BEGINNER) : "bg-slate-50 text-slate-600 border-slate-200";
   const levelLabel = skill.level ? titleCase(skill.level) : null;
 
+  const verifiedBadge = skill.verified && (
+    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-300">
+      <ShieldCheck size={10} />
+      Verified
+    </span>
+  );
+
+  const unverifiedBadge = !skill.verified && (
+    <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-300 border-dashed">
+      Self-Claimed
+    </span>
+  );
+
   if (large) {
     return (
-      <div className={`group/skill relative flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass}`}>
+      <div 
+        className={`group/skill relative flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300" : ""}`}
+        onClick={onClick}
+      >
         <span className="text-sm font-medium">
           {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
         </span>
@@ -215,10 +233,15 @@ export function SkillPill({
             {levelLabel}
           </span>
         )}
+        {verifiedBadge}
+        {unverifiedBadge}
         {onRemove && (
           <button
             className="ml-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover/skill:opacity-100"
-            onClick={onRemove}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
             title="Remove skill"
           >
             <X size={13} />
@@ -229,9 +252,13 @@ export function SkillPill({
   }
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${levelClass}`}>
+    <span 
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300" : ""}`}
+      onClick={onClick}
+    >
       {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
       {levelLabel && <span className="opacity-60">· {levelLabel}</span>}
+      {skill.verified && <ShieldCheck size={11} className="text-emerald-600 shrink-0" />}
     </span>
   );
 }

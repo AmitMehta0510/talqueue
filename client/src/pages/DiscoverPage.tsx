@@ -11,6 +11,7 @@ import {
   Newspaper,
   Rocket,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   Trophy,
   UserRound,
@@ -44,6 +45,7 @@ import {
   useSuggestedProjectsQuery,
   useSuggestedRecruitersQuery,
   useSuggestedTeammatesQuery,
+  useUpgradePremiumMutation,
 } from "../hooks/usePlatformQueries";
 import {
   Community,
@@ -99,6 +101,7 @@ interface PeopleFilters {
   role: string;
   openToWork: boolean;
   acceptingReferrals: boolean;
+  verifiedSkillsOnly: boolean;
 }
 
 interface ProjectFilters {
@@ -135,7 +138,7 @@ interface CommunityFilters {
   category: string;
 }
 
-const emptyPeople: PeopleFilters = { college: "", year: "", skills: "", role: "", openToWork: false, acceptingReferrals: false };
+const emptyPeople: PeopleFilters = { college: "", year: "", skills: "", role: "", openToWork: false, acceptingReferrals: false, verifiedSkillsOnly: false };
 const emptyProject: ProjectFilters = { techStack: "", status: "", acceptingCollaborators: false };
 const emptyJob: JobFilters = { company: "", location: "", workMode: "", experienceLevel: "", salaryMin: "", salaryMax: "", skills: "", freshness: "" };
 const emptyHackathon: HackathonFilters = { tags: "", upcomingOnly: false };
@@ -314,6 +317,21 @@ export function DiscoverPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   // Filters open by default for filterable tabs
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const upgradeMutation = useUpgradePremiumMutation();
+
+  const isRecruiter = user?.roles?.some((ur: any) => ur.role?.name === "RECRUITER");
+  const isPremiumRecruiter = user?.roles?.some((ur: any) => ur.role?.name === "PREMIUM_RECRUITER");
+
+  const handleVerifiedSkillsOnlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    if (checked && isRecruiter && !isPremiumRecruiter) {
+      setShowUpgradeModal(true);
+    } else {
+      setPeopleF({ ...peopleF, verifiedSkillsOnly: checked });
+    }
+  };
 
   // Per-tab filter state
   const [peopleF, setPeopleF] = useState<PeopleFilters>(emptyPeople);
@@ -533,6 +551,59 @@ export function DiscoverPage() {
         />
       )}
 
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)}>
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-amber-600" />
+                <h3 className="font-bold text-slate-900">
+                  Upgrade to Recruiter Premium
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-150 hover:text-slate-700 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 text-center space-y-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-4 ring-amber-100">
+                <ShieldCheck size={24} />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-base font-bold text-slate-900">Unlock Verified Candidate Search</h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  Recruiter Premium allows you to filter search results to only show candidates with verified skills and code repositories. Tap below to simulate upgrading.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  upgradeMutation.mutate(undefined, {
+                    onSuccess: () => {
+                      setPeopleF({ ...peopleF, verifiedSkillsOnly: true });
+                      setShowUpgradeModal(false);
+                    }
+                  });
+                }}
+                disabled={upgradeMutation.isPending}
+                className="btn-primary w-full bg-amber-600 hover:bg-amber-700 ring-amber-100 flex items-center justify-center gap-2"
+              >
+                {upgradeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Upgrade to Premium"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="space-y-6">
         <div className="panel p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -658,6 +729,15 @@ export function DiscoverPage() {
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
                     <input type="checkbox" checked={peopleF.acceptingReferrals} onChange={(e) => setPeopleF({ ...peopleF, acceptingReferrals: e.target.checked })} />
                     Accepting referrals
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" checked={peopleF.verifiedSkillsOnly} onChange={handleVerifiedSkillsOnlyChange} />
+                    <span className="flex items-center gap-1.5 font-medium">
+                      Verified skills only
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300 animate-pulse">
+                        Premium
+                      </span>
+                    </span>
                   </label>
                 </div>
               )}

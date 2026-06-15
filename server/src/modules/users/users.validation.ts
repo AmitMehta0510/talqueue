@@ -27,6 +27,9 @@ export const updateProfileSchema = z.object({
   githubUrl: z.string().optional(),
   linkedinUrl: z.string().optional(),
   portfolioUrl: z.string().optional(),
+  leetcodeUrl: z.string().optional().nullable(),
+  hackerrankUrl: z.string().optional().nullable(),
+  gfgUrl: z.string().optional().nullable(),
 
   graduationYear: z.number().optional(),
 

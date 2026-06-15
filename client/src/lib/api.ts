@@ -61,10 +61,18 @@ export type User = {
   skills?: UserSkill[];
   experiences?: Experience[];
   educations?: Education[];
+  codingProfiles?: CodingProfile[];
   ownedProjects?: Project[];
   createdAt?: string;
   updatedAt?: string;
   lastActiveAt?: string | null;
+};
+
+export type CodingProfile = {
+  id: string;
+  platform: string;
+  username: string;
+  url?: string | null;
 };
 
 export type College = {
@@ -93,6 +101,9 @@ export type Department = {
 export type UserSkill = {
   id: string;
   level?: string;
+  verified?: boolean;
+  verificationSource?: string | null;
+  verificationProof?: any | null;
   skill?: {
     id: string;
     name?: string;
@@ -1472,6 +1483,9 @@ export const api = {
     githubUrl?: string;
     linkedinUrl?: string;
     portfolioUrl?: string;
+    leetcodeUrl?: string;
+    hackerrankUrl?: string;
+    gfgUrl?: string;
     graduationYear?: number;
     collegeId?: string;
     departmentId?: string;
@@ -1510,6 +1524,10 @@ export const api = {
   }) => request<UserSkill>("/users/me/skills", { method: "POST", body }),
   deleteSkill: (skillId: string) =>
     request<{ id: string }>(`/users/me/skills/${skillId}`, { method: "DELETE" }),
+  verifySkills: () =>
+    request<{ success: boolean; message: string; verifiedCount: number }>("/users/me/skills/verify", { method: "POST" }),
+  upgradePremium: () =>
+    request<{ success: boolean; message: string }>("/users/me/upgrade-premium", { method: "POST" }),
   deleteExperience: (experienceId: string) =>
     request<{ id: string }>(`/users/me/experiences/${experienceId}`, { method: "DELETE" }),
   deleteEducation: (educationId: string) =>
@@ -2152,7 +2170,7 @@ export const api = {
     request<ReferralRequest[]>("/referrals/sent", options),
   searchGlobal: (q: string, options?: EndpointOptions) =>
     request<SearchResults>(`/search/global${toQuery({ q })}`, options),
-  searchUsers: (params: { q?: string; collegeIds?: string; collegeName?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; limit?: number }, options?: EndpointOptions) =>
+  searchUsers: (params: { q?: string; collegeIds?: string; collegeName?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; verifiedSkillsOnly?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<User[]>(`/search/users${toQuery({ ...params, limit: params.limit || 20 })}`, options),
   searchProjects: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
     request<Project[]>(`/search/projects${toQuery({ ...params, limit: params.limit || 12 })}`, options),
