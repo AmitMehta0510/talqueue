@@ -23,7 +23,8 @@ const GREENHOUSE_TOKENS: Record<string, string> = {
   "vercel": "vercel",
   "retool": "retool",
   "razorpay": "razorpay",
-  "inmobi": "inmobi"
+  "inmobi": "inmobi",
+  "onetrust-india": "onetrust"
 };
 
 // Mapping of seeded companies to their public Ashby board tokens
