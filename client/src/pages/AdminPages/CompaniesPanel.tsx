@@ -4,13 +4,15 @@ import { Company } from "../../lib/api";
 import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery, useAssignCompanyAdminMutation } from "../../hooks/usePlatformQueries";
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { Avatar } from "../../components/ui";
+import { SearchBar } from "./shared";
 
 export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin }: {
   selectedCompany: Company | null;
   onSelectCompany: (c: Company | null) => void;
   onRevokeAdmin: (companyId: string, userId: string, label: string, officeCity?: string) => void;
 }) {
-  const companiesQuery = useCompaniesQuery({});
+  const [search, setSearch] = useState("");
+  const companiesQuery = useCompaniesQuery({ q: search, limit: 100 });
   const createCompany = useCreateCompanyMutation();
 
   const [name, setName] = useState("");
@@ -42,6 +44,8 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
           <Plus size={12} /> Add Company
         </button>
       </div>
+
+      <SearchBar value={search} onChange={setSearch} placeholder="Search companies by name, description, industry..." />
 
       {showForm && (
         <div className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-5">
@@ -142,17 +146,25 @@ function CompanyAdminPanel({ company, onClose, onRevoke }: {
   const assignAdmin = useAssignCompanyAdminMutation();
   const [targetUserId, setTargetUserId] = useState("");
   const [officeCity, setOfficeCity] = useState("");
+  const [adminType, setAdminType] = useState<"GLOBAL" | "OFFICE">("GLOBAL");
 
   const handleAssign = async (e: FormEvent) => {
     e.preventDefault();
     if (!targetUserId.trim()) return;
     try {
-      await assignAdmin.mutateAsync({ companyId: company.id, userId: targetUserId.trim(), officeCity: officeCity.trim() || undefined });
-      setTargetUserId(""); setOfficeCity("");
+      await assignAdmin.mutateAsync({
+        companyId: company.id,
+        userId: targetUserId.trim(),
+        officeCity: adminType === "OFFICE" ? officeCity.trim() || undefined : undefined
+      });
+      setTargetUserId("");
+      setOfficeCity("");
     } catch { }
   };
 
   const admins = adminsQuery.data || [];
+  const globalAdmins = admins.filter((a: any) => !a.officeCity);
+  const officeAdmins = admins.filter((a: any) => a.officeCity);
 
   return (
     <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
@@ -167,38 +179,117 @@ function CompanyAdminPanel({ company, onClose, onRevoke }: {
       </div>
 
       <div className="p-5 space-y-4">
-        <form onSubmit={handleAssign} className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-800/40 p-3">
-          <div className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Assign New Admin</div>
-          <input className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} placeholder="User UUID..." required />
-          <input className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition" value={officeCity} onChange={(e) => setOfficeCity(e.target.value)} placeholder="Office city scope (optional — leave blank for global)" />
+        <form onSubmit={handleAssign} className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-800/40 p-3">
+          <div className="text-[10px] font-black uppercase tracking-wider text-zinc-650">Assign New Admin</div>
+          
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setAdminType("GLOBAL"); setOfficeCity(""); }}
+              className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
+                adminType === "GLOBAL"
+                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-600/30"
+                  : "text-zinc-500 border-zinc-700 hover:text-zinc-200"
+              }`}
+            >
+              Global Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminType("OFFICE")}
+              className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
+                adminType === "OFFICE"
+                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-600/30"
+                  : "text-zinc-500 border-zinc-700 hover:text-zinc-200"
+              }`}
+            >
+              Office Scope
+            </button>
+          </div>
+
+          <input
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+            value={targetUserId}
+            onChange={(e) => setTargetUserId(e.target.value)}
+            placeholder="User UUID..."
+            required
+          />
+
+          {adminType === "OFFICE" && (
+            <input
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition animate-in slide-in-from-top-1 duration-150"
+              value={officeCity}
+              onChange={(e) => setOfficeCity(e.target.value)}
+              placeholder="Office City Scope (e.g. Bangalore, SF)..."
+              required
+            />
+          )}
+
           <button className="w-full flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={assignAdmin.isPending}>
             {assignAdmin.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Assign Admin
           </button>
         </form>
 
         <div>
-          <div className="text-[10px] font-black uppercase tracking-wider text-zinc-600 mb-2">Assigned Admins ({admins.length})</div>
-          {adminsQuery.isPending ? <div className="flex justify-center py-4"><Loader2 size={14} className="animate-spin text-emerald-500" /></div> :
-           admins.length === 0 ? <p className="text-xs text-zinc-600 italic">No administrators assigned.</p> : (
-            <div className="max-h-52 overflow-y-auto space-y-1">
-              {admins.map((admin: any) => {
-                const u = admin.user;
-                const label = userName(u);
-                return (
-                  <div key={admin.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/40 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar user={u} size="sm" />
-                      <div>
-                        <div className="text-xs font-semibold text-white">{label}</div>
-                        <div className="text-[10px] text-zinc-500">{admin.officeCity ? `📍 ${admin.officeCity}` : "Global Admin"}</div>
+          <div className="text-[10px] font-black uppercase tracking-wider text-zinc-650 mb-2">Assigned Admins ({admins.length})</div>
+          {adminsQuery.isPending ? (
+            <div className="flex justify-center py-4"><Loader2 size={14} className="animate-spin text-emerald-500" /></div>
+          ) : admins.length === 0 ? (
+            <p className="text-xs text-zinc-600 italic">No administrators assigned.</p>
+          ) : (
+            <div className="max-h-60 overflow-y-auto space-y-3">
+              {globalAdmins.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/80 mb-1">Global Admins ({globalAdmins.length})</div>
+                  {globalAdmins.map((admin: any) => {
+                    const u = admin.user;
+                    const label = userName(u);
+                    return (
+                      <div key={admin.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-800/40 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar user={u} size="sm" />
+                          <div>
+                            <div className="text-xs font-semibold text-white">{label}</div>
+                            <div className="text-[10px] text-zinc-500">@{u.username}</div>
+                          </div>
+                        </div>
+                        <button className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition" onClick={() => onRevoke(u.id, label, admin.officeCity)}>
+                          <Trash2 size={12} />
+                        </button>
                       </div>
-                    </div>
-                    <button className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition" onClick={() => onRevoke(u.id, label, admin.officeCity)}>
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
+
+              {officeAdmins.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-amber-500/80 mb-1">Office Managers ({officeAdmins.length})</div>
+                  {officeAdmins.map((admin: any) => {
+                    const u = admin.user;
+                    const label = userName(u);
+                    return (
+                      <div key={admin.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-800/40 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar user={u} size="sm" />
+                          <div>
+                            <div className="text-xs font-semibold text-white">{label}</div>
+                            <div className="text-[10px] text-zinc-500 flex items-center gap-1 flex-wrap">
+                              <span>@{u.username}</span>
+                              <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1 py-0.2 text-[8px] font-bold text-amber-400">
+                                📍 {admin.officeCity}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button className="rounded p-1 text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 transition" onClick={() => onRevoke(u.id, label, admin.officeCity)}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
