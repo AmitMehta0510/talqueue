@@ -9,6 +9,7 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Avatar } from "../components/ui";
 import { userName } from "../lib/format";
 import { UserSearchAutocomplete } from "./AdminPages/shared";
+import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
 import {
   useCompanyQuery,
   useCompanyJobsQuery,
@@ -28,6 +29,7 @@ export function CompanyAdminPage() {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [jobPage, setJobPage] = useState(1);
+  const [managedJobId, setManagedJobId] = useState<string | null>(null);
 
   const companyQuery = useCompanyQuery(companySlug);
   const company = companyQuery.data;
@@ -245,7 +247,7 @@ export function CompanyAdminPage() {
               ] as const).map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
-                  onClick={() => { setActiveTab(id); setShowAddForm(false); }}
+                  onClick={() => { setActiveTab(id); setShowAddForm(false); setManagedJobId(null); }}
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap md:whitespace-normal
                     ${activeTab === id
                       ? "bg-emerald-600/10 text-emerald-400 border border-emerald-600/20"
@@ -655,94 +657,100 @@ export function CompanyAdminPage() {
 
             {/* ── VIEW: JOBS DIRECTORY ── */}
             {activeTab === "jobs" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Jobs Postings</h2>
-                  <Link
-                    to="/jobs"
-                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
-                  >
-                    Open Jobs Portal
-                  </Link>
+              managedJobId ? (
+                <div className="space-y-4 rounded-xl border border-zinc-800 bg-white p-5 text-zinc-950">
+                  <KanbanPipeline jobId={managedJobId} onBack={() => setManagedJobId(null)} />
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Jobs Postings</h2>
+                    <Link
+                      to="/jobs"
+                      className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                    >
+                      Open Jobs Portal
+                    </Link>
+                  </div>
 
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">All Company Job Postings</h3>
-                  {companyJobsQuery.isLoading ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="animate-spin text-emerald-500" size={20} />
-                    </div>
-                  ) : !companyJobsQuery.data || companyJobsQuery.data.jobs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
-                        <Briefcase size={18} />
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">All Company Job Postings</h3>
+                    {companyJobsQuery.isLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="animate-spin text-emerald-500" size={20} />
                       </div>
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Job Postings Found</h4>
-                      <p className="text-[11px] text-zinc-550 max-w-xs mt-1.5 mb-4">
-                        Once recruiters from your company post open roles, they will appear here along with live candidate counts.
-                      </p>
-                      <Link
-                        to="/jobs"
-                        className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition"
-                      >
-                        Go to Jobs Hub
-                      </Link>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="space-y-3">
-                        {companyJobsQuery.data.jobs.map((job: any) => (
-                          <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-4">
-                            <div>
-                              <div className="text-xs font-bold text-white flex items-center gap-2">
-                                {job.title}
-                                <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-400">
-                                  {job.status || "OPEN"}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-zinc-550 mt-1">
-                                {job.location || "Remote"} · {job.type} · Posted {new Date(job.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            
-                            <Link
-                              to="/jobs"
-                              className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-0.5"
-                            >
-                              Manage <ChevronRight size={12} />
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-
-                      {companyJobsQuery.data.totalPages > 1 && (
-                        <div className="flex items-center justify-between border-t border-zinc-800 pt-4 mt-4 text-xs">
-                          <div className="text-zinc-500">
-                            Showing page <span className="font-bold text-zinc-350">{jobPage}</span> of{" "}
-                            <span className="font-bold text-zinc-350">{companyJobsQuery.data.totalPages}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setJobPage((p) => Math.max(1, p - 1))}
-                              disabled={jobPage === 1}
-                              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
-                            >
-                              Previous
-                            </button>
-                            <button
-                              onClick={() => setJobPage((p) => Math.min(companyJobsQuery.data.totalPages, p + 1))}
-                              disabled={jobPage === companyJobsQuery.data.totalPages}
-                              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
-                            >
-                              Next
-                            </button>
-                          </div>
+                    ) : !companyJobsQuery.data || companyJobsQuery.data.jobs.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-500 mb-3">
+                          <Briefcase size={18} />
                         </div>
-                      )}
-                    </>
-                  )}
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Job Postings Found</h4>
+                        <p className="text-[11px] text-zinc-550 max-w-xs mt-1.5 mb-4">
+                          Once recruiters from your company post open roles, they will appear here along with live candidate counts.
+                        </p>
+                        <Link
+                          to="/jobs"
+                          className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition"
+                        >
+                          Go to Jobs Hub
+                        </Link>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {companyJobsQuery.data.jobs.map((job: any) => (
+                            <div key={job.id} className="flex items-center justify-between rounded-lg border border-zinc-850 bg-zinc-900/40 p-4">
+                              <div>
+                                <div className="text-xs font-bold text-white flex items-center gap-2">
+                                  {job.title}
+                                  <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.2 text-[8px] font-bold text-emerald-400">
+                                    {job.status || "OPEN"}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-zinc-550 mt-1">
+                                  {job.location || "Remote"} · {job.type} · Posted {new Date(job.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                              
+                              <button
+                                onClick={() => setManagedJobId(job.id)}
+                                className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-0.5"
+                              >
+                                Manage <ChevronRight size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {companyJobsQuery.data.totalPages > 1 && (
+                          <div className="flex items-center justify-between border-t border-zinc-800 pt-4 mt-4 text-xs">
+                            <div className="text-zinc-500">
+                              Showing page <span className="font-bold text-zinc-350">{jobPage}</span> of{" "}
+                              <span className="font-bold text-zinc-350">{companyJobsQuery.data.totalPages}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setJobPage((p) => Math.max(1, p - 1))}
+                                disabled={jobPage === 1}
+                                className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setJobPage((p) => Math.min(companyJobsQuery.data.totalPages, p + 1))}
+                                disabled={jobPage === companyJobsQuery.data.totalPages}
+                                className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 font-bold text-zinc-350 hover:border-zinc-750 disabled:opacity-40 disabled:pointer-events-none transition"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
           </div>
