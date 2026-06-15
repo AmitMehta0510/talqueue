@@ -23,6 +23,8 @@ import {
   updateMe,
   verifyMySkills,
   upgradeToPremiumRecruiter,
+  verifyCollegeEmailHandler,
+  verifyWorkEmailHandler,
 } from "./users.controller";
 
 const router = Router();
@@ -62,6 +64,10 @@ router.delete("/me/educations/:educationId", protect, deleteEducation);
 router.put("/me/experiences/:experienceId", protect, updateExperienceHandler);
 
 router.put("/me/educations/:educationId", protect, updateEducationHandler);
+
+router.post("/me/educations/:educationId/verify", protect, verifyCollegeEmailHandler);
+
+router.post("/me/experiences/:experienceId/verify", protect, verifyWorkEmailHandler);
 
 router.get("/:userId", protect, getUserFull);
 

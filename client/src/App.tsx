@@ -30,6 +30,7 @@ import { ReputationPage } from "./pages/ReputationPage";
 import { RecruiterPage } from "./pages/RecruiterPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CompanyAdminPage } from "./pages/CompanyAdminPage";
+import { EventsPage } from "./pages/EventsPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -182,6 +183,14 @@ function AppRoutes() {
           <Route path="/hackathons" element={<HackathonsPage />} />
           <Route path="/hackathons/:hackathonId" element={<HackathonsPage />} />
           <Route path="/jobs" element={<JobsPage />} />
+          <Route
+            path="/events"
+            element={
+              <RequireAuth>
+                <EventsPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/notifications"
             element={

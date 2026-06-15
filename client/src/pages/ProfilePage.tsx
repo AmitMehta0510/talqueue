@@ -79,6 +79,8 @@ import {
   useUpdateExperienceMutation,
   useUpdateProfileMutation,
   useCompaniesQuery,
+  useVerifyCollegeEmailMutation,
+  useVerifyWorkEmailMutation,
 } from "../hooks/usePlatformQueries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -191,6 +193,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const updateExperience = useUpdateExperienceMutation();
   const updateEducation = useUpdateEducationMutation();
   const verifySkills = useVerifySkillsMutation();
+  const verifyCollegeEmail = useVerifyCollegeEmailMutation();
+  const verifyWorkEmail = useVerifyWorkEmailMutation();
 
   const profile = profileQuery.data || fallbackUser;
 
@@ -557,6 +561,14 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     setEditingEducationId(null);
   };
 
+  const handleVerifyCollegeEmail = useCallback(async (educationId: string, email: string, code?: string) => {
+    return verifyCollegeEmail.mutateAsync({ educationId, email, code });
+  }, [verifyCollegeEmail]);
+
+  const handleVerifyWorkEmail = useCallback(async (experienceId: string, email: string, code?: string) => {
+    return verifyWorkEmail.mutateAsync({ experienceId, email, code });
+  }, [verifyWorkEmail]);
+
   if (profileQuery.isError) {
     return (
       <ErrorState
@@ -690,6 +702,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             onCancelOtherCollege={cancelOtherCollege}
             departments={departments}
             departmentsLoading={departmentsQuery.isFetching}
+            onVerify={handleVerifyCollegeEmail}
           />
         )}
 
@@ -1061,6 +1074,7 @@ function ExperienceTab({
   onEdit,
   onDelete,
   onCancel,
+  onVerify,
 }: {
   experiences: ReturnType<typeof flattenPages<any, any>>;
   isFetching: boolean;
@@ -1077,6 +1091,7 @@ function ExperienceTab({
   onEdit: (exp: any) => void;
   onDelete: (exp: any) => void;
   onCancel: () => void;
+  onVerify?: (experienceId: string, email: string, code?: string) => Promise<any>;
 }) {
   const { data: companyPage } = useCompaniesQuery({ limit: 100 });
   const companies = companyPage?.companies || [];
@@ -1310,6 +1325,7 @@ function ExperienceTab({
               experience={exp}
               onEdit={() => onEdit(exp)}
               onDelete={() => onDelete(exp)}
+              onVerify={(email, code) => onVerify ? onVerify(exp.id, email, code) : Promise.reject("Verification not available")}
             />
           ))}
         </div>
@@ -1443,6 +1459,7 @@ function EducationTab({
   onCancelOtherCollege,
   departments,
   departmentsLoading,
+  onVerify,
 }: {
   educations: any[];
   isFetching: boolean;
@@ -1467,6 +1484,7 @@ function EducationTab({
   onCancelOtherCollege: () => void;
   departments: Department[];
   departmentsLoading: boolean;
+  onVerify?: (educationId: string, email: string, code?: string) => Promise<any>;
 }) {
   return (
     <div className="space-y-4">
@@ -1689,6 +1707,7 @@ function EducationTab({
               education={edu}
               onEdit={() => onEdit(edu)}
               onDelete={() => onDelete(edu)}
+              onVerify={(email, code) => onVerify ? onVerify(edu.id, email, code) : Promise.reject("Verification not available")}
             />
           ))}
         </div>

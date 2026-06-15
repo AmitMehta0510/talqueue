@@ -144,6 +144,7 @@ export type Experience = {
   verified?: boolean;
   verificationScore?: number;
   workEmailVerified?: boolean;
+  workEmail?: string | null;
   techStack?: string[];
   skillsUsed?: string[];
   teamSize?: number | null;
@@ -168,6 +169,8 @@ export type Education = {
   current?: boolean;
   college?: College | null;
   department?: Department | null;
+  collegeEmail?: string | null;
+  collegeEmailVerified?: boolean;
 };
 
 export type CollegePage = {
@@ -189,6 +192,61 @@ export type DepartmentMutationPayload = {
   name: string;
   collegeId: string;
 };
+
+export type EventType = "COLLEGE" | "COMPANY" | "GENERAL";
+export type RSVPStatus = "GOING" | "MAYBE" | "DECLINED";
+
+export type Event = {
+  id: string;
+  title: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  location?: string | null;
+  meetingUrl?: string | null;
+  capacity?: number | null;
+  type: EventType;
+  collegeId?: string | null;
+  companyId?: string | null;
+  communityId?: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: {
+    id: string;
+    username: string;
+    profile?: {
+      fullName?: string | null;
+      avatarUrl?: string | null;
+    } | null;
+  };
+  college?: College | null;
+  company?: Company | null;
+  community?: Community | null;
+  rsvps?: EventRSVP[];
+  userRSVPStatus?: RSVPStatus | null;
+  _count?: {
+    rsvps?: number;
+  };
+};
+
+export type EventRSVP = {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: RSVPStatus;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    username: string;
+    profile?: {
+      fullName?: string | null;
+      avatarUrl?: string | null;
+    } | null;
+  };
+};
+
 
 export type SkillsPage = {
   skills: UserSkill[];
@@ -2427,4 +2485,24 @@ export const api = {
     request<any>(`/companies/${companyId}/follow`, { method: "POST" }),
   unfollowCompany: (companyId: string) =>
     request<any>(`/companies/${companyId}/unfollow`, { method: "POST" }),
+
+  // College import, email verification, events & RSVPs
+  importColleges: (body: any) =>
+    request<College[]>("/colleges/import", { method: "POST", body }),
+  verifyCollegeEmail: (educationId: string, email: string, code?: string) =>
+    request<any>(`/users/me/educations/${educationId}/verify`, { method: "POST", body: { email, code } }),
+  verifyWorkEmail: (experienceId: string, email: string, code?: string) =>
+    request<any>(`/users/me/experiences/${experienceId}/verify`, { method: "POST", body: { email, code } }),
+  events: (params?: { collegeId?: string; companyId?: string; communityId?: string; type?: string }, options?: EndpointOptions) =>
+    request<Event[]>(`/events${toQuery(params || {})}`, options),
+  event: (id: string, options?: EndpointOptions) =>
+    request<Event>(`/events/${id}`, options),
+  createEvent: (body: any) =>
+    request<Event>("/events", { method: "POST", body }),
+  updateEvent: (id: string, body: any) =>
+    request<Event>(`/events/${id}`, { method: "PUT", body }),
+  deleteEvent: (id: string) =>
+    request<any>(`/events/${id}`, { method: "DELETE" }),
+  rsvpEvent: (id: string, status: RSVPStatus) =>
+    request<any>(`/events/${id}/rsvp`, { method: "POST", body: { status } }),
 };

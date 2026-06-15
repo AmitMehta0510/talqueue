@@ -426,3 +426,47 @@ export const getDepartmentsByCollege = async (collegeId: string) => {
     },
   });
 };
+
+export const importColleges = async (user: AuthUser, colleges: any[]) => {
+  assertCanManageCollegeCatalog(user);
+
+  const results = [];
+  for (const item of colleges) {
+    if (!item.name) continue;
+
+    const name = normalizeText(item.name);
+    const normalizedKey = normalizeKey(name);
+
+    if (!normalizedKey) continue;
+
+    const college = await prisma.college.upsert({
+      where: {
+        normalizedKey,
+      },
+      update: {
+        name,
+        state: item.state ? normalizeText(item.state) : undefined,
+        city: item.city ? normalizeText(item.city) : undefined,
+        country: item.country ? normalizeText(item.country) : undefined,
+        website: item.website,
+        logoUrl: item.logoUrl,
+        emailDomains: item.emailDomains || [],
+      },
+      create: {
+        name,
+        normalizedKey,
+        state: item.state ? normalizeText(item.state) : undefined,
+        city: item.city ? normalizeText(item.city) : undefined,
+        country: item.country ? normalizeText(item.country) : undefined,
+        website: item.website,
+        logoUrl: item.logoUrl,
+        emailDomains: item.emailDomains || [],
+      },
+    });
+
+    await ensureOfficialCollegeCommunity(user.id, college);
+    results.push(college);
+  }
+
+  return results;
+};

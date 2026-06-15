@@ -10,6 +10,7 @@ import {
   getAllColleges,
   getDepartmentsByCollege,
   searchColleges,
+  importColleges,
 } from "./colleges.service";
 
 import {
@@ -112,6 +113,22 @@ export const getDepartmentsHandler =
 
       res.json(
         successResponse(departments)
+      );
+    }
+  );
+
+export const importCollegesHandler =
+  asyncHandler(
+    async (req: any, res: Response) => {
+      const colleges = Array.isArray(req.body.colleges) ? req.body.colleges : 
+                       Array.isArray(req.body) ? req.body : [req.body];
+      const results = await importColleges(req.user, colleges);
+
+      res.status(201).json(
+        successResponse(
+          results,
+          "Colleges imported successfully!"
+        )
       );
     }
   );

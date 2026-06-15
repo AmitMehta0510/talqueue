@@ -380,6 +380,7 @@ enum CommunityMemberRole {
   MODERATOR
   ADMIN
   OWNER
+  ALUMNI
 }
 
 enum CommunityCategory {
@@ -556,6 +557,8 @@ model User {
   companyRequests      CompanyRequest[]
   collegeRequests      CollegeRequest[]
   followedCompanies    Company[]          @relation("CompanyFollowers")
+  createdEvents        Event[]
+  eventRSVPs           EventRSVP[]
 }
 
 model UserRecommendation {
@@ -688,6 +691,8 @@ model College {
   createdAt     DateTime       @default(now())
   posts         Post[]
   conversations Conversation[]
+  emailDomains  String[]       @default([])
+  events        Event[]
 
   @@index([name])
   @@index([city])
@@ -857,6 +862,8 @@ model Education {
   department Department? @relation(fields: [departmentId], references: [id])
 
   createdAt DateTime @default(now())
+  collegeEmail String?
+  collegeEmailVerified Boolean @default(false)
 
   @@index([userId])
   @@index([collegeId])
@@ -2066,6 +2073,8 @@ model Company {
 
   companyRequests CompanyRequest[]
   followers       User[]           @relation("CompanyFollowers")
+  emailDomains    String[]         @default([])
+  events          Event[]
 }
 
 model Job {
@@ -2654,6 +2663,7 @@ model Community {
   posts Post[]
 
   conversations Conversation[]
+  events        Event[]
 
   createdById String
   createdBy   User   @relation("CommunityCreator", fields: [createdById], references: [id])
@@ -2763,4 +2773,58 @@ model CompanyAdmin {
   @@unique([userId, companyId, officeCity])
   @@index([companyId])
   @@index([userId])
+}
+
+enum EventType {
+  COLLEGE
+  COMPANY
+  GENERAL
+}
+
+enum RSVPStatus {
+  GOING
+  MAYBE
+  DECLINED
+}
+
+model Event {
+  id            String       @id @default(uuid())
+  title         String
+  description   String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String?
+  meetingUrl    String?
+  capacity      Int?
+  type          EventType    @default(GENERAL)
+  collegeId     String?
+  companyId     String?
+  communityId   String?
+  createdById   String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  createdBy     User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  college       College?     @relation(fields: [collegeId], references: [id])
+  company       Company?     @relation(fields: [companyId], references: [id])
+  community     Community?   @relation(fields: [communityId], references: [id])
+  rsvps         EventRSVP[]
+
+  @@index([collegeId])
+  @@index([companyId])
+  @@index([communityId])
+}
+
+model EventRSVP {
+  id        String     @id @default(uuid())
+  eventId   String
+  userId    String
+  status    RSVPStatus @default(GOING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
 }

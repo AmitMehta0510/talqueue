@@ -17,24 +17,28 @@ async function main() {
       name: "IIT Delhi",
       city: "Delhi",
       state: "Delhi",
+      emailDomains: ["iitd.ac.in", "alumni.iitd.ac.in"],
     },
 
     {
       name: "NIT Kurukshetra",
       city: "Kurukshetra",
       state: "Haryana",
+      emailDomains: ["nitkkr.ac.in"],
     },
 
     {
       name: "DTU",
       city: "Delhi",
       state: "Delhi",
+      emailDomains: ["dtu.ac.in"],
     },
 
     {
       name: "IIIT Una",
       city: "Una",
       state: "Himachal Pradesh",
+      emailDomains: ["iiitu.ac.in"],
     },
   ];
 

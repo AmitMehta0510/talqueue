@@ -197,4 +197,9 @@ export const queryKeys = {
     collegeAdmins: (collegeId: string) => ["admin", "colleges", collegeId, "admins"] as const,
     companyAdmins: (companyId: string) => ["admin", "companies", companyId, "admins"] as const,
   },
+  events: {
+    all: ["events"] as const,
+    list: (params?: Record<string, unknown>) => ["events", "list", params || {}] as const,
+    detail: (id: string) => ["events", "detail", id] as const,
+  },
 };

@@ -25,6 +25,8 @@ import {
   updateEducation,
   updateExperience,
   updateProfile,
+  verifyCollegeEmail,
+  verifyWorkEmail,
 } from "./users.service";
 
 import {
@@ -369,6 +371,44 @@ export const upgradeToPremiumRecruiter = asyncHandler(
     }
 
     res.json(successResponse(null, "Successfully upgraded to Recruiter Premium!"));
+  }
+);
+
+export const verifyCollegeEmailHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { email, code } = req.body;
+    if (!email) {
+      res.status(400).json({ success: false, message: "Email is required" });
+      return;
+    }
+
+    const result = await verifyCollegeEmail(
+      req.user.id,
+      req.params.educationId,
+      email,
+      code
+    );
+
+    res.json(successResponse(result, result.message));
+  }
+);
+
+export const verifyWorkEmailHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { email, code } = req.body;
+    if (!email) {
+      res.status(400).json({ success: false, message: "Email is required" });
+      return;
+    }
+
+    const result = await verifyWorkEmail(
+      req.user.id,
+      req.params.experienceId,
+      email,
+      code
+    );
+
+    res.json(successResponse(result, result.message));
   }
 );
 

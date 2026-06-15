@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Massachusetts Institute of Technology",
+    "city": "Cambridge",
+    "state": "MA",
+    "country": "USA",
+    "website": "https://www.mit.edu",
+    "emailDomains": ["mit.edu"]
+  }
+]

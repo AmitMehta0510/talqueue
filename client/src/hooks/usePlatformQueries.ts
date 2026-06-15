@@ -37,6 +37,8 @@ import {
   SendMessagePayload,
   User,
   UserSkill,
+  Event,
+  RSVPStatus,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4146,6 +4148,147 @@ export const useRemoveCompanyRecruiterMutation = () => {
       showToast("success", result.message || "Recruiter removed successfully");
       queryClient.invalidateQueries({ queryKey: ["company-admin", "recruiters", companyId] });
       queryClient.invalidateQueries({ queryKey: ["company-admin", "stats", companyId] });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useImportCollegesMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: any) => api.importColleges(body),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Colleges imported successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useVerifyCollegeEmailMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ educationId, email, code }: { educationId: string; email: string; code?: string }) =>
+      api.verifyCollegeEmail(educationId, email, code),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Email verified successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.educations });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.full });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.joined() });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useVerifyWorkEmailMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ experienceId, email, code }: { experienceId: string; email: string; code?: string }) =>
+      api.verifyWorkEmail(experienceId, email, code),
+    onSuccess: (result) => {
+      showToast("success", result.message || "Work email verified successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.experiences });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.full });
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.joined() });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useEventsQuery = (params?: { collegeId?: string; companyId?: string; communityId?: string; type?: string }) => {
+  return useQuery({
+    queryKey: queryKeys.events.list(params),
+    queryFn: async ({ signal }) => {
+      const res = await api.events(params, { signal });
+      return res.data || [];
+    },
+  });
+};
+
+export const useEventQuery = (id: string) => {
+  return useQuery({
+    queryKey: queryKeys.events.detail(id),
+    queryFn: async ({ signal }) => {
+      const res = await api.event(id, { signal });
+      return res.data;
+    },
+    enabled: Boolean(id),
+  });
+};
+
+export const useCreateEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: any) => api.createEvent(body),
+    onSuccess: () => {
+      showToast("success", "Event created successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useUpdateEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) => api.updateEvent(id, body),
+    onSuccess: (result) => {
+      showToast("success", "Event updated successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(result.data.id) });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useDeleteEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteEvent(id),
+    onSuccess: () => {
+      showToast("success", "Event deleted successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+    },
+    onError: (error) => {
+      showToast("error", getErrorMessage(error));
+    },
+  });
+};
+
+export const useRsvpEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: RSVPStatus }) => api.rsvpEvent(id, status),
+    onSuccess: (result, { id }) => {
+      showToast("success", "RSVP status updated");
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.detail(id) });
     },
     onError: (error) => {
       showToast("error", getErrorMessage(error));

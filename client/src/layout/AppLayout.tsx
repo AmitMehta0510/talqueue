@@ -22,6 +22,7 @@ import {
   Send,
   Menu,
   X,
+  Calendar,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -46,6 +47,7 @@ const sections: NavSection[] = [
   { to: "/social", label: "My Network", icon: UserRound, requiresAuth: true },
   { to: "/referrals", label: "Referrals", icon: Send, requiresAuth: true },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { to: "/events", label: "Events", icon: Calendar },
   { to: "/projects", label: "Projects", icon: Rocket },
   { to: "/communities", label: "Communities", icon: Hash },
   { to: "/teams", label: "Teams", icon: Users, requiresAuth: true },

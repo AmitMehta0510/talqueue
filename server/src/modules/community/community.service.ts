@@ -196,31 +196,67 @@ export const autoJoinUserCommunities = async (
   const communityFilters: Prisma.CommunityWhereInput[] = [];
 
   if (context.collegeId) {
-    communityFilters.push({
-      type: "COLLEGE",
-
-      collegeId: context.collegeId,
-
-      departmentId: null,
+    const education = await client.education.findFirst({
+      where: { userId, collegeId: context.collegeId },
+      select: { collegeEmail: true, collegeEmailVerified: true },
+    });
+    const college = await client.college.findUnique({
+      where: { id: context.collegeId },
+      select: { emailDomains: true },
     });
 
-    if (context.departmentId) {
+    const hasDomains = college?.emailDomains && college.emailDomains.length > 0;
+    const parts = education?.collegeEmail?.split("@") || [];
+    const domain = parts[1]?.toLowerCase().trim();
+    const isDomainVerified = education?.collegeEmailVerified && 
+      hasDomains && 
+      college.emailDomains.some((d) => d.toLowerCase().trim() === domain);
+
+    if (!hasDomains || isDomainVerified) {
       communityFilters.push({
         type: "COLLEGE",
 
         collegeId: context.collegeId,
 
-        departmentId: context.departmentId,
+        departmentId: null,
       });
+
+      if (context.departmentId) {
+        communityFilters.push({
+          type: "COLLEGE",
+
+          collegeId: context.collegeId,
+
+          departmentId: context.departmentId,
+        });
+      }
     }
   }
 
   if (context.companyId) {
-    communityFilters.push({
-      type: "COMPANY",
-
-      companyId: context.companyId,
+    const experience = await client.experience.findFirst({
+      where: { userId, companyId: context.companyId },
+      select: { workEmail: true, workEmailVerified: true },
     });
+    const company = await client.company.findUnique({
+      where: { id: context.companyId },
+      select: { emailDomains: true },
+    });
+
+    const hasDomains = company?.emailDomains && company.emailDomains.length > 0;
+    const parts = experience?.workEmail?.split("@") || [];
+    const domain = parts[1]?.toLowerCase().trim();
+    const isDomainVerified = experience?.workEmailVerified && 
+      hasDomains && 
+      company.emailDomains.some((d) => d.toLowerCase().trim() === domain);
+
+    if (!hasDomains || isDomainVerified) {
+      communityFilters.push({
+        type: "COMPANY",
+
+        companyId: context.companyId,
+      });
+    }
   }
 
   if (communityFilters.length === 0) {
@@ -720,7 +756,11 @@ export const getJoinedCommunities = async (userId: string) => {
 export const joinCommunity = async (userId: string, communityId: string) => {
   const community = await prisma.community.findUnique({
     where: { id: communityId },
-    include: { createdBy: { select: { id: true } } },
+    include: { 
+      createdBy: { select: { id: true } },
+      college: { select: { emailDomains: true } },
+      company: { select: { emailDomains: true } },
+    },
   });
 
   if (!community) {
@@ -767,15 +807,31 @@ export const joinCommunity = async (userId: string, communityId: string) => {
   if (community.type === "COLLEGE" && community.collegeId) {
     const education = await prisma.education.findFirst({
       where: { userId, collegeId: community.collegeId },
-      select: { id: true },
     });
-    isAffiliated = Boolean(education);
+    if (education) {
+      if (community.college?.emailDomains && community.college.emailDomains.length > 0) {
+        const parts = education.collegeEmail?.split("@") || [];
+        const domain = parts[1]?.toLowerCase().trim();
+        isAffiliated = education.collegeEmailVerified && 
+          community.college.emailDomains.some((d) => d.toLowerCase().trim() === domain);
+      } else {
+        isAffiliated = true;
+      }
+    }
   } else if (community.type === "COMPANY" && community.companyId) {
     const experience = await prisma.experience.findFirst({
       where: { userId, companyId: community.companyId },
-      select: { id: true },
     });
-    isAffiliated = Boolean(experience);
+    if (experience) {
+      if (community.company?.emailDomains && community.company.emailDomains.length > 0) {
+        const parts = experience.workEmail?.split("@") || [];
+        const domain = parts[1]?.toLowerCase().trim();
+        isAffiliated = experience.workEmailVerified && 
+          community.company.emailDomains.some((d) => d.toLowerCase().trim() === domain);
+      } else {
+        isAffiliated = true;
+      }
+    }
   } else {
     // GENERAL communities → always open
     isAffiliated = true;

@@ -1528,6 +1528,27 @@ export const updateExperience = async (
     include: { company: true },
   });
 
+  if (existing.isCurrent && !updated.isCurrent && updated.companyId) {
+    const communities = await prisma.community.findMany({
+      where: { companyId: updated.companyId },
+      select: { id: true, name: true },
+    });
+    for (const c of communities) {
+      const membership = await prisma.communityMember.findUnique({
+        where: {
+          communityId_userId: { communityId: c.id, userId },
+        },
+      });
+      if (membership && membership.role !== "ALUMNI") {
+        await prisma.communityMember.update({
+          where: { id: membership.id },
+          data: { role: "ALUMNI" },
+        });
+        console.log(`[AlumniTransition] User ${userId} role changed to ALUMNI in community ${c.name}`);
+      }
+    }
+  }
+
   calculateEngineeringScore(userId).catch(console.error);
 
   return updated;
@@ -1662,4 +1683,141 @@ export const getMyProjects = async (userId: string) => {
   });
 
   return projects;
+};
+
+export const verifyCollegeEmail = async (
+  userId: string,
+  educationId: string,
+  collegeEmail: string,
+  code?: string
+) => {
+  const education = await prisma.education.findFirst({
+    where: { id: educationId, userId },
+    include: { college: true },
+  });
+
+  if (!education) {
+    throw new AppError("Education record not found", 404);
+  }
+
+  if (!education.collegeId) {
+    throw new AppError("This education record is not linked to a registered college", 400);
+  }
+
+  const allowedDomains = education.college?.emailDomains || [];
+  const parts = collegeEmail.split("@");
+  const domain = parts[1]?.toLowerCase().trim();
+
+  if (allowedDomains.length > 0 && !allowedDomains.some((d) => d.toLowerCase().trim() === domain)) {
+    throw new AppError(`Email domain '${domain}' does not match any approved domains for ${education.college?.name || "your college"}.`, 400);
+  }
+
+  if (!code) {
+    // Simulating code sending
+    console.log(`[CollegeEmailVerification] Verification code for ${collegeEmail} is '123456'`);
+    return {
+      success: true,
+      message: `A verification code has been sent to ${collegeEmail}. Please use the code '123456' to confirm.`,
+    };
+  }
+
+  if (code !== "123456") {
+    throw new AppError("Invalid verification code. Please try again.", 400);
+  }
+
+  const updatedEducation = await prisma.$transaction(async (tx) => {
+    const res = await tx.education.update({
+      where: { id: educationId },
+      data: {
+        collegeEmail,
+        collegeEmailVerified: true,
+      },
+    });
+
+    await autoJoinUserCommunities(
+      userId,
+      {
+        collegeId: res.collegeId,
+        departmentId: res.departmentId,
+      },
+      tx
+    );
+
+    return res;
+  });
+
+  return {
+    success: true,
+    message: "College email verified successfully!",
+    education: updatedEducation,
+  };
+};
+
+export const verifyWorkEmail = async (
+  userId: string,
+  experienceId: string,
+  workEmail: string,
+  code?: string
+) => {
+  const experience = await prisma.experience.findFirst({
+    where: { id: experienceId, userId },
+    include: { company: true },
+  });
+
+  if (!experience) {
+    throw new AppError("Experience record not found", 404);
+  }
+
+  if (!experience.companyId) {
+    throw new AppError("This experience record is not linked to a registered company", 400);
+  }
+
+  const allowedDomains = experience.company?.emailDomains || [];
+  const parts = workEmail.split("@");
+  const domain = parts[1]?.toLowerCase().trim();
+
+  if (allowedDomains.length > 0 && !allowedDomains.some((d) => d.toLowerCase().trim() === domain)) {
+    throw new AppError(`Email domain '${domain}' does not match any approved domains for ${experience.company?.name || "your company"}.`, 400);
+  }
+
+  if (!code) {
+    console.log(`[WorkEmailVerification] Verification code for ${workEmail} is '123456'`);
+    return {
+      success: true,
+      message: `A verification code has been sent to ${workEmail}. Please use the code '123456' to confirm.`,
+    };
+  }
+
+  if (code !== "123456") {
+    throw new AppError("Invalid verification code. Please try again.", 400);
+  }
+
+  const updatedExperience = await prisma.$transaction(async (tx) => {
+    const res = await tx.experience.update({
+      where: { id: experienceId },
+      data: {
+        workEmail,
+        workEmailVerified: true,
+        verified: true,
+        verifiedAt: new Date(),
+        verificationScore: 100, // force complete verification score
+      },
+    });
+
+    await autoJoinUserCommunities(
+      userId,
+      {
+        companyId: res.companyId,
+      },
+      tx
+    );
+
+    return res;
+  });
+
+  return {
+    success: true,
+    message: "Work email verified successfully!",
+    experience: updatedExperience,
+  };
 };

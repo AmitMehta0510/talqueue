@@ -1,6 +1,6 @@
 import React, { useState, FormEvent } from "react";
 import {
-  Plus, Loader2, GraduationCap, ExternalLink, ChevronRight, X, Trash2,
+  Plus, Loader2, GraduationCap, ExternalLink, ChevronRight, X, Trash2, Upload,
 } from "lucide-react";
 import {
   useCollegesQuery,
@@ -8,6 +8,7 @@ import {
   useListCollegeAdminsQuery,
   useAdminDepartmentsQuery,
   useAdminCreateDepartmentMutation,
+  useImportCollegesMutation,
 } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
 import { cleanLogoUrl, userName } from "../../lib/format";
@@ -27,6 +28,32 @@ export function CollegesPanel({
 }) {
   const collegesQuery = useCollegesQuery(100);
   const createCollege = useCreateCollegeMutation();
+  const importColleges = useImportCollegesMutation();
+
+  const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result;
+        if (typeof text !== "string") return;
+        const parsed = JSON.parse(text);
+        const payload = Array.isArray(parsed) ? parsed : parsed.colleges;
+        if (!payload || !Array.isArray(payload)) {
+          alert("Invalid JSON format. Expected an array of colleges or a { colleges: [...] } wrapper.");
+          return;
+        }
+
+        await importColleges.mutateAsync(payload);
+      } catch (err: any) {
+        alert("Failed to parse JSON file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -54,12 +81,29 @@ export function CollegesPanel({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">College Management</h2>
-        <button
-          className="flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition"
-          onClick={() => { setShowForm(!showForm); onSelectCollege(null); }}
-        >
-          <Plus size={12} /> Add College
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs font-bold text-zinc-300 hover:border-zinc-500 hover:text-white transition">
+            {importColleges.isPending ? (
+              <Loader2 size={12} className="animate-spin text-emerald-500" />
+            ) : (
+              <Upload size={12} />
+            )}
+            Bulk Import (JSON)
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleJsonUpload}
+              disabled={importColleges.isPending}
+            />
+          </label>
+          <button
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition"
+            onClick={() => { setShowForm(!showForm); onSelectCollege(null); }}
+          >
+            <Plus size={12} /> Add College
+          </button>
+        </div>
       </div>
 
       {showForm && (

@@ -8,6 +8,7 @@ import {
   getCollegesHandler,
   getDepartmentsHandler,
   searchCollegesHandler,
+  importCollegesHandler,
 } from "./colleges.controller";
 
 const router = Router();
@@ -16,6 +17,12 @@ router.post(
   "/",
   protect,
   createCollegeHandler
+);
+
+router.post(
+  "/import",
+  protect,
+  importCollegesHandler
 );
 
 router.get("/", getCollegesHandler);
