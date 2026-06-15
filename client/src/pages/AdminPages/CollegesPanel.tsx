@@ -6,7 +6,6 @@ import {
   useCollegesQuery,
   useCreateCollegeMutation,
   useListCollegeAdminsQuery,
-  useAssignCollegeAdminMutation,
   useAdminDepartmentsQuery,
   useAdminCreateDepartmentMutation,
 } from "../../hooks/usePlatformQueries";
@@ -19,10 +18,12 @@ export function CollegesPanel({
   selectedCollege,
   onSelectCollege,
   onRevokeAdmin,
+  onAssignAdmin,
 }: {
   selectedCollege: College | null;
   onSelectCollege: (c: College | null) => void;
   onRevokeAdmin: (collegeId: string, userId: string, label: string) => void;
+  onAssignAdmin: (collegeId: string, userId: string, label: string, collegeName: string) => void;
 }) {
   const collegesQuery = useCollegesQuery(100);
   const createCollege = useCreateCollegeMutation();
@@ -155,6 +156,7 @@ export function CollegesPanel({
               college={selectedCollege}
               onClose={() => onSelectCollege(null)}
               onRevoke={(userId, label) => onRevokeAdmin(selectedCollege.id, userId, label)}
+              onAssign={(userId, label) => onAssignAdmin(selectedCollege.id, userId, label, selectedCollege.name)}
             />
           )}
         </div>
@@ -167,29 +169,30 @@ function CollegeDetailPanel({
   college,
   onClose,
   onRevoke,
+  onAssign,
 }: {
   college: College;
   onClose: () => void;
   onRevoke: (userId: string, label: string) => void;
+  onAssign: (userId: string, label: string) => void;
 }) {
   const adminsQuery = useListCollegeAdminsQuery(college.id);
-  const assignAdmin = useAssignCollegeAdminMutation();
   const deptQuery = useAdminDepartmentsQuery(college.id);
   const createDept = useAdminCreateDepartmentMutation();
 
   const [targetUserId, setTargetUserId] = useState("");
+  const [targetUserLabel, setTargetUserLabel] = useState("");
   const [deptName, setDeptName] = useState("");
   const [deptHod, setDeptHod] = useState("");
 
   const [activeSection, setActiveSection] = useState<"admins" | "departments">("admins");
 
-  const handleAssignAdmin = async (e: FormEvent) => {
+  const handleAssignAdmin = (e: FormEvent) => {
     e.preventDefault();
     if (!targetUserId.trim()) return;
-    try {
-      await assignAdmin.mutateAsync({ collegeId: college.id, userId: targetUserId.trim() });
-      setTargetUserId("");
-    } catch { }
+    onAssign(targetUserId.trim(), targetUserLabel || targetUserId.trim());
+    setTargetUserId("");
+    setTargetUserLabel("");
   };
 
   const handleCreateDept = async (e: FormEvent) => {
@@ -236,11 +239,14 @@ function CollegeDetailPanel({
             <form onSubmit={handleAssignAdmin} className="flex gap-2">
               <UserSearchAutocomplete
                 value={targetUserId}
-                onChange={(userId) => setTargetUserId(userId)}
+                onChange={(userId, label) => {
+                  setTargetUserId(userId);
+                  setTargetUserLabel(label);
+                }}
                 placeholder="Search user to assign as admin..."
               />
-              <button className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={assignAdmin.isPending}>
-                {assignAdmin.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Add
+              <button className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition" type="submit">
+                <Plus size={11} /> Add
               </button>
             </form>
 

@@ -12,6 +12,8 @@ import {
   useRemovePlatformAdminMutation,
   useRemoveCollegeAdminMutation,
   useRemoveCompanyAdminMutation,
+  useAssignCollegeAdminMutation,
+  useAssignCompanyAdminMutation,
 } from "../hooks/usePlatformQueries";
 import { College, Company } from "../lib/api";
 
@@ -56,6 +58,8 @@ export function AdminPage() {
   const removePlatformAdmin = useRemovePlatformAdminMutation();
   const removeCollegeAdmin = useRemoveCollegeAdminMutation();
   const removeCompanyAdmin = useRemoveCompanyAdminMutation();
+  const assignCollegeAdmin = useAssignCollegeAdminMutation();
+  const assignCompanyAdmin = useAssignCompanyAdminMutation();
 
   const statsQuery = useAdminStatsQuery();
 
@@ -63,11 +67,12 @@ export function AdminPage() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   const [confirmAction, setConfirmAction] = useState<{
-    type: "ban" | "activate" | "grant_admin" | "revoke_admin" | "revoke_college_admin" | "revoke_company_admin";
+    type: "ban" | "activate" | "grant_admin" | "revoke_admin" | "revoke_college_admin" | "revoke_company_admin" | "assign_college_admin" | "assign_company_admin";
     userId: string;
     label: string;
     extraId?: string;
     extraCity?: string;
+    extraName?: string;
   } | null>(null);
 
   const handleConfirmAction = async () => {
@@ -85,6 +90,10 @@ export function AdminPage() {
         await removeCollegeAdmin.mutateAsync({ collegeId: confirmAction.extraId, userId: confirmAction.userId });
       } else if (confirmAction.type === "revoke_company_admin" && confirmAction.extraId) {
         await removeCompanyAdmin.mutateAsync({ companyId: confirmAction.extraId, userId: confirmAction.userId, officeCity: confirmAction.extraCity });
+      } else if (confirmAction.type === "assign_college_admin" && confirmAction.extraId) {
+        await assignCollegeAdmin.mutateAsync({ collegeId: confirmAction.extraId, userId: confirmAction.userId });
+      } else if (confirmAction.type === "assign_company_admin" && confirmAction.extraId) {
+        await assignCompanyAdmin.mutateAsync({ companyId: confirmAction.extraId, userId: confirmAction.userId, officeCity: confirmAction.extraCity });
       }
     } catch { /* hook shows toast */ }
     finally { setConfirmAction(null); }
@@ -92,7 +101,8 @@ export function AdminPage() {
 
   const isPending =
     updateUserStatus.isPending || assignPlatformAdmin.isPending ||
-    removePlatformAdmin.isPending || removeCollegeAdmin.isPending || removeCompanyAdmin.isPending;
+    removePlatformAdmin.isPending || removeCollegeAdmin.isPending || removeCompanyAdmin.isPending ||
+    assignCollegeAdmin.isPending || assignCompanyAdmin.isPending;
 
   const stats = statsQuery.data;
 
@@ -187,6 +197,9 @@ export function AdminPage() {
                 onRevokeAdmin={(collegeId, userId, label) =>
                   setConfirmAction({ type: "revoke_college_admin", userId, label, extraId: collegeId })
                 }
+                onAssignAdmin={(collegeId, userId, label, collegeName) =>
+                  setConfirmAction({ type: "assign_college_admin", userId, label, extraId: collegeId, extraName: collegeName })
+                }
               />
             )}
             {activeTab === "companies" && (
@@ -195,6 +208,9 @@ export function AdminPage() {
                 onSelectCompany={setSelectedCompany}
                 onRevokeAdmin={(companyId, userId, label, officeCity) =>
                   setConfirmAction({ type: "revoke_company_admin", userId, label, extraId: companyId, extraCity: officeCity })
+                }
+                onAssignAdmin={(companyId, userId, label, companyName, officeCity) =>
+                  setConfirmAction({ type: "assign_company_admin", userId, label, extraId: companyId, extraName: companyName, extraCity: officeCity })
                 }
               />
             )}
@@ -212,7 +228,10 @@ export function AdminPage() {
           confirmAction?.type === "ban" ? "Ban User" :
           confirmAction?.type === "activate" ? "Activate User" :
           confirmAction?.type === "grant_admin" ? "Grant Admin Rights" :
-          confirmAction?.type === "revoke_admin" ? "Revoke Admin Rights" : "Revoke Admin Scope"
+          confirmAction?.type === "revoke_admin" ? "Revoke Admin Rights" :
+          confirmAction?.type === "assign_college_admin" ? "Assign College Admin" :
+          confirmAction?.type === "assign_company_admin" ? "Assign Company Admin" :
+          "Revoke Admin Scope"
         }
         message={
           confirmAction?.type === "ban" ? (
@@ -223,6 +242,10 @@ export function AdminPage() {
             <p>Grant <strong>PLATFORM_ADMIN</strong> to <strong>{confirmAction.label}</strong>? This gives full console access.</p>
           ) : confirmAction?.type === "revoke_admin" ? (
             <p>Revoke <strong>PLATFORM_ADMIN</strong> from <strong>{confirmAction.label}</strong>?</p>
+          ) : confirmAction?.type === "assign_college_admin" ? (
+            <p>Are you sure you want to assign <strong>{confirmAction.label}</strong> as administrator for <strong>{confirmAction.extraName}</strong>? They will receive a notification.</p>
+          ) : confirmAction?.type === "assign_company_admin" ? (
+            <p>Are you sure you want to assign <strong>{confirmAction.label}</strong> as administrator for <strong>{confirmAction.extraName}</strong>{confirmAction.extraCity ? ` (${confirmAction.extraCity} office)` : " (Global)"}? They will receive a notification.</p>
           ) : (
             <p>Revoke admin from <strong>{confirmAction?.label}</strong> for this scope?</p>
           )
@@ -231,7 +254,9 @@ export function AdminPage() {
           confirmAction?.type === "ban" ? "Ban User" :
           confirmAction?.type === "activate" ? "Activate" :
           confirmAction?.type === "grant_admin" ? "Grant Admin" :
-          confirmAction?.type === "revoke_admin" ? "Revoke Admin" : "Revoke"
+          confirmAction?.type === "revoke_admin" ? "Revoke Admin" :
+          confirmAction?.type === "assign_college_admin" || confirmAction?.type === "assign_company_admin" ? "Assign Admin" :
+          "Revoke"
         }
         variant={confirmAction?.type === "ban" || confirmAction?.type?.startsWith("revoke") ? "danger" : "default"}
         isPending={isPending}

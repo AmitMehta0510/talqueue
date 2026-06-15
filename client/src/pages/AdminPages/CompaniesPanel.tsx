@@ -1,15 +1,16 @@
 import { FormEvent, useState } from "react";
 import { Building2, Plus, Loader2, ExternalLink, ChevronRight, X, Trash2 } from "lucide-react";
 import { Company } from "../../lib/api";
-import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery, useAssignCompanyAdminMutation } from "../../hooks/usePlatformQueries";
+import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery } from "../../hooks/usePlatformQueries";
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { Avatar } from "../../components/ui";
 import { SearchBar, UserSearchAutocomplete } from "./shared";
 
-export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin }: {
+export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin, onAssignAdmin }: {
   selectedCompany: Company | null;
   onSelectCompany: (c: Company | null) => void;
   onRevokeAdmin: (companyId: string, userId: string, label: string, officeCity?: string) => void;
+  onAssignAdmin: (companyId: string, userId: string, label: string, companyName: string, officeCity?: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const companiesQuery = useCompaniesQuery({ q: search, limit: 100 });
@@ -129,6 +130,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
               company={selectedCompany}
               onClose={() => onSelectCompany(null)}
               onRevoke={(userId, label, officeCity) => onRevokeAdmin(selectedCompany.id, userId, label, officeCity)}
+              onAssign={(userId, label, officeCity) => onAssignAdmin(selectedCompany.id, userId, label, selectedCompany.name, officeCity)}
             />
           )}
         </div>
@@ -137,29 +139,29 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
   );
 }
 
-function CompanyAdminPanel({ company, onClose, onRevoke }: {
+function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
   company: Company;
   onClose: () => void;
   onRevoke: (userId: string, label: string, officeCity?: string) => void;
+  onAssign: (userId: string, label: string, officeCity?: string) => void;
 }) {
   const adminsQuery = useListCompanyAdminsQuery(company.id);
-  const assignAdmin = useAssignCompanyAdminMutation();
   const [targetUserId, setTargetUserId] = useState("");
+  const [targetUserLabel, setTargetUserLabel] = useState("");
   const [officeCity, setOfficeCity] = useState("");
   const [adminType, setAdminType] = useState<"GLOBAL" | "OFFICE">("GLOBAL");
 
-  const handleAssign = async (e: FormEvent) => {
+  const handleAssign = (e: FormEvent) => {
     e.preventDefault();
     if (!targetUserId.trim()) return;
-    try {
-      await assignAdmin.mutateAsync({
-        companyId: company.id,
-        userId: targetUserId.trim(),
-        officeCity: adminType === "OFFICE" ? officeCity.trim() || undefined : undefined
-      });
-      setTargetUserId("");
-      setOfficeCity("");
-    } catch { }
+    onAssign(
+      targetUserId.trim(),
+      targetUserLabel || targetUserId.trim(),
+      adminType === "OFFICE" ? officeCity.trim() : undefined
+    );
+    setTargetUserId("");
+    setTargetUserLabel("");
+    setOfficeCity("");
   };
 
   const admins = adminsQuery.data || [];
@@ -209,7 +211,10 @@ function CompanyAdminPanel({ company, onClose, onRevoke }: {
 
           <UserSearchAutocomplete
             value={targetUserId}
-            onChange={(userId) => setTargetUserId(userId)}
+            onChange={(userId, label) => {
+              setTargetUserId(userId);
+              setTargetUserLabel(label);
+            }}
             placeholder="Search user to assign as admin..."
           />
 
@@ -223,8 +228,8 @@ function CompanyAdminPanel({ company, onClose, onRevoke }: {
             />
           )}
 
-          <button className="w-full flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={assignAdmin.isPending}>
-            {assignAdmin.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Assign Admin
+          <button className="w-full flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition" type="submit">
+            <Plus size={11} /> Assign Admin
           </button>
         </form>
 

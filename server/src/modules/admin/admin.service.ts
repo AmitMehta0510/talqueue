@@ -1,6 +1,7 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { JobStatus } from "@prisma/client";
+import { createNotification } from "modules/notificatios/notifications.service";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL HELPERS
@@ -94,7 +95,7 @@ export const assignCollegeAdmin = async (
   collegeId: string
 ) => {
   await ensureUserExists(userId);
-  await ensureCollegeExists(collegeId);
+  const college = await ensureCollegeExists(collegeId);
 
   const existing = await prisma.collegeAdmin.findFirst({
     where: { userId, collegeId },
@@ -108,6 +109,16 @@ export const assignCollegeAdmin = async (
 
   await grantRole(userId, "COLLEGE_ADMIN");
   await ensureInstitutionAdminInCommunities(userId, "COLLEGE", collegeId);
+
+  await createNotification({
+    userId,
+    actorId,
+    type: "SYSTEM",
+    title: "College Admin Assigned",
+    message: `You have been assigned as an administrator for ${college.name}.`,
+    entityType: "COLLEGE",
+    entityId: collegeId,
+  });
 
   return { message: "College admin assigned successfully", assignment };
 };
@@ -165,7 +176,7 @@ export const assignCompanyAdmin = async (
   officeCity?: string
 ) => {
   await ensureUserExists(userId);
-  await ensureCompanyExists(companyId);
+  const company = await ensureCompanyExists(companyId);
 
   const existing = await prisma.companyAdmin.findFirst({
     where: companyAdminWhereFilter(userId, companyId, officeCity),
@@ -179,6 +190,17 @@ export const assignCompanyAdmin = async (
 
   await grantRole(userId, "COMPANY_ADMIN");
   await ensureInstitutionAdminInCommunities(userId, "COMPANY", companyId);
+
+  const scopeText = officeCity ? ` (${officeCity} office)` : "";
+  await createNotification({
+    userId,
+    actorId,
+    type: "SYSTEM",
+    title: "Company Admin Assigned",
+    message: `You have been assigned as an administrator for ${company.name}${scopeText}.`,
+    entityType: "COMPANY",
+    entityId: companyId,
+  });
 
   return { message: "Company admin assigned successfully", assignment };
 };
