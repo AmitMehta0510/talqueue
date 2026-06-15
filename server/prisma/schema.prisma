@@ -711,6 +711,9 @@ model Department {
   collegeId String
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
 
+  standardDepartmentId String?
+  standardDepartment   StandardDepartment? @relation(fields: [standardDepartmentId], references: [id])
+
   profiles   Profile[]
   educations Education[]
 
@@ -719,8 +722,10 @@ model Department {
   conversations Conversation[]
   communities   Community[]
 
+  @@unique([collegeId, name])
+  @@unique([collegeId, standardDepartmentId])
   @@index([collegeId])
-  @@index([collegeId, name])
+  @@index([standardDepartmentId])
 }
 
 model Skill {
@@ -2827,4 +2832,11 @@ model EventRSVP {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+}
+
+model StandardDepartment {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  aliases     String[]
+  departments Department[]
 }

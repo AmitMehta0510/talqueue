@@ -8,6 +8,7 @@ import { autoJoinUserCommunities } from "modules/community/community.service";
 import { createHash, randomBytes } from "crypto";
 import slugify from "slugify";
 import { verifyUserSkills } from "./skill-verification.service";
+import { ensureOfficialDepartmentCommunity } from "modules/colleges/colleges.service";
 
 type UserWriteClient = Prisma.TransactionClient | typeof prisma;
 
@@ -345,6 +346,155 @@ const assertNoDuplicateEducation = async (
     throw new AppError("Education already exists", 400);
   }
 };
+
+export const resolveCollegeDepartment = async (
+  tx: UserWriteClient,
+  userId: string,
+  collegeId: string,
+  departmentIdOrStandardIdOrCustomName: string | null | undefined,
+  fieldOfStudy?: string | null
+) => {
+  const input = departmentIdOrStandardIdOrCustomName?.trim();
+  if (!input) {
+    return { departmentId: null, fieldOfStudy: fieldOfStudy || null };
+  }
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input);
+
+  if (isUuid) {
+    // 1. Check StandardDepartment ID
+    const standardDept = await tx.standardDepartment.findUnique({
+      where: { id: input },
+    });
+
+    if (standardDept) {
+      let collegeDept = await tx.department.findUnique({
+        where: {
+          collegeId_standardDepartmentId: {
+            collegeId,
+            standardDepartmentId: standardDept.id,
+          },
+        },
+      });
+
+      if (!collegeDept) {
+        collegeDept = await tx.department.create({
+          data: {
+            name: standardDept.name,
+            collegeId,
+            standardDepartmentId: standardDept.id,
+          },
+        });
+
+        const college = await tx.college.findUnique({
+          where: { id: collegeId },
+          select: { name: true },
+        });
+
+        if (college) {
+          await ensureOfficialDepartmentCommunity(userId, {
+            id: collegeDept.id,
+            name: standardDept.name,
+            collegeId,
+            college: { name: college.name },
+          });
+        }
+      }
+
+      return { departmentId: collegeDept.id, fieldOfStudy: standardDept.name };
+    }
+
+    // 2. Check if it's already an existing college-specific department ID
+    const collegeDept = await tx.department.findFirst({
+      where: { id: input, collegeId },
+    });
+
+    if (collegeDept) {
+      return { departmentId: collegeDept.id, fieldOfStudy: collegeDept.name };
+    }
+  }
+
+  // 3. Check alias or direct match on StandardDepartment
+  const standardDepts = await tx.standardDepartment.findMany();
+  const normalizedInput = input.toLowerCase();
+
+  const matchedStandard = standardDepts.find((sd) =>
+    sd.name.toLowerCase() === normalizedInput ||
+    sd.aliases.some((alias) => alias.toLowerCase() === normalizedInput)
+  );
+
+  if (matchedStandard) {
+    let collegeDept = await tx.department.findUnique({
+      where: {
+        collegeId_standardDepartmentId: {
+          collegeId,
+          standardDepartmentId: matchedStandard.id,
+        },
+      },
+    });
+
+    if (!collegeDept) {
+      collegeDept = await tx.department.create({
+        data: {
+          name: matchedStandard.name,
+          collegeId,
+          standardDepartmentId: matchedStandard.id,
+        },
+      });
+
+      const college = await tx.college.findUnique({
+        where: { id: collegeId },
+        select: { name: true },
+      });
+
+      if (college) {
+        await ensureOfficialDepartmentCommunity(userId, {
+          id: collegeDept.id,
+          name: matchedStandard.name,
+          collegeId,
+          college: { name: college.name },
+        });
+      }
+    }
+
+    return { departmentId: collegeDept.id, fieldOfStudy: matchedStandard.name };
+  }
+
+  // 4. Fallback to custom college-specific department
+  let collegeDept = await tx.department.findFirst({
+    where: {
+      collegeId,
+      name: { equals: input, mode: "insensitive" },
+    },
+  });
+
+  if (!collegeDept) {
+    collegeDept = await tx.department.create({
+      data: {
+        name: input,
+        collegeId,
+        standardDepartmentId: null,
+      },
+    });
+
+    const college = await tx.college.findUnique({
+      where: { id: collegeId },
+      select: { name: true },
+    });
+
+    if (college) {
+      await ensureOfficialDepartmentCommunity(userId, {
+        id: collegeDept.id,
+        name: input,
+        collegeId,
+        college: { name: college.name },
+      });
+    }
+  }
+
+  return { departmentId: collegeDept.id, fieldOfStudy: collegeDept.name };
+};
+
 
 const assertNoExperienceConflict = async (
   userId: string,
@@ -1236,13 +1386,19 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
         throw new AppError("College not found", 404);
       }
 
-      await assertDepartmentBelongsToCollege(
+      const { departmentId, fieldOfStudy } = await resolveCollegeDepartment(
         tx,
+        userId,
         data.collegeId!,
         data.departmentId,
+        data.fieldOfStudy
       );
 
-      await assertNoDuplicateEducation(tx, userId, data);
+      await assertNoDuplicateEducation(tx, userId, {
+        ...data,
+        departmentId,
+        fieldOfStudy: fieldOfStudy || undefined,
+      });
 
       if (data.current) {
         await tx.education.updateMany({
@@ -1255,9 +1411,9 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
         data: {
           userId,
           collegeId: data.collegeId!,
-          departmentId: data.departmentId,
+          departmentId,
           degree: data.degree,
-          fieldOfStudy: data.fieldOfStudy,
+          fieldOfStudy: fieldOfStudy || undefined,
           startYear: data.startYear,
           endYear: data.endYear,
           current: data.current || false,
@@ -1268,18 +1424,18 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
       // Sync to user's profile
       await tx.profile.upsert({
         where: { userId },
-        update: { collegeId: data.collegeId!, departmentId: data.departmentId || null },
+        update: { collegeId: data.collegeId!, departmentId: departmentId || null },
         create: {
           userId,
           fullName: "",
           collegeId: data.collegeId!,
-          departmentId: data.departmentId || null,
+          departmentId: departmentId || null,
         },
       });
 
       await autoJoinUserCommunities(
         userId,
-        { collegeId: data.collegeId!, departmentId: data.departmentId },
+        { collegeId: data.collegeId!, departmentId },
         tx,
       );
 
@@ -1289,7 +1445,26 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
     // ── Track B: Custom (unlisted) college ───────────────────────────────
     const customName = data.customCollegeName!.trim();
 
-    await assertNoDuplicateEducation(tx, userId, data);
+    let resolvedFieldOfStudy = data.fieldOfStudy;
+    if (data.departmentId) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.departmentId);
+      if (isUuid) {
+        const standardDept = await tx.standardDepartment.findUnique({
+          where: { id: data.departmentId },
+        });
+        if (standardDept) {
+          resolvedFieldOfStudy = standardDept.name;
+        }
+      } else {
+        resolvedFieldOfStudy = data.departmentId;
+      }
+    }
+
+    await assertNoDuplicateEducation(tx, userId, {
+      ...data,
+      departmentId: null,
+      fieldOfStudy: resolvedFieldOfStudy,
+    });
 
     if (data.current) {
       await tx.education.updateMany({
@@ -1305,7 +1480,7 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
         customCollegeName: customName,
         departmentId: null,
         degree: data.degree,
-        fieldOfStudy: data.fieldOfStudy,
+        fieldOfStudy: resolvedFieldOfStudy,
         startYear: data.startYear,
         endYear: data.endYear,
         current: data.current || false,
@@ -1585,7 +1760,6 @@ export const updateEducation = async (
   const updateData: Record<string, any> = {};
 
   if (data.degree !== undefined) updateData.degree = data.degree;
-  if (data.fieldOfStudy !== undefined) updateData.fieldOfStudy = data.fieldOfStudy;
   if (data.startYear !== undefined) updateData.startYear = data.startYear;
 
   if (data.current !== undefined) {
@@ -1604,24 +1778,68 @@ export const updateEducation = async (
     updateData.endYear = data.endYear;
   }
 
-  if (data.collegeId !== undefined) {
-    const college = await prisma.college.findUnique({
-      where: { id: data.collegeId },
-      select: { id: true },
-    });
-    if (!college) {
-      throw new AppError("College not found", 404);
-    }
-    updateData.collegeId = data.collegeId;
-  }
-
-  if (data.departmentId !== undefined) {
-    const effectiveCollegeId = data.collegeId || existing.collegeId;
-    await assertDepartmentBelongsToCollege(prisma, effectiveCollegeId, data.departmentId);
-    updateData.departmentId = data.departmentId;
-  }
-
   return prisma.$transaction(async (tx) => {
+    // Fetch full existing record for fallback fields
+    const fullExisting = await tx.education.findUnique({
+      where: { id: educationId },
+      select: { fieldOfStudy: true, collegeId: true, departmentId: true },
+    });
+
+    const effectiveCollegeId = data.collegeId !== undefined ? data.collegeId : fullExisting?.collegeId;
+    let finalDepartmentId = data.departmentId !== undefined ? data.departmentId : fullExisting?.departmentId;
+    let finalFieldOfStudy = data.fieldOfStudy !== undefined ? data.fieldOfStudy : fullExisting?.fieldOfStudy;
+
+    if (effectiveCollegeId) {
+      if (
+        data.collegeId !== undefined ||
+        data.departmentId !== undefined ||
+        data.fieldOfStudy !== undefined
+      ) {
+        const resolved = await resolveCollegeDepartment(
+          tx,
+          userId,
+          effectiveCollegeId,
+          data.departmentId !== undefined ? data.departmentId : fullExisting?.departmentId,
+          data.fieldOfStudy !== undefined ? data.fieldOfStudy : fullExisting?.fieldOfStudy
+        );
+        finalDepartmentId = resolved.departmentId;
+        finalFieldOfStudy = resolved.fieldOfStudy;
+      }
+    } else {
+      finalDepartmentId = null;
+      if (data.departmentId) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.departmentId);
+        if (isUuid) {
+          const standardDept = await tx.standardDepartment.findUnique({
+            where: { id: data.departmentId },
+          });
+          if (standardDept) {
+            finalFieldOfStudy = standardDept.name;
+          }
+        } else {
+          finalFieldOfStudy = data.departmentId;
+        }
+      } else if (data.fieldOfStudy !== undefined) {
+        finalFieldOfStudy = data.fieldOfStudy;
+      }
+    }
+
+    if (data.collegeId !== undefined) {
+      if (data.collegeId) {
+        const college = await tx.college.findUnique({
+          where: { id: data.collegeId },
+          select: { id: true },
+        });
+        if (!college) {
+          throw new AppError("College not found", 404);
+        }
+      }
+      updateData.collegeId = data.collegeId;
+    }
+
+    updateData.departmentId = finalDepartmentId;
+    updateData.fieldOfStudy = finalFieldOfStudy;
+
     const res = await tx.education.update({
       where: { id: educationId },
       data: updateData,

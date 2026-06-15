@@ -19,6 +19,7 @@ export const queryKeys = {
     list: (limit: number) => ["colleges", "list", limit] as const,
     departments: (collegeId: string) =>
       ["colleges", collegeId, "departments"] as const,
+    standardDepartments: ["colleges", "standard-departments"] as const,
   },
   companies: {
     all: ["companies"] as const,

@@ -174,7 +174,7 @@ const ensureOfficialCollegeCommunity = async (
   });
 };
 
-const ensureOfficialDepartmentCommunity = async (
+export const ensureOfficialDepartmentCommunity = async (
   userId: string,
 
   department: {
@@ -470,3 +470,12 @@ export const importColleges = async (user: AuthUser, colleges: any[]) => {
 
   return results;
 };
+
+export const getStandardDepartments = async () => {
+  return prisma.standardDepartment.findMany({
+    orderBy: {
+      name: "asc",
+    },
+  });
+};
+

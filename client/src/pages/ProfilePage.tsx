@@ -39,7 +39,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { api, College, Department, Project, Skill, User as UserType } from "../lib/api";
+import { api, College, Department, Project, Skill, User as UserType, StandardDepartment } from "../lib/api";
 import {
   compactPayload,
   formatCount,
@@ -81,6 +81,7 @@ import {
   useCompaniesQuery,
   useVerifyCollegeEmailMutation,
   useVerifyWorkEmailMutation,
+  useStandardDepartmentsQuery,
 } from "../hooks/usePlatformQueries";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -113,6 +114,8 @@ const emptyEducationForm = {
   isOtherCollege: false,
   customCollegeName: "",
   departmentId: "",
+  isOtherDepartment: false,
+  customDepartmentName: "",
   degree: "",
   fieldOfStudy: "",
   startYear: "",
@@ -255,7 +258,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const [experienceForm, setExperienceForm] = useState(emptyExperienceForm);
   const [educationForm, setEducationForm] = useState(emptyEducationForm);
 
-  const departmentsQuery = useDepartmentsQuery(educationForm.collegeId || undefined);
+  const standardDepartmentsQuery = useStandardDepartmentsQuery();
 
   const profileTasks = getProfileCompletionTasks(profile, {
     skills: skills.length,
@@ -263,7 +266,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     educations: educations.length,
   });
   const completedTasks = profileTasks.filter((t) => t.complete).length;
-  const departments = departmentsQuery.data || [];
+  const standardDepartments = standardDepartmentsQuery.data || [];
 
   // Sync form when profile loads
   useEffect(() => {
@@ -322,6 +325,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       collegeId: college.id,
       collegeName: college.name,
       departmentId: "",
+      isOtherDepartment: false,
+      customDepartmentName: "",
       fieldOfStudy: "",
     }));
   };
@@ -336,6 +341,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
           collegeName: "",
           isOtherCollege: false,
           departmentId: "",
+          isOtherDepartment: false,
+          customDepartmentName: "",
           fieldOfStudy: "",
         };
       }
@@ -352,6 +359,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       collegeName: "",
       isOtherCollege: true,
       departmentId: "",
+      isOtherDepartment: false,
+      customDepartmentName: "",
       fieldOfStudy: "",
     }));
   };
@@ -448,6 +457,10 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       showToast("error", "Please enter your college name");
       return;
     }
+    if (educationForm.isOtherDepartment && !educationForm.customDepartmentName.trim()) {
+      showToast("error", "Please enter your department/branch name");
+      return;
+    }
     if (
       educationForm.startYear &&
       educationForm.endYear &&
@@ -457,16 +470,25 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       showToast("error", "End year cannot be before start year");
       return;
     }
+
+    const deptIdToSend = educationForm.isOtherDepartment 
+      ? educationForm.customDepartmentName.trim()
+      : educationForm.departmentId;
+
+    const fieldOfStudyToSend = educationForm.isOtherDepartment 
+      ? educationForm.customDepartmentName.trim()
+      : educationForm.fieldOfStudy;
+
     try {
       if (editingEducationId) {
         await updateEducation.mutateAsync({
           id: editingEducationId,
           ...compactPayload({
-            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId,
-            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName : undefined,
-            departmentId: educationForm.departmentId || undefined,
-            degree: educationForm.degree,
-            fieldOfStudy: educationForm.fieldOfStudy,
+            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId || undefined,
+            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName || undefined : undefined,
+            departmentId: deptIdToSend || undefined,
+            degree: educationForm.degree || undefined,
+            fieldOfStudy: fieldOfStudyToSend || undefined,
             startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
             endYear:
               educationForm.current || !educationForm.endYear
@@ -478,11 +500,11 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       } else {
         await addEducation.mutateAsync({
           ...compactPayload({
-            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId,
-            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName : undefined,
-            departmentId: educationForm.departmentId || undefined,
-            degree: educationForm.degree,
-            fieldOfStudy: educationForm.fieldOfStudy,
+            collegeId: educationForm.isOtherCollege ? undefined : educationForm.collegeId || undefined,
+            customCollegeName: educationForm.isOtherCollege ? educationForm.customCollegeName || undefined : undefined,
+            departmentId: deptIdToSend || undefined,
+            degree: educationForm.degree || undefined,
+            fieldOfStudy: fieldOfStudyToSend || undefined,
             startYear: educationForm.startYear ? Number(educationForm.startYear) : undefined,
             endYear:
               educationForm.current || !educationForm.endYear
@@ -539,12 +561,17 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const setFormFromEdu = (edu: any) => {
     const isOther = !edu.collegeId && Boolean(edu.customCollegeName);
+    const standardId = edu.department?.standardDepartmentId || null;
+    const isOtherDept = edu.departmentId ? !standardId : false;
+
     setEducationForm({
       collegeId: edu.collegeId || "",
       collegeName: edu.college?.name || "",
       isOtherCollege: isOther,
       customCollegeName: edu.customCollegeName || "",
-      departmentId: edu.departmentId || "",
+      departmentId: standardId || edu.departmentId || "",
+      isOtherDepartment: isOtherDept,
+      customDepartmentName: isOtherDept ? edu.department?.name || edu.fieldOfStudy || "" : "",
       degree: edu.degree || "",
       fieldOfStudy: edu.fieldOfStudy || "",
       startYear: edu.startYear ? edu.startYear.toString() : "",
@@ -700,8 +727,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             onSelectCollege={selectCollege}
             onSelectOtherCollege={selectOtherCollege}
             onCancelOtherCollege={cancelOtherCollege}
-            departments={departments}
-            departmentsLoading={departmentsQuery.isFetching}
+            departments={standardDepartments as any}
+            departmentsLoading={standardDepartmentsQuery.isFetching}
             onVerify={handleVerifyCollegeEmail}
           />
         )}
@@ -1584,35 +1611,65 @@ function EducationTab({
 
               {/* Department — only when a listed college is selected */}
               {!form.isOtherCollege && (
-                <Field label="Department/Branch">
-                  <select
-                    className="field"
-                    value={form.departmentId}
-                    onChange={(e) => {
-                      const deptId = e.target.value;
-                      const dept = departments.find((d) => d.id === deptId);
-                      onFormChange({
-                        ...form,
-                        departmentId: deptId,
-                        fieldOfStudy: dept ? dept.name : "",
-                      });
-                    }}
-                    disabled={!form.collegeId || departmentsLoading}
-                  >
-                    <option value="">
-                      {!form.collegeId
-                        ? "Select a college first"
-                        : departmentsLoading
-                        ? "Loading departments..."
-                        : "Select Department/Branch (optional)"}
-                    </option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
+                <div className="space-y-3">
+                  <Field label="Department/Branch">
+                    <select
+                      className="field"
+                      value={form.isOtherDepartment ? "other" : form.departmentId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "other") {
+                          onFormChange({
+                            ...form,
+                            departmentId: "",
+                            isOtherDepartment: true,
+                            customDepartmentName: "",
+                            fieldOfStudy: "",
+                          });
+                        } else {
+                          const dept = departments.find((d) => d.id === val);
+                          onFormChange({
+                            ...form,
+                            departmentId: val,
+                            isOtherDepartment: false,
+                            customDepartmentName: "",
+                            fieldOfStudy: dept ? dept.name : "",
+                          });
+                        }
+                      }}
+                      disabled={!form.collegeId || departmentsLoading}
+                    >
+                      <option value="">
+                        {!form.collegeId
+                          ? "Select a college first"
+                          : departmentsLoading
+                          ? "Loading departments..."
+                          : "Select Department/Branch (optional)"}
                       </option>
-                    ))}
-                  </select>
-                </Field>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </option>
+                      ))}
+                      {form.collegeId && !departmentsLoading && (
+                        <option value="other">My department/branch isn't listed</option>
+                      )}
+                    </select>
+                  </Field>
+
+                  {form.isOtherDepartment && (
+                    <Field label="Specify Department/Branch *">
+                      <input
+                        className="field"
+                        value={form.customDepartmentName}
+                        onChange={(e) => onFormChange({ ...form, customDepartmentName: e.target.value })}
+                        placeholder="e.g. Computer Science, AI & ML, Robotics"
+                        required
+                        autoFocus
+                      />
+                    </Field>
+                  )}
+                </div>
               )}
 
               {/* If other college — allow freetext branch */}

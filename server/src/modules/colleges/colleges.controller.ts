@@ -11,6 +11,7 @@ import {
   getDepartmentsByCollege,
   searchColleges,
   importColleges,
+  getStandardDepartments,
 } from "./colleges.service";
 
 import {
@@ -132,3 +133,14 @@ export const importCollegesHandler =
       );
     }
   );
+
+export const getStandardDepartmentsHandler =
+  asyncHandler(
+    async (req: Request, res: Response) => {
+      const depts = await getStandardDepartments();
+      res.json(
+        successResponse(depts)
+      );
+    }
+  );
+

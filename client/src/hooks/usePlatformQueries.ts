@@ -39,6 +39,7 @@ import {
   UserSkill,
   Event,
   RSVPStatus,
+  StandardDepartment,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -572,6 +573,16 @@ export const useDepartmentsQuery = (collegeId?: string) =>
     },
     enabled: Boolean(collegeId),
   });
+
+export const useStandardDepartmentsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.colleges.standardDepartments,
+    queryFn: async ({ signal }) => {
+      const result = await api.standardDepartments({ signal });
+      return result.data || [];
+    },
+  });
+
 
 export const useCreateCollegeMutation = () => {
   const queryClient = useQueryClient();

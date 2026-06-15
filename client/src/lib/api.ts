@@ -109,6 +109,12 @@ export type Department = {
   createdAt?: string;
 };
 
+export type StandardDepartment = {
+  id: string;
+  name: string;
+  aliases: string[];
+};
+
 export type UserSkill = {
   id: string;
   level?: string;
@@ -1775,6 +1781,8 @@ export const api = {
     request<Department>("/colleges/departments", { method: "POST", body }),
   departments: (collegeId: string, options?: EndpointOptions) =>
     request<Department[]>(`/colleges/${collegeId}/departments`, options),
+  standardDepartments: (options?: EndpointOptions) =>
+    request<StandardDepartment[]>("/colleges/standard-departments", options),
   companies: (
     params: {
       page?: number;

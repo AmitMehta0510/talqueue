@@ -9,6 +9,7 @@ import {
   getDepartmentsHandler,
   searchCollegesHandler,
   importCollegesHandler,
+  getStandardDepartmentsHandler,
 } from "./colleges.controller";
 
 const router = Router();
@@ -33,6 +34,11 @@ router.post(
   "/departments",
   protect,
   createDepartmentHandler
+);
+
+router.get(
+  "/standard-departments",
+  getStandardDepartmentsHandler
 );
 
 router.get(
