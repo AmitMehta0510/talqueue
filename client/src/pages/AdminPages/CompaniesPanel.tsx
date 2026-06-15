@@ -4,7 +4,7 @@ import { Company } from "../../lib/api";
 import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery, useAssignCompanyAdminMutation } from "../../hooks/usePlatformQueries";
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { Avatar } from "../../components/ui";
-import { SearchBar } from "./shared";
+import { SearchBar, UserSearchAutocomplete } from "./shared";
 
 export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin }: {
   selectedCompany: Company | null;
@@ -207,12 +207,10 @@ function CompanyAdminPanel({ company, onClose, onRevoke }: {
             </button>
           </div>
 
-          <input
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+          <UserSearchAutocomplete
             value={targetUserId}
-            onChange={(e) => setTargetUserId(e.target.value)}
-            placeholder="User UUID..."
-            required
+            onChange={(userId) => setTargetUserId(userId)}
+            placeholder="Search user to assign as admin..."
           />
 
           {adminType === "OFFICE" && (

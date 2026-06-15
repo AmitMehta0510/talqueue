@@ -13,7 +13,7 @@ import {
 import { Avatar } from "../../components/ui";
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { College } from "../../lib/api";
-import { fmtDate } from "./shared";
+import { fmtDate, UserSearchAutocomplete } from "./shared";
 
 export function CollegesPanel({
   selectedCollege,
@@ -234,12 +234,10 @@ function CollegeDetailPanel({
         {activeSection === "admins" && (
           <>
             <form onSubmit={handleAssignAdmin} className="flex gap-2">
-              <input
-                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+              <UserSearchAutocomplete
                 value={targetUserId}
-                onChange={(e) => setTargetUserId(e.target.value)}
-                placeholder="User UUID to assign as admin..."
-                required
+                onChange={(userId) => setTargetUserId(userId)}
+                placeholder="Search user to assign as admin..."
               />
               <button className="flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={assignAdmin.isPending}>
                 {assignAdmin.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Add

@@ -1,6 +1,8 @@
-import React from "react";
-import { Search, Loader2, ChevronDown } from "lucide-react";
-import { titleCase } from "../../lib/format";
+import React, { useState, useEffect, useRef } from "react";
+import { Search, Loader2, ChevronDown, X } from "lucide-react";
+import { titleCase, userName } from "../../lib/format";
+import { useAdminUsersQuery } from "../../hooks/usePlatformQueries";
+import { Avatar } from "../../components/ui";
 
 export const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -125,6 +127,132 @@ export function LoadMoreBtn({ query }: { query: any }) {
         {query.isFetchingNextPage ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />}
         Load more
       </button>
+    </div>
+  );
+}
+
+// ─── USER SEARCH AUTOCOMPLETE ──────────────────────────────────────────────────
+export function UserSearchAutocomplete({
+  value,
+  onChange,
+  placeholder = "Search user by name, username, or email...",
+}: {
+  value: string;
+  onChange: (userId: string, label: string) => void;
+  placeholder?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username: string; avatarUrl?: string | null } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const usersQuery = useAdminUsersQuery(search);
+  const pages = usersQuery.data?.pages || [];
+  const matchedUsers = pages.flatMap((page) => page?.users || []).slice(0, 5);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (user: any) => {
+    const nameLabel = userName(user);
+    setSelectedUser({
+      id: user.id,
+      name: nameLabel,
+      username: user.username,
+      avatarUrl: user.profile?.avatarUrl
+    });
+    onChange(user.id, nameLabel);
+    setShowDropdown(false);
+    setSearch("");
+  };
+
+  const handleClear = () => {
+    setSelectedUser(null);
+    onChange("", "");
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {selectedUser ? (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs transition duration-150">
+          <div className="flex items-center gap-2">
+            <Avatar user={{ username: selectedUser.username, profile: { avatarUrl: selectedUser.avatarUrl } } as any} size="sm" />
+            <div>
+              <div className="font-semibold text-white leading-tight">{selectedUser.name}</div>
+              <div className="text-[10px] text-zinc-550 leading-tight">@{selectedUser.username}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded-full p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+          <input
+            type="text"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 pl-9 pr-8 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setShowDropdown(true);
+            }}
+            onFocus={() => setShowDropdown(true)}
+            placeholder={placeholder}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition"
+            >
+              <X size={12} />
+            </button>
+          )}
+
+          {showDropdown && search.trim().length >= 1 && (
+            <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl py-1 animate-in fade-in duration-105">
+              {usersQuery.isPending ? (
+                <div className="flex items-center justify-center py-4 text-zinc-500 gap-2 text-xs">
+                  <Loader2 size={12} className="animate-spin text-emerald-500" />
+                  Searching users...
+                </div>
+              ) : matchedUsers.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-zinc-600 italic">No users found</div>
+              ) : (
+                matchedUsers.map((user: any) => {
+                  const label = userName(user);
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => handleSelect(user)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+                    >
+                      <Avatar user={user} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold truncate text-white leading-tight">{label}</div>
+                        <div className="text-[10px] text-zinc-500 truncate leading-tight">@{user.username} · {user.email}</div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
