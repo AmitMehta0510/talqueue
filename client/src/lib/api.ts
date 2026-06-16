@@ -601,6 +601,7 @@ export type Job = {
   applyUrl?: string | null;
   applicationDeadline?: string | null;
   featured?: boolean;
+  ppoOffered?: boolean;
   applicationsCount?: number;
   companyId?: string;
   company?: {
@@ -612,6 +613,68 @@ export type Job = {
     slug?: string;
   };
   createdAt?: string;
+};
+
+export type ExternalAppStatus =
+  | "APPLIED"
+  | "PHONE_SCREEN"
+  | "TECHNICAL_ROUND"
+  | "HR_ROUND"
+  | "OFFER_RECEIVED"
+  | "REJECTED"
+  | "WITHDRAWN";
+
+export type ExternalJobApplication = {
+  id: string;
+  userId: string;
+  jobId?: string | null;
+  jobTitle: string;
+  companyName: string;
+  companyLogoUrl?: string | null;
+  applyUrl?: string | null;
+  location?: string | null;
+  jobType?: string | null;
+  status: ExternalAppStatus;
+  notes?: string | null;
+  appliedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PlacementDriveStatus = "UPCOMING" | "ONGOING" | "CLOSED";
+
+export type PlacementDrive = {
+  id: string;
+  driveTitle: string;
+  companyId: string;
+  targetCollegeId: string;
+  postedById: string;
+  driveDate?: string | null;
+  applyDeadline?: string | null;
+  status: PlacementDriveStatus;
+  roles: string[];
+  stipendMin?: number | null;
+  stipendMax?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  currency?: string | null;
+  minCgpa?: number | null;
+  eligibleBranches: string[];
+  eligibleYears: number[];
+  description?: string | null;
+  company?: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    slug?: string;
+    verified?: boolean;
+  };
+  college?: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type CompanyType =
@@ -2523,4 +2586,37 @@ export const api = {
     request<any>(`/events/${id}`, { method: "DELETE" }),
   rsvpEvent: (id: string, status: RSVPStatus) =>
     request<any>(`/events/${id}/rsvp`, { method: "POST", body: { status } }),
+
+  // External Job Application Tracking
+  createExternalApplication: (body: {
+    jobId?: string;
+    jobTitle: string;
+    companyName: string;
+    companyLogoUrl?: string;
+    applyUrl?: string;
+    location?: string;
+    jobType?: string;
+    status?: ExternalAppStatus;
+    notes?: string;
+    appliedAt?: string;
+  }) =>
+    request<ExternalJobApplication>("/external-applications", { method: "POST", body }),
+  myExternalApplications: (options?: EndpointOptions) =>
+    request<ExternalJobApplication[]>("/external-applications/mine", options),
+  updateExternalApplicationStatus: (id: string, body: { status: ExternalAppStatus; notes?: string }) =>
+    request<ExternalJobApplication>(`/external-applications/${id}/status`, { method: "PATCH", body }),
+  deleteExternalApplication: (id: string) =>
+    request<{ success: boolean }>(`/external-applications/${id}`, { method: "DELETE" }),
+
+  // Placement Drives
+  placementDrivesForCollege: (collegeId: string, options?: EndpointOptions) =>
+    request<PlacementDrive[]>(`/placement-drives/college/${collegeId}`, options),
+  myPostedDrives: (options?: EndpointOptions) =>
+    request<PlacementDrive[]>("/placement-drives/mine", options),
+  createPlacementDrive: (body: Partial<PlacementDrive> & { driveTitle: string; companyId: string; targetCollegeId: string }) =>
+    request<PlacementDrive>("/placement-drives", { method: "POST", body }),
+  updatePlacementDrive: (id: string, body: Partial<PlacementDrive>) =>
+    request<PlacementDrive>(`/placement-drives/${id}`, { method: "PATCH", body }),
+  closePlacementDrive: (id: string) =>
+    request<{ success: boolean }>(`/placement-drives/${id}/close`, { method: "PATCH", body: {} }),
 };

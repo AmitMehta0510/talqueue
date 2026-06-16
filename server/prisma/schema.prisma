@@ -253,6 +253,22 @@ enum JobApplicationStatus {
   HIRED
 }
 
+enum ExternalAppStatus {
+  APPLIED
+  PHONE_SCREEN
+  TECHNICAL_ROUND
+  HR_ROUND
+  OFFER_RECEIVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PlacementDriveStatus {
+  UPCOMING
+  ONGOING
+  CLOSED
+}
+
 enum ActivityType {
   PROJECT_CREATED
   PROJECT_JOINED
@@ -556,9 +572,11 @@ model User {
   createdCommunities   Community[]        @relation("CommunityCreator")
   companyRequests      CompanyRequest[]
   collegeRequests      CollegeRequest[]
-  followedCompanies    Company[]          @relation("CompanyFollowers")
-  createdEvents        Event[]
-  eventRSVPs           EventRSVP[]
+  followedCompanies        Company[]                   @relation("CompanyFollowers")
+  createdEvents            Event[]
+  eventRSVPs               EventRSVP[]
+  externalApplications     ExternalJobApplication[]
+  postedPlacementDrives    PlacementDrive[]
 }
 
 model UserRecommendation {
@@ -688,11 +706,12 @@ model College {
 
   collegeAdmins CollegeAdmin[]
 
-  createdAt     DateTime       @default(now())
-  posts         Post[]
-  conversations Conversation[]
-  emailDomains  String[]       @default([])
-  events        Event[]
+  createdAt       DateTime         @default(now())
+  posts           Post[]
+  conversations   Conversation[]
+  emailDomains    String[]         @default([])
+  events          Event[]
+  placementDrives PlacementDrive[]
 
   @@index([name])
   @@index([city])
@@ -2080,6 +2099,7 @@ model Company {
   followers       User[]           @relation("CompanyFollowers")
   emailDomains    String[]         @default([])
   events          Event[]
+  placementDrives PlacementDrive[]
 }
 
 model Job {
@@ -2127,11 +2147,14 @@ model Job {
 
   externalJobId String?
 
+  ppoOffered Boolean @default(false)
+
   featured Boolean @default(false)
 
   views Int @default(0)
 
-  applications JobApplication[]
+  applications         JobApplication[]
+  externalApplications ExternalJobApplication[]
 
   applicationsCount Int @default(0)
 
@@ -2839,4 +2862,66 @@ model StandardDepartment {
   name        String       @unique
   aliases     String[]
   departments Department[]
+}
+
+model ExternalJobApplication {
+  id             String            @id @default(uuid())
+  userId         String
+  jobId          String?
+
+  jobTitle       String
+  companyName    String
+  companyLogoUrl String?
+  applyUrl       String?
+  location       String?
+  jobType        String?
+
+  status         ExternalAppStatus @default(APPLIED)
+  notes          String?
+  appliedAt      DateTime          @default(now())
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job            Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([jobId])
+}
+
+model PlacementDrive {
+  id               String               @id @default(uuid())
+  driveTitle       String
+  companyId        String
+  targetCollegeId  String
+  postedById       String
+
+  driveDate        DateTime?
+  applyDeadline    DateTime?
+  status           PlacementDriveStatus @default(UPCOMING)
+
+  roles            String[]
+  stipendMin       Int?
+  stipendMax       Int?
+  salaryMin        Int?
+  salaryMax        Int?
+  currency         String?              @default("INR")
+
+  minCgpa          Float?
+  eligibleBranches String[]
+  eligibleYears    Int[]
+
+  description      String?
+
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  college          College              @relation(fields: [targetCollegeId], references: [id], onDelete: Cascade)
+  postedBy         User                 @relation(fields: [postedById], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([targetCollegeId])
+  @@index([companyId])
+  @@index([status])
 }

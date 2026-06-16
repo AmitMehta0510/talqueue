@@ -30,6 +30,8 @@ import teamRoutes from "modules/teams/teams.routes";
 import trendingRoutes from "modules/trending/trending.routes";
 import userRoutes from "modules/users/users.routes";
 import eventRoutes from "modules/events/events.routes";
+import externalApplicationRoutes from "modules/externalApplications/externalApplications.routes";
+import placementDriveRoutes from "modules/placementDrives/placementDrives.routes";
 import { successResponse } from "shared/utils/apiResponse";
 
 export const API_PREFIX = "/api/v1";
@@ -75,6 +77,8 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "trending", path: "/trending", router: trendingRoutes },
   { key: "communities", path: "/communities", router: communityRoutes },
   { key: "events", path: "/events", router: eventRoutes },
+  { key: "externalApplications", path: "/external-applications", router: externalApplicationRoutes },
+  { key: "placementDrives", path: "/placement-drives", router: placementDriveRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(

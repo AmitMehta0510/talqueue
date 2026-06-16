@@ -29,6 +29,7 @@ import {
   useRecommendedJobsQuery,
   useSavedJobsQuery,
   useMyJobApplicationsQuery,
+  useMyExternalApplicationsQuery,
   useRecruiterJobsQuery,
   useSaveJobMutation,
   useMyFullProfileQuery,
@@ -38,11 +39,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState, Avatar } from "../components/ui";
 import { JobDetailModal } from "../components/cards/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
+import { ExternalApplyModal } from "../components/forms/ExternalApplyModal";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
+import { ApplicationKanbanBoard } from "../components/jobs/ApplicationKanbanBoard";
+import { PlacementDrivesTab } from "../components/jobs/PlacementDrivesTab";
 import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline } from "../lib/format";
 
-type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter";
+type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "campus-drives";
 type SubViewType = { type: "dashboard" } | { type: "pipeline"; jobId: string };
 
 // ---------------------------------------------------------------------------
@@ -374,6 +378,7 @@ function JobDetailDrawer({
   hasApplied,
   onClose,
   onApply,
+  onExternalApply,
   userSkillNames,
   onRequestReferral,
 }: {
@@ -381,6 +386,7 @@ function JobDetailDrawer({
   hasApplied: boolean;
   onClose: () => void;
   onApply: () => void;
+  onExternalApply?: () => void;
   userSkillNames?: Set<string>;
   onRequestReferral: (user: User) => void;
 }) {
@@ -449,14 +455,13 @@ function JobDetailDrawer({
               <CheckCircle size={15} /> Already Applied
             </div>
           ) : job.applyUrl ? (
-            <a
-              href={job.applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => onExternalApply ? onExternalApply() : window.open(job.applyUrl!, "_blank", "noopener,noreferrer")}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700 shadow-sm"
             >
               <Zap size={14} /> Apply on Company Website <ExternalLink size={12} />
-            </a>
+            </button>
           ) : (
             <button
               type="button"
@@ -607,6 +612,7 @@ export function JobsPage() {
   const [applyModalJob, setApplyModalJob] = useState<Job | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
   const [referralUser, setReferralUser] = useState<User | null>(null);
+  const [externalApplyJob, setExternalApplyJob] = useState<Job | null>(null);
 
   // Pagination states
   const [jobPage, setJobPage] = useState(1);
@@ -622,6 +628,10 @@ export function JobsPage() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [searchSkillQ, setSearchSkillQ] = useState("");
   const [searchLocationQ, setSearchLocationQ] = useState("");
+  // Internship-specific filters
+  const [stipendRange, setStipendRange] = useState<[number, number]>([0, 50]); // in K/month
+  const [internDuration, setInternDuration] = useState<string | null>(null);
+  const [ppoOnly, setPpoOnly] = useState(false);
 
   // Reset page when tab changes
   useEffect(() => {
@@ -633,9 +643,12 @@ export function JobsPage() {
   const recommendedQuery = useRecommendedJobsQuery();
   const savedQuery = useSavedJobsQuery();
   const applicationsQuery = useMyJobApplicationsQuery();
+  const externalAppsQuery = useMyExternalApplicationsQuery();
   const recruiterJobsQuery = useRecruiterJobsQuery();
   const saveMutation = useSaveJobMutation();
   const profileQuery = useMyFullProfileQuery();
+
+  const collegeId = profileQuery.data?.profile?.collegeId;
 
   const isRecruiter = user?.primaryRole === "RECRUITER";
 
@@ -683,6 +696,9 @@ export function JobsPage() {
     setSearchSkillQ("");
     setSearchLocationQ("");
     setJobPage(1);
+    setStipendRange([0, 50]);
+    setInternDuration(null);
+    setPpoOnly(false);
   };
 
   const getSource = () => {
@@ -745,9 +761,21 @@ export function JobsPage() {
 
       const matchLoc = !selectedLocations.length || (job.location && selectedLocations.includes(job.location.trim()));
 
-      return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc;
+      // Internship-specific filters
+      const isInternshipTab = selectedJobTypes.includes("INTERNSHIP") || (selectedJobTypes.length === 0 && false);
+      const matchStipend = !isInternshipTab || (() => {
+        if (stipendRange[0] === 0 && stipendRange[1] >= 50) return true;
+        const minStipend = stipendRange[0] * 1000;
+        const maxStipend = stipendRange[1] * 1000;
+        if (job.salaryMin == null && job.salaryMax == null) return true;
+        return (!minStipend || (job.salaryMax != null && job.salaryMax >= minStipend)) &&
+          (stipendRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxStipend));
+      })();
+      const matchPpo = !ppoOnly || (job as any).ppoOffered === true;
+
+      return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc && matchStipend && matchPpo;
     }),
-    [source.list, searchVal, selectedWorkModes, selectedJobTypes, salaryRange, selectedRoles, selectedSkills, selectedLocations]
+    [source.list, searchVal, selectedWorkModes, selectedJobTypes, salaryRange, selectedRoles, selectedSkills, selectedLocations, stipendRange, ppoOnly]
   );
 
   // Automatically select the first job on the page when the list changes
@@ -779,6 +807,7 @@ export function JobsPage() {
       { key: "recommended" as TabType, label: "Recommended" },
       { key: "applications" as TabType, label: "My Applications" },
       { key: "saved" as TabType, label: "Saved" },
+      { key: "campus-drives" as TabType, label: "Campus Drives" },
     ] : []),
     ...(isRecruiter ? [{ key: "recruiter" as TabType, label: "Recruiter" }] : []),
   ];
@@ -809,6 +838,21 @@ export function JobsPage() {
           </button>
         )}
       </div>
+
+      {/* ── Campus Drives tab ── */}
+      {activeTab === "campus-drives" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Campus Placement Drives</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Exclusive placement drives targeted at your college
+              </p>
+            </div>
+          </div>
+          <PlacementDrivesTab collegeId={collegeId} />
+        </div>
+      )}
 
       {/* ── Recruiter dashboard ── */}
       {activeTab === "recruiter" ? (
@@ -848,6 +892,40 @@ export function JobsPage() {
         ) : (
           <EmptyState icon={BriefcaseBusiness} title="No jobs posted yet" text="Click 'Post a Job' to start finding talent." />
         )
+      ) : activeTab === "applications" ? (
+        /* ── My Applications Kanban Board ── */
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">My Application Tracker</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Platform applications (recruiter-tracked) + external applications (self-tracked)
+              </p>
+            </div>
+            <div className="flex gap-2 text-xs text-slate-400">
+              <span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+                Platform
+              </span>
+              <span className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">
+                External
+              </span>
+            </div>
+          </div>
+          {applicationsQuery.isLoading || externalAppsQuery.isLoading ? (
+            <div className="flex justify-center py-16"><InlineLoader label="Loading applications…" /></div>
+          ) : (
+            <ApplicationKanbanBoard
+              platformApps={(applicationsQuery.data || []).map((a) => ({
+                id: a.id,
+                jobId: a.jobId,
+                status: a.status ?? "APPLIED",
+                createdAt: a.createdAt || new Date().toISOString(),
+                job: a.job,
+              }))}
+              externalApps={externalAppsQuery.data || []}
+            />
+          )}
+        </div>
       ) : (
         /* ── Redesigned 3-column Candidate split layout ── */
         <div className="grid gap-4 lg:grid-cols-[18rem_1.25fr_1.5fr]">
@@ -959,6 +1037,60 @@ export function JobsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Internship-specific filters */}
+            {selectedJobTypes.includes("INTERNSHIP") && (
+              <div className="border-t border-indigo-100 pt-4 space-y-4 bg-indigo-50/40 rounded-xl px-3 py-3 -mx-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1">
+                  🎓 Internship Filters
+                </p>
+
+                {/* Stipend Range */}
+                <div>
+                  <p className="mb-2 text-[10px] font-bold text-slate-400">Stipend (₹K/month)</p>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                    <span>₹{stipendRange[0]}K</span>
+                    <span>{stipendRange[1] >= 50 ? "₹50K+" : `₹${stipendRange[1]}K`}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0" max="50" step="2"
+                    value={stipendRange[1]}
+                    onChange={(e) => setStipendRange([stipendRange[0], Math.max(Number(e.target.value), stipendRange[0] + 2)])}
+                    className="w-full h-1 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[{ label: "Any", range: [0, 50] as [number, number] }, { label: "5K+", range: [5, 50] as [number, number] }, { label: "10K+", range: [10, 50] as [number, number] }, { label: "20K+", range: [20, 50] as [number, number] }].map((p) => (
+                      <button key={p.label} type="button"
+                        onClick={() => setStipendRange(p.range)}
+                        className={`rounded px-2 py-0.5 text-[9px] font-bold border transition ${stipendRange[0] === p.range[0] && stipendRange[1] === p.range[1] ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <p className="mb-2 text-[10px] font-bold text-slate-400">Duration</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Any", "1m", "2m", "3m", "6m"].map((d) => (
+                      <button key={d} type="button"
+                        onClick={() => setInternDuration(d === "Any" ? null : d)}
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border transition ${(d === "Any" ? !internDuration : internDuration === d) ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}>
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PPO */}
+                <label className="flex cursor-pointer items-center gap-2.5 text-xs text-indigo-700 font-semibold">
+                  <input type="checkbox" className="rounded border-indigo-300 accent-indigo-600" checked={ppoOnly} onChange={(e) => setPpoOnly(e.target.checked)} />
+                  PPO Available (Pre-Placement Offer)
+                </label>
+              </div>
+            )}
 
             {/* Role Filter */}
             <div className="border-t border-slate-100 pt-4">
@@ -1150,6 +1282,7 @@ export function JobsPage() {
                   hasApplied={appliedJobIds.has(selectedJob.id)}
                   onClose={() => setSelectedJob(null)}
                   onApply={() => setApplyModalJob(selectedJob)}
+                  onExternalApply={() => setExternalApplyJob(selectedJob)}
                   userSkillNames={userSkillNames}
                   onRequestReferral={(u) => setReferralUser(u)}
                 />
@@ -1186,6 +1319,13 @@ export function JobsPage() {
           targetUser={referralUser}
           companyNameDefault={selectedJob?.company?.name || ""}
           onClose={() => setReferralUser(null)}
+        />
+      )}
+
+      {externalApplyJob && (
+        <ExternalApplyModal
+          job={externalApplyJob}
+          onClose={() => setExternalApplyJob(null)}
         />
       )}
     </div>

@@ -40,6 +40,9 @@ import {
   Event,
   RSVPStatus,
   StandardDepartment,
+  ExternalJobApplication,
+  ExternalAppStatus,
+  PlacementDrive,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4394,3 +4397,109 @@ export const useRsvpEventMutation = () => {
   });
 };
 
+
+// ===========================================================================
+// EXTERNAL JOB APPLICATIONS
+// ===========================================================================
+
+export const useMyExternalApplicationsQuery = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["externalApplications", "mine"],
+    queryFn: async ({ signal }) => {
+      const result = await api.myExternalApplications({ signal });
+      return (result.data || []) as ExternalJobApplication[];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useCreateExternalApplicationMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: Parameters<typeof api.createExternalApplication>[0]) =>
+      api.createExternalApplication(body),
+    onSuccess: () => {
+      showToast("success", "Application tracked!");
+      queryClient.invalidateQueries({ queryKey: ["externalApplications", "mine"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useUpdateExternalApplicationStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, status, notes }: { id: string; status: ExternalAppStatus; notes?: string }) =>
+      api.updateExternalApplicationStatus(id, { status, notes }),
+    onSuccess: () => {
+      showToast("success", "Status updated");
+      queryClient.invalidateQueries({ queryKey: ["externalApplications", "mine"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useDeleteExternalApplicationMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteExternalApplication(id),
+    onSuccess: () => {
+      showToast("success", "Tracking removed");
+      queryClient.invalidateQueries({ queryKey: ["externalApplications", "mine"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+// ===========================================================================
+// PLACEMENT DRIVES
+// ===========================================================================
+
+export const usePlacementDrivesForCollegeQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["placementDrives", "college", collegeId],
+    queryFn: async ({ signal }) => {
+      const result = await api.placementDrivesForCollege(collegeId!, { signal });
+      return (result.data || []) as PlacementDrive[];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
+export const useMyPostedDrivesQuery = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["placementDrives", "mine"],
+    queryFn: async ({ signal }) => {
+      const result = await api.myPostedDrives({ signal });
+      return (result.data || []) as PlacementDrive[];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useCreatePlacementDriveMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: Parameters<typeof api.createPlacementDrive>[0]) =>
+      api.createPlacementDrive(body),
+    onSuccess: (result) => {
+      showToast("success", "Placement drive posted!");
+      const collegeId = result.data?.targetCollegeId;
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "mine"] });
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["placementDrives", "college", collegeId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
