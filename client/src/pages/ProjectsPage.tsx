@@ -809,7 +809,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 }
 
 export function ProjectsPage() {
-  const { projectId } = useParams();
+  const { projectSlug } = useParams();
   const { user } = useAuth();
   const projectsQuery = useProjectsQuery(24);
   const createProject = useCreateProjectMutation();
@@ -847,8 +847,8 @@ export function ProjectsPage() {
     [projects],
   );
 
-  if (projectId) {
-    return <ProjectDetail projectId={projectId} />;
+  if (projectSlug) {
+    return <ProjectDetail projectId={projectSlug} />;
   }
 
   return (

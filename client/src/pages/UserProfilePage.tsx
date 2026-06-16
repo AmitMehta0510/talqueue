@@ -57,18 +57,18 @@ const flattenFollowing = <T, K extends string>(pages: Array<Record<K, T[]>>, key
   pages.flatMap((page) => page[key] || []);
 
 export function UserProfilePage() {
-  const { userId } = useParams();
+  const { username } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const profileQuery = useUserProfileQuery(userId);
+  const profileQuery = useUserProfileQuery(username);
+  const profile = profileQuery.data;
   const followingQuery = useFollowingQuery(user?.id, 20);
-  const mutualQuery = useMutualConnectionsQuery(userId, 12);
+  const mutualQuery = useMutualConnectionsQuery(profile?.id, 12);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedVerificationSkill, setSelectedVerificationSkill] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const followUser = useFollowUserMutation();
   const createDirectConversation = useCreateDirectConversationMutation();
-  const profile = profileQuery.data;
 
   const followingIds = useMemo(
     () =>
@@ -83,8 +83,8 @@ export function UserProfilePage() {
     [followingQuery.data?.pages],
   );
 
-  const isOwnProfile = Boolean(user?.id && user.id === userId);
-  const isFollowing = Boolean(userId && followingIds.has(userId));
+  const isOwnProfile = Boolean(user && (user.id === username || user.username === username));
+  const isFollowing = Boolean(profile?.id && followingIds.has(profile.id));
 
   if (!user) return <Navigate to="/auth" replace />;
   if (isOwnProfile) return <Navigate to="/profile" replace />;
@@ -467,7 +467,7 @@ export function UserProfilePage() {
                         <button
                           key={u.id}
                           className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md"
-                          onClick={() => navigate(`/users/${u.id}`)}
+                          onClick={() => navigate(`/users/${u.username || u.id}`)}
                         >
                           <Avatar user={u} />
                           <div className="min-w-0">

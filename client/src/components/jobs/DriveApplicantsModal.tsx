@@ -184,7 +184,7 @@ export function DriveApplicantsModal({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <Link
-                            to={`/users/${userObj?.id}`}
+                            to={`/users/${userObj?.username || userObj?.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm font-bold text-slate-900 hover:text-indigo-600 transition flex items-center gap-1"

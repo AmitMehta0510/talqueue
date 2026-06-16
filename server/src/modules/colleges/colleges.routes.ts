@@ -18,8 +18,25 @@ import {
   removeCdcrMemberHandler,
   searchCollegeStudentsHandler,
 } from "./colleges.controller";
+import prisma from "shared/database/prisma";
 
 const router = Router();
+
+router.param("collegeId", async (req: any, res, next, collegeId) => {
+  if (collegeId) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(collegeId);
+    if (!isUuid) {
+      const college = await prisma.college.findUnique({
+        where: { normalizedKey: collegeId },
+        select: { id: true },
+      });
+      if (college) {
+        req.params.collegeId = college.id;
+      }
+    }
+  }
+  next();
+});
 
 router.post(
   "/",

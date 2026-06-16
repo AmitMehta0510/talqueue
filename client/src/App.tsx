@@ -117,7 +117,7 @@ function AppRoutes() {
             }
           />
           <Route
-            path="/users/:userId"
+            path="/users/:username"
             element={
               <RequireAuth>
                 <UserProfilePage />
@@ -126,7 +126,7 @@ function AppRoutes() {
           />
           <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/colleges" element={<CollegesPage />} />
-          <Route path="/colleges/:collegeId" element={<CollegesPage />} />
+          <Route path="/colleges/:collegeSlug" element={<CollegesPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/companies/:companySlug" element={<CompaniesPage />} />
           <Route path="/communities" element={<CommunitiesPage />} />
@@ -155,7 +155,7 @@ function AppRoutes() {
             }
           />
           <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:projectId" element={<ProjectsPage />} />
+          <Route path="/projects/:projectSlug" element={<ProjectsPage />} />
           <Route
             path="/teams"
             element={
@@ -181,7 +181,7 @@ function AppRoutes() {
             }
           />
           <Route path="/hackathons" element={<HackathonsPage />} />
-          <Route path="/hackathons/:hackathonId" element={<HackathonsPage />} />
+          <Route path="/hackathons/:hackathonSlug" element={<HackathonsPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route
             path="/events"

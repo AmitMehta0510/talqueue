@@ -120,7 +120,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
               style={{ backgroundImage: `url(${hackathon.bannerUrl})` }}
             />
             {/* Foreground contained image */}
-            <Link to={`/hackathons/${hackathon.id}`} className="relative z-10 w-full h-full flex items-center justify-center p-1">
+            <Link to={`/hackathons/${hackathon.slug || hackathon.id}`} className="relative z-10 w-full h-full flex items-center justify-center p-1">
               <img
                 className="max-h-full max-w-full object-contain transition-transform duration-500 ease-out group-hover:scale-102"
                 src={hackathon.bannerUrl}
@@ -157,7 +157,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           <div className="mb-4">
             <div className="flex items-start gap-2">
               <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
-                <Link to={`/hackathons/${hackathon.id}`}>
+                <Link to={`/hackathons/${hackathon.slug || hackathon.id}`}>
                   {hackathon.title}
                 </Link>
               </h3>
@@ -273,7 +273,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
         ) : (
           <Link
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 hover:text-emerald-700 hover:border-emerald-200 transition-colors"
-            to={`/hackathons/${hackathon.id}`}
+            to={`/hackathons/${hackathon.slug || hackathon.id}`}
           >
             <span>Details</span>
             <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />

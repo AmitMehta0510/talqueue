@@ -400,7 +400,7 @@ export function FeedPage() {
                         <div className="min-w-0">
                           {lead.user ? (
                             <Link
-                              to={`/users/${lead.userId}`}
+                              to={`/users/${lead.user?.username || lead.userId}`}
                               className="font-semibold text-slate-800 hover:text-emerald-700 transition truncate block"
                             >
                               {userName(lead.user)}
@@ -443,7 +443,7 @@ export function FeedPage() {
                 {projects.slice(0, 3).map((project) => (
                   <div key={project.id} className="group/item">
                     <Link
-                      to={`/projects/${project.id}`}
+                      to={`/projects/${project.slug || project.id}`}
                       className="block text-xs font-bold text-slate-800 group-hover/item:text-emerald-700 transition truncate"
                     >
                       {project.title}
@@ -496,7 +496,7 @@ export function FeedPage() {
                     className="group/item -mx-2 p-2.5 rounded-lg border border-transparent hover:bg-slate-50/80 hover:border-slate-100 hover:pl-3.5 transition-all duration-300 border-l-2 hover:border-l-emerald-500 flex flex-col"
                   >
                     <Link
-                      to={`/hackathons/${hackathon.id}`}
+                      to={`/hackathons/${hackathon.slug || hackathon.id}`}
                       className="block text-xs font-bold text-slate-800 hover:text-emerald-700 transition truncate"
                     >
                       {hackathon.title}

@@ -21,10 +21,43 @@ import {
   restoreProjectHandler,
   deleteProjectHandler,
   updateProjectHandler,
-  syncGithubProjectHandler
+  syncGithubProjectHandler,
 } from "./projects.controller";
+import prisma from "shared/database/prisma";
 
 const router = Router();
+
+router.param("id", async (req: any, res, next, id) => {
+  if (id) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isUuid) {
+      const project = await prisma.project.findUnique({
+        where: { slug: id },
+        select: { id: true },
+      });
+      if (project) {
+        req.params.id = project.id;
+      }
+    }
+  }
+  next();
+});
+
+router.param("projectId", async (req: any, res, next, projectId) => {
+  if (projectId) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+    if (!isUuid) {
+      const project = await prisma.project.findUnique({
+        where: { slug: projectId },
+        select: { id: true },
+      });
+      if (project) {
+        req.params.projectId = project.id;
+      }
+    }
+  }
+  next();
+});
 
 router.post(
   "/",

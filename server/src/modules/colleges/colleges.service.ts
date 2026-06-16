@@ -263,9 +263,14 @@ export const createCollege = async (
   return college;
 };
 
-export const getCollegeById = async (id: string) => {
-  return prisma.college.findUnique({
-    where: { id },
+export const getCollegeById = async (idOrSlug: string) => {
+  return prisma.college.findFirst({
+    where: {
+      OR: [
+        { id: idOrSlug },
+        { normalizedKey: idOrSlug },
+      ],
+    },
     select: collegeSelect,
   });
 };

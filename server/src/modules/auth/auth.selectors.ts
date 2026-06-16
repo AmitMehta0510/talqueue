@@ -86,6 +86,7 @@ export const authUserSelect = {
         select: {
           id: true,
           name: true,
+          normalizedKey: true,
         },
       },
     },
@@ -99,6 +100,7 @@ export const authUserSelect = {
         select: {
           id: true,
           name: true,
+          normalizedKey: true,
         },
       },
     },

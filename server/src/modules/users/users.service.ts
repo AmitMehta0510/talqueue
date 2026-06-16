@@ -668,9 +668,12 @@ export const getMyFullProfile = async (userId: string) => {
 };
 
 export const getUserFullProfile = async (userId: string) => {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: {
-      id: userId,
+      OR: [
+        { id: userId },
+        { username: userId },
+      ],
     },
 
     select: userFullProfileSelect,

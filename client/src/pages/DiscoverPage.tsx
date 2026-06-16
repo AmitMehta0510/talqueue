@@ -280,7 +280,7 @@ const feedItemRoute = (item: FeedItem): string | null => {
   switch (item.type) {
     case "PROJECT": {
       const p = item.data as Project;
-      return p?.id ? `/projects/${p.id}` : null;
+      return p?.slug ? `/projects/${p.slug}` : p?.id ? `/projects/${p.id}` : null;
     }
     case "JOB": {
       const j = item.data as Job;
@@ -453,7 +453,7 @@ export function DiscoverPage() {
             onConnect={(u) => connectUser.mutate(u.id)}
             onFollow={(u) => followUser.mutate(u.id)}
             onMessage={openMessage}
-            onOpenProfile={(u) => navigate(`/users/${u.id}`)}
+            onOpenProfile={(u) => navigate(`/users/${u.username || u.id}`)}
             onRequestReferral={openReferralModal}
             disabled={!user}
             currentUserId={user?.id}

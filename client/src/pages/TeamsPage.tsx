@@ -404,7 +404,7 @@ function MembersPanel({
             <div className="flex items-center justify-between gap-3">
               <button
                 className="flex min-w-0 items-center gap-3 text-left"
-                onClick={() => navigate(`/users/${member.userId}`)}
+                onClick={() => navigate(`/users/${member.user?.username || member.userId}`)}
               >
                 <Avatar user={member.user} size="sm" />
                 <div className="min-w-0">
@@ -649,7 +649,7 @@ function TeamOwnerPanel({ team }: { team: Team }) {
       <h3 className="text-sm font-semibold text-slate-950">Owner</h3>
       <button
         className="mt-4 flex w-full items-center gap-3 text-left"
-        onClick={() => owner?.id && navigate(`/users/${owner.id}`)}
+        onClick={() => owner?.id && navigate(`/users/${owner.username || owner.id}`)}
       >
         <Avatar user={owner} />
         <div className="min-w-0">

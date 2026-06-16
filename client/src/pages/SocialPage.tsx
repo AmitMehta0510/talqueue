@@ -171,7 +171,7 @@ function SearchPanel() {
                   user={{ ...foundUser, isFollowing: followingIds.has(foundUser.id) } as any}
                   onConnect={(item) => connectUser.mutate(item.id)}
                   onFollow={(item) => followUser.mutate(item.id)}
-                  onOpenProfile={(item) => navigate(`/users/${item.id}`)}
+                  onOpenProfile={(item) => navigate(`/users/${item.username || item.id}`)}
                   onRequestReferral={canAskReferral ? (item) => navigate(`/discover?referral=${item.id}`) : undefined}
                 />
               );
@@ -293,7 +293,7 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
                   onConnect={activeTab === "connections" ? undefined : (target) => connectUser.mutate(target.id)}
                   onFollow={activeTab === "following" ? undefined : (target) => followUser.mutate(target.id)}
                   onMessage={startConversation}
-                  onOpenProfile={(target) => navigate(`/users/${target.id}`)}
+                  onOpenProfile={(target) => navigate(`/users/${target.username || target.id}`)}
                   onRequestReferral={
                     (item.user.primaryRole === "PROFESSIONAL" || item.user.primaryRole === "WORKING_PROFESSIONAL" || item.user.primaryRole === "RECRUITER") &&
                     item.user.acceptingReferrals === true

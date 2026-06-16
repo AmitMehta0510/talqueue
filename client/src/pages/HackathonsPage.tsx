@@ -1185,7 +1185,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 }
 
 export function HackathonsPage() {
-  const { hackathonId } = useParams();
+  const { hackathonSlug } = useParams();
   const { user } = useAuth();
   
   // Search and filter states
@@ -1203,8 +1203,8 @@ export function HackathonsPage() {
   const hackathonsQuery = useHackathonsQuery(queryParams);
   const hackathons = hackathonsQuery.data || [];
 
-  if (hackathonId) {
-    return <HackathonDetail hackathonId={hackathonId} />;
+  if (hackathonSlug) {
+    return <HackathonDetail hackathonId={hackathonSlug} />;
   }
 
   return (

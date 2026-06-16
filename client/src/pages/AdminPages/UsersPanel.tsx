@@ -59,7 +59,7 @@ export function UsersPanel({
                 <div key={u.id}>
                   <div className={`flex items-center gap-4 px-5 py-4 hover:bg-zinc-800/40 transition ${isBanned ? "opacity-70" : ""}`}>
                     {/* Avatar + info */}
-                    <Link to={`/users/${u.id}`} className="shrink-0">
+                    <Link to={`/users/${u.username || u.id}`} className="shrink-0">
                       <Avatar user={u} size="md" />
                     </Link>
                     <div className="flex-1 min-w-0">
@@ -198,7 +198,7 @@ export function UsersPanel({
                       </div>
                       <div className="mt-3 flex items-center gap-2">
                         <Link
-                          to={`/users/${u.id}`}
+                          to={`/users/${u.username || u.id}`}
                           className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition"
                         >
                           <ExternalLink size={10} /> View Profile

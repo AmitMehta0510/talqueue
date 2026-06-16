@@ -16,8 +16,41 @@ import {
   declareHackathonWinnersHandler,
   getHackathonLeaderboardHandler,
 } from "./hackathons.controller";
+import prisma from "shared/database/prisma";
 
 const router = Router();
+
+router.param("id", async (req: any, res, next, id) => {
+  if (id) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isUuid) {
+      const hackathon = await prisma.hackathon.findUnique({
+        where: { slug: id },
+        select: { id: true },
+      });
+      if (hackathon) {
+        req.params.id = hackathon.id;
+      }
+    }
+  }
+  next();
+});
+
+router.param("hackathonId", async (req: any, res, next, hackathonId) => {
+  if (hackathonId) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hackathonId);
+    if (!isUuid) {
+      const hackathon = await prisma.hackathon.findUnique({
+        where: { slug: hackathonId },
+        select: { id: true },
+      });
+      if (hackathon) {
+        req.params.hackathonId = hackathon.id;
+      }
+    }
+  }
+  next();
+});
 
 router.post(
   "/",

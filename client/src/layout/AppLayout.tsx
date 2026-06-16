@@ -331,7 +331,7 @@ export function AppLayout() {
                       {user.collegeAdminships?.map((adminship: any) => (
                         <Link
                           key={adminship.id}
-                          to={`/colleges/${adminship.collegeId}`}
+                          to={`/colleges/${adminship.college?.normalizedKey || adminship.collegeId}`}
                           className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />
@@ -341,7 +341,7 @@ export function AppLayout() {
                       {user.cdcrMemberships?.map((membership: any) => (
                         <Link
                           key={membership.id}
-                          to={`/colleges/${membership.collegeId}`}
+                          to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}
                           className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />

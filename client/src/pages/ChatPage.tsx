@@ -100,9 +100,9 @@ const participantForUser = (conversation?: Conversation, userId?: string) =>
 const otherParticipants = (conversation?: Conversation, userId?: string) =>
   (conversation?.participants || []).filter((participant) => participant.userId !== userId);
 
-const userProfileUrl = (userId?: string, currentUserId?: string) => {
+const userProfileUrl = (userId?: string, currentUserId?: string, username?: string) => {
   if (!userId) return "#";
-  return userId === currentUserId ? "/profile" : `/users/${userId}`;
+  return userId === currentUserId ? "/profile" : `/users/${username || userId}`;
 };
 
 const conversationName = (conversation?: Conversation, userId?: string) => {
@@ -318,12 +318,12 @@ function StartConversationPanel() {
           return (
             <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
               <div className="flex min-w-0 items-center gap-3">
-                <Link to={userProfileUrl(foundUser.id, user?.id)} className="shrink-0 hover:opacity-85 transition">
+                <Link to={userProfileUrl(foundUser.id, user?.id, foundUser.username)} className="shrink-0 hover:opacity-85 transition">
                   <Avatar user={foundUser} size="sm" />
                 </Link>
                 <div className="min-w-0">
                   <Link
-                    to={userProfileUrl(foundUser.id, user?.id)}
+                    to={userProfileUrl(foundUser.id, user?.id, foundUser.username)}
                     className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
                   >
                     {userName(foundUser)}
@@ -481,7 +481,7 @@ function MessageBubble({
       {/* Avatar — only for others in group chats */}
       {!mine && isGroup && (
         <Link
-          to={userProfileUrl(message.senderId, currentUserId)}
+          to={userProfileUrl(message.senderId, currentUserId, message.sender?.username)}
           className="shrink-0 mt-auto mb-0.5 hover:opacity-85 transition"
         >
           <Avatar user={message.sender} size="sm" />
@@ -493,7 +493,7 @@ function MessageBubble({
         {/* Sender name — group chats only, others' messages */}
         {!mine && isGroup && (
           <Link
-            to={userProfileUrl(message.senderId, currentUserId)}
+            to={userProfileUrl(message.senderId, currentUserId, message.sender?.username)}
             className="mb-1 ml-1 text-[11px] font-semibold text-blue-700 hover:text-blue-900 hover:underline transition"
           >
             {userName(message.sender)}
@@ -831,14 +831,14 @@ function ConversationSettings({
             <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={member.id}>
               <div className="flex min-w-0 items-center gap-3">
                 <Link
-                  to={userProfileUrl(member.userId, currentUserId)}
+                  to={userProfileUrl(member.userId, currentUserId, member.user?.username)}
                   className="shrink-0 hover:opacity-85 transition"
                 >
                   <Avatar user={member.user} size="sm" />
                 </Link>
                 <div className="min-w-0">
                   <Link
-                    to={userProfileUrl(member.userId, currentUserId)}
+                    to={userProfileUrl(member.userId, currentUserId, member.user?.username)}
                     className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
                   >
                     {userName(member.user)}
@@ -883,14 +883,14 @@ function ConversationSettings({
                 <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
                   <div className="flex min-w-0 items-center gap-3">
                     <Link
-                      to={userProfileUrl(foundUser.id, currentUserId)}
+                      to={userProfileUrl(foundUser.id, currentUserId, foundUser.username)}
                       className="shrink-0 hover:opacity-85 transition"
                     >
                       <Avatar user={foundUser} size="sm" />
                     </Link>
                     <div className="min-w-0">
                       <Link
-                        to={userProfileUrl(foundUser.id, currentUserId)}
+                        to={userProfileUrl(foundUser.id, currentUserId, foundUser.username)}
                         className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
                       >
                         {userName(foundUser)}
@@ -1110,7 +1110,7 @@ function ActiveConversation({
             </Link>
             {conversation.type === "DIRECT" ? (
               <Link
-                to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id)}
+                to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id, otherParticipants(conversation, user?.id)[0]?.user?.username)}
                 className="shrink-0 hover:opacity-85 transition"
               >
                 <ConversationAvatar conversation={conversation} currentUserId={user?.id} />
@@ -1122,7 +1122,7 @@ function ActiveConversation({
               <h2 className="truncate text-base font-bold text-slate-950">
                 {conversation.type === "DIRECT" ? (
                   <Link
-                    to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id)}
+                    to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id, otherParticipants(conversation, user?.id)[0]?.user?.username)}
                     className="hover:text-emerald-800 hover:underline transition"
                   >
                     {conversationName(conversation, user?.id)}

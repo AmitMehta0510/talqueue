@@ -210,7 +210,7 @@ function CollegeCard({ college }: { college: College }) {
             <p className="truncate text-xs text-slate-500">{location}</p>
           </div>
         </div>
-        <Link className="btn-secondary px-3 py-1.5" to={`/colleges/${college.id}`}>
+        <Link className="btn-secondary px-3 py-1.5" to={`/colleges/${college.normalizedKey || college.id}`}>
           Open
         </Link>
       </div>
@@ -239,8 +239,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const { user } = useAuth();
   const collegeQuery = useCollegeQuery(collegeId);
   const college = collegeQuery.data;
-  const departmentsQuery = useDepartmentsQuery(collegeId);
-  const createDepartment = useCreateDepartmentMutation(collegeId);
+  const departmentsQuery = useDepartmentsQuery(college?.id);
+  const createDepartment = useCreateDepartmentMutation(college?.id);
   const [departmentName, setDepartmentName] = useState("");
   
   // TPO subtabs
@@ -248,23 +248,23 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
   const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
-  const isTpo = isCollegeAdminFor(user, collegeId);
+  const isTpo = isCollegeAdminFor(user, college?.id || "");
 
   // CDCR management
   const [searchQuery, setSearchQuery] = useState("");
-  const cdcrQuery = useCdcrMembersQuery(collegeId);
-  const assignMutation = useAssignCdcrMemberMutation(collegeId);
-  const removeMutation = useRemoveCdcrMemberMutation(collegeId);
-  const searchResultsQuery = useSearchCollegeStudentsQuery(collegeId, searchQuery);
+  const cdcrQuery = useCdcrMembersQuery(college?.id);
+  const assignMutation = useAssignCdcrMemberMutation(college?.id || "");
+  const removeMutation = useRemoveCdcrMemberMutation(college?.id || "");
+  const searchResultsQuery = useSearchCollegeStudentsQuery(college?.id || "", searchQuery);
 
   // Drives management (TPO view)
-  const allDrivesQuery = useAllDrivesForCollegeQuery(isTpo ? collegeId : null);
-  const driveInvitesQuery = useDriveInvitesForCollegeQuery(isTpo ? collegeId : null);
-  const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
+  const allDrivesQuery = useAllDrivesForCollegeQuery(isTpo ? college?.id : null);
+  const driveInvitesQuery = useDriveInvitesForCollegeQuery(isTpo ? college?.id : null);
+  const respondToInviteMutation = useRespondToDriveInviteMutation(college?.id);
   const updateDriveMutation = useUpdatePlacementDriveMutation();
   const closeDriveMutation = useClosePlacementDriveMutation();
 
-  const canManageDepartments = isCollegeAdminFor(user, collegeId);
+  const canManageDepartments = isCollegeAdminFor(user, college?.id || "");
 
   const submitDepartment = (event: FormEvent) => {
     event.preventDefault();
@@ -788,7 +788,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
       {showCreateDriveModal && (
         <CreateDriveModal
-          collegeId={collegeId}
+          collegeId={college?.id || collegeId}
           onClose={() => setShowCreateDriveModal(false)}
         />
       )}
@@ -804,7 +804,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 }
 
 export function CollegesPage() {
-  const { collegeId } = useParams();
+  const { collegeSlug } = useParams();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -839,8 +839,8 @@ export function CollegesPage() {
     });
   }, [colleges, query, isSearching, searchCollegesQuery.data]);
 
-  if (collegeId) {
-    return <CollegeDetail collegeId={collegeId} />;
+  if (collegeSlug) {
+    return <CollegeDetail collegeId={collegeSlug} />;
   }
 
   const isFetchingList = isSearching ? searchCollegesQuery.isFetching : collegesQuery.isFetching;
