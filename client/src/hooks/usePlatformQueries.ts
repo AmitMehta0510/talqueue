@@ -43,6 +43,8 @@ import {
   ExternalJobApplication,
   ExternalAppStatus,
   PlacementDrive,
+  PlacementDriveApplication,
+  PlacementDriveInvite,
   CdcrMember,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -548,9 +550,7 @@ export const useDeleteConversationMutation = () => {
     },
     onSuccess: () => {
       showToast("success", "Conversation deleted");
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chat.conversations(),
-      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chat.conversations() });
       queryClient.invalidateQueries({ queryKey: queryKeys.chat.archived() });
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
@@ -4300,7 +4300,7 @@ export const useVerifyWorkEmailMutation = () => {
     mutationFn: ({ experienceId, email, code }: { experienceId: string; email: string; code?: string }) =>
       api.verifyWorkEmail(experienceId, email, code),
     onSuccess: (result) => {
-      showToast("success", result.message || "Work email verified successfully");
+      showToast("success", "Work email verified successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.users.experiences });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.full });
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.joined() });
@@ -4497,6 +4497,7 @@ export const useCreatePlacementDriveMutation = () => {
       showToast("success", "Placement drive posted!");
       const collegeId = result.data?.targetCollegeId;
       queryClient.invalidateQueries({ queryKey: ["placementDrives", "mine"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "all", collegeId] });
       if (collegeId) {
         queryClient.invalidateQueries({ queryKey: ["placementDrives", "college", collegeId] });
       }
@@ -4504,6 +4505,39 @@ export const useCreatePlacementDriveMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
+export const useUpdatePlacementDriveMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updatePlacementDrive>[1] }) =>
+      api.updatePlacementDrive(id, data),
+    onSuccess: (result) => {
+      showToast("success", "Drive updated.");
+      const collegeId = result.data?.targetCollegeId;
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "all", collegeId] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "college", collegeId] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "mine"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useClosePlacementDriveMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => api.closePlacementDrive(id),
+    onSuccess: () => {
+      showToast("success", "Drive closed.");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 
 // ===========================================================================
 // CDCR MANAGEMENT
@@ -4558,3 +4592,153 @@ export const useSearchCollegeStudentsQuery = (collegeId: string, query: string) 
     enabled: Boolean(collegeId) && query.trim().length >= 2,
   });
 };
+
+// ===========================================================================
+// CAMPUS PLACEMENT DRIVES (EXTENDED) & INVITES
+// ===========================================================================
+
+export const useAllDrivesForCollegeQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["placementDrives", "college", collegeId, "admin"],
+    queryFn: async ({ signal }) => {
+      const result = await api.allDrivesForCollege(collegeId!, { signal });
+      return (result.data || []) as PlacementDrive[];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
+export const useApplyToDriveMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ driveId, note }: { driveId: string; note?: string }) =>
+      api.applyToDrive(driveId, note),
+    onSuccess: () => {
+      showToast("success", "Application submitted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", "applications"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useMyDriveApplicationsQuery = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["placementDrives", "applications", "mine"],
+    queryFn: async ({ signal }) => {
+      const result = await api.myDriveApplications({ signal });
+      return (result.data || []) as PlacementDriveApplication[];
+    },
+    enabled: Boolean(user),
+  });
+};
+
+export const useDriveApplicantsQuery = (driveId?: string | null) => {
+  return useQuery({
+    queryKey: ["placementDrives", driveId, "applicants"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getDriveApplicants(driveId!, { signal });
+      return (result.data || []) as PlacementDriveApplication[];
+    },
+    enabled: Boolean(driveId),
+  });
+};
+
+export const useUpdateDriveApplicationStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ applicationId, status }: { applicationId: string; status: string }) =>
+      api.updateDriveApplicationStatus(applicationId, status),
+    onSuccess: (result) => {
+      showToast("success", `Application status updated to ${result.data?.status || ""}.`);
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useSendDriveInviteMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: Parameters<typeof api.sendDriveInvite>[0]) =>
+      api.sendDriveInvite(body),
+    onSuccess: (result) => {
+      showToast("success", "Placement drive invite sent!");
+      const companyId = result.data?.companyId;
+      const collegeId = result.data?.collegeId;
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "company", companyId] });
+      }
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "college", collegeId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useDriveInvitesForCollegeQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["driveInvites", "college", collegeId],
+    queryFn: async ({ signal }) => {
+      const result = await api.driveInvitesForCollege(collegeId!, { signal });
+      return (result.data || []) as PlacementDriveInvite[];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
+export const useDriveInvitesForCompanyQuery = (companyId?: string | null) => {
+  return useQuery({
+    queryKey: ["driveInvites", "company", companyId],
+    queryFn: async ({ signal }) => {
+      const result = await api.driveInvitesForCompany(companyId!, { signal });
+      return (result.data || []) as PlacementDriveInvite[];
+    },
+    enabled: Boolean(companyId),
+  });
+};
+
+export const useRespondToDriveInviteMutation = (collegeId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ inviteId, action }: { inviteId: string; action: "ACCEPT" | "REJECT" }) =>
+      api.respondToDriveInvite(inviteId, action),
+    onSuccess: (result) => {
+      showToast("success", `Invite has been ${result.data?.status.toLowerCase() || "updated"}.`);
+      queryClient.invalidateQueries({ queryKey: ["driveInvites"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "college", collegeId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useWithdrawDriveInviteMutation = (companyId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (inviteId: string) => api.withdrawDriveInvite(inviteId),
+    onSuccess: () => {
+      showToast("success", "Invite withdrawn.");
+      queryClient.invalidateQueries({ queryKey: ["driveInvites"] });
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "company", companyId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+

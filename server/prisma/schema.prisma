@@ -97,6 +97,8 @@ enum NotificationType {
   PROJECT_JOIN_REQUEST
   PROJECT_JOIN_ACCEPTED
   PROJECT_JOIN_REJECTED
+  PLACEMENT_DRIVE_INVITE
+  PLACEMENT_DRIVE_APPLIED
 }
 
 enum ProjectVisibility {
@@ -267,6 +269,18 @@ enum PlacementDriveStatus {
   UPCOMING
   ONGOING
   CLOSED
+}
+
+enum PlacementDriveInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PlacementDriveInviteDirection {
+  COMPANY_TO_COLLEGE
+  COLLEGE_TO_COMPANY
 }
 
 enum ActivityType {
@@ -577,8 +591,10 @@ model User {
   followedCompanies        Company[]                   @relation("CompanyFollowers")
   createdEvents            Event[]
   eventRSVPs               EventRSVP[]
-  externalApplications     ExternalJobApplication[]
-  postedPlacementDrives    PlacementDrive[]
+  externalApplications            ExternalJobApplication[]
+  postedPlacementDrives           PlacementDrive[]
+  placementDriveApplications      PlacementDriveApplication[]
+  placementDriveInvitesCreated    PlacementDriveInvite[]      @relation("PlacementDriveInviteCreator")
 }
 
 model UserRecommendation {
@@ -715,6 +731,7 @@ model College {
   emailDomains    String[]         @default([])
   events          Event[]
   placementDrives PlacementDrive[]
+  placementDriveInvites PlacementDriveInvite[]
 
   @@index([name])
   @@index([city])
@@ -2103,6 +2120,7 @@ model Company {
   emailDomains    String[]         @default([])
   events          Event[]
   placementDrives PlacementDrive[]
+  placementDriveInvites PlacementDriveInvite[]
 }
 
 model Job {
@@ -2937,10 +2955,72 @@ model PlacementDrive {
   college          College              @relation(fields: [targetCollegeId], references: [id], onDelete: Cascade)
   postedBy         User                 @relation(fields: [postedById], references: [id], onDelete: Cascade)
 
+  applications     PlacementDriveApplication[]
+  invite           PlacementDriveInvite?
+
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
   @@index([targetCollegeId])
   @@index([companyId])
+  @@index([status])
+}
+
+model PlacementDriveApplication {
+  id        String   @id @default(uuid())
+  driveId   String
+  userId    String
+  note      String?
+  status    String   @default("APPLIED")
+  appliedAt DateTime @default(now())
+
+  drive PlacementDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([driveId, userId])
+  @@index([userId])
+  @@index([driveId])
+}
+
+model PlacementDriveInvite {
+  id          String                       @id @default(uuid())
+  companyId   String
+  collegeId   String
+  initiatedBy PlacementDriveInviteDirection @default(COMPANY_TO_COLLEGE)
+
+  driveTitle       String
+  driveDate        DateTime?
+  applyDeadline    DateTime?
+  roles            String[]
+  stipendMin       Int?
+  stipendMax       Int?
+  salaryMin        Int?
+  salaryMax        Int?
+  currency         String?  @default("INR")
+  minCgpa          Float?
+  eligibleBranches String[]
+  eligibleYears    Int[]
+  description      String?
+
+  message    String?
+  status     PlacementDriveInviteStatus @default(PENDING)
+  reviewedAt DateTime?
+
+  createdById      String
+  placementDriveId String? @unique
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  college        College         @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  createdBy      User            @relation("PlacementDriveInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  placementDrive PlacementDrive? @relation(fields: [placementDriveId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([collegeId])
   @@index([status])
 }

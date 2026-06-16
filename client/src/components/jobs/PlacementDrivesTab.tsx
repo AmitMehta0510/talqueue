@@ -4,17 +4,24 @@ import {
   Clock,
   GraduationCap,
   IndianRupee,
-  MapPin,
   Users,
   Zap,
   ChevronRight,
   Info,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Briefcase,
 } from "lucide-react";
 import { PlacementDrive } from "../../lib/api";
-import { usePlacementDrivesForCollegeQuery } from "../../hooks/usePlatformQueries";
+import {
+  usePlacementDrivesForCollegeQuery,
+  useApplyToDriveMutation,
+  useMyDriveApplicationsQuery,
+} from "../../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../ui";
 import { cleanLogoUrl, formatDate } from "../../lib/format";
-import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -58,22 +65,31 @@ const STATUS_STYLES: Record<
   },
 };
 
+const APP_STATUS_STYLES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  APPLIED: { label: "Applied", color: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 size={11} /> },
+  SHORTLISTED: { label: "Shortlisted", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 size={11} /> },
+  REJECTED: { label: "Not Selected", color: "text-rose-600 bg-rose-50 border-rose-200", icon: <XCircle size={11} /> },
+  HIRED: { label: "Hired! 🎉", color: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 size={11} /> },
+};
+
 // ---------------------------------------------------------------------------
 // Drive Card
 // ---------------------------------------------------------------------------
-function DriveCard({ drive }: { drive: PlacementDrive }) {
-  const { showToast } = useToast();
+function DriveCard({
+  drive,
+  hasApplied,
+  isApplying,
+  onApply,
+}: {
+  drive: PlacementDrive;
+  hasApplied: boolean;
+  isApplying: boolean;
+  onApply: (driveId: string) => void;
+}) {
   const status = STATUS_STYLES[drive.status];
   const stipend = formatStipend(drive.stipendMin, drive.stipendMax);
   const salary = formatSalary(drive.salaryMin, drive.salaryMax);
   const compensation = stipend || salary;
-
-  const handleApply = () => {
-    showToast(
-      "success",
-      `Profile shared with ${drive.company?.name || "company"} recruiters for ${drive.driveTitle}!`
-    );
-  };
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
@@ -192,17 +208,64 @@ function DriveCard({ drive }: { drive: PlacementDrive }) {
 
         {/* CTA */}
         {drive.status !== "CLOSED" && (
-          <button
-            type="button"
-            onClick={handleApply}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 shadow-sm"
-          >
-            <Zap size={14} /> Apply for Drive
-            <ChevronRight size={14} className="ml-auto opacity-60" />
-          </button>
+          hasApplied ? (
+            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-bold text-emerald-700">
+              <CheckCircle2 size={15} />
+              Applied — Profile Shared
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onApply(drive.id)}
+              disabled={isApplying}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 shadow-sm disabled:opacity-60"
+            >
+              {isApplying ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+              Apply for Drive
+              {!isApplying && <ChevronRight size={14} className="ml-auto opacity-60" />}
+            </button>
+          )
         )}
       </div>
     </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// My Applications Tracker
+// ---------------------------------------------------------------------------
+function MyApplicationsTracker() {
+  const appsQuery = useMyDriveApplicationsQuery();
+  const apps = appsQuery.data || [];
+
+  if (appsQuery.isLoading) return null;
+  if (apps.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Briefcase size={14} className="text-blue-600" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700">My Drive Applications</h3>
+        <span className="ml-auto rounded-full bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5">{apps.length}</span>
+      </div>
+      <div className="space-y-2">
+        {apps.map((app) => {
+          const style = APP_STATUS_STYLES[app.status] || APP_STATUS_STYLES["APPLIED"];
+          return (
+            <div key={app.id} className="flex items-center gap-3 rounded-xl bg-white border border-blue-100 px-3.5 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">{app.drive?.driveTitle}</p>
+                <p className="text-[10px] text-slate-400">{app.drive?.company?.name}</p>
+              </div>
+              <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${style.color}`}>
+                {style.icon}
+                {style.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -214,7 +277,20 @@ interface PlacementDrivesTabProps {
 }
 
 export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
+  const { user } = useAuth();
   const drivesQuery = usePlacementDrivesForCollegeQuery(collegeId);
+  const appsQuery = useMyDriveApplicationsQuery();
+  const applyMutation = useApplyToDriveMutation();
+
+  const appliedDriveIds = new Set((appsQuery.data || []).map((a) => a.driveId));
+  const applyingDriveId = applyMutation.isPending
+    ? (applyMutation.variables as { driveId: string } | undefined)?.driveId
+    : null;
+
+  const handleApply = (driveId: string) => {
+    if (!user) return;
+    applyMutation.mutate({ driveId });
+  };
 
   if (!collegeId) {
     return (
@@ -255,6 +331,7 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
   if (drives.length === 0) {
     return (
       <div className="space-y-6">
+        <MyApplicationsTracker />
         {/* Info banner */}
         <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5 flex gap-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 shrink-0">
@@ -288,6 +365,8 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
 
   return (
     <div className="space-y-6">
+      <MyApplicationsTracker />
+
       {ongoing.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -298,7 +377,13 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {ongoing.map((drive) => (
-              <DriveCard key={drive.id} drive={drive} />
+              <DriveCard
+                key={drive.id}
+                drive={drive}
+                hasApplied={appliedDriveIds.has(drive.id)}
+                isApplying={applyingDriveId === drive.id}
+                onApply={handleApply}
+              />
             ))}
           </div>
         </section>
@@ -311,7 +396,13 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
           </h3>
           <div className="grid gap-4 md:grid-cols-2">
             {upcoming.map((drive) => (
-              <DriveCard key={drive.id} drive={drive} />
+              <DriveCard
+                key={drive.id}
+                drive={drive}
+                hasApplied={appliedDriveIds.has(drive.id)}
+                isApplying={applyingDriveId === drive.id}
+                onApply={handleApply}
+              />
             ))}
           </div>
         </section>

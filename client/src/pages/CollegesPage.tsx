@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus } from "lucide-react";
+import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,9 +12,15 @@ import {
   useAssignCdcrMemberMutation,
   useRemoveCdcrMemberMutation,
   useSearchCollegeStudentsQuery,
+  useAllDrivesForCollegeQuery,
+  useDriveInvitesForCollegeQuery,
+  useRespondToDriveInviteMutation,
+  useUpdatePlacementDriveMutation,
+  useClosePlacementDriveMutation,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
+import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
 
 // Role helpers
 const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
@@ -238,6 +244,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   
   // TPO subtabs
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
+  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites">("cdcr");
+  const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
   const isTpo = isCollegeAdminFor(user, collegeId);
 
   // CDCR management
@@ -246,6 +254,13 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const assignMutation = useAssignCdcrMemberMutation(collegeId);
   const removeMutation = useRemoveCdcrMemberMutation(collegeId);
   const searchResultsQuery = useSearchCollegeStudentsQuery(collegeId, searchQuery);
+
+  // Drives management (TPO view)
+  const allDrivesQuery = useAllDrivesForCollegeQuery(isTpo ? collegeId : null);
+  const driveInvitesQuery = useDriveInvitesForCollegeQuery(isTpo ? collegeId : null);
+  const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
+  const updateDriveMutation = useUpdatePlacementDriveMutation();
+  const closeDriveMutation = useClosePlacementDriveMutation();
 
   const canManageDepartments = isCollegeAdminFor(user, collegeId);
 
@@ -328,6 +343,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             }`}
           >
             TPO Portal
+            {(driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length > 0 && (
+              <span className="ml-1.5 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold inline-flex items-center justify-center">
+                {(driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length}
+              </span>
+            )}
           </button>
         </div>
       )}
@@ -384,8 +404,34 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           </aside>
         </div>
       ) : (
-        /* ── TPO Portal CDCR Management Layout ── */
-        <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
+        /* ── TPO Portal Layout ── */
+        <div className="space-y-4">
+          {/* TPO Sub-tab navigation */}
+          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+            {(["cdcr", "drives", "invites"] as const).map((tab) => {
+              const labels = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites" };
+              const pendingCount = tab === "invites" ? (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length : 0;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setTpoSubTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    tpoSubTab === tab
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {labels[tab]}
+                  {pendingCount > 0 && (
+                    <span className="h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold inline-flex items-center justify-center">{pendingCount}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {tpoSubTab === "cdcr" && (
+            <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
           {/* CDCR Members Roster */}
           <div className="panel p-5 space-y-4">
             <div>
@@ -558,8 +604,184 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             ) : searchQuery.trim().length > 0 ? (
               <p className="text-[10px] text-slate-400 text-center py-2">Type at least 2 characters to search.</p>
             ) : null}
-          </aside>
+            </aside>
+
+          </div>
+          )}
+
+          {tpoSubTab === "drives" && (
+            <div className="panel p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                    <Zap size={16} className="text-indigo-600" />
+                    Placement Drives
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">All drives for this college — create, manage status, and track applications.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateDriveModal(true)}
+                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 transition shadow-sm"
+                >
+                  <Plus size={13} /> New Drive
+                </button>
+              </div>
+
+              {allDrivesQuery.isLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
+              ) : (allDrivesQuery.data || []).length ? (
+                <div className="overflow-hidden rounded-xl border border-slate-100">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <tr>
+                        <th className="px-4 py-3">Drive</th>
+                        <th className="px-4 py-3">Company</th>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(allDrivesQuery.data || []).map((drive) => (
+                        <tr key={drive.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-slate-800 truncate max-w-[180px]">{drive.driveTitle}</p>
+                            {drive.roles.length > 0 && <p className="text-[10px] text-slate-400">{drive.roles.join(", ")}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{drive.company?.name}</td>
+                          <td className="px-4 py-3 text-slate-500">{drive.driveDate ? formatDate(drive.driveDate) : "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                              drive.status === "ONGOING" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              drive.status === "UPCOMING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                              "bg-slate-100 text-slate-500 border-slate-200"
+                            }`}>
+                              {drive.status === "ONGOING" ? "Open" : drive.status === "UPCOMING" ? "Upcoming" : "Closed"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {drive.status === "UPCOMING" && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateDriveMutation.mutate({ id: drive.id, data: { status: "ONGOING" } })}
+                                  disabled={updateDriveMutation.isPending}
+                                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition disabled:opacity-50"
+                                >
+                                  Open
+                                </button>
+                              )}
+                              {drive.status !== "CLOSED" && (
+                                <button
+                                  type="button"
+                                  onClick={() => { if (confirm("Close this drive?")) closeDriveMutation.mutate(drive.id); }}
+                                  disabled={closeDriveMutation.isPending}
+                                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition disabled:opacity-50"
+                                >
+                                  Close
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState icon={Zap} title="No drives yet" text="Create the first placement drive for this college." />
+              )}
+            </div>
+          )}
+
+          {tpoSubTab === "invites" && (
+            <div className="panel p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                  <Building2 size={16} className="text-violet-600" />
+                  Company Invitations
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Companies requesting to conduct placement drives at your college.</p>
+              </div>
+
+              {driveInvitesQuery.isLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
+              ) : (driveInvitesQuery.data || []).length ? (
+                <div className="space-y-3">
+                  {(driveInvitesQuery.data || []).map((invite) => (
+                    <div key={invite.id} className={`rounded-xl border p-4 space-y-3 transition ${
+                      invite.status === "PENDING" ? "border-violet-200 bg-violet-50/30" : "border-slate-100 bg-white opacity-60"
+                    }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{invite.driveTitle}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <Building2 size={10} />
+                            {invite.company?.name}
+                          </p>
+                          {invite.message && (
+                            <p className="text-xs text-slate-600 mt-1.5 italic border-l-2 border-violet-300 pl-2">"{invite.message}"</p>
+                          )}
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          invite.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                          "bg-slate-100 text-slate-500 border-slate-200"
+                        }`}>
+                          {invite.status}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                        {invite.driveDate && <span className="flex items-center gap-1"><Calendar size={9} />Drive: {formatDate(invite.driveDate)}</span>}
+                        {invite.applyDeadline && <span className="flex items-center gap-1"><Clock size={9} />Deadline: {formatDate(invite.applyDeadline)}</span>}
+                        {invite.roles.length > 0 && <span>Roles: {invite.roles.join(", ")}</span>}
+                      </div>
+
+                      {invite.status === "PENDING" && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "ACCEPT" })}
+                            disabled={respondToInviteMutation.isPending}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 transition disabled:opacity-50"
+                          >
+                            {respondToInviteMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                            Accept & Create Drive
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "REJECT" })}
+                            disabled={respondToInviteMutation.isPending}
+                            className="flex items-center gap-1 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold px-3 py-2 transition disabled:opacity-50"
+                          >
+                            <XCircle size={13} /> Decline
+                          </button>
+                        </div>
+                      )}
+                      {invite.status === "ACCEPTED" && invite.placementDrive && (
+                        <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                          <CheckCircle2 size={10} /> Drive created successfully
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Building2} title="No company invitations" text="When companies invite your college to their placement drives, they'll appear here for you to accept or decline." />
+              )}
+            </div>
+          )}
         </div>
+      )}
+
+      {showCreateDriveModal && (
+        <CreateDriveModal
+          collegeId={collegeId}
+          onClose={() => setShowCreateDriveModal(false)}
+        />
       )}
     </section>
   );

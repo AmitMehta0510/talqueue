@@ -677,6 +677,61 @@ export type PlacementDrive = {
   updatedAt: string;
 };
 
+export type PlacementDriveApplication = {
+  id: string;
+  driveId: string;
+  userId: string;
+  note?: string | null;
+  status: string; // APPLIED | SHORTLISTED | REJECTED | HIRED
+  appliedAt: string;
+  drive?: PlacementDrive & {
+    company?: { id: string; name: string; logoUrl?: string | null; slug?: string };
+    college?: { id: string; name: string };
+  };
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+    profile?: { fullName: string; avatarUrl?: string | null; headline?: string | null } | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PlacementDriveInviteStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
+export type PlacementDriveInviteDirection = "COMPANY_TO_COLLEGE" | "COLLEGE_TO_COMPANY";
+
+export type PlacementDriveInvite = {
+  id: string;
+  companyId: string;
+  collegeId: string;
+  initiatedBy: PlacementDriveInviteDirection;
+  driveTitle: string;
+  driveDate?: string | null;
+  applyDeadline?: string | null;
+  roles: string[];
+  stipendMin?: number | null;
+  stipendMax?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  currency?: string | null;
+  minCgpa?: number | null;
+  eligibleBranches: string[];
+  eligibleYears: number[];
+  description?: string | null;
+  message?: string | null;
+  status: PlacementDriveInviteStatus;
+  reviewedAt?: string | null;
+  createdById: string;
+  placementDriveId?: string | null;
+  company?: { id: string; name: string; logoUrl?: string | null; slug?: string; type?: string };
+  college?: { id: string; name: string };
+  createdBy?: { id: string; username: string; profile?: { fullName: string; avatarUrl?: string | null } | null };
+  placementDrive?: { id: string; status: string } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CdcrMember = {
   id: string;
   userId: string;
@@ -2647,4 +2702,30 @@ export const api = {
     request<{ success: boolean }>(`/colleges/${collegeId}/tpo/cdcr/${userId}`, { method: "DELETE" }),
   searchCollegeStudents: (collegeId: string, query: string, options?: EndpointOptions) =>
     request<Array<{ id: string; username: string; email: string; profile?: { fullName: string; avatarUrl?: string | null } | null }>>(`/colleges/${collegeId}/tpo/students?q=${encodeURIComponent(query)}`, options),
+
+  // Placement Drive Admin (TPO/CDCR)
+  allDrivesForCollege: (collegeId: string, options?: EndpointOptions) =>
+    request<PlacementDrive[]>(`/placement-drives/college/${collegeId}/admin`, options),
+
+  // Placement Drive Applications
+  applyToDrive: (driveId: string, note?: string) =>
+    request<PlacementDriveApplication>(`/placement-drives/${driveId}/apply`, { method: "POST", body: { note } }),
+  myDriveApplications: (options?: EndpointOptions) =>
+    request<PlacementDriveApplication[]>("/placement-drives/applications/mine", options),
+  getDriveApplicants: (driveId: string, options?: EndpointOptions) =>
+    request<PlacementDriveApplication[]>(`/placement-drives/${driveId}/applicants`, options),
+  updateDriveApplicationStatus: (applicationId: string, status: string) =>
+    request<PlacementDriveApplication>(`/placement-drives/applications/${applicationId}`, { method: "PATCH", body: { status } }),
+
+  // Drive Invitations
+  sendDriveInvite: (body: Partial<PlacementDriveInvite> & { companyId: string; collegeId: string; driveTitle: string }) =>
+    request<PlacementDriveInvite>("/drive-invites", { method: "POST", body }),
+  driveInvitesForCollege: (collegeId: string, options?: EndpointOptions) =>
+    request<PlacementDriveInvite[]>(`/drive-invites/college/${collegeId}`, options),
+  driveInvitesForCompany: (companyId: string, options?: EndpointOptions) =>
+    request<PlacementDriveInvite[]>(`/drive-invites/company/${companyId}`, options),
+  respondToDriveInvite: (inviteId: string, action: "ACCEPT" | "REJECT") =>
+    request<PlacementDriveInvite>(`/drive-invites/${inviteId}/respond`, { method: "PATCH", body: { action } }),
+  withdrawDriveInvite: (inviteId: string) =>
+    request<{ success: boolean }>(`/drive-invites/${inviteId}/withdraw`, { method: "PATCH", body: {} }),
 };

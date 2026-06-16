@@ -10,27 +10,47 @@ import {
   CheckCircle,
   Clock,
   Plus,
+  GraduationCap,
+  Send,
+  X,
+  Loader2,
+  Building2,
 } from "lucide-react";
 import {
   useRecruiterDashboardQuery,
   useRecruiterInsightsQuery,
   useRecruiterJobsQuery,
+  useDriveInvitesForCompanyQuery,
+  useWithdrawDriveInviteMutation,
 } from "../hooks/usePlatformQueries";
 import { useAuth } from "../contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
 import { JobPostModal } from "../components/forms/JobPostModal";
-import { formatCount, titleCase } from "../lib/format";
+import { DriveInviteModal } from "../components/jobs/DriveInviteModal";
+import { formatCount, titleCase, formatDate } from "../lib/format";
 import { Job } from "../lib/api";
 
 export function RecruiterPage() {
   const { user } = useAuth();
   const [managedJobId, setManagedJobId] = useState<string | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showDriveInviteModal, setShowDriveInviteModal] = useState(false);
 
   const dashboardQuery = useRecruiterDashboardQuery();
   const insightsQuery = useRecruiterInsightsQuery();
   const jobsQuery = useRecruiterJobsQuery();
+
+  // Detect the recruiter's primary company (first admin or experience company)
+  const recruiterCompany = useMemo(() => {
+    const experiences = (user as any)?.experiences || [];
+    const adminRoles = (user as any)?.companyAdmins || [];
+    return adminRoles[0]?.company || experiences[0]?.company || null;
+  }, [user]);
+
+  const companyId = recruiterCompany?.id as string | undefined;
+  const driveInvitesQuery = useDriveInvitesForCompanyQuery(companyId);
+  const withdrawInviteMutation = useWithdrawDriveInviteMutation(companyId);
 
   const activeJobs = jobsQuery.data || [];
   const dashboard = dashboardQuery.data;
@@ -199,6 +219,84 @@ export function RecruiterPage() {
             jobsQuery.refetch();
             dashboardQuery.refetch();
           }}
+        />
+      )}
+
+      {/* Campus Drive Invitations */}
+      {companyId && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-1.5">
+              <GraduationCap size={15} />
+              Campus Drive Invitations
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowDriveInviteModal(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 transition shadow-sm"
+            >
+              <Send size={12} /> Invite a College
+            </button>
+          </div>
+
+          {driveInvitesQuery.isLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="animate-spin text-slate-400" size={18} /></div>
+          ) : (driveInvitesQuery.data || []).length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {(driveInvitesQuery.data || []).map((invite) => (
+                <div key={invite.id} className="panel p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{invite.driveTitle}</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Building2 size={10} />{invite.college?.name}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                      invite.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                      invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                      "bg-slate-100 text-slate-500 border-slate-200"
+                    }`}>{invite.status}</span>
+                  </div>
+                  {invite.driveDate && (
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Clock size={9} /> {formatDate(invite.driveDate)}
+                    </p>
+                  )}
+                  {invite.status === "PENDING" && (
+                    <button
+                      type="button"
+                      onClick={() => withdrawInviteMutation.mutate(invite.id)}
+                      disabled={withdrawInviteMutation.isPending}
+                      className="text-[10px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition disabled:opacity-50"
+                    >
+                      <X size={10} /> Withdraw
+                    </button>
+                  )}
+                  {invite.status === "ACCEPTED" && invite.placementDrive && (
+                    <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCircle size={10} /> Drive is live!
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={GraduationCap}
+              title="No campus drive invitations yet"
+              text="Invite colleges to participate in a campus placement drive. When accepted, the drive is automatically created."
+            />
+          )}
+        </div>
+      )}
+
+      {showDriveInviteModal && companyId && (
+        <DriveInviteModal
+          companyId={companyId}
+          companyName={recruiterCompany?.name || "Your Company"}
+          onClose={() => setShowDriveInviteModal(false)}
         />
       )}
     </div>
