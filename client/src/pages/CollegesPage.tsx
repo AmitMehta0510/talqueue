@@ -14,10 +14,23 @@ import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/fo
 
 // Role helpers
 const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
+const COLLEGE_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN", "COLLEGE_ADMIN"]);
+
 function isSuperOrPlatformAdmin(user: any): boolean {
   if (!user?.roles) return false;
   return (user.roles as Array<{ role?: { name?: string } }>).some(
     (r) => r.role?.name && SUPER_ADMIN_ROLES.has(r.role.name)
+  );
+}
+
+function isCollegeAdminFor(user: any, collegeId: string): boolean {
+  if (!user) return false;
+  // Platform admins can manage any college
+  if (isSuperOrPlatformAdmin(user)) return true;
+  // Check college-scoped admin assignment
+  if (!user?.roles) return false;
+  return (user.roles as Array<{ role?: { name?: string }; collegeId?: string }>).some(
+    (r) => r.role?.name && COLLEGE_ADMIN_ROLES.has(r.role.name) && r.collegeId === collegeId
   );
 }
 
@@ -211,12 +224,15 @@ function CollegeCard({ college }: { college: College }) {
 }
 
 function CollegeDetail({ collegeId }: { collegeId: string }) {
+  const { user } = useAuth();
   const collegesQuery = useCollegesQuery(100);
   const colleges = flattenColleges(collegesQuery.data?.pages);
   const college = colleges.find((item) => item.id === collegeId);
   const departmentsQuery = useDepartmentsQuery(collegeId);
   const createDepartment = useCreateDepartmentMutation(collegeId);
   const [departmentName, setDepartmentName] = useState("");
+
+  const canManageDepartments = isCollegeAdminFor(user, collegeId);
 
   const submitDepartment = (event: FormEvent) => {
     event.preventDefault();
@@ -299,20 +315,31 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         </div>
 
         <aside className="panel p-5">
-          <h3 className="text-sm font-semibold text-slate-950">Add department</h3>
-          <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
-            <input
-              className="field"
-              value={departmentName}
-              onChange={(event) => setDepartmentName(event.target.value)}
-              placeholder="Department name"
-              required
-            />
-            <button className="btn-primary w-full" type="submit" disabled={createDepartment.isPending}>
-              {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Save department
-            </button>
-          </form>
+          {canManageDepartments ? (
+            <>
+              <h3 className="text-sm font-semibold text-slate-950">Add department</h3>
+              <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
+                <input
+                  className="field"
+                  value={departmentName}
+                  onChange={(event) => setDepartmentName(event.target.value)}
+                  placeholder="Department name"
+                  required
+                />
+                <button className="btn-primary w-full" type="submit" disabled={createDepartment.isPending}>
+                  {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                  Save department
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
+              <p className="mt-3 text-xs text-slate-400">
+                Department management is restricted to college administrators. Contact your placement officer if a department is missing.
+              </p>
+            </>
+          )}
         </aside>
       </div>
     </section>

@@ -1941,6 +1941,7 @@ export const api = {
     type: string;
     tags?: string[];
     visibility?: string;
+    communityId?: string;
   }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
   post: (

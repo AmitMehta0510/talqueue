@@ -209,7 +209,7 @@ function JobRowCard({
   const WORK_MODE_COLOR: Record<string, string> = {
     REMOTE: "bg-indigo-50 text-indigo-700 border-indigo-200",
     HYBRID: "bg-blue-50 text-blue-700 border-blue-200",
-    ON_SITE: "bg-slate-50 text-slate-600 border-slate-200",
+    ONSITE: "bg-slate-50 text-slate-600 border-slate-200",
   };
 
   const jobSkills = (job.skillsRequired || []) as string[];

@@ -40,6 +40,7 @@ import {
   useLeaveCommunityMutation,
   useCommunityJoinRequestsQuery,
   useReviewCommunityJoinRequestMutation,
+  usePostReactionMutation,
 } from "../hooks/usePlatformQueries";
 import {
   College,
@@ -174,19 +175,31 @@ function CommunityIcon({
 // Reddit-style Vote Button
 // ---------------------------------------------------------------------------
 
-function VoteWidget({ count = 0 }: { count: number }) {
+function VoteWidget({ postId, count = 0 }: { postId: string; count: number }) {
+  const { user } = useAuth();
+  const reaction = usePostReactionMutation();
   const [voted, setVoted] = useState(false);
   const display = voted ? count + 1 : count;
+
+  const handleVote = () => {
+    if (!user) return;
+    // Optimistic toggle
+    setVoted((v) => !v);
+    // Persist to server
+    reaction.mutate({ id: postId, action: "like" });
+  };
+
   return (
     <div className="flex flex-col items-center gap-0.5 select-none">
       <button
         type="button"
-        onClick={() => setVoted((v) => !v)}
+        onClick={handleVote}
+        disabled={!user || reaction.isPending}
         className={`group flex h-7 w-7 items-center justify-center rounded transition-colors ${
           voted
             ? "text-orange-500"
             : "text-slate-400 hover:bg-orange-50 hover:text-orange-500"
-        }`}
+        } disabled:opacity-50`}
         aria-label="Upvote"
       >
         <ArrowUp size={16} strokeWidth={voted ? 2.5 : 2} />
@@ -211,7 +224,7 @@ function PostCard({ post }: { post: FeedPost }) {
     <article className="group flex cursor-pointer gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:shadow-sm">
       {/* Vote column */}
       <div className="flex shrink-0 flex-col items-center pt-0.5">
-        <VoteWidget count={votes} />
+        <VoteWidget postId={post.id} count={votes} />
       </div>
 
       {/* Content */}
@@ -664,6 +677,7 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
         type: "TEXT",
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         visibility: "PUBLIC",
+        communityId, // ← Fix: link post to the community
       });
       setContent("");
       setTags("");

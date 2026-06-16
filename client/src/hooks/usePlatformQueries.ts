@@ -1024,7 +1024,9 @@ export const useCreateTeamMutation = () => {
     },
     onSuccess: () => {
       showToast("success", "Team created");
+      // Invalidate all team-related queries so the registration dropdown refreshes immediately
       queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams.mine() });
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
@@ -1896,6 +1898,7 @@ export const useCreatePostMutation = () => {
       type: string;
       tags?: string[];
       visibility?: string;
+      communityId?: string;
     }) => {
       if (!user) {
         throw new Error("Login required");
