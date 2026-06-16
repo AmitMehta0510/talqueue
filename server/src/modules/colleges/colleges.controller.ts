@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 
 import asyncHandler from "shared/utils/asyncHandler";
+import AppError from "shared/errors/AppError";
 
 import { successResponse } from "shared/utils/apiResponse";
 
@@ -8,6 +9,7 @@ import {
   createCollege,
   createDepartment,
   getAllColleges,
+  getCollegeById,
   getDepartmentsByCollege,
   searchColleges,
   importColleges,
@@ -63,6 +65,22 @@ export const getCollegesHandler =
 
       res.json(
         successResponse(colleges)
+      );
+    }
+  );
+
+export const getCollegeHandler =
+  asyncHandler(
+    async (req: Request<{ collegeId: string }>, res: Response) => {
+      const { collegeId } = req.params;
+      const college = await getCollegeById(collegeId);
+
+      if (!college) {
+        throw new AppError("College not found", 404);
+      }
+
+      res.json(
+        successResponse(college)
       );
     }
   );

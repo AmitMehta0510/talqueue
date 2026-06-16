@@ -7,6 +7,7 @@ import {
   createCollegeHandler,
   createDepartmentHandler,
   getCollegesHandler,
+  getCollegeHandler,
   getDepartmentsHandler,
   searchCollegesHandler,
   importCollegesHandler,
@@ -46,6 +47,8 @@ router.get(
   "/standard-departments",
   getStandardDepartmentsHandler
 );
+
+router.get("/:collegeId", getCollegeHandler);
 
 router.get(
   "/:collegeId/departments",

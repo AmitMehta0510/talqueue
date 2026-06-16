@@ -41,6 +41,7 @@ import {
   useCommunityJoinRequestsQuery,
   useReviewCommunityJoinRequestMutation,
   usePostReactionMutation,
+  useSearchCommunitiesQuery,
 } from "../hooks/usePlatformQueries";
 import {
   College,
@@ -1228,6 +1229,16 @@ export function CommunitiesPage() {
   const { user } = useAuth();
 
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const [activeTab, setActiveTab] = useState<Tab>("joined");
   const [hasSetDefaultTab, setHasSetDefaultTab] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CommunityCategory | "">("");
@@ -1235,6 +1246,16 @@ export function CommunitiesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const isSearching = activeTab === "explore" && (debouncedQuery.length >= 2 || typeFilter || categoryFilter);
+
+  const searchParams = useMemo(() => ({
+    q: debouncedQuery,
+    type: typeFilter || undefined,
+    category: categoryFilter || undefined,
+  }), [debouncedQuery, typeFilter, categoryFilter]);
+
+  const searchCommunitiesQuery = useSearchCommunitiesQuery(searchParams);
 
   const suggestedQuery = useSuggestedCommunitiesQuery();
   const suggestedCommunities = suggestedQuery.data || [];
@@ -1252,6 +1273,10 @@ export function CommunitiesPage() {
   const currentList = activeTab === "joined" ? joinedCommunities : suggestedCommunities;
 
   const filteredCommunities = useMemo(() => {
+    if (isSearching) {
+      return searchCommunitiesQuery.data || [];
+    }
+
     const q = query.trim().toLowerCase();
     return currentList.filter((c) => {
       if (categoryFilter && c.category !== categoryFilter) return false;
@@ -1261,11 +1286,13 @@ export function CommunitiesPage() {
         .filter(Boolean).join(" ").toLowerCase();
       return haystack.includes(q);
     });
-  }, [currentList, query, categoryFilter, typeFilter]);
+  }, [isSearching, searchCommunitiesQuery.data, currentList, query, categoryFilter, typeFilter]);
 
   const joinedSet = useMemo(() => new Set(joinedCommunities.filter((c) => !c.isPendingApproval).map((c) => c.id)), [joinedCommunities]);
   const pendingSet = useMemo(() => new Set(joinedCommunities.filter((c) => c.isPendingApproval).map((c) => c.id)), [joinedCommunities]);
-  const isLoading = (activeTab === "joined" ? joinedQuery : suggestedQuery).isLoading;
+  const isLoading = isSearching 
+    ? searchCommunitiesQuery.isLoading 
+    : (activeTab === "joined" ? joinedQuery : suggestedQuery).isLoading;
 
   if (communitySlug) return <CommunityDetail slug={communitySlug} />;
 

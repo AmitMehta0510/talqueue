@@ -263,6 +263,13 @@ export const createCollege = async (
   return college;
 };
 
+export const getCollegeById = async (id: string) => {
+  return prisma.college.findUnique({
+    where: { id },
+    select: collegeSelect,
+  });
+};
+
 export const getAllColleges = async (params: CollegeListParams = {}) => {
   const limit = clampLimit(params.limit);
 

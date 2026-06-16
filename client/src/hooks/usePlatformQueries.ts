@@ -577,6 +577,17 @@ export const useSearchCollegesQuery = (q: string) =>
   });
 
 
+export const useCollegeQuery = (collegeId?: string) =>
+  useQuery({
+    queryKey: queryKeys.colleges.detail(collegeId || ""),
+    queryFn: async ({ signal }) => {
+      const result = await api.college(collegeId || "", { signal });
+      return result.data;
+    },
+    enabled: Boolean(collegeId),
+  });
+
+
 export const useCollegesQuery = (limit = 50) =>
   useInfiniteQuery({
     queryKey: queryKeys.colleges.list(limit),
@@ -817,6 +828,17 @@ export const useUnfollowCompanyMutation = () => {
     },
   });
 };
+
+export const useSearchCommunitiesQuery = (params: { q?: string; type?: string; category?: string }) =>
+  useQuery({
+    queryKey: ["communities", "search", params],
+    queryFn: async ({ signal }) => {
+      const result = await api.searchCommunities(params, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(params.q?.trim() || params.type || params.category),
+  });
+
 
 export const useSuggestedCommunitiesQuery = (limit = 20) => {
   const { user } = useAuth();

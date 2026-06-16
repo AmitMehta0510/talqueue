@@ -45,6 +45,22 @@ export type User = {
       logoUrl?: string | null;
     } | null;
   }>;
+  collegeAdminships?: Array<{
+    id: string;
+    collegeId: string;
+    college?: {
+      id: string;
+      name: string;
+    } | null;
+  }>;
+  cdcrMemberships?: Array<{
+    id: string;
+    collegeId: string;
+    college?: {
+      id: string;
+      name: string;
+    } | null;
+  }>;
   followersCount?: number;
   followingCount?: number;
   connectionCount?: number;
@@ -1911,6 +1927,8 @@ export const api = {
 
   searchColleges: (q: string) =>
     request<College[]>(`/colleges/search${toQuery({ q })}`),
+  college: (collegeId: string, options?: EndpointOptions) =>
+    request<College>(`/colleges/${collegeId}`, options),
   colleges: (limit = 50, options?: CursorOptions) => {
     const { cursor, ...requestOptions } = options || {};
     return request<CollegePage>(

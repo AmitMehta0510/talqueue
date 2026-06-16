@@ -77,6 +77,32 @@ export const authUserSelect = {
       },
     },
   },
+
+  collegeAdminships: {
+    select: {
+      id: true,
+      collegeId: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
+
+  cdcrMemberships: {
+    select: {
+      id: true,
+      collegeId: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 export type AuthenticatedUser = Prisma.UserGetPayload<{

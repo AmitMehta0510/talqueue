@@ -1,10 +1,12 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useCollegesQuery,
+  useCollegeQuery,
+  useSearchCollegesQuery,
   useCreateCollegeMutation,
   useCreateDepartmentMutation,
   useDepartmentsQuery,
@@ -21,6 +23,7 @@ import {
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
 import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
+import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
 
 // Role helpers
 const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
@@ -38,10 +41,9 @@ function isCollegeAdminFor(user: any, collegeId: string): boolean {
   // Platform admins can manage any college
   if (isSuperOrPlatformAdmin(user)) return true;
   // Check college-scoped admin assignment
-  if (!user?.roles) return false;
-  return (user.roles as Array<{ role?: { name?: string }; collegeId?: string }>).some(
-    (r) => r.role?.name && COLLEGE_ADMIN_ROLES.has(r.role.name) && r.collegeId === collegeId
-  );
+  const isAdmin = user.collegeAdminships?.some((adm: any) => adm.collegeId === collegeId);
+  const isCdcr = user.cdcrMemberships?.some((cdcr: any) => cdcr.collegeId === collegeId);
+  return Boolean(isAdmin || isCdcr);
 }
 
 const flattenColleges = (pages?: Array<{ colleges: College[] }>) =>
@@ -235,9 +237,8 @@ function CollegeCard({ college }: { college: College }) {
 
 function CollegeDetail({ collegeId }: { collegeId: string }) {
   const { user } = useAuth();
-  const collegesQuery = useCollegesQuery(100);
-  const colleges = flattenColleges(collegesQuery.data?.pages);
-  const college = colleges.find((item) => item.id === collegeId);
+  const collegeQuery = useCollegeQuery(collegeId);
+  const college = collegeQuery.data;
   const departmentsQuery = useDepartmentsQuery(collegeId);
   const createDepartment = useCreateDepartmentMutation(collegeId);
   const [departmentName, setDepartmentName] = useState("");
@@ -246,6 +247,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
   const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
+  const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
   const isTpo = isCollegeAdminFor(user, collegeId);
 
   // CDCR management
@@ -271,7 +273,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
     });
   };
 
-  if (collegesQuery.isLoading) {
+  if (collegeQuery.isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-slate-500">
         <Loader2 className="animate-spin" size={16} />
@@ -661,7 +663,14 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDriveForApplicants({ id: drive.id, title: drive.driveTitle })}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+                              >
+                                Applicants
+                              </button>
                               {drive.status === "UPCOMING" && (
                                 <button
                                   type="button"
@@ -783,6 +792,13 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           onClose={() => setShowCreateDriveModal(false)}
         />
       )}
+      {selectedDriveForApplicants && (
+        <DriveApplicantsModal
+          driveId={selectedDriveForApplicants.id}
+          driveTitle={selectedDriveForApplicants.title}
+          onClose={() => setSelectedDriveForApplicants(null)}
+        />
+      )}
     </section>
   );
 }
@@ -791,22 +807,43 @@ export function CollegesPage() {
   const { collegeId } = useParams();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const collegesQuery = useCollegesQuery(40);
-  const colleges = flattenColleges(collegesQuery.data?.pages);
+  const searchCollegesQuery = useSearchCollegesQuery(debouncedQuery);
+
+  const isSearching = debouncedQuery.length >= 2;
+  const colleges = isSearching
+    ? searchCollegesQuery.data || []
+    : flattenColleges(collegesQuery.data?.pages);
+
   const isAdmin = isSuperOrPlatformAdmin(user);
 
   const filteredColleges = useMemo(() => {
+    if (isSearching) {
+      return searchCollegesQuery.data || [];
+    }
     const normalizedQuery = query.trim().toLowerCase();
 
     return colleges.filter((college) => {
       const haystack = [college.name, college.city, college.state].filter(Boolean).join(" ").toLowerCase();
       return !normalizedQuery || haystack.includes(normalizedQuery);
     });
-  }, [colleges, query]);
+  }, [colleges, query, isSearching, searchCollegesQuery.data]);
 
   if (collegeId) {
     return <CollegeDetail collegeId={collegeId} />;
   }
+
+  const isFetchingList = isSearching ? searchCollegesQuery.isFetching : collegesQuery.isFetching;
 
   return (
     <section className="space-y-5">
@@ -825,7 +862,7 @@ export function CollegesPage() {
         </div>
       </div>
 
-      {collegesQuery.isFetching && (
+      {isFetchingList && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="animate-spin" size={16} />
           Loading colleges
@@ -844,7 +881,7 @@ export function CollegesPage() {
         )}
       </div>
 
-      {collegesQuery.hasNextPage && (
+      {!isSearching && collegesQuery.hasNextPage && (
         <button
           className="btn-secondary w-full"
           type="button"

@@ -328,6 +328,26 @@ export function AppLayout() {
                           {adminship.company?.name || "Company"} Console
                         </Link>
                       ))}
+                      {user.collegeAdminships?.map((adminship: any) => (
+                        <Link
+                          key={adminship.id}
+                          to={`/colleges/${adminship.collegeId}`}
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                        >
+                          <ShieldCheck size={13} className="text-emerald-600" />
+                          {adminship.college?.name || "College"} Admin Console
+                        </Link>
+                      ))}
+                      {user.cdcrMemberships?.map((membership: any) => (
+                        <Link
+                          key={membership.id}
+                          to={`/colleges/${membership.collegeId}`}
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                        >
+                          <ShieldCheck size={13} className="text-emerald-600" />
+                          {membership.college?.name || "College"} CDCR Console
+                        </Link>
+                      ))}
                       {user.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN") ? (
                         <Link to="/admin" className="block px-2 py-1.5 rounded hover:bg-purple-50 hover:text-purple-900 transition font-bold text-purple-800">
                           Super Admin Console
