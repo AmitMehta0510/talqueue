@@ -13,6 +13,10 @@ import {
   importColleges,
   getStandardDepartments,
   deleteCollege,
+  listCdcrMembers,
+  assignCdcrMember,
+  removeCdcrMember,
+  searchCollegeStudents,
 } from "./colleges.service";
 
 import {
@@ -144,7 +148,6 @@ export const getStandardDepartmentsHandler =
       );
     }
   );
-
 export const deleteCollegeHandler =
   asyncHandler(
     async (req: any, res: Response) => {
@@ -158,5 +161,39 @@ export const deleteCollegeHandler =
       );
     }
   );
+
+export const listCdcrMembersHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params;
+    const members = await listCdcrMembers(collegeId as string);
+    res.json(successResponse(members));
+  }
+);
+
+export const assignCdcrMemberHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const { userId } = req.body;
+    const assignment = await assignCdcrMember(req.user.id, userId, collegeId as string);
+    res.status(201).json(successResponse(assignment, "CDCR representative assigned successfully!"));
+  }
+);
+
+export const removeCdcrMemberHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId, userId } = req.params;
+    await removeCdcrMember(userId as string, collegeId as string);
+    res.json(successResponse(null, "CDCR representative removed successfully!"));
+  }
+);
+
+export const searchCollegeStudentsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params;
+    const query = req.query.q?.toString() || "";
+    const students = await searchCollegeStudents(collegeId as string, query);
+    res.json(successResponse(students));
+  }
+);
 
 

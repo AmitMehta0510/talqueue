@@ -677,6 +677,24 @@ export type PlacementDrive = {
   updatedAt: string;
 };
 
+export type CdcrMember = {
+  id: string;
+  userId: string;
+  collegeId: string;
+  assignedById: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+    status: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string | null;
+    } | null;
+  };
+};
+
 export type CompanyType =
   | "STARTUP"
   | "PRODUCT_BASED"
@@ -2619,4 +2637,14 @@ export const api = {
     request<PlacementDrive>(`/placement-drives/${id}`, { method: "PATCH", body }),
   closePlacementDrive: (id: string) =>
     request<{ success: boolean }>(`/placement-drives/${id}/close`, { method: "PATCH", body: {} }),
+
+  // CDCR Management
+  listCdcrMembers: (collegeId: string, options?: EndpointOptions) =>
+    request<CdcrMember[]>(`/colleges/${collegeId}/tpo/cdcr`, options),
+  assignCdcrMember: (collegeId: string, userId: string) =>
+    request<CdcrMember>(`/colleges/${collegeId}/tpo/cdcr`, { method: "POST", body: { userId } }),
+  removeCdcrMember: (collegeId: string, userId: string) =>
+    request<{ success: boolean }>(`/colleges/${collegeId}/tpo/cdcr/${userId}`, { method: "DELETE" }),
+  searchCollegeStudents: (collegeId: string, query: string, options?: EndpointOptions) =>
+    request<Array<{ id: string; username: string; email: string; profile?: { fullName: string; avatarUrl?: string | null } | null }>>(`/colleges/${collegeId}/tpo/students?q=${encodeURIComponent(query)}`, options),
 };

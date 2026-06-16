@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users } from "lucide-react";
+import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
@@ -8,6 +8,10 @@ import {
   useCreateCollegeMutation,
   useCreateDepartmentMutation,
   useDepartmentsQuery,
+  useCdcrMembersQuery,
+  useAssignCdcrMemberMutation,
+  useRemoveCdcrMemberMutation,
+  useSearchCollegeStudentsQuery,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
@@ -231,6 +235,17 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const departmentsQuery = useDepartmentsQuery(collegeId);
   const createDepartment = useCreateDepartmentMutation(collegeId);
   const [departmentName, setDepartmentName] = useState("");
+  
+  // TPO subtabs
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
+  const isTpo = isCollegeAdminFor(user, collegeId);
+
+  // CDCR management
+  const [searchQuery, setSearchQuery] = useState("");
+  const cdcrQuery = useCdcrMembersQuery(collegeId);
+  const assignMutation = useAssignCdcrMemberMutation(collegeId);
+  const removeMutation = useRemoveCdcrMemberMutation(collegeId);
+  const searchResultsQuery = useSearchCollegeStudentsQuery(collegeId, searchQuery);
 
   const canManageDepartments = isCollegeAdminFor(user, collegeId);
 
@@ -292,56 +307,260 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
-        <div className="panel p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
-            {departmentsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {(departmentsQuery.data || []).length ? (
-              (departmentsQuery.data || []).map((department) => (
-                <div className="rounded-md border border-slate-100 p-3" key={department.id}>
-                  <div className="text-sm font-semibold text-slate-900">{department.name}</div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {department.createdAt ? formatDate(department.createdAt) : "Department"}
+      {isTpo && (
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setActiveSubTab("overview")}
+            className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
+              activeSubTab === "overview"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveSubTab("tpo")}
+            className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
+              activeSubTab === "tpo"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            TPO Portal
+          </button>
+        </div>
+      )}
+
+      {activeSubTab === "overview" ? (
+        <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
+          <div className="panel p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
+              {departmentsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {(departmentsQuery.data || []).length ? (
+                (departmentsQuery.data || []).map((department) => (
+                  <div className="rounded-md border border-slate-100 p-3" key={department.id}>
+                    <div className="text-sm font-semibold text-slate-900">{department.name}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {department.createdAt ? formatDate(department.createdAt) : "Department"}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No departments listed yet.</p>
+              )}
+            </div>
+          </div>
+
+          <aside className="panel p-5">
+            {canManageDepartments ? (
+              <>
+                <h3 className="text-sm font-semibold text-slate-950">Add department</h3>
+                <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
+                  <input
+                    className="field"
+                    value={departmentName}
+                    onChange={(event) => setDepartmentName(event.target.value)}
+                    placeholder="Department name"
+                    required
+                  />
+                  <button className="btn-primary w-full" type="submit" disabled={createDepartment.isPending}>
+                    {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                    Save department
+                  </button>
+                </form>
+              </>
             ) : (
-              <p className="text-sm text-slate-500">No departments listed yet.</p>
+              <>
+                <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
+                <p className="mt-3 text-xs text-slate-400">
+                  Department management is restricted to college administrators. Contact your placement officer if a department is missing.
+                </p>
+              </>
+            )}
+          </aside>
+        </div>
+      ) : (
+        /* ── TPO Portal CDCR Management Layout ── */
+        <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
+          {/* CDCR Members Roster */}
+          <div className="panel p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                <Shield size={16} className="text-emerald-600" />
+                CDCR Representatives
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Roster of student/faculty coordinators authorized to manage placement drives.
+              </p>
+            </div>
+
+            {cdcrQuery.isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="animate-spin text-slate-400" size={20} />
+              </div>
+            ) : (cdcrQuery.data || []).length ? (
+              <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3">Member</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">Assigned Date</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-600">
+                    {(cdcrQuery.data || []).map((member) => (
+                      <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-3 flex items-center gap-2.5">
+                          {cleanLogoUrl(member.user?.profile?.avatarUrl) ? (
+                            <img
+                              src={cleanLogoUrl(member.user?.profile?.avatarUrl)!}
+                              alt={member.user?.profile?.fullName}
+                              className="h-8 w-8 rounded-full object-cover border border-slate-100 shadow-sm"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 font-bold">
+                              {member.user?.profile?.fullName?.charAt(0) || "U"}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 truncate">
+                              {member.user?.profile?.fullName || "User"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              @{member.user?.username}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-500">
+                          {member.user?.email}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatDate(member.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Revoke CDCR assignment for ${member.user?.profile?.fullName || member.user?.username}?`)) {
+                                removeMutation.mutate(member.userId);
+                              }
+                            }}
+                            disabled={removeMutation.isPending}
+                            className="text-slate-400 hover:text-rose-600 transition p-1 hover:bg-rose-50 rounded-lg"
+                            title="Revoke access"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState
+                icon={Shield}
+                title="No CDCR representatives yet"
+                text="Search and assign students to help coordinate placement drives."
+              />
             )}
           </div>
-        </div>
 
-        <aside className="panel p-5">
-          {canManageDepartments ? (
-            <>
-              <h3 className="text-sm font-semibold text-slate-950">Add department</h3>
-              <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
-                <input
-                  className="field"
-                  value={departmentName}
-                  onChange={(event) => setDepartmentName(event.target.value)}
-                  placeholder="Department name"
-                  required
-                />
-                <button className="btn-primary w-full" type="submit" disabled={createDepartment.isPending}>
-                  {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-                  Save department
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
-              <p className="mt-3 text-xs text-slate-400">
-                Department management is restricted to college administrators. Contact your placement officer if a department is missing.
+          {/* Search & Assign Panel */}
+          <aside className="panel p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                <UserPlus size={16} className="text-emerald-600" />
+                Assign CDCR Member
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Search students of this college to grant CDCR coordination permissions.
               </p>
-            </>
-          )}
-        </aside>
-      </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <Search size={14} />
+              </div>
+              <input
+                type="text"
+                className="field pl-9 w-full text-xs"
+                placeholder="Search by name, email, or username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {searchQuery.trim().length >= 2 ? (
+              searchResultsQuery.isLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="animate-spin text-slate-400" size={16} />
+                </div>
+              ) : (searchResultsQuery.data || []).length ? (
+                <div className="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-60 overflow-y-auto shadow-inner">
+                  {(searchResultsQuery.data || []).map((student) => {
+                    const isAlreadyCdcr = (cdcrQuery.data || []).some((m) => m.userId === student.id);
+                    return (
+                      <div key={student.id} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {cleanLogoUrl(student.profile?.avatarUrl) ? (
+                            <img
+                              src={cleanLogoUrl(student.profile?.avatarUrl)!}
+                              alt={student.profile?.fullName}
+                              className="h-7 w-7 rounded-full object-cover border border-slate-100"
+                            />
+                          ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold">
+                              {student.profile?.fullName?.charAt(0) || "U"}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-900 truncate">
+                              {student.profile?.fullName || "User"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              @{student.username}
+                            </p>
+                          </div>
+                        </div>
+
+                        {isAlreadyCdcr ? (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
+                            CDCR
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              assignMutation.mutate(student.id, {
+                                onSuccess: () => setSearchQuery(""),
+                              });
+                            }}
+                            disabled={assignMutation.isPending}
+                            className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-2 py-1 transition disabled:opacity-50"
+                          >
+                            Assign
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-4">No matching students found.</p>
+              )
+            ) : searchQuery.trim().length > 0 ? (
+              <p className="text-[10px] text-slate-400 text-center py-2">Type at least 2 characters to search.</p>
+            ) : null}
+          </aside>
+        </div>
+      )}
     </section>
   );
 }

@@ -43,6 +43,7 @@ import {
   ExternalJobApplication,
   ExternalAppStatus,
   PlacementDrive,
+  CdcrMember,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4501,5 +4502,59 @@ export const useCreatePlacementDriveMutation = () => {
       }
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+// ===========================================================================
+// CDCR MANAGEMENT
+// ===========================================================================
+
+export const useCdcrMembersQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["colleges", collegeId, "cdcr"],
+    queryFn: async ({ signal }) => {
+      const result = await api.listCdcrMembers(collegeId!, { signal });
+      return (result.data || []) as CdcrMember[];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
+export const useAssignCdcrMemberMutation = (collegeId: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => api.assignCdcrMember(collegeId, userId),
+    onSuccess: () => {
+      showToast("success", "CDCR Representative assigned successfully!");
+      queryClient.invalidateQueries({ queryKey: ["colleges", collegeId, "cdcr"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useRemoveCdcrMemberMutation = (collegeId: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId: string) => api.removeCdcrMember(collegeId, userId),
+    onSuccess: () => {
+      showToast("success", "CDCR Representative removed successfully!");
+      queryClient.invalidateQueries({ queryKey: ["colleges", collegeId, "cdcr"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useSearchCollegeStudentsQuery = (collegeId: string, query: string) => {
+  return useQuery({
+    queryKey: ["colleges", collegeId, "students", "search", query],
+    queryFn: async ({ signal }) => {
+      const result = await api.searchCollegeStudents(collegeId, query, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(collegeId) && query.trim().length >= 2,
   });
 };

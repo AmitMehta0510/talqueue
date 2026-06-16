@@ -569,6 +569,8 @@ model User {
   collegeAdminships    CollegeAdmin[]     @relation("CollegeAdminUser")
   companyAdminGrants   CompanyAdmin[]     @relation("CompanyAdminGrantor")
   companyAdminships    CompanyAdmin[]     @relation("CompanyAdminUser")
+  cdcrMemberships      CdcrMember[]       @relation("CdcrMemberUser")
+  cdcrAssignments      CdcrMember[]       @relation("CdcrMemberAssignedBy")
   createdCommunities   Community[]        @relation("CommunityCreator")
   companyRequests      CompanyRequest[]
   collegeRequests      CollegeRequest[]
@@ -705,6 +707,7 @@ model College {
   communities Community[]
 
   collegeAdmins CollegeAdmin[]
+  cdcrMembers   CdcrMember[]
 
   createdAt       DateTime         @default(now())
   posts           Post[]
@@ -2779,6 +2782,22 @@ model CollegeAdmin {
   user      User    @relation("CollegeAdminUser", fields: [userId], references: [id], onDelete: Cascade)
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
   grantedBy User    @relation("CollegeAdminGrantor", fields: [grantedById], references: [id])
+
+  @@unique([userId, collegeId])
+  @@index([collegeId])
+  @@index([userId])
+}
+
+model CdcrMember {
+  id           String   @id @default(uuid())
+  userId       String
+  collegeId    String
+  assignedById String
+  createdAt    DateTime @default(now())
+
+  user       User    @relation("CdcrMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  college    College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  assignedBy User    @relation("CdcrMemberAssignedBy", fields: [assignedById], references: [id])
 
   @@unique([userId, collegeId])
   @@index([collegeId])

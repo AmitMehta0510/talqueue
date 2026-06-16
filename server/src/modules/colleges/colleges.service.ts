@@ -4,6 +4,7 @@ import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { createCommunity } from "modules/community/community.service";
+import { createNotification } from "modules/notificatios/notifications.service";
 
 interface AuthUser {
   id: string;
@@ -525,6 +526,150 @@ export const deleteCollege = async (user: AuthUser, collegeId: string) => {
     await tx.college.delete({
       where: { id: collegeId },
     });
+  });
+};
+
+export const listCdcrMembers = async (collegeId: string) => {
+  const college = await prisma.college.findUnique({
+    where: { id: collegeId },
+    select: { id: true },
+  });
+  if (!college) throw new AppError("College not found", 404);
+
+  return prisma.cdcrMember.findMany({
+    where: { collegeId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          status: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+};
+
+export const assignCdcrMember = async (
+  actorId: string,
+  userId: string,
+  collegeId: string,
+) => {
+  const [targetUser, college] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.college.findUnique({ where: { id: collegeId } }),
+  ]);
+
+  if (!targetUser) throw new AppError("User not found", 404);
+  if (!college) throw new AppError("College not found", 404);
+
+  const existing = await prisma.cdcrMember.findUnique({
+    where: {
+      userId_collegeId: { userId, collegeId },
+    },
+  });
+
+  if (existing) {
+    throw new AppError("User is already a CDCR member for this college", 409);
+  }
+
+  const assignment = await prisma.cdcrMember.create({
+    data: {
+      userId,
+      collegeId,
+      assignedById: actorId,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  await createNotification({
+    userId,
+    actorId,
+    type: "SYSTEM",
+    title: "CDCR Representative Assigned",
+    message: `You have been assigned as a CDCR representative for ${college.name}.`,
+    entityType: "COLLEGE",
+    entityId: collegeId,
+  });
+
+  return assignment;
+};
+
+export const removeCdcrMember = async (
+  userId: string,
+  collegeId: string,
+) => {
+  const record = await prisma.cdcrMember.findUnique({
+    where: {
+      userId_collegeId: { userId, collegeId },
+    },
+  });
+
+  if (!record) {
+    throw new AppError("CDCR assignment not found", 404);
+  }
+
+  await prisma.cdcrMember.delete({
+    where: {
+      id: record.id,
+    },
+  });
+
+  return { success: true };
+};
+
+export const searchCollegeStudents = async (
+  collegeId: string,
+  query: string,
+) => {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) return [];
+
+  return prisma.user.findMany({
+    where: {
+      educations: {
+        some: {
+          collegeId,
+        },
+      },
+      OR: [
+        { username: { contains: normalizedQuery, mode: "insensitive" } },
+        { email: { contains: normalizedQuery, mode: "insensitive" } },
+        {
+          profile: {
+            fullName: { contains: normalizedQuery, mode: "insensitive" },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      profile: {
+        select: {
+          fullName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+    take: 10,
   });
 };
 

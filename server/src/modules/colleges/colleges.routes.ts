@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { protect } from "modules/auth/auth.middleware";
+import { requireCollegeAdmin } from "shared/middleware/requireCollegeAdmin";
 
 import {
   createCollegeHandler,
@@ -11,6 +12,10 @@ import {
   importCollegesHandler,
   getStandardDepartmentsHandler,
   deleteCollegeHandler,
+  listCdcrMembersHandler,
+  assignCdcrMemberHandler,
+  removeCdcrMemberHandler,
+  searchCollegeStudentsHandler,
 } from "./colleges.controller";
 
 const router = Router();
@@ -51,6 +56,35 @@ router.delete(
   "/:collegeId",
   protect,
   deleteCollegeHandler
+);
+
+// TPO Admin CDCR management routes
+router.get(
+  "/:collegeId/tpo/cdcr",
+  protect,
+  requireCollegeAdmin,
+  listCdcrMembersHandler
+);
+
+router.post(
+  "/:collegeId/tpo/cdcr",
+  protect,
+  requireCollegeAdmin,
+  assignCdcrMemberHandler
+);
+
+router.delete(
+  "/:collegeId/tpo/cdcr/:userId",
+  protect,
+  requireCollegeAdmin,
+  removeCdcrMemberHandler
+);
+
+router.get(
+  "/:collegeId/tpo/students",
+  protect,
+  requireCollegeAdmin,
+  searchCollegeStudentsHandler
 );
 
 export default router;

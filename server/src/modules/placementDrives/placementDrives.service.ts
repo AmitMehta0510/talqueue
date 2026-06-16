@@ -43,12 +43,46 @@ const assertCompanyAccess = async (userId: string, companyId: string) => {
   }
 };
 
+export const isCollegeAdminOrCdcr = async (userId: string, collegeId: string): Promise<boolean> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      roles: {
+        select: {
+          role: { select: { name: true } },
+        },
+      },
+    },
+  });
+  const roleNames = new Set((user?.roles || []).map((ur) => ur.role?.name).filter(Boolean));
+  if (roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN") || roleNames.has("ADMIN")) {
+    return true;
+  }
+
+  const collegeAdmin = await prisma.collegeAdmin.findFirst({
+    where: { userId, collegeId },
+    select: { id: true },
+  });
+  if (collegeAdmin) return true;
+
+  const cdcrMember = await prisma.cdcrMember.findFirst({
+    where: { userId, collegeId },
+    select: { id: true },
+  });
+  if (cdcrMember) return true;
+
+  return false;
+};
+
 // CREATE DRIVE
 export const createPlacementDrive = async (
   userId: string,
   data: CreatePlacementDriveData,
 ) => {
-  await assertCompanyAccess(userId, data.companyId);
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, data.targetCollegeId);
+  if (!isTpoOrCdcr) {
+    await assertCompanyAccess(userId, data.companyId);
+  }
 
   const college = await prisma.college.findUnique({
     where: { id: data.targetCollegeId },
@@ -144,11 +178,17 @@ export const updatePlacementDrive = async (
   driveId: string,
   data: UpdatePlacementDriveData,
 ) => {
-  const drive = await prisma.placementDrive.findFirst({
-    where: { id: driveId, postedById: userId },
-    select: { id: true, companyId: true },
+  const drive = await prisma.placementDrive.findUnique({
+    where: { id: driveId },
+    select: { id: true, targetCollegeId: true, postedById: true },
   });
-  if (!drive) throw new AppError("Drive not found or unauthorized", 404);
+  if (!drive) throw new AppError("Drive not found", 404);
+
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, drive.targetCollegeId);
+  const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
+  if (!isAuthorized) {
+    throw new AppError("Unauthorized to modify this placement drive", 403);
+  }
 
   return prisma.placementDrive.update({
     where: { id: driveId },
@@ -180,11 +220,17 @@ export const updatePlacementDrive = async (
 
 // CLOSE DRIVE
 export const closePlacementDrive = async (userId: string, driveId: string) => {
-  const drive = await prisma.placementDrive.findFirst({
-    where: { id: driveId, postedById: userId },
-    select: { id: true },
+  const drive = await prisma.placementDrive.findUnique({
+    where: { id: driveId },
+    select: { id: true, targetCollegeId: true, postedById: true },
   });
-  if (!drive) throw new AppError("Drive not found or unauthorized", 404);
+  if (!drive) throw new AppError("Drive not found", 404);
+
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, drive.targetCollegeId);
+  const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
+  if (!isAuthorized) {
+    throw new AppError("Unauthorized to close this placement drive", 403);
+  }
 
   return prisma.placementDrive.update({
     where: { id: driveId },
