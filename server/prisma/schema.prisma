@@ -271,6 +271,29 @@ enum PlacementDriveStatus {
   CLOSED
 }
 
+enum PlacementDriveApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  INTERVIEW_R1
+  INTERVIEW_R2
+  INTERVIEW_R3
+  PPO_OFFERED
+  SELECTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum CollegeOfferPolicy {
+  OPEN
+  ONE_OFFER_LOCK
+  DREAM_EXCEPTION
+}
+
+enum PlacementDriveType {
+  PLACEMENT
+  INTERNSHIP
+}
+
 enum PlacementDriveInviteStatus {
   PENDING
   ACCEPTED
@@ -725,6 +748,10 @@ model College {
   collegeAdmins CollegeAdmin[]
   cdcrMembers   CdcrMember[]
 
+  // Placement policy configuration
+  offerPolicy      CollegeOfferPolicy @default(OPEN)
+  allowBacklogsUpTo Int               @default(0) // Max allowed active backlogs (0 = zero tolerance)
+
   createdAt       DateTime         @default(now())
   posts           Post[]
   conversations   Conversation[]
@@ -898,6 +925,16 @@ model Education {
   endYear   Int?
 
   current Boolean @default(false)
+
+  // Eligibility fields for placement drives
+  cgpa        Float?          // Current CGPA / GPA (self-reported, editable)
+  backlogs    Int?  @default(0) // Number of active backlogs/arrears
+  currentYear Int?            // e.g. 1=First Year, 2=Second, 3=Third, 4=Final
+
+  // Alumni tracking
+  isAlumniClaim    Boolean   @default(false)  // Student has claimed alumni status
+  alumniVerified   Boolean   @default(false)  // TPO has verified the alumni claim
+  alumniVerifiedAt DateTime?                  // When the claim was approved
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2937,6 +2974,7 @@ model PlacementDrive {
   driveDate        DateTime?
   applyDeadline    DateTime?
   status           PlacementDriveStatus @default(UPCOMING)
+  driveType        PlacementDriveType   @default(PLACEMENT)
 
   roles            String[]
   stipendMin       Int?
@@ -2944,11 +2982,15 @@ model PlacementDrive {
   salaryMin        Int?
   salaryMax        Int?
   currency         String?              @default("INR")
+  internshipDurationMonths Int?         // Only for INTERNSHIP type drives
 
   minCgpa          Float?
+  maxBacklogs      Int?                 // Max allowed backlogs (null = use college policy)
   eligibleBranches String[]
   eligibleYears    Int[]
 
+  isDreamCompany   Boolean              @default(false) // Exempt from ONE_OFFER_LOCK policy
+  ppoOffered       Boolean              @default(false) // Internship drive that may convert to full-time PPO
   description      String?
 
   company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -2964,15 +3006,16 @@ model PlacementDrive {
   @@index([targetCollegeId])
   @@index([companyId])
   @@index([status])
+  @@index([driveType])
 }
 
 model PlacementDriveApplication {
-  id        String   @id @default(uuid())
+  id        String                        @id @default(uuid())
   driveId   String
   userId    String
   note      String?
-  status    String   @default("APPLIED")
-  appliedAt DateTime @default(now())
+  status    PlacementDriveApplicationStatus @default(APPLIED)
+  appliedAt DateTime                      @default(now())
 
   drive PlacementDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2983,6 +3026,7 @@ model PlacementDriveApplication {
   @@unique([driveId, userId])
   @@index([userId])
   @@index([driveId])
+  @@index([status])
 }
 
 model PlacementDriveInvite {

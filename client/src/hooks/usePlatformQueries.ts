@@ -44,8 +44,10 @@ import {
   ExternalAppStatus,
   PlacementDrive,
   PlacementDriveApplication,
+  PlacementDriveApplicationStatus,
   PlacementDriveInvite,
   CdcrMember,
+  EligibilityResult,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4674,7 +4676,7 @@ export const useUpdateDriveApplicationStatusMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: ({ applicationId, status }: { applicationId: string; status: string }) =>
+    mutationFn: ({ applicationId, status }: { applicationId: string; status: PlacementDriveApplicationStatus }) =>
       api.updateDriveApplicationStatus(applicationId, status),
     onSuccess: (result) => {
       showToast("success", `Application status updated to ${result.data?.status || ""}.`);
@@ -4761,6 +4763,20 @@ export const useWithdrawDriveInviteMutation = (companyId?: string | null) => {
       }
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+// ─── DRIVE ELIGIBILITY PRE-CHECK ─────────────────────────────────────────────
+
+export const useDriveEligibilityQuery = (driveId?: string | null) => {
+  return useQuery({
+    queryKey: ["driveEligibility", driveId],
+    queryFn: async ({ signal }) => {
+      const result = await api.checkDriveEligibility(driveId!, { signal });
+      return result.data as EligibilityResult;
+    },
+    enabled: Boolean(driveId),
+    staleTime: 30_000, // 30 seconds — eligibility rarely changes mid-session
   });
 };
 

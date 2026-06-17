@@ -658,6 +658,37 @@ export type ExternalJobApplication = {
 };
 
 export type PlacementDriveStatus = "UPCOMING" | "ONGOING" | "CLOSED";
+export type PlacementDriveType = "PLACEMENT" | "INTERNSHIP";
+export type PlacementDriveApplicationStatus =
+  | "APPLIED"
+  | "SHORTLISTED"
+  | "INTERVIEW_R1"
+  | "INTERVIEW_R2"
+  | "INTERVIEW_R3"
+  | "PPO_OFFERED"
+  | "SELECTED"
+  | "REJECTED"
+  | "WITHDRAWN";
+
+export const PLACEMENT_DRIVE_STATUS_LABELS: Record<PlacementDriveApplicationStatus, string> = {
+  APPLIED: "Applied",
+  SHORTLISTED: "Shortlisted",
+  INTERVIEW_R1: "Round 1 Interview",
+  INTERVIEW_R2: "Round 2 Interview",
+  INTERVIEW_R3: "Round 3 Interview",
+  PPO_OFFERED: "PPO Offered",
+  SELECTED: "Selected",
+  REJECTED: "Not Selected",
+  WITHDRAWN: "Withdrawn",
+};
+
+export type CollegeOfferPolicy = "OPEN" | "ONE_OFFER_LOCK" | "DREAM_EXCEPTION";
+
+export type EligibilityResult = {
+  eligible: boolean;
+  reasons: string[];
+  missingFields: string[];
+};
 
 export type PlacementDrive = {
   id: string;
@@ -668,15 +699,20 @@ export type PlacementDrive = {
   driveDate?: string | null;
   applyDeadline?: string | null;
   status: PlacementDriveStatus;
+  driveType: PlacementDriveType;
   roles: string[];
   stipendMin?: number | null;
   stipendMax?: number | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
   currency?: string | null;
+  internshipDurationMonths?: number | null;
   minCgpa?: number | null;
+  maxBacklogs?: number | null;
   eligibleBranches: string[];
   eligibleYears: number[];
+  isDreamCompany: boolean;
+  ppoOffered: boolean;   // Internship drive that may convert to PPO
   description?: string | null;
   company?: {
     id: string;
@@ -688,6 +724,7 @@ export type PlacementDrive = {
   college?: {
     id: string;
     name: string;
+    offerPolicy?: CollegeOfferPolicy;
   };
   createdAt: string;
   updatedAt: string;
@@ -698,7 +735,7 @@ export type PlacementDriveApplication = {
   driveId: string;
   userId: string;
   note?: string | null;
-  status: string; // APPLIED | SHORTLISTED | REJECTED | HIRED
+  status: PlacementDriveApplicationStatus;
   appliedAt: string;
   drive?: PlacementDrive & {
     company?: { id: string; name: string; logoUrl?: string | null; slug?: string };
@@ -709,6 +746,12 @@ export type PlacementDriveApplication = {
     username: string;
     email: string;
     profile?: { fullName: string; avatarUrl?: string | null; headline?: string | null } | null;
+    educations?: Array<{
+      cgpa?: number | null;
+      backlogs?: number | null;
+      currentYear?: number | null;
+      department?: { name: string } | null;
+    }>;
   };
   createdAt: string;
   updatedAt: string;
@@ -2725,6 +2768,10 @@ export const api = {
   allDrivesForCollege: (collegeId: string, options?: EndpointOptions) =>
     request<PlacementDrive[]>(`/placement-drives/college/${collegeId}/admin`, options),
 
+  // Placement Drive Eligibility Pre-Check
+  checkDriveEligibility: (driveId: string, options?: EndpointOptions) =>
+    request<EligibilityResult>(`/placement-drives/${driveId}/eligibility`, options),
+
   // Placement Drive Applications
   applyToDrive: (driveId: string, note?: string) =>
     request<PlacementDriveApplication>(`/placement-drives/${driveId}/apply`, { method: "POST", body: { note } }),
@@ -2732,7 +2779,7 @@ export const api = {
     request<PlacementDriveApplication[]>("/placement-drives/applications/mine", options),
   getDriveApplicants: (driveId: string, options?: EndpointOptions) =>
     request<PlacementDriveApplication[]>(`/placement-drives/${driveId}/applicants`, options),
-  updateDriveApplicationStatus: (applicationId: string, status: string) =>
+  updateDriveApplicationStatus: (applicationId: string, status: PlacementDriveApplicationStatus) =>
     request<PlacementDriveApplication>(`/placement-drives/applications/${applicationId}`, { method: "PATCH", body: { status } }),
 
   // Drive Invitations

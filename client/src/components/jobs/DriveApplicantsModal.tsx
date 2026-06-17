@@ -9,11 +9,14 @@ import {
   AlertCircle,
   User,
   ChevronDown,
+  Trophy,
+  Clock,
 } from "lucide-react";
 import {
   useDriveApplicantsQuery,
   useUpdateDriveApplicationStatusMutation,
 } from "../../hooks/usePlatformQueries";
+import { PlacementDriveApplicationStatus, PLACEMENT_DRIVE_STATUS_LABELS } from "../../lib/api";
 import { cleanLogoUrl, formatDate } from "../../lib/format";
 import { Link } from "react-router-dom";
 
@@ -23,11 +26,19 @@ interface DriveApplicantsModalProps {
   onClose: () => void;
 }
 
-const APP_STATUSES = ["APPLIED", "SHORTLISTED", "REJECTED", "HIRED"] as const;
-type AppStatus = (typeof APP_STATUSES)[number];
+// Status actions available to TPO/Recruiter in the dropdown
+const ACTIONABLE_STATUSES: PlacementDriveApplicationStatus[] = [
+  "SHORTLISTED",
+  "INTERVIEW_R1",
+  "INTERVIEW_R2",
+  "INTERVIEW_R3",
+  "PPO_OFFERED",
+  "SELECTED",
+  "REJECTED",
+];
 
 const STATUS_CONFIG: Record<
-  string,
+  PlacementDriveApplicationStatus,
   { label: string; bg: string; text: string; icon: React.ElementType }
 > = {
   APPLIED: {
@@ -42,19 +53,50 @@ const STATUS_CONFIG: Record<
     text: "text-emerald-700",
     icon: CheckCircle,
   },
+  INTERVIEW_R1: {
+    label: "Round 1 Interview",
+    bg: "bg-amber-50 border-amber-200",
+    text: "text-amber-700",
+    icon: Clock,
+  },
+  INTERVIEW_R2: {
+    label: "Round 2 Interview",
+    bg: "bg-amber-50 border-amber-200",
+    text: "text-amber-700",
+    icon: Clock,
+  },
+  INTERVIEW_R3: {
+    label: "Round 3 Interview",
+    bg: "bg-amber-50 border-amber-200",
+    text: "text-amber-700",
+    icon: Clock,
+  },
+  PPO_OFFERED: {
+    label: "PPO Offered",
+    bg: "bg-indigo-50 border-indigo-200",
+    text: "text-indigo-700",
+    icon: Trophy,
+  },
+  SELECTED: {
+    label: "Selected 🎉",
+    bg: "bg-violet-50 border-violet-200",
+    text: "text-violet-700",
+    icon: CheckCircle,
+  },
   REJECTED: {
     label: "Not Selected",
     bg: "bg-rose-50 border-rose-200",
     text: "text-rose-700",
     icon: XCircle,
   },
-  HIRED: {
-    label: "Hired 🎉",
-    bg: "bg-violet-50 border-violet-200",
-    text: "text-violet-700",
-    icon: CheckCircle,
+  WITHDRAWN: {
+    label: "Withdrawn",
+    bg: "bg-slate-50 border-slate-200",
+    text: "text-slate-500",
+    icon: XCircle,
   },
 };
+
 
 export function DriveApplicantsModal({
   driveId,
@@ -74,7 +116,7 @@ export function DriveApplicantsModal({
     return app.status === statusFilter;
   });
 
-  const handleStatusChange = async (applicationId: string, status: AppStatus) => {
+  const handleStatusChange = async (applicationId: string, status: PlacementDriveApplicationStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ applicationId, status });
       setActiveDropdownId(null);
@@ -109,7 +151,7 @@ export function DriveApplicantsModal({
             {filteredApplicants.length} of {applicants.length} applicants
           </span>
           <div className="flex gap-1">
-            {["ALL", ...APP_STATUSES].map((status) => (
+            {(["ALL", ...ACTIONABLE_STATUSES] as const).map((status) => (
               <button
                 key={status}
                 type="button"
@@ -120,7 +162,7 @@ export function DriveApplicantsModal({
                     : "text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                {status === "ALL" ? "All" : STATUS_CONFIG[status]?.label || status}
+                {status === "ALL" ? "All" : STATUS_CONFIG[status as PlacementDriveApplicationStatus]?.label || status}
               </button>
             ))}
           </div>
@@ -236,8 +278,8 @@ export function DriveApplicantsModal({
                         </button>
 
                         {activeDropdownId === app.id && (
-                          <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full z-50 mt-1 w-36 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                            {APP_STATUSES.map((status) => (
+                          <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full z-50 mt-1 w-44 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                            {ACTIONABLE_STATUSES.map((status) => (
                               <button
                                 key={status}
                                 type="button"

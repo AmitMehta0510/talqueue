@@ -13,10 +13,14 @@ router.use(protect);
 // Admin view — all drives for a college (including CLOSED), auth-gated
 router.get("/college/:collegeId/admin", ctrl.getAllDrivesForCollege);
 
+// Drive management
 router.post("/", ctrl.createPlacementDrive);
 router.get("/mine", ctrl.getMyPostedDrives);
 router.patch("/:id", ctrl.updatePlacementDrive);
 router.patch("/:id/close", ctrl.closePlacementDrive);
+
+// Eligibility pre-check — student can check if they qualify before applying
+router.get("/:id/eligibility", ctrl.checkEligibility);
 
 // Student applications
 router.post("/:id/apply", ctrl.applyToDrive);
