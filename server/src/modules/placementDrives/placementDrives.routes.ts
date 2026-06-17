@@ -28,4 +28,11 @@ router.get("/applications/mine", ctrl.getMyDriveApplications);
 router.get("/:id/applicants", ctrl.getDriveApplicants);
 router.patch("/applications/:applicationId", ctrl.updateApplicationStatus);
 
+// Drive rounds management
+router.post("/:id/rounds", ctrl.createRound);
+router.get("/:id/rounds", ctrl.getRoundsForDrive);
+router.patch("/rounds/:roundId", ctrl.updateRound);
+router.delete("/rounds/:roundId", ctrl.deleteRound);
+router.post("/rounds/:roundId/shortlist", ctrl.shortlistForRound);
+
 export default router;

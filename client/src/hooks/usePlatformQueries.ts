@@ -48,6 +48,7 @@ import {
   PlacementDriveInvite,
   CdcrMember,
   EligibilityResult,
+  PlacementDriveRound,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4777,6 +4778,80 @@ export const useDriveEligibilityQuery = (driveId?: string | null) => {
     },
     enabled: Boolean(driveId),
     staleTime: 30_000, // 30 seconds — eligibility rarely changes mid-session
+  });
+};
+
+// ─── Placement Drive Rounds Hooks ───────────────────────────────────────────
+
+export const useDriveRoundsQuery = (driveId?: string | null) => {
+  return useQuery({
+    queryKey: ["placementDrives", driveId, "rounds"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getDriveRounds(driveId!, { signal });
+      return (result.data || []) as PlacementDriveRound[];
+    },
+    enabled: Boolean(driveId),
+  });
+};
+
+export const useCreateDriveRoundMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ driveId, body }: { driveId: string; body: Partial<PlacementDriveRound> & { roundType: string } }) =>
+      api.createDriveRound(driveId, body),
+    onSuccess: (result) => {
+      showToast("success", "Round created successfully!");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", result.data?.driveId, "rounds"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useUpdateDriveRoundMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ roundId, body }: { roundId: string; body: Partial<PlacementDriveRound> }) =>
+      api.updateDriveRound(roundId, body),
+    onSuccess: (result) => {
+      showToast("success", "Round updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", result.data?.driveId, "rounds"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useDeleteDriveRoundMutation = (driveId: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (roundId: string) => api.deleteDriveRound(roundId),
+    onSuccess: () => {
+      showToast("success", "Round deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", driveId, "rounds"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useShortlistForRoundMutation = (driveId: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ roundId, applicationIds, updateStatus }: { roundId: string; applicationIds: string[]; updateStatus?: PlacementDriveApplicationStatus }) =>
+      api.shortlistForRound(roundId, applicationIds, updateStatus),
+    onSuccess: () => {
+      showToast("success", "Applicants shortlisted for round!");
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", driveId, "rounds"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives", driveId, "applicants"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
 

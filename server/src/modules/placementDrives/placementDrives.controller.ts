@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as service from "./placementDrives.service";
+import * as roundService from "./driveRounds.service";
 import { PlacementDriveApplicationStatus } from "@prisma/client";
 import asyncHandler from "shared/utils/asyncHandler";
 
@@ -81,6 +82,49 @@ export const updateApplicationStatus = asyncHandler(async (req: Request, res: Re
     req.user!.id,
     req.params.applicationId as string,
     rawStatus as PlacementDriveApplicationStatus,
+  );
+  res.json({ success: true, data: result });
+});
+
+// ─── DRIVE ROUNDS ────────────────────────────────────────────────────────────
+
+export const createRound = asyncHandler(async (req: Request, res: Response) => {
+  const result = await roundService.createRound(req.user!.id, req.params.id as string, req.body);
+  res.status(201).json({ success: true, data: result });
+});
+
+export const updateRound = asyncHandler(async (req: Request, res: Response) => {
+  const result = await roundService.updateRound(req.user!.id, req.params.roundId as string, req.body);
+  res.json({ success: true, data: result });
+});
+
+export const deleteRound = asyncHandler(async (req: Request, res: Response) => {
+  const result = await roundService.deleteRound(req.user!.id, req.params.roundId as string);
+  res.json({ success: true, data: result });
+});
+
+export const getRoundsForDrive = asyncHandler(async (req: Request, res: Response) => {
+  const result = await roundService.getRoundsForDrive(req.params.id as string);
+  res.json({ success: true, data: result });
+});
+
+export const shortlistForRound = asyncHandler(async (req: Request, res: Response) => {
+  const { applicationIds, updateStatus } = req.body;
+  if (updateStatus) {
+    const validStatuses = Object.values(PlacementDriveApplicationStatus) as string[];
+    if (!validStatuses.includes(updateStatus)) {
+      res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+      return;
+    }
+  }
+  const result = await roundService.shortlistForRound(
+    req.user!.id,
+    req.params.roundId as string,
+    applicationIds || [],
+    updateStatus as PlacementDriveApplicationStatus | undefined,
   );
   res.json({ success: true, data: result });
 });

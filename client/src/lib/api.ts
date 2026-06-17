@@ -757,6 +757,30 @@ export type PlacementDriveApplication = {
   updatedAt: string;
 };
 
+export type PlacementDriveRound = {
+  id: string;
+  driveId: string;
+  roundNumber: number;
+  roundType: string;
+  scheduledAt?: string | null;
+  venue?: string | null;
+  meetLink?: string | null;
+  durationMin?: number | null;
+  maxSlots?: number | null;
+  notes?: string | null;
+  shortlistedApplications?: PlacementDriveRoundShortlist[];
+  createdAt: string;
+};
+
+export type PlacementDriveRoundShortlist = {
+  id: string;
+  roundId: string;
+  applicationId: string;
+  advancedAt: string;
+  round?: PlacementDriveRound;
+  application?: PlacementDriveApplication;
+};
+
 export type PlacementDriveInviteStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
 export type PlacementDriveInviteDirection = "COMPANY_TO_COLLEGE" | "COLLEGE_TO_COMPANY";
 
@@ -2793,4 +2817,16 @@ export const api = {
     request<PlacementDriveInvite>(`/drive-invites/${inviteId}/respond`, { method: "PATCH", body: { action } }),
   withdrawDriveInvite: (inviteId: string) =>
     request<{ success: boolean }>(`/drive-invites/${inviteId}/withdraw`, { method: "PATCH", body: {} }),
+
+  // Drive Rounds
+  createDriveRound: (driveId: string, body: Partial<PlacementDriveRound> & { roundType: string }) =>
+    request<PlacementDriveRound>(`/placement-drives/${driveId}/rounds`, { method: "POST", body }),
+  updateDriveRound: (roundId: string, body: Partial<PlacementDriveRound>) =>
+    request<PlacementDriveRound>(`/placement-drives/rounds/${roundId}`, { method: "PATCH", body }),
+  deleteDriveRound: (roundId: string) =>
+    request<{ success: boolean }>(`/placement-drives/rounds/${roundId}`, { method: "DELETE" }),
+  getDriveRounds: (driveId: string, options?: EndpointOptions) =>
+    request<PlacementDriveRound[]>(`/placement-drives/${driveId}/rounds`, options),
+  shortlistForRound: (roundId: string, applicationIds: string[], updateStatus?: PlacementDriveApplicationStatus) =>
+    request<{ success: boolean; count: number }>(`/placement-drives/rounds/${roundId}/shortlist`, { method: "POST", body: { applicationIds, updateStatus } }),
 };

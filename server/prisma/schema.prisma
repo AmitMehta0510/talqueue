@@ -2999,6 +2999,7 @@ model PlacementDrive {
 
   applications     PlacementDriveApplication[]
   invite           PlacementDriveInvite?
+  rounds           PlacementDriveRound[]
 
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
@@ -3019,6 +3020,7 @@ model PlacementDriveApplication {
 
   drive PlacementDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
   user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundShortlists PlacementDriveRoundShortlist[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3067,4 +3069,31 @@ model PlacementDriveInvite {
   @@index([companyId])
   @@index([collegeId])
   @@index([status])
+}
+
+model PlacementDriveRound {
+  id          String   @id @default(uuid())
+  driveId     String
+  roundNumber Int
+  roundType   String   // "APTITUDE_TEST" | "GROUP_DISCUSSION" | "TECHNICAL_INTERVIEW" | "HR_INTERVIEW" | "FINAL"
+  scheduledAt DateTime?
+  venue       String?
+  meetLink    String?
+  durationMin Int?
+  maxSlots    Int?
+  notes       String?
+  drive       PlacementDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  shortlistedApplications PlacementDriveRoundShortlist[]
+  createdAt   DateTime @default(now())
+  @@index([driveId])
+}
+
+model PlacementDriveRoundShortlist {
+  id            String   @id @default(uuid())
+  roundId       String
+  applicationId String
+  advancedAt    DateTime @default(now())
+  round         PlacementDriveRound       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  application   PlacementDriveApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@unique([roundId, applicationId])
 }
