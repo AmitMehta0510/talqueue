@@ -307,6 +307,11 @@ export function AppLayout() {
                           ? "View Professional Profile"
                           : "View Developer Profile"}
                       </Link>
+                      {user.primaryRole === "STUDENT" && (
+                        <Link to="/placements" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800">
+                          Placements Dashboard
+                        </Link>
+                      )}
                       <Link to="/referrals" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition">
                         Referrals Dashboard
                       </Link>

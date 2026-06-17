@@ -12,16 +12,19 @@ import {
   XCircle,
   Loader2,
   Briefcase,
+  AlertTriangle,
 } from "lucide-react";
 import { PlacementDrive } from "../../lib/api";
 import {
   usePlacementDrivesForCollegeQuery,
   useApplyToDriveMutation,
   useMyDriveApplicationsQuery,
+  useDriveEligibilityQuery,
 } from "../../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../ui";
 import { cleanLogoUrl, formatDate } from "../../lib/format";
 import { useAuth } from "../../contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,8 +71,13 @@ const STATUS_STYLES: Record<
 const APP_STATUS_STYLES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   APPLIED: { label: "Applied", color: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 size={11} /> },
   SHORTLISTED: { label: "Shortlisted", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 size={11} /> },
+  INTERVIEW_R1: { label: "Round 1 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
+  INTERVIEW_R2: { label: "Round 2 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
+  INTERVIEW_R3: { label: "Round 3 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
+  PPO_OFFERED: { label: "PPO Offered", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: <Zap size={11} /> },
+  SELECTED: { label: "Selected! 🎉", color: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 size={11} /> },
   REJECTED: { label: "Not Selected", color: "text-rose-600 bg-rose-50 border-rose-200", icon: <XCircle size={11} /> },
-  HIRED: { label: "Hired! 🎉", color: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 size={11} /> },
+  WITHDRAWN: { label: "Withdrawn", color: "text-slate-500 bg-slate-50 border-slate-200", icon: <XCircle size={11} /> },
 };
 
 // ---------------------------------------------------------------------------
@@ -91,127 +99,163 @@ function DriveCard({
   const salary = formatSalary(drive.salaryMin, drive.salaryMax);
   const compensation = stipend || salary;
 
+  // Fetch student eligibility pre-check
+  const eligibilityQuery = useDriveEligibilityQuery(drive.id);
+  const eligibility = eligibilityQuery.data; // { eligible: boolean, reasons: string[], missingFields: string[] }
+
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
-      {/* Header stripe */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
+    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group flex flex-col justify-between">
+      <div>
+        {/* Header stripe */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
 
-      <div className="p-5 space-y-4">
-        {/* Company + Status */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            {cleanLogoUrl(drive.company?.logoUrl) ? (
-              <img
-                src={cleanLogoUrl(drive.company?.logoUrl)!}
-                alt={drive.company?.name}
-                className="h-11 w-11 rounded-xl border border-slate-100 object-cover shadow-sm"
-              />
-            ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
-                <Building2 size={20} />
+        <div className="p-5 space-y-4">
+          {/* Company + Status */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              {cleanLogoUrl(drive.company?.logoUrl) ? (
+                <img
+                  src={cleanLogoUrl(drive.company?.logoUrl)!}
+                  alt={drive.company?.name}
+                  className="h-11 w-11 rounded-xl border border-slate-100 object-cover shadow-sm"
+                />
+              ) : (
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                  <Building2 size={20} />
+                </div>
+              )}
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                  {drive.driveTitle}
+                </h3>
+                <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                  {drive.company?.name}
+                </p>
               </div>
-            )}
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
-                {drive.driveTitle}
-              </h3>
-              <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                {drive.company?.name}
-              </p>
             </div>
-          </div>
-          <span
-            className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${status.chip}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-            {status.label}
-          </span>
-        </div>
-
-        {/* Roles */}
-        {drive.roles.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {drive.roles.map((role) => (
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
               <span
-                key={role}
-                className="rounded-lg bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700"
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${status.chip}`}
               >
-                {role}
+                <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                {status.label}
               </span>
-            ))}
-          </div>
-        )}
-
-        {/* Details grid */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-500">
-          {drive.driveDate && (
-            <span className="flex items-center gap-1.5">
-              <Calendar size={11} className="text-slate-400" />
-              Drive: {formatDate(drive.driveDate)}
-            </span>
-          )}
-          {drive.applyDeadline && (
-            <span className="flex items-center gap-1.5">
-              <Clock size={11} className="text-slate-400" />
-              Deadline: {formatDate(drive.applyDeadline)}
-            </span>
-          )}
-          {compensation && (
-            <span className="flex items-center gap-1.5 font-semibold text-slate-700 col-span-2">
-              <IndianRupee size={11} className="text-slate-400" />
-              {compensation}
-            </span>
-          )}
-        </div>
-
-        {/* Eligibility */}
-        {(drive.minCgpa || drive.eligibleBranches.length > 0 || drive.eligibleYears.length > 0) && (
-          <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3 space-y-1.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <GraduationCap size={10} /> Eligibility
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {drive.minCgpa && (
-                <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                  CGPA ≥ {drive.minCgpa}
-                </span>
-              )}
-              {drive.eligibleYears.map((y) => (
-                <span
-                  key={y}
-                  className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
-                >
-                  {y === 4 ? "Final Year" : `${y}${["st","nd","rd"][y-1] || "th"} Year`}
-                </span>
-              ))}
-              {drive.eligibleBranches.slice(0, 3).map((b) => (
-                <span
-                  key={b}
-                  className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
-                >
-                  {b}
-                </span>
-              ))}
-              {drive.eligibleBranches.length > 3 && (
-                <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                  +{drive.eligibleBranches.length - 3} more
+              
+              {/* Eligibility Badge */}
+              {eligibility && !eligibility.eligible && !hasApplied && (
+                <span className="inline-flex items-center gap-1 rounded-full border bg-amber-50 text-amber-700 border-amber-200 px-2 py-0.5 text-[9px] font-bold">
+                  <AlertTriangle size={10} /> Ineligible
                 </span>
               )}
             </div>
           </div>
-        )}
 
-        {/* Description snippet */}
-        {drive.description && (
-          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{drive.description}</p>
-        )}
+          {/* Roles */}
+          {drive.roles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {drive.roles.map((role) => (
+                <span
+                  key={role}
+                  className="rounded-lg bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700"
+                >
+                  {role}
+                </span>
+              ))}
+            </div>
+          )}
 
-        {/* CTA */}
+          {/* Details grid */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-500">
+            {drive.driveDate && (
+              <span className="flex items-center gap-1.5">
+                <Calendar size={11} className="text-slate-400" />
+                Drive: {formatDate(drive.driveDate)}
+              </span>
+            )}
+            {drive.applyDeadline && (
+              <span className="flex items-center gap-1.5">
+                <Clock size={11} className="text-slate-400" />
+                Deadline: {formatDate(drive.applyDeadline)}
+              </span>
+            )}
+            {compensation && (
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 col-span-2">
+                <IndianRupee size={11} className="text-slate-400" />
+                {compensation}
+              </span>
+            )}
+          </div>
+
+          {/* Eligibility Criteria chips */}
+          {(drive.minCgpa || drive.eligibleBranches.length > 0 || drive.eligibleYears.length > 0) && (
+            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3 space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <GraduationCap size={10} /> Target Criteria
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {drive.minCgpa && (
+                  <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    CGPA ≥ {drive.minCgpa}
+                  </span>
+                )}
+                {drive.eligibleYears.map((y) => (
+                  <span
+                    key={y}
+                    className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                  >
+                    {y === 4 ? "Final Year" : `${y}${["st","nd","rd"][y-1] || "th"} Year`}
+                  </span>
+                ))}
+                {drive.eligibleBranches.slice(0, 3).map((b) => (
+                  <span
+                    key={b}
+                    className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                  >
+                    {b}
+                  </span>
+                ))}
+                {drive.eligibleBranches.length > 3 && (
+                  <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                    +{drive.eligibleBranches.length - 3} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Ineligibility Reasons */}
+          {eligibility && !eligibility.eligible && !hasApplied && eligibility.reasons.length > 0 && (
+            <div className="rounded-xl bg-rose-50/50 border border-rose-100 p-3 text-[10px] font-semibold text-rose-700 space-y-1">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-rose-800">
+                <Info size={12} /> Ineligibility Reasons:
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {eligibility.reasons.map((reason, idx) => (
+                  <li key={idx}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Description snippet */}
+          {drive.description && (
+            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{drive.description}</p>
+          )}
+        </div>
+      </div>
+
+      {/* CTA Button */}
+      <div className="p-5 pt-0">
         {drive.status !== "CLOSED" && (
           hasApplied ? (
             <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-bold text-emerald-700">
               <CheckCircle2 size={15} />
               Applied — Profile Shared
+            </div>
+          ) : eligibility && !eligibility.eligible ? (
+            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-400 select-none">
+              <XCircle size={15} />
+              Ineligible to Apply
             </div>
           ) : (
             <button
@@ -265,6 +309,14 @@ function MyApplicationsTracker() {
           );
         })}
       </div>
+      <Link
+        to="/placements"
+        className="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 text-xs font-bold py-2.5 shadow-sm transition"
+      >
+        <Briefcase size={13} />
+        Go to Placements Dashboard
+        <ChevronRight size={13} className="ml-1 opacity-60" />
+      </Link>
     </section>
   );
 }
