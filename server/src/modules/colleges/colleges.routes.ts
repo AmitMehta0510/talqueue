@@ -17,6 +17,10 @@ import {
   assignCdcrMemberHandler,
   removeCdcrMemberHandler,
   searchCollegeStudentsHandler,
+  claimAlumniStatusHandler,
+  getPendingAlumniClaimsHandler,
+  approveAlumniClaimHandler,
+  rejectAlumniClaimHandler,
 } from "./colleges.controller";
 import prisma from "shared/database/prisma";
 
@@ -105,6 +109,34 @@ router.get(
   protect,
   requireCollegeAdmin,
   searchCollegeStudentsHandler
+);
+
+// Alumni Claims Verification Routes
+router.post(
+  "/:collegeId/alumni-claim",
+  protect,
+  claimAlumniStatusHandler
+);
+
+router.get(
+  "/:collegeId/alumni-claims",
+  protect,
+  requireCollegeAdmin,
+  getPendingAlumniClaimsHandler
+);
+
+router.post(
+  "/:collegeId/alumni-claims/:educationId/approve",
+  protect,
+  requireCollegeAdmin,
+  approveAlumniClaimHandler
+);
+
+router.post(
+  "/:collegeId/alumni-claims/:educationId/reject",
+  protect,
+  requireCollegeAdmin,
+  rejectAlumniClaimHandler
 );
 
 export default router;

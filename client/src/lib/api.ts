@@ -781,6 +781,24 @@ export type PlacementDriveRoundShortlist = {
   application?: PlacementDriveApplication;
 };
 
+export type AlumniClaim = {
+  id: string;
+  userId: string;
+  collegeId: string;
+  isAlumni: boolean;
+  alumniVerified: boolean;
+  alumniVerifiedAt?: string | null;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+    profile?: {
+      fullName?: string | null;
+      avatarUrl?: string | null;
+    } | null;
+  };
+};
+
 export type PlacementDriveInviteStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
 export type PlacementDriveInviteDirection = "COMPANY_TO_COLLEGE" | "COLLEGE_TO_COMPANY";
 
@@ -2829,4 +2847,14 @@ export const api = {
     request<PlacementDriveRound[]>(`/placement-drives/${driveId}/rounds`, options),
   shortlistForRound: (roundId: string, applicationIds: string[], updateStatus?: PlacementDriveApplicationStatus) =>
     request<{ success: boolean; count: number }>(`/placement-drives/rounds/${roundId}/shortlist`, { method: "POST", body: { applicationIds, updateStatus } }),
+
+  // Alumni Verification
+  claimAlumniStatus: (collegeId: string) =>
+    request<{ id: string; isAlumni: boolean }>(`/colleges/${collegeId}/alumni-claim`, { method: "POST", body: {} }),
+  pendingAlumniClaims: (collegeId: string, options?: EndpointOptions) =>
+    request<AlumniClaim[]>(`/colleges/${collegeId}/alumni-claims`, options),
+  approveAlumniClaim: (collegeId: string, educationId: string) =>
+    request<{ id: string; alumniVerified: boolean }>(`/colleges/${collegeId}/alumni-claims/${educationId}/approve`, { method: "POST", body: {} }),
+  rejectAlumniClaim: (collegeId: string, educationId: string) =>
+    request<{ id: string; isAlumni: boolean }>(`/colleges/${collegeId}/alumni-claims/${educationId}/reject`, { method: "POST", body: {} }),
 };

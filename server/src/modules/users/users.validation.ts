@@ -173,4 +173,11 @@ export const updateEducationSchema = z.object({
   endYear: z.number().int().optional(),
 
   current: z.boolean().optional(),
+
+  // Academic performance fields (editable by student after each semester)
+  cgpa: z.number().min(0).max(10).optional().nullable(),
+
+  backlogs: z.number().int().min(0).optional().nullable(),
+
+  currentYear: z.number().int().min(1).max(8).optional().nullable(),
 });

@@ -115,10 +115,12 @@ export const getRoundsForDrive = async (driveId: string) => {
               user: {
                 select: {
                   id: true,
-                  name: true,
+                  username: true,
                   email: true,
                   profile: {
                     select: {
+                      fullName: true,
+                      avatarUrl: true,
                       resumeUrl: true,
                       phoneNumber: true,
                     },

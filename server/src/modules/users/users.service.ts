@@ -1740,6 +1740,9 @@ export interface UpdateEducationData {
   startYear?: number;
   endYear?: number;
   current?: boolean;
+  cgpa?: number | null;
+  backlogs?: number | null;
+  currentYear?: number | null;
 }
 
 export const updateEducation = async (
@@ -1749,12 +1752,14 @@ export const updateEducation = async (
 ) => {
   const existing = await prisma.education.findFirst({
     where: { id: educationId, userId },
-    select: { id: true, collegeId: true, departmentId: true },
+    select: { id: true, collegeId: true, departmentId: true, cgpa: true },
   });
 
   if (!existing) {
     throw new AppError("Education not found", 404);
   }
+
+  const cgpaChanged = data.cgpa !== undefined && data.cgpa !== existing.cgpa;
 
   if (data.startYear && data.endYear && !data.current && data.endYear < data.startYear) {
     throw new AppError("End year cannot be before start year", 400);
@@ -1781,7 +1786,11 @@ export const updateEducation = async (
     updateData.endYear = data.endYear;
   }
 
-  return prisma.$transaction(async (tx) => {
+  if (data.cgpa !== undefined) updateData.cgpa = data.cgpa;
+  if (data.backlogs !== undefined) updateData.backlogs = data.backlogs;
+  if (data.currentYear !== undefined) updateData.currentYear = data.currentYear;
+
+  const result = await prisma.$transaction(async (tx) => {
     // Fetch full existing record for fallback fields
     const fullExisting = await tx.education.findUnique({
       where: { id: educationId },
@@ -1872,7 +1881,39 @@ export const updateEducation = async (
 
     return res;
   });
+
+  // Fire-and-forget: notify college TPO admins when CGPA is updated
+  if (cgpaChanged) {
+    void notifyCgpaChange(userId, existing.collegeId, data.cgpa);
+  }
+
+  return result;
 };
+
+// CGPA change TPO notification (called separately to avoid blocking transaction)
+async function notifyCgpaChange(userId: string, collegeId: string | null | undefined, newCgpa: number | null | undefined) {
+  if (!collegeId || newCgpa === null || newCgpa === undefined) return;
+  try {
+    const [admins, user] = await Promise.all([
+      prisma.collegeAdmin.findMany({ where: { collegeId }, select: { userId: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { username: true, profile: { select: { fullName: true } } } }),
+    ]);
+    if (admins.length === 0) return;
+    const studentName = user?.profile?.fullName || user?.username || "A student";
+    await prisma.notification.createMany({
+      data: admins.map((adm) => ({
+        userId: adm.userId,
+        actorId: userId,
+        type: "SYSTEM",
+        title: "Student CGPA Updated",
+        message: `${studentName} has updated their CGPA to ${newCgpa}. Please review their placement eligibility.`,
+        actionUrl: `/colleges/${collegeId}`,
+      })),
+    });
+  } catch {
+    // Non-critical — do not throw
+  }
+}
 
 // ─── User Projects ──────────────────────────────────────────────────────────
 

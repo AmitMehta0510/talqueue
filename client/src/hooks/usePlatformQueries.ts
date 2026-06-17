@@ -49,6 +49,7 @@ import {
   CdcrMember,
   EligibilityResult,
   PlacementDriveRound,
+  AlumniClaim,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4850,6 +4851,63 @@ export const useShortlistForRoundMutation = (driveId: string) => {
       queryClient.invalidateQueries({ queryKey: ["placementDrives", driveId, "rounds"] });
       queryClient.invalidateQueries({ queryKey: ["placementDrives", driveId, "applicants"] });
       queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+// ─── Alumni Claims Hooks ───────────────────────────────────────────────────
+
+export const useClaimAlumniStatusMutation = () => {
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (collegeId: string) => api.claimAlumniStatus(collegeId),
+    onSuccess: () => {
+      showToast("success", "Alumni verification claim submitted successfully!");
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const usePendingAlumniClaimsQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["colleges", collegeId, "alumni-claims"],
+    queryFn: async ({ signal }) => {
+      const result = await api.pendingAlumniClaims(collegeId!, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
+export const useApproveAlumniClaimMutation = (collegeId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (educationId: string) => api.approveAlumniClaim(collegeId!, educationId),
+    onSuccess: () => {
+      showToast("success", "Alumni verification claim approved!");
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["colleges", collegeId, "alumni-claims"] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useRejectAlumniClaimMutation = (collegeId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (educationId: string) => api.rejectAlumniClaim(collegeId!, educationId),
+    onSuccess: () => {
+      showToast("success", "Alumni verification claim rejected.");
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["colleges", collegeId, "alumni-claims"] });
+      }
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
   });

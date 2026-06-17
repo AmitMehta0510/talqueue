@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar } from "lucide-react";
+import { Building2, GraduationCap, Info, Loader2, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar, ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
@@ -19,6 +19,9 @@ import {
   useRespondToDriveInviteMutation,
   useUpdatePlacementDriveMutation,
   useClosePlacementDriveMutation,
+  usePendingAlumniClaimsQuery,
+  useApproveAlumniClaimMutation,
+  useRejectAlumniClaimMutation,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
@@ -245,7 +248,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   
   // TPO subtabs
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
-  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites">("cdcr");
+  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites" | "alumni">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
   const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
   const isTpo = isCollegeAdminFor(user, college?.id || "");
@@ -263,6 +266,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const respondToInviteMutation = useRespondToDriveInviteMutation(college?.id);
   const updateDriveMutation = useUpdatePlacementDriveMutation();
   const closeDriveMutation = useClosePlacementDriveMutation();
+
+  // Alumni verification (TPO view)
+  const alumniClaimsQuery = usePendingAlumniClaimsQuery(isTpo ? college?.id : null);
+  const approveAlumniMutation = useApproveAlumniClaimMutation(college?.id);
+  const rejectAlumniMutation = useRejectAlumniClaimMutation(college?.id);
 
   const canManageDepartments = isCollegeAdminFor(user, college?.id || "");
 
@@ -410,9 +418,13 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         <div className="space-y-4">
           {/* TPO Sub-tab navigation */}
           <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
-            {(["cdcr", "drives", "invites"] as const).map((tab) => {
-              const labels = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites" };
-              const pendingCount = tab === "invites" ? (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length : 0;
+            {(["cdcr", "drives", "invites", "alumni"] as const).map((tab) => {
+              const labels: Record<string, string> = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites", alumni: "Alumni" };
+              const pendingCount = tab === "invites"
+                ? (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length
+                : tab === "alumni"
+                ? (alumniClaimsQuery.data || []).length
+                : 0;
               return (
                 <button
                   key={tab}
@@ -780,6 +792,82 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 </div>
               ) : (
                 <EmptyState icon={Building2} title="No company invitations" text="When companies invite your college to their placement drives, they'll appear here for you to accept or decline." />
+              )}
+            </div>
+          )}
+
+          {tpoSubTab === "alumni" && (
+            <div className="panel p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                  <ShieldCheck size={16} className="text-emerald-600" />
+                  Alumni Verification Requests
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Review and verify alumni status claims from graduates of your institution.</p>
+              </div>
+
+              {alumniClaimsQuery.isLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
+              ) : (alumniClaimsQuery.data || []).length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-400">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">No pending alumni claims</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-xs">When graduates claim their alumni status, their requests will appear here for your review.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(alumniClaimsQuery.data || []).map((claim) => (
+                    <div key={claim.id} className="flex items-center justify-between gap-4 rounded-xl border border-amber-100 bg-amber-50/40 p-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {claim.user?.profile?.avatarUrl ? (
+                          <img
+                            src={claim.user.profile.avatarUrl}
+                            alt={claim.user.profile.fullName || claim.user.username}
+                            className="h-10 w-10 rounded-full object-cover border border-amber-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 font-bold text-sm shrink-0">
+                            {(claim.user?.profile?.fullName || claim.user?.username || "A").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">
+                            {claim.user?.profile?.fullName || claim.user?.username || "Unknown Student"}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            @{claim.user?.username} · {claim.user?.email}
+                          </p>
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
+                            <Clock size={9} /> Pending Verification
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => approveAlumniMutation.mutate(claim.id)}
+                          disabled={approveAlumniMutation.isPending || rejectAlumniMutation.isPending}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 transition shadow-sm disabled:opacity-50"
+                        >
+                          {approveAlumniMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={13} />}
+                          Verify
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => rejectAlumniMutation.mutate(claim.id)}
+                          disabled={approveAlumniMutation.isPending || rejectAlumniMutation.isPending}
+                          className="flex items-center gap-1 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold px-3 py-1.5 transition disabled:opacity-50"
+                        >
+                          <UserX size={13} /> Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}

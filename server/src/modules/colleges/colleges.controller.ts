@@ -19,6 +19,10 @@ import {
   assignCdcrMember,
   removeCdcrMember,
   searchCollegeStudents,
+  claimAlumniStatus,
+  getPendingAlumniClaims,
+  approveAlumniClaim,
+  rejectAlumniClaim,
 } from "./colleges.service";
 
 import {
@@ -211,6 +215,38 @@ export const searchCollegeStudentsHandler = asyncHandler(
     const query = req.query.q?.toString() || "";
     const students = await searchCollegeStudents(collegeId as string, query);
     res.json(successResponse(students));
+  }
+);
+
+export const claimAlumniStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const result = await claimAlumniStatus(req.user.id, collegeId as string);
+    res.json(successResponse(result, "Alumni status claimed successfully!"));
+  }
+);
+
+export const getPendingAlumniClaimsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const claims = await getPendingAlumniClaims(req.user, collegeId as string);
+    res.json(successResponse(claims));
+  }
+);
+
+export const approveAlumniClaimHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId, educationId } = req.params;
+    const result = await approveAlumniClaim(req.user, collegeId as string, educationId as string);
+    res.json(successResponse(result, "Alumni status verified successfully!"));
+  }
+);
+
+export const rejectAlumniClaimHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId, educationId } = req.params;
+    const result = await rejectAlumniClaim(req.user, collegeId as string, educationId as string);
+    res.json(successResponse(result, "Alumni verification claim rejected."));
   }
 );
 

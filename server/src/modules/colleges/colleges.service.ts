@@ -685,4 +685,140 @@ export const searchCollegeStudents = async (
   });
 };
 
+export const claimAlumniStatus = async (userId: string, collegeId: string) => {
+  const education = await prisma.education.findFirst({
+    where: { userId, collegeId },
+  });
+  if (!education) {
+    throw new AppError("Education record not found for this college. Please add the college to your education profile first.", 400);
+  }
+
+  const updated = await prisma.education.update({
+    where: { id: education.id },
+    data: {
+      isAlumni: true,
+      alumniVerified: false,
+    },
+  });
+
+  // Notify college admins
+  const admins = await prisma.collegeAdmin.findMany({
+    where: { collegeId },
+    select: { userId: true },
+  });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { username: true, profile: { select: { fullName: true } } },
+  });
+  const studentName = user?.profile?.fullName || user?.username || "A student";
+  
+  if (admins.length > 0) {
+    await prisma.notification.createMany({
+      data: admins.map((adm) => ({
+        userId: adm.userId,
+        actorId: userId,
+        type: "SYSTEM",
+        title: "Pending Alumni Claim",
+        message: `${studentName} has claimed to be an alumni of your college and is pending verification.`,
+        actionUrl: `/colleges/${collegeId}`,
+      })),
+    });
+  }
+
+  return updated;
+};
+
+export const getPendingAlumniClaims = async (user: AuthUser, collegeId: string) => {
+  await assertCanManageCollege(user, collegeId);
+
+  return prisma.education.findMany({
+    where: {
+      collegeId,
+      isAlumni: true,
+      alumniVerified: false,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const approveAlumniClaim = async (user: AuthUser, collegeId: string, educationId: string) => {
+  await assertCanManageCollege(user, collegeId);
+
+  const education = await prisma.education.findUnique({
+    where: { id: educationId },
+  });
+  if (!education || education.collegeId !== collegeId) {
+    throw new AppError("Alumni claim education record not found", 404);
+  }
+
+  const updated = await prisma.education.update({
+    where: { id: educationId },
+    data: {
+      alumniVerified: true,
+      alumniVerifiedAt: new Date(),
+    },
+  });
+
+  // Notify student
+  await prisma.notification.create({
+    data: {
+      userId: education.userId,
+      actorId: user.id,
+      type: "SYSTEM",
+      title: "Alumni Status Verified",
+      message: "Congratulations! Your college has verified your alumni status.",
+      actionUrl: "/profile",
+    },
+  });
+
+  return updated;
+};
+
+export const rejectAlumniClaim = async (user: AuthUser, collegeId: string, educationId: string) => {
+  await assertCanManageCollege(user, collegeId);
+
+  const education = await prisma.education.findUnique({
+    where: { id: educationId },
+  });
+  if (!education || education.collegeId !== collegeId) {
+    throw new AppError("Alumni claim education record not found", 404);
+  }
+
+  const updated = await prisma.education.update({
+    where: { id: educationId },
+    data: {
+      isAlumni: false,
+      alumniVerified: false,
+    },
+  });
+
+  // Notify student
+  await prisma.notification.create({
+    data: {
+      userId: education.userId,
+      actorId: user.id,
+      type: "SYSTEM",
+      title: "Alumni Claim Rejected",
+      message: "Your alumni verification claim was rejected by your college administrator.",
+      actionUrl: "/profile",
+    },
+  });
+
+  return updated;
+};
+
 
