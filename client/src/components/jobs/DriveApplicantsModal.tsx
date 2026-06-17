@@ -193,7 +193,7 @@ export function DriveApplicantsModal({
                 <p className="text-xs text-slate-400 mt-1">
                   {statusFilter === "ALL"
                     ? "No student applications have been received for this drive."
-                    : `No applicants match the filter "${STATUS_CONFIG[statusFilter]?.label}".`}
+                    : `No applicants match the filter "${STATUS_CONFIG[statusFilter as PlacementDriveApplicationStatus]?.label}".`}
                 </p>
               </div>
             </div>
