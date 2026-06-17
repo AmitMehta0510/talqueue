@@ -22,6 +22,7 @@ import {
   usePendingAlumniClaimsQuery,
   useApproveAlumniClaimMutation,
   useRejectAlumniClaimMutation,
+  useCollegePlacementStatsQuery,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
@@ -248,7 +249,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   
   // TPO subtabs
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
-  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites" | "alumni">("cdcr");
+  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites" | "alumni" | "stats">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
   const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
   const isTpo = isCollegeAdminFor(user, college?.id || "");
@@ -271,6 +272,10 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const alumniClaimsQuery = usePendingAlumniClaimsQuery(isTpo ? college?.id : null);
   const approveAlumniMutation = useApproveAlumniClaimMutation(college?.id);
   const rejectAlumniMutation = useRejectAlumniClaimMutation(college?.id);
+
+  // Stats / Analytics
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const statsQuery = useCollegePlacementStatsQuery(isTpo ? college?.id : null, selectedYear);
 
   const canManageDepartments = isCollegeAdminFor(user, college?.id || "");
 
@@ -418,8 +423,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         <div className="space-y-4">
           {/* TPO Sub-tab navigation */}
           <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
-            {(["cdcr", "drives", "invites", "alumni"] as const).map((tab) => {
-              const labels: Record<string, string> = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites", alumni: "Alumni" };
+            {(["cdcr", "drives", "invites", "alumni", "stats"] as const).map((tab) => {
+              const labels: Record<string, string> = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites", alumni: "Alumni", stats: "Statistics" };
               const pendingCount = tab === "invites"
                 ? (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length
                 : tab === "alumni"
@@ -868,6 +873,148 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {tpoSubTab === "stats" && (
+            <div className="space-y-6">
+              {/* Year filter selector */}
+              <div className="panel p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-100 shadow-sm rounded-xl">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Placement & Internship Analytics</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Academic statistics and performance overview.</p>
+                </div>
+                <select
+                  value={selectedYear || ""}
+                  onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : undefined)}
+                  className="field py-1 px-3 text-xs w-full sm:w-48 bg-white border border-slate-200 rounded-lg shadow-sm"
+                >
+                  <option value="">All Academic Years</option>
+                  <option value="2026">2026 - 2027</option>
+                  <option value="2025">2025 - 2026</option>
+                  <option value="2024">2024 - 2025</option>
+                </select>
+              </div>
+
+              {statsQuery.isLoading ? (
+                <div className="panel p-12 flex flex-col items-center justify-center bg-white border border-slate-100 shadow-sm rounded-xl">
+                  <Loader2 size={32} className="animate-spin text-indigo-600 mb-2" />
+                  <p className="text-xs text-slate-400">Loading statistics...</p>
+                </div>
+              ) : statsQuery.error || !statsQuery.data ? (
+                <div className="panel p-12 flex flex-col items-center justify-center bg-white border border-slate-100 shadow-sm rounded-xl text-slate-400">
+                  <Building2 size={40} className="mb-2 text-slate-300" />
+                  <p className="text-sm font-semibold">No statistical data available</p>
+                  <p className="text-xs text-slate-400 mt-1">Try changing the year filter or adding placement drives.</p>
+                </div>
+              ) : (
+                <>
+                  {/* KPI Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Total Drives</span>
+                      <span className="text-3xl font-extrabold text-slate-800 mt-2">{statsQuery.data.summary.totalDrives}</span>
+                      <span className="text-[10px] text-slate-400 mt-1.5">{statsQuery.data.summary.totalInternshipDrives} Internship drives</span>
+                    </div>
+
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Total Applicants</span>
+                      <span className="text-3xl font-extrabold text-slate-800 mt-2">{statsQuery.data.summary.totalApplicants}</span>
+                      <span className="text-[10px] text-slate-400 mt-1.5">Applications received</span>
+                    </div>
+
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Students Placed</span>
+                      <span className="text-3xl font-extrabold text-emerald-600 mt-2">{statsQuery.data.summary.totalSelected}</span>
+                      <span className="text-[10px] text-slate-400 mt-1.5">Successful offers</span>
+                    </div>
+
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Placement %</span>
+                      <span className="text-3xl font-extrabold text-indigo-600 mt-2">{statsQuery.data.summary.placementPercent}%</span>
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                        <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${statsQuery.data.summary.placementPercent}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Avg Package</span>
+                      <span className="text-3xl font-extrabold text-slate-800 mt-2">
+                        {statsQuery.data.summary.avgPackageLPA ? `${statsQuery.data.summary.avgPackageLPA} LPA` : "N/A"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-1.5">Average selected salary</span>
+                    </div>
+
+                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold text-slate-400">Max Package</span>
+                      <span className="text-3xl font-extrabold text-slate-800 mt-2">
+                        {statsQuery.data.summary.maxPackageLPA ? `${statsQuery.data.summary.maxPackageLPA} LPA` : "N/A"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-1.5">Highest offer package</span>
+                    </div>
+                  </div>
+
+                  {/* Branch & Company Graphs/Lists */}
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Branch Breakdown */}
+                    <div className="panel p-5 bg-white border border-slate-100 shadow-sm rounded-xl space-y-4">
+                      <h4 className="text-sm font-bold text-slate-800">Branch Performance</h4>
+                      {statsQuery.data.byBranch.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 text-xs">No department data available.</div>
+                      ) : (
+                        <div className="space-y-4">
+                          {statsQuery.data.byBranch.map((b) => (
+                            <div key={b.branch} className="space-y-1.5">
+                              <div className="flex justify-between text-xs font-bold text-slate-700">
+                                <span>{b.branch}</span>
+                                <span className="text-slate-500">{b.selected} / {b.total} placed ({b.placementPercent}%)</span>
+                              </div>
+                              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${b.placementPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top Companies */}
+                    <div className="panel p-5 bg-white border border-slate-100 shadow-sm rounded-xl space-y-4">
+                      <h4 className="text-sm font-bold text-slate-800">Top Hiring Partners</h4>
+                      {statsQuery.data.byCompany.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 text-xs">No partner hiring data available.</div>
+                      ) : (
+                        <div className="divide-y divide-slate-100">
+                          {statsQuery.data.byCompany.map((c, idx) => (
+                            <div key={c.companyId} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-extrabold text-slate-400 w-4">#{idx + 1}</span>
+                                {c.companyLogo ? (
+                                  <img src={cleanLogoUrl(c.companyLogo) || undefined} alt={c.companyName} className="h-7 w-7 rounded-lg object-contain bg-slate-50 border border-slate-100 p-0.5" />
+                                ) : (
+                                  <div className="h-7 w-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                                    {c.companyName.charAt(0)}
+                                  </div>
+                                )}
+                                <span className="text-xs font-bold text-slate-700">{c.companyName}</span>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-bold text-indigo-600">{c.offers} {c.offers === 1 ? 'Offer' : 'Offers'}</p>
+                                {c.avgPackageLPA && (
+                                  <p className="text-[10px] text-slate-400">Avg {c.avgPackageLPA} LPA</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

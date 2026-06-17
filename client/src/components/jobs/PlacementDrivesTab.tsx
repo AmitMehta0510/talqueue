@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Building2,
   Calendar,
@@ -139,6 +140,19 @@ function DriveCard({
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
                 {status.label}
+              </span>
+
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold ${
+                  drive.driveType === "INTERNSHIP"
+                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                }`}
+              >
+                {drive.driveType === "INTERNSHIP" ? "Internship" : "Full-Time"}
+                {drive.driveType === "INTERNSHIP" && drive.internshipDurationMonths && (
+                  <span className="text-[8px] font-normal opacity-75">({drive.internshipDurationMonths}m)</span>
+                )}
               </span>
               
               {/* Eligibility Badge */}
@@ -330,6 +344,7 @@ interface PlacementDrivesTabProps {
 
 export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
   const { user } = useAuth();
+  const [filterType, setFilterType] = useState<"ALL" | "PLACEMENT" | "INTERNSHIP">("ALL");
   const drivesQuery = usePlacementDrivesForCollegeQuery(collegeId);
   const appsQuery = useMyDriveApplicationsQuery();
   const applyMutation = useApplyToDriveMutation();
@@ -378,9 +393,9 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
     );
   }
 
-  const drives = drivesQuery.data || [];
+  const allDrives = drivesQuery.data || [];
 
-  if (drives.length === 0) {
+  if (allDrives.length === 0) {
     return (
       <div className="space-y-6">
         <MyApplicationsTracker />
@@ -412,6 +427,12 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
     );
   }
 
+  const drives = allDrives.filter((d) => {
+    if (filterType === "ALL") return true;
+    const type = d.driveType || "PLACEMENT";
+    return type === filterType;
+  });
+
   const upcoming = drives.filter((d) => d.status === "UPCOMING");
   const ongoing = drives.filter((d) => d.status === "ONGOING");
 
@@ -419,45 +440,78 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
     <div className="space-y-6">
       <MyApplicationsTracker />
 
-      {ongoing.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Registrations Open ({ongoing.length})
-            </h3>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {ongoing.map((drive) => (
-              <DriveCard
-                key={drive.id}
-                drive={drive}
-                hasApplied={appliedDriveIds.has(drive.id)}
-                isApplying={applyingDriveId === drive.id}
-                onApply={handleApply}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Filter Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+        {(["ALL", "PLACEMENT", "INTERNSHIP"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setFilterType(t)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              filterType === t
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t === "ALL" ? "All Drives" : t === "PLACEMENT" ? "Placements" : "Internships"}
+          </button>
+        ))}
+      </div>
 
-      {upcoming.length > 0 && (
-        <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">
-            Upcoming ({upcoming.length})
-          </h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            {upcoming.map((drive) => (
-              <DriveCard
-                key={drive.id}
-                drive={drive}
-                hasApplied={appliedDriveIds.has(drive.id)}
-                isApplying={applyingDriveId === drive.id}
-                onApply={handleApply}
-              />
-            ))}
+      {drives.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+            <Briefcase size={28} />
           </div>
-        </section>
+          <div>
+            <p className="text-sm font-bold text-slate-700">No drives found</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs">
+              There are no campus drives of this type currently posted.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {ongoing.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                  Registrations Open ({ongoing.length})
+                </h3>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {ongoing.map((drive) => (
+                  <DriveCard
+                    key={drive.id}
+                    drive={drive}
+                    hasApplied={appliedDriveIds.has(drive.id)}
+                    isApplying={applyingDriveId === drive.id}
+                    onApply={handleApply}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {upcoming.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">
+                Upcoming ({upcoming.length})
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                {upcoming.map((drive) => (
+                  <DriveCard
+                    key={drive.id}
+                    drive={drive}
+                    hasApplied={appliedDriveIds.has(drive.id)}
+                    isApplying={applyingDriveId === drive.id}
+                    onApply={handleApply}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

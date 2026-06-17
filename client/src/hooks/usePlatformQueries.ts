@@ -50,6 +50,7 @@ import {
   EligibilityResult,
   PlacementDriveRound,
   AlumniClaim,
+  PlacementStats,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../contexts/AuthContext";
@@ -4910,6 +4911,17 @@ export const useRejectAlumniClaimMutation = (collegeId?: string | null) => {
       }
     },
     onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useCollegePlacementStatsQuery = (collegeId?: string | null, year?: number) => {
+  return useQuery({
+    queryKey: ["placementDrives", "college", collegeId, "stats", year],
+    queryFn: async ({ signal }) => {
+      const result = await api.getCollegeStats(collegeId!, year, { signal });
+      return result.data;
+    },
+    enabled: Boolean(collegeId),
   });
 };
 

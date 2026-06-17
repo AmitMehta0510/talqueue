@@ -13,6 +13,9 @@ router.use(protect);
 // Admin view — all drives for a college (including CLOSED), auth-gated
 router.get("/college/:collegeId/admin", ctrl.getAllDrivesForCollege);
 
+// Placement analytics — TPO/admin view
+router.get("/college/:collegeId/stats", ctrl.getCollegePlacementStats);
+
 // Drive management
 router.post("/", ctrl.createPlacementDrive);
 router.get("/mine", ctrl.getMyPostedDrives);

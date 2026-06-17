@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as service from "./placementDrives.service";
 import * as roundService from "./driveRounds.service";
+import * as analyticsService from "./driveAnalytics.service";
 import { PlacementDriveApplicationStatus } from "@prisma/client";
 import asyncHandler from "shared/utils/asyncHandler";
 
@@ -126,5 +127,19 @@ export const shortlistForRound = asyncHandler(async (req: Request, res: Response
     applicationIds || [],
     updateStatus as PlacementDriveApplicationStatus | undefined,
   );
+  res.json({ success: true, data: result });
+});
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+export const getCollegePlacementStats = asyncHandler(async (req: Request, res: Response) => {
+  const collegeId = req.params.collegeId as string;
+  const isTpoOrCdcr = await service.isCollegeAdminOrCdcr(req.user!.id, collegeId);
+  if (!isTpoOrCdcr) {
+    res.status(403).json({ success: false, message: "Unauthorized" });
+    return;
+  }
+  const academicYear = req.query.year ? Number(req.query.year) : undefined;
+  const result = await analyticsService.getCollegePlacementStats(collegeId, academicYear);
   res.json({ success: true, data: result });
 });

@@ -799,6 +799,41 @@ export type AlumniClaim = {
   };
 };
 
+export type PlacementStats = {
+  summary: {
+    totalDrives: number;
+    totalApplicants: number;
+    totalSelected: number;
+    placementPercent: number;
+    avgPackageLPA: number | null;
+    maxPackageLPA: number | null;
+    totalInternshipDrives: number;
+  };
+  byBranch: Array<{
+    branch: string;
+    total: number;
+    selected: number;
+    placementPercent: number;
+  }>;
+  byCompany: Array<{
+    companyId: string;
+    companyName: string;
+    companyLogo?: string | null;
+    offers: number;
+    avgPackageLPA: number | null;
+  }>;
+  recentDrives: Array<{
+    id: string;
+    title: string;
+    driveType: string;
+    status: string;
+    companyName?: string | null;
+    applicants: number;
+    selected: number;
+    driveDate?: string | null;
+  }>;
+};
+
 export type PlacementDriveInviteStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
 export type PlacementDriveInviteDirection = "COMPANY_TO_COLLEGE" | "COLLEGE_TO_COMPANY";
 
@@ -2857,4 +2892,6 @@ export const api = {
     request<{ id: string; alumniVerified: boolean }>(`/colleges/${collegeId}/alumni-claims/${educationId}/approve`, { method: "POST", body: {} }),
   rejectAlumniClaim: (collegeId: string, educationId: string) =>
     request<{ id: string; isAlumni: boolean }>(`/colleges/${collegeId}/alumni-claims/${educationId}/reject`, { method: "POST", body: {} }),
+  getCollegeStats: (collegeId: string, year?: number, options?: EndpointOptions) =>
+    request<PlacementStats>(`/placement-drives/college/${collegeId}/stats${year ? `?year=${year}` : ""}`, options),
 };
