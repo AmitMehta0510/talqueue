@@ -78,44 +78,21 @@ const markSeen = async (userId: string, conversationId: string) => {
       },
     });
 
-    const unreadMessages = await tx.message.findMany({
-      where: {
-        conversationId,
-        senderId: {
-          not: userId,
-        },
-        deletedAt: null,
-        NOT: {
-          readByUsers: {
-            has: userId,
-          },
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    await Promise.all(
-      unreadMessages.map((message) =>
-        tx.message.update({
-          where: {
-            id: message.id,
-          },
-          data: {
-            readByUsers: {
-              push: userId,
-            },
-          },
-        }),
-      ),
-    );
+    const updatedMessages = await tx.$queryRaw<{ id: string }[]>`
+      UPDATE "Message"
+      SET "readByUsers" = array_append("readByUsers", ${userId})
+      WHERE "conversationId" = ${conversationId}
+        AND "senderId" <> ${userId}
+        AND "deletedAt" IS NULL
+        AND NOT (${userId} = ANY("readByUsers"))
+      RETURNING "id"
+    `;
 
     return {
       conversationId,
       userId,
       readAt,
-      messageIds: unreadMessages.map((message) => message.id),
+      messageIds: updatedMessages.map((message) => message.id),
     };
   });
 };

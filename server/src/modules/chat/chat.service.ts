@@ -292,11 +292,13 @@ export const createGroupConversation = async (
     conversation,
   });
 
-  for (const participantId of participantIds) {
-    emitToUser(participantId, "conversation_created", {
-      conversation,
-    });
-  }
+  setImmediate(() => {
+    for (const participantId of participantIds) {
+      emitToUser(participantId, "conversation_created", {
+        conversation,
+      });
+    }
+  });
 
   return conversation;
 };
@@ -591,45 +593,22 @@ export const markConversationAsRead = async (
       },
     });
 
-    const unreadMessages = await tx.message.findMany({
-      where: {
-        conversationId,
-        senderId: {
-          not: userId,
-        },
-        deletedAt: null,
-        NOT: {
-          readByUsers: {
-            has: userId,
-          },
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    await Promise.all(
-      unreadMessages.map((message) =>
-        tx.message.update({
-          where: {
-            id: message.id,
-          },
-          data: {
-            readByUsers: {
-              push: userId,
-            },
-          },
-        }),
-      ),
-    );
+    const updatedMessages = await tx.$queryRaw<{ id: string }[]>`
+      UPDATE "Message"
+      SET "readByUsers" = array_append("readByUsers", ${userId})
+      WHERE "conversationId" = ${conversationId}
+        AND "senderId" <> ${userId}
+        AND "deletedAt" IS NULL
+        AND NOT (${userId} = ANY("readByUsers"))
+      RETURNING "id"
+    `;
 
     return {
       success: true,
       conversationId,
       userId,
       readAt,
-      messageIds: unreadMessages.map((message) => message.id),
+      messageIds: updatedMessages.map((message) => message.id),
     };
   });
 
@@ -902,21 +881,23 @@ export const forwardMessage = async (
   //
   // Activity
   //
-  createActivity(
-    userId,
+  setImmediate(() => {
+    createActivity(
+      userId,
 
-    "MESSAGE_SENT",
+      "MESSAGE_SENT",
 
-    "Forwarded a message",
+      "Forwarded a message",
 
-    "Forwarded a message",
+      "Forwarded a message",
 
-    {
-      conversationId: targetConversationId,
+      {
+        conversationId: targetConversationId,
 
-      messageId: forwardedMessage.id,
-    },
-  ).catch(console.error);
+        messageId: forwardedMessage.id,
+      },
+    ).catch(console.error);
+  });
 
   return forwardedMessage;
 };
@@ -944,107 +925,81 @@ export const reactToMessage = async (
     throw new AppError("Message not found", 404);
   }
 
-  //
-  // Existing reaction
-  //
-  const existingReaction = await prisma.messageReaction.findUnique({
-    where: {
-      messageId_userId_emoji: {
-        messageId,
-
-        userId,
-
-        emoji,
-      },
-    },
-  });
-
-  //
-  // REMOVE REACTION
-  //
-  if (existingReaction) {
-    await prisma.messageReaction.delete({
-      where: {
-        id: existingReaction.id,
-      },
-    });
-
-    await prisma.message.update({
-      where: {
-        id: messageId,
-      },
-
-      data: {
-        reactionCount: {
-          decrement: 1,
+  let reacted = true;
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.messageReaction.create({
+        data: {
+          messageId,
+          userId,
+          emoji,
         },
-      },
+      });
+
+      await tx.message.update({
+        where: {
+          id: messageId,
+        },
+        data: {
+          reactionCount: {
+            increment: 1,
+          },
+        },
+      });
     });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      reacted = false;
+      await prisma.$transaction(async (tx) => {
+        await tx.messageReaction.delete({
+          where: {
+            messageId_userId_emoji: {
+              messageId,
+              userId,
+              emoji,
+            },
+          },
+        });
 
-    return {
-      reacted: false,
-    };
+        await tx.message.update({
+          where: {
+            id: messageId,
+          },
+          data: {
+            reactionCount: {
+              decrement: 1,
+            },
+          },
+        });
+      });
+    } else {
+      throw error;
+    }
   }
 
-  //
-  // ADD REACTION
-  //
-  await prisma.messageReaction.create({
-    data: {
-      messageId,
-
-      userId,
-
-      emoji,
-    },
-  });
-
-  await prisma.message.update({
-    where: {
-      id: messageId,
-    },
-
-    data: {
-      reactionCount: {
-        increment: 1,
-      },
-    },
-  });
-
-  //
-  // Affinity
-  //
   if (message.senderId !== userId) {
-    await calculateUserAffinity(userId, message.senderId);
+    setImmediate(() => {
+      Promise.all([
+        calculateUserAffinity(userId, message.senderId),
+        calculateUserAffinity(message.senderId, userId),
+      ]).catch(console.error);
 
-    await calculateUserAffinity(message.senderId, userId);
-  }
-
-  //
-  // Notification
-  //
-  if (message.senderId !== userId) {
-    createNotification({
-      userId: message.senderId,
-
-      actorId: userId,
-
-      type: "MESSAGE",
-
-      title: "Message Reaction",
-
-      message: `Reacted with ${emoji} to your message`,
-
-      entityId: message.id,
-
-      metadata: {
-        emoji,
-      },
-    }).catch(console.error);
+      createNotification({
+        userId: message.senderId,
+        actorId: userId,
+        type: "MESSAGE",
+        title: "Message Reaction",
+        message: `Reacted with ${emoji} to your message`,
+        entityId: message.id,
+        metadata: {
+          emoji,
+        },
+      }).catch(console.error);
+    });
   }
 
   return {
-    reacted: true,
+    reacted,
   };
 };
 
