@@ -48,52 +48,95 @@ export const calculateUserAffinity = async (
   let socialScore = 0;
   let recruiterScore = 0;
 
-  // Parallelize independent DB calls
-  const [
-    follow,
-    connection,
-    sharedProjects,
-    sharedTeams,
-    sharedHackathons,
-    conversations,
-    profileViewsCount,
-    interactionsCount,
-    postLikesCount,
-    postCommentsCount,
-    postSharesCount,
-    postSavesCount,
-    referralRequests,
-    jobApplications,
-    userSkills,
-    targetSkills,
-  ] = await Promise.all([
-    prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: userId,
-          followingId: targetUserId,
+  // Perform optimized queries to prevent connection pool exhaustion
+  const [user, targetUser, sharedHackathons] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        skills: {
+          include: { skill: { select: { name: true } } },
+        },
+        following: {
+          where: { followingId: targetUserId },
+        },
+        sentConnections: {
+          where: { receiverId: targetUserId, status: "ACCEPTED" },
+        },
+        receivedConnections: {
+          where: { senderId: targetUserId, status: "ACCEPTED" },
+        },
+        projectMemberships: {
+          where: {
+            project: {
+              members: { some: { userId: targetUserId } },
+            },
+          },
+        },
+        teamMemberships: {
+          where: {
+            team: {
+              members: { some: { userId: targetUserId } },
+            },
+          },
+        },
+        conversationParticipants: {
+          where: {
+            conversation: {
+              type: "DIRECT",
+              participants: { some: { userId: targetUserId } },
+            },
+          },
+          include: {
+            conversation: {
+              select: { id: true, messageCount: true },
+            },
+          },
+        },
+        profileViewsGiven: {
+          where: { viewedUserId: targetUserId },
+        },
+        feedInteractions: {
+          where: { targetId: targetUserId, targetType: "PROFILE" },
+        },
+        likes: {
+          where: { post: { authorId: targetUserId } },
+        },
+        comments: {
+          where: {
+            deletedAt: null,
+            post: { authorId: targetUserId },
+          },
+        },
+        postShares: {
+          where: { post: { authorId: targetUserId } },
+        },
+        savedPosts: {
+          where: { post: { authorId: targetUserId } },
+        },
+        sentReferralRequests: {
+          where: { receiverId: targetUserId },
+          select: { status: true },
+        },
+        jobApplications: {
+          where: {
+            job: { postedById: targetUserId },
+          },
+          select: { status: true },
         },
       },
     }),
-    prisma.connection.findFirst({
-      where: {
-        OR: [
-          { senderId: userId, receiverId: targetUserId },
-          { senderId: targetUserId, receiverId: userId },
-        ],
-        status: "ACCEPTED",
-      },
-    }),
-    prisma.projectMember.count({
-      where: {
-        userId,
-        project: { members: { some: { userId: targetUserId } } },
-      },
-    }),
-    prisma.teamMember.count({
-      where: {
-        userId,
-        team: { members: { some: { userId: targetUserId } } },
+    prisma.user.findUnique({
+      where: { id: targetUserId },
+      include: {
+        skills: {
+          include: { skill: { select: { name: true } } },
+        },
+        jobApplications: {
+          where: {
+            job: { postedById: userId },
+          },
+          select: { status: true },
+        },
       },
     }),
     prisma.hackathonSubmission.count({
@@ -104,78 +147,26 @@ export const calculateUserAffinity = async (
         ],
       },
     }),
-    prisma.conversation.findMany({
-      where: {
-        type: "DIRECT",
-        AND: [
-          { participants: { some: { userId } } },
-          { participants: { some: { userId: targetUserId } } },
-        ],
-      },
-      select: { id: true, messageCount: true },
-    }),
-    prisma.profileView.count({
-      where: { viewerId: userId, viewedUserId: targetUserId },
-    }),
-    prisma.feedInteraction.count({
-      where: { userId, targetId: targetUserId, targetType: "PROFILE" },
-    }),
-    prisma.like.count({
-      where: {
-        userId,
-        post: { authorId: targetUserId },
-      },
-    }),
-    prisma.comment.count({
-      where: {
-        authorId: userId,
-        deletedAt: null,
-        post: { authorId: targetUserId },
-      },
-    }),
-    prisma.postShare.count({
-      where: {
-        userId,
-        post: { authorId: targetUserId },
-      },
-    }),
-    prisma.savedPost.count({
-      where: {
-        userId,
-        post: { authorId: targetUserId },
-      },
-    }),
-    prisma.referralRequest.findMany({
-      where: {
-        requesterId: userId,
-        receiverId: targetUserId,
-      },
-      select: { status: true },
-    }),
-    prisma.jobApplication.findMany({
-      where: {
-        OR: [
-          {
-            applicantId: userId,
-            job: { postedById: targetUserId },
-          },
-          {
-            applicantId: targetUserId,
-            job: { postedById: userId },
-          },
-        ],
-      },
-      select: { status: true },
-    }),
-    prisma.userSkill.findMany({
-      where: { userId },
-      include: { skill: { select: { name: true } } },
-    }),
-    prisma.userSkill.findMany({
-      where: { userId: targetUserId },
-      include: { skill: { select: { name: true } } },
-    }),
   ]);
+
+  if (!user || !targetUser) return null;
+
+  // Map optimized relational counts and collections to variables
+  const follow = user.following.length > 0 ? user.following[0] : null;
+  const connection = (user.sentConnections.length > 0 || user.receivedConnections.length > 0) ? true : null;
+  const sharedProjects = user.projectMemberships.length;
+  const sharedTeams = user.teamMemberships.length;
+  const conversations = user.conversationParticipants.map((cp) => cp.conversation).filter(Boolean);
+  const profileViewsCount = user.profileViewsGiven.length;
+  const interactionsCount = user.feedInteractions.length;
+  const postLikesCount = user.likes.length;
+  const postCommentsCount = user.comments.length;
+  const postSharesCount = user.postShares.length;
+  const postSavesCount = user.savedPosts.length;
+  const referralRequests = user.sentReferralRequests;
+  const jobApplications = [...user.jobApplications, ...targetUser.jobApplications];
+  const userSkills = user.skills;
+  const targetSkills = targetUser.skills;
 
   if (follow) {
     socialScore += 25;

@@ -35,9 +35,11 @@ export const addReputation =  async (    userId: string,
     });
 
     // Auto badge evaluation
-    await evaluateAdvancedBadges(
-  userId
-);
+    setImmediate(() => {
+      evaluateAdvancedBadges(userId).catch((err) => {
+        console.error("Error evaluating advanced badges:", err);
+      });
+    });
   };
 
 export const evaluateBadges =  async (userId: string) => {
@@ -162,30 +164,21 @@ export const awardBadge = async (
       return;
     }
 
-    const existing =
-      await prisma.userBadge.findUnique({
-        where: {
-          userId_badgeId: {
-            userId,
-            badgeId: badge.id,
-          },
+    try {
+      await prisma.userBadge.create({
+        data: {
+          userId,
+
+          badgeId:
+            badge.id,
+
+          metadata,
         },
       });
-
-    if (existing) {
+    } catch (error) {
+      // If badge is already awarded or another database constraint fails, return early
       return;
     }
-
-    await prisma.userBadge.create({
-      data: {
-        userId,
-
-        badgeId:
-          badge.id,
-
-        metadata,
-      },
-    });
 
     //
     // Badge reputation bonus
