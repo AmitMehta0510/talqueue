@@ -1,5 +1,6 @@
 import prisma from "shared/database/prisma";
 import { Prisma } from "@prisma/client";
+import { syncHackathonToElastic } from "services/elasticSync";
 
 import AppError from "shared/errors/AppError";
 
@@ -190,6 +191,9 @@ export const createHackathon = async (userId: string, data: any) => {
 
     include: HACKATHON_DEFAULT_INCLUDE,
   });
+
+  // Sync to Elasticsearch
+  syncHackathonToElastic(hackathon.id);
 
   // Non-blocking side effects
   void Promise.all([

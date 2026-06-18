@@ -1,5 +1,6 @@
 import prisma from "shared/database/prisma";
 import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
+import { syncJobToElastic } from "services/elasticSync";
 
 import AppError from "shared/errors/AppError";
 
@@ -160,6 +161,9 @@ export const createJob = async (userId: string, data: any) => {
       },
     },
   });
+
+  // Sync to Elasticsearch
+  syncJobToElastic(job.id);
 
   //
   // ACTIVITY

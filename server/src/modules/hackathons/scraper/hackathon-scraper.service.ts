@@ -8,6 +8,7 @@
 
 import axios from "axios";
 import prisma from "shared/database/prisma";
+import { syncHackathonToElastic } from "services/elasticSync";
 import {
   stripHtml,
   sleep,
@@ -103,9 +104,10 @@ async function upsertScrapedHackathon(data: {
         maxTeamSize: data.maxTeamSize,
       },
     });
+    syncHackathonToElastic(existing.id);
     return false; // updated
   } else {
-    await prisma.hackathon.create({
+    const created = await prisma.hackathon.create({
       data: {
         sourceId: data.sourceId,
         sourcePlatform: data.sourcePlatform,
@@ -131,6 +133,7 @@ async function upsertScrapedHackathon(data: {
         createdById: data.createdById,
       },
     });
+    syncHackathonToElastic(created.id);
     return true; // created
   }
 }

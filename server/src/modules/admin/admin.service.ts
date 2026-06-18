@@ -3,6 +3,7 @@ import AppError from "shared/errors/AppError";
 import { JobStatus } from "@prisma/client";
 import { createNotification } from "modules/notificatios/notifications.service";
 import slugify from "slugify";
+import { syncJobToElastic, syncHackathonToElastic } from "services/elasticSync";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL HELPERS
@@ -658,7 +659,7 @@ export const adminUpdateJob = async (jobId: string, data: any) => {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) throw new AppError("Job not found", 404);
 
-  return prisma.job.update({
+  const updatedJob = await prisma.job.update({
     where: { id: jobId },
     data: {
       title: data.title !== undefined ? data.title : undefined,
@@ -681,6 +682,8 @@ export const adminUpdateJob = async (jobId: string, data: any) => {
       status: data.status !== undefined ? data.status : undefined,
     },
   });
+  syncJobToElastic(updatedJob.id);
+  return updatedJob;
 };
 
 export const adminCreateJob = async (adminId: string, data: any) => {
@@ -694,7 +697,7 @@ export const adminCreateJob = async (adminId: string, data: any) => {
   const baseSlug = slugify(cleanTitle, { lower: true, strict: true, trim: true });
   const slug = `${baseSlug}-${Date.now()}`;
 
-  return prisma.job.create({
+  const job = await prisma.job.create({
     data: {
       companyId: company.id,
       postedById: adminId,
@@ -719,6 +722,8 @@ export const adminCreateJob = async (adminId: string, data: any) => {
       status: data.status || "OPEN",
     },
   });
+  syncJobToElastic(job.id);
+  return job;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -912,6 +917,7 @@ export const adminApproveCompanyRequest = async (
       },
       select: { id: true, title: true },
     });
+    syncJobToElastic(job.id);
   }
 
   // Update company request status
@@ -979,7 +985,7 @@ export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
   const hackathon = await prisma.hackathon.findUnique({ where: { id: hackathonId } });
   if (!hackathon) throw new AppError("Hackathon not found", 404);
 
-  return prisma.hackathon.update({
+  const updatedHackathon = await prisma.hackathon.update({
     where: { id: hackathonId },
     data: {
       title: data.title !== undefined ? data.title : undefined,
@@ -998,5 +1004,7 @@ export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
       status: data.status !== undefined ? data.status : undefined,
     },
   });
+  syncHackathonToElastic(updatedHackathon.id);
+  return updatedHackathon;
 };
 

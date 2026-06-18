@@ -2,6 +2,7 @@ import axios from "axios";
 import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { JobType, WorkMode, JobStatus } from "@prisma/client";
+import { syncJobToElastic } from "services/elasticSync";
 
 // Mapping of seeded companies to their public Greenhouse board tokens
 const GREENHOUSE_TOKENS: Record<string, string> = {
@@ -201,9 +202,10 @@ export async function runJobScrape() {
                 status: "OPEN"
               }
             });
+            syncJobToElastic(existing.id);
             updated++;
           } else {
-            await prisma.job.create({
+            const newJob = await prisma.job.create({
               data: {
                 companyId: company.id,
                 title: jobTitle,
@@ -220,6 +222,7 @@ export async function runJobScrape() {
                 externalJobId: externalId
               }
             });
+            syncJobToElastic(newJob.id);
             created++;
           }
         }
@@ -266,9 +269,10 @@ export async function runJobScrape() {
                 status: "OPEN"
               }
             });
+            syncJobToElastic(existing.id);
             updated++;
           } else {
-            await prisma.job.create({
+            const newJob = await prisma.job.create({
               data: {
                 companyId: company.id,
                 title: jobTitle,
@@ -285,6 +289,7 @@ export async function runJobScrape() {
                 externalJobId: externalId
               }
             });
+            syncJobToElastic(newJob.id);
             created++;
           }
         }
@@ -323,9 +328,10 @@ export async function runJobScrape() {
                 status: "OPEN"
               }
             });
+            syncJobToElastic(existing.id);
             updated++;
           } else {
-            await prisma.job.create({
+            const newJob = await prisma.job.create({
               data: {
                 companyId: company.id,
                 title: jobTitle,
@@ -342,6 +348,7 @@ export async function runJobScrape() {
                 externalJobId: externalId
               }
             });
+            syncJobToElastic(newJob.id);
             created++;
           }
         }
