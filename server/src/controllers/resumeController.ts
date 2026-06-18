@@ -234,6 +234,7 @@ export const getResumeHtml = (data: any): string => {
           font-size: 9px;
           margin-left: 5px;
           font-weight: 400;
+          display: inline-block;
         }
         .skills-container {
           display: flex;

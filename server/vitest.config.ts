@@ -11,6 +11,8 @@ export default defineConfig({
     alias: {
       shared: path.resolve(__dirname, "./src/shared"),
       modules: path.resolve(__dirname, "./src/modules"),
+      services: path.resolve(__dirname, "./src/services"),
+      controllers: path.resolve(__dirname, "./src/controllers"),
     },
   },
 });

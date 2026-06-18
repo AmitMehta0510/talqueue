@@ -2,6 +2,7 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 import { addReputation } from "modules/reputation/reputation.service";
+import { queuePostForSync } from "services/forumSyncService";
 
 import { createActivity } from "modules/activities/activity.service";
 
@@ -267,6 +268,9 @@ export const createPost = async (userId: string, data: any) => {
       data.mentions.map((mentionedUserId: string) => [userId, mentionedUserId]),
     );
   }
+
+  // Hook for Elasticsearch forum posts synchronization
+  queuePostForSync(post.id, "INDEX");
 
   return post;
 };
@@ -661,6 +665,9 @@ export const updatePost = async (userId: string, postId: string, data: any) => {
     });
   });
 
+  // Hook for Elasticsearch forum posts synchronization
+  queuePostForSync(updatedPost.id, "INDEX");
+
   return { post: updatedPost, removedMedia };
 };
 
@@ -689,6 +696,9 @@ export const deletePost = async (userId: string, postId: string) => {
       deletedAt: new Date(),
     },
   });
+
+  // Hook for Elasticsearch forum posts synchronization
+  queuePostForSync(postId, "DELETE");
 
   return {
     success: true,

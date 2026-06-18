@@ -35,6 +35,7 @@ import placementDriveRoutes from "modules/placementDrives/placementDrives.routes
 import driveInviteRoutes from "modules/driveInvites/driveInvites.routes";
 import resumeRoutes from "modules/resume/resume.routes";
 import resdexRoutes from "modules/resdex/resdex.routes";
+import forumRoutes from "routes/forum.routes";
 import { successResponse } from "shared/utils/apiResponse";
 
 export const API_PREFIX = "/api/v1";
@@ -85,6 +86,7 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "driveInvites", path: "/drive-invites", router: driveInviteRoutes },
   { key: "resume", path: "/resume", router: resumeRoutes },
   { key: "resdex", path: "/resdex", router: resdexRoutes },
+  { key: "forum", path: "/forum", router: forumRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(

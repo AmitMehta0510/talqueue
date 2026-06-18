@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import prisma from "shared/database/prisma";
-import { getResumeHtml, buildResumePdf } from "./resume.controller";
+import { getResumeHtml, buildResumePdf } from "controllers/resumeController";
 
 vi.mock("puppeteer", () => {
   const mockPage = {
