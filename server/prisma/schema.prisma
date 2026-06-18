@@ -932,7 +932,7 @@ model Education {
   currentYear Int?            // e.g. 1=First Year, 2=Second, 3=Third, 4=Final
 
   // Alumni tracking
-  isAlumniClaim    Boolean   @default(false)  // Student has claimed alumni status
+  isAlumni         Boolean   @default(false)  // Student has claimed alumni status
   alumniVerified   Boolean   @default(false)  // TPO has verified the alumni claim
   alumniVerifiedAt DateTime?                  // When the claim was approved
 

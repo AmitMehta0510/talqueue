@@ -122,7 +122,6 @@ export const getRoundsForDrive = async (driveId: string) => {
                       fullName: true,
                       avatarUrl: true,
                       resumeUrl: true,
-                      phoneNumber: true,
                     },
                   },
                 },

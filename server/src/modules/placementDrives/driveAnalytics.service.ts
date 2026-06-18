@@ -65,14 +65,13 @@ export const getCollegePlacementStats = async (
     },
     select: {
       id: true,
-      title: true,
+      driveTitle: true,
       driveType: true,
       status: true,
       driveDate: true,
       salaryMin: true,
       salaryMax: true,
       companyId: true,
-      companyName: true,
       company: {
         select: {
           name: true,
@@ -168,9 +167,9 @@ export const getCollegePlacementStats = async (
   >();
 
   for (const drive of drives) {
-    const key = drive.companyId || drive.companyName || "Unknown";
-    const displayName = drive.company?.name || drive.companyName || "Unknown";
-    const logo = drive.company?.logoUrl;
+    const key = drive.companyId;
+    const displayName = drive.company.name;
+    const logo = drive.company.logoUrl;
     const existing = companyMap.get(key) || { name: displayName, logo, offers: 0, packages: [] as number[] };
 
     const selected = drive.applications.filter((a) => a.status === "SELECTED").length;
@@ -197,10 +196,10 @@ export const getCollegePlacementStats = async (
   // ── Recent drives ───────────────────────────────────────────────────────────
   const recentDrives = drives.slice(0, 8).map((d) => ({
     id: d.id,
-    title: d.title,
+    title: d.driveTitle,
     driveType: d.driveType as string,
     status: d.status,
-    companyName: d.company?.name || d.companyName,
+    companyName: d.company.name,
     applicants: d.applications.length,
     selected: d.applications.filter((a) => a.status === "SELECTED").length,
     driveDate: d.driveDate?.toISOString() || null,
