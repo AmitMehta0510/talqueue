@@ -1,4 +1,5 @@
 import prisma from "shared/database/prisma";
+import redis from "shared/database/redis";
 import { EmploymentType, Prisma, SkillLevel } from "@prisma/client";
 import AppError from "shared/errors/AppError";
 import { syncUserToResdex } from "services/resdexSyncService";
@@ -225,6 +226,12 @@ const stripUndefined = (data: Record<string, any>) =>
   Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined),
   );
+
+const isDomainAllowed = (emailDomain: string, allowedDomain: string): boolean => {
+  const domainLower = emailDomain.toLowerCase().trim();
+  const allowedLower = allowedDomain.toLowerCase().trim();
+  return domainLower === allowedLower || domainLower.endsWith("." + allowedLower);
+};
 
 const toDate = (value: string, fieldName: string) => {
   const date = new Date(value);
@@ -845,7 +852,7 @@ export const searchSkills = async (query: string, limit = 12) => {
   return prisma.skill.findMany({
     where: {
       name: {
-        contains: normalizedQuery,
+        startsWith: normalizedQuery,
         mode: "insensitive",
       },
     },
@@ -1324,51 +1331,46 @@ export const addExperience = async (
       },
     });
 
-    await autoJoinUserCommunities(
-      userId,
-      {
-        companyId: company.id,
-      },
-      tx,
-    );
-
     return createdExperience;
   });
 
-  Promise.all([
-    addReputation(
-      userId,
-
-      "EXPERIENCE_ADDED",
-
-      verified ? 20 : 5,
-
-      verified ? "Added verified experience" : "Added experience",
-
-      {
-        experienceId: experience.id,
+  setImmediate(() => {
+    const tasks = [
+      async () => {
+        await autoJoinUserCommunities(userId, { companyId: experience.companyId });
       },
-    ),
-
-    createActivity(
-      userId,
-
-      "EXPERIENCE_ADDED",
-
-      "Added experience",
-
-      `Added experience at "${experience.companyName || companyName}"`,
-
-      {
-        experienceId: experience.id,
+      async () => {
+        await addReputation(
+          userId,
+          "EXPERIENCE_ADDED",
+          verified ? 20 : 5,
+          verified ? "Added verified experience" : "Added experience",
+          { experienceId: experience.id }
+        );
       },
-    ),
+      async () => {
+        await createActivity(
+          userId,
+          "EXPERIENCE_ADDED",
+          "Added experience",
+          `Added experience at "${experience.companyName || companyName}"`,
+          { experienceId: experience.id }
+        );
+      },
+      async () => {
+        await calculateEngineeringScore(userId);
+      },
+      async () => {
+        await syncUserToResdex(userId);
+      }
+    ];
 
-    calculateEngineeringScore(userId),
-  ]).catch(console.error);
-
-  // Sync user profile to Resdex
-  syncUserToResdex(userId);
+    for (const task of tasks) {
+      task().catch((err) => {
+        console.error("Error in asynchronous post-experience pipeline task:", err);
+      });
+    }
+  });
 
   return experience;
 };
@@ -1448,12 +1450,6 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
         },
       });
 
-      await autoJoinUserCommunities(
-        userId,
-        { collegeId: data.collegeId!, departmentId },
-        tx,
-      );
-
       return education;
     }
 
@@ -1517,8 +1513,27 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
     return education;
   });
 
-  // Sync user profile to Resdex
-  syncUserToResdex(userId);
+  setImmediate(() => {
+    const tasks = [
+      async () => {
+        if (hasKnownCollege && result.collegeId) {
+          await autoJoinUserCommunities(userId, {
+            collegeId: result.collegeId,
+            departmentId: result.departmentId,
+          });
+        }
+      },
+      async () => {
+        await syncUserToResdex(userId);
+      }
+    ];
+
+    for (const task of tasks) {
+      task().catch((err) => {
+        console.error("Error in asynchronous post-education pipeline task:", err);
+      });
+    }
+  });
 
   return result;
 };
@@ -2002,22 +2017,34 @@ export const verifyCollegeEmail = async (
   const parts = collegeEmail.split("@");
   const domain = parts[1]?.toLowerCase().trim();
 
-  if (allowedDomains.length > 0 && !allowedDomains.some((d) => d.toLowerCase().trim() === domain)) {
+  if (allowedDomains.length > 0 && !allowedDomains.some((d) => isDomainAllowed(domain, d))) {
     throw new AppError(`Email domain '${domain}' does not match any approved domains for ${education.college?.name || "your college"}.`, 400);
   }
 
   if (!code) {
-    // Simulating code sending
-    console.log(`[CollegeEmailVerification] Verification code for ${collegeEmail} is '123456'`);
+    const codeVal = Math.floor(100000 + Math.random() * 900000).toString();
+    const redisKey = `verification:college:${userId}:${educationId}`;
+    await redis.setex(redisKey, 600, JSON.stringify({ email: collegeEmail, code: codeVal }));
+
+    console.log(`[CollegeEmailVerification] Verification code for ${collegeEmail} is '${codeVal}'`);
     return {
       success: true,
-      message: `A verification code has been sent to ${collegeEmail}. Please use the code '123456' to confirm.`,
+      message: `A verification code has been sent to ${collegeEmail}. Please use the code to confirm.`,
     };
   }
 
-  if (code !== "123456") {
+  const redisKey = `verification:college:${userId}:${educationId}`;
+  const storedData = await redis.get(redisKey);
+  if (!storedData) {
+    throw new AppError("Verification code expired or not requested. Please request a new code.", 400);
+  }
+
+  const { email: storedEmail, code: storedCode } = JSON.parse(storedData);
+  if (storedEmail.toLowerCase().trim() !== collegeEmail.toLowerCase().trim() || storedCode !== code) {
     throw new AppError("Invalid verification code. Please try again.", 400);
   }
+
+  await redis.del(redisKey);
 
   const updatedEducation = await prisma.$transaction(async (tx) => {
     const res = await tx.education.update({
@@ -2070,21 +2097,34 @@ export const verifyWorkEmail = async (
   const parts = workEmail.split("@");
   const domain = parts[1]?.toLowerCase().trim();
 
-  if (allowedDomains.length > 0 && !allowedDomains.some((d) => d.toLowerCase().trim() === domain)) {
+  if (allowedDomains.length > 0 && !allowedDomains.some((d) => isDomainAllowed(domain, d))) {
     throw new AppError(`Email domain '${domain}' does not match any approved domains for ${experience.company?.name || "your company"}.`, 400);
   }
 
   if (!code) {
-    console.log(`[WorkEmailVerification] Verification code for ${workEmail} is '123456'`);
+    const codeVal = Math.floor(100000 + Math.random() * 900000).toString();
+    const redisKey = `verification:work:${userId}:${experienceId}`;
+    await redis.setex(redisKey, 600, JSON.stringify({ email: workEmail, code: codeVal }));
+
+    console.log(`[WorkEmailVerification] Verification code for ${workEmail} is '${codeVal}'`);
     return {
       success: true,
-      message: `A verification code has been sent to ${workEmail}. Please use the code '123456' to confirm.`,
+      message: `A verification code has been sent to ${workEmail}. Please use the code to confirm.`,
     };
   }
 
-  if (code !== "123456") {
+  const redisKey = `verification:work:${userId}:${experienceId}`;
+  const storedData = await redis.get(redisKey);
+  if (!storedData) {
+    throw new AppError("Verification code expired or not requested. Please request a new code.", 400);
+  }
+
+  const { email: storedEmail, code: storedCode } = JSON.parse(storedData);
+  if (storedEmail.toLowerCase().trim() !== workEmail.toLowerCase().trim() || storedCode !== code) {
     throw new AppError("Invalid verification code. Please try again.", 400);
   }
+
+  await redis.del(redisKey);
 
   const updatedExperience = await prisma.$transaction(async (tx) => {
     const res = await tx.experience.update({

@@ -3,6 +3,7 @@ import { Response } from "express";
 import prisma from "shared/database/prisma";
 import asyncHandler from "shared/utils/asyncHandler";
 import { verifyUserSkills } from "./skill-verification.service";
+import { syncUserToResdex } from "services/resdexSyncService";
 
 import { successResponse } from "shared/utils/apiResponse";
 
@@ -169,14 +170,18 @@ export const createCustomSkillHandler = asyncHandler(
 
 export const updateMe = asyncHandler(
   async (req: any, res: Response) => {
+    const { bio, headline, location, openToWork, openToInternship } = req.body;
+    const whitelistedData = { bio, headline, location, openToWork, openToInternship };
     const validatedData =
-      updateProfileSchema.parse(req.body);
+      updateProfileSchema.parse(whitelistedData);
 
     const updatedProfile =
       await updateProfile(
         req.user.id,
         validatedData
       );
+
+    syncUserToResdex(req.user.id);
 
     res.json(
       successResponse(
