@@ -83,6 +83,7 @@ export const updateApplicationStatus = asyncHandler(async (req: Request, res: Re
     req.user!.id,
     req.params.applicationId as string,
     rawStatus as PlacementDriveApplicationStatus,
+    req.body.offerPackage ? Number(req.body.offerPackage) : undefined,
   );
   res.json({ success: true, data: result });
 });

@@ -1,6 +1,7 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { PlacementDriveApplicationStatus, CollegeOfferPolicy } from "@prisma/client";
+import { processPlacementSelection } from "services/placementLockService";
 
 interface CreatePlacementDriveData {
   driveTitle: string;
@@ -604,11 +605,22 @@ export const updateApplicationStatus = async (
   actorId: string,
   applicationId: string,
   status: PlacementDriveApplicationStatus,
+  offerPackage?: number,
 ) => {
   const application = await prisma.placementDriveApplication.findUnique({
     where: { id: applicationId },
     include: {
-      drive: { select: { postedById: true, targetCollegeId: true, driveTitle: true, companyId: true } },
+      drive: {
+        select: {
+          id: true,
+          postedById: true,
+          targetCollegeId: true,
+          driveTitle: true,
+          companyId: true,
+          salaryMax: true,
+          salaryMin: true,
+        },
+      },
     },
   });
   if (!application) throw new AppError("Application not found", 404);
@@ -623,10 +635,17 @@ export const updateApplicationStatus = async (
     throw new AppError("Unauthorized to update application status", 403);
   }
 
-  const updated = await prisma.placementDriveApplication.update({
-    where: { id: applicationId },
-    data: { status },
-  });
+  let updated;
+  if (status === PlacementDriveApplicationStatus.SELECTED) {
+    const offerPkg = offerPackage ?? application.drive.salaryMax ?? application.drive.salaryMin ?? 0;
+    const lockResult = await processPlacementSelection(application.userId, application.drive.id, offerPkg);
+    updated = lockResult.application;
+  } else {
+    updated = await prisma.placementDriveApplication.update({
+      where: { id: applicationId },
+      data: { status },
+    });
+  }
 
   // Notify the student
   const statusLabel: Record<PlacementDriveApplicationStatus, string> = {
