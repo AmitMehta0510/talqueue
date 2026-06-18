@@ -112,42 +112,34 @@ export const followUser = async (followerId: string, followingId: string) => {
   ]);
 
   try {
-    const follow = await prisma.$transaction(async (tx) => {
-      const createdFollow = await tx.follow.create({
-        data: {
-          followerId,
-          followingId,
-        },
-      });
-
-      await Promise.all([
-        tx.user.update({
-          where: {
-            id: followerId,
-          },
-
-          data: {
-            followingCount: {
-              increment: 1,
-            },
-          },
-        }),
-
-        tx.user.update({
-          where: {
-            id: followingId,
-          },
-
-          data: {
-            followersCount: {
-              increment: 1,
-            },
-          },
-        }),
-      ]);
-
-      return createdFollow;
+    const follow = await prisma.follow.create({
+      data: {
+        followerId,
+        followingId,
+      },
     });
+
+    prisma.user.update({
+      where: {
+        id: followerId,
+      },
+      data: {
+        followingCount: {
+          increment: 1,
+        },
+      },
+    }).catch(console.error);
+
+    prisma.user.update({
+      where: {
+        id: followingId,
+      },
+      data: {
+        followersCount: {
+          increment: 1,
+        },
+      },
+    }).catch(console.error);
 
     addReputation(followingId, "NEW_FOLLOWER", 1, "Received a new follower", {
       followerId,
@@ -214,37 +206,33 @@ export const unfollowUser = async (followerId: string, followingId: string) => {
     throw new AppError("Follow not found", 404);
   }
 
-  await prisma.$transaction([
-    prisma.follow.delete({
-      where: {
-        id: existingFollow.id,
-      },
-    }),
+  await prisma.follow.delete({
+    where: {
+      id: existingFollow.id,
+    },
+  });
 
-    prisma.user.update({
-      where: {
-        id: followerId,
+  prisma.user.update({
+    where: {
+      id: followerId,
+    },
+    data: {
+      followingCount: {
+        decrement: 1,
       },
+    },
+  }).catch(console.error);
 
-      data: {
-        followingCount: {
-          decrement: 1,
-        },
+  prisma.user.update({
+    where: {
+      id: followingId,
+    },
+    data: {
+      followersCount: {
+        decrement: 1,
       },
-    }),
-
-    prisma.user.update({
-      where: {
-        id: followingId,
-      },
-
-      data: {
-        followersCount: {
-          decrement: 1,
-        },
-      },
-    }),
-  ]);
+    },
+  }).catch(console.error);
 
   return {
     success: true,
@@ -697,56 +685,28 @@ export const getSuggestedConnections = async (
 ) => {
   const limit = clampLimit(params.limit);
 
-  const [connections, followedUsers] = await Promise.all([
-    prisma.connection.findMany({
-      where: {
-        OR: [
-          {
-            senderId: userId,
-          },
-          {
-            receiverId: userId,
-          },
-        ],
-      },
-
-      select: {
-        senderId: true,
-        receiverId: true,
-      },
-    }),
-
-    prisma.follow.findMany({
-      where: {
-        followerId: userId,
-      },
-
-      select: {
-        followingId: true,
-      },
-    }),
-  ]);
-
-  const excludedUserIds = new Set<string>([
-    userId,
-    ...followedUsers.map((follow) => follow.followingId),
-  ]);
-
-  for (const connection of connections) {
-    excludedUserIds.add(
-      connection.senderId === userId
-        ? connection.receiverId
-        : connection.senderId,
-    );
-  }
-
   const affinities = await prisma.userAffinity.findMany({
     where: {
       userId,
       targetUserId: {
-        notIn: [...excludedUserIds],
+        not: userId,
       },
       targetUser: {
+        followers: {
+          none: {
+            followerId: userId,
+          },
+        },
+        sentConnections: {
+          none: {
+            receiverId: userId,
+          },
+        },
+        receivedConnections: {
+          none: {
+            senderId: userId,
+          },
+        },
         roles: {
           none: {
             role: {
@@ -825,69 +785,50 @@ export const getMutualConnections = async (
 
   const limit = clampLimit(params.limit);
 
-  const [currentConnections, otherConnections] = await Promise.all([
-    prisma.connection.findMany({
-      where: {
-        OR: [
-          {
-            senderId: currentUserId,
-          },
-          {
-            receiverId: currentUserId,
-          },
-        ],
-
-        status: "ACCEPTED",
-      },
-
-      select: {
-        senderId: true,
-        receiverId: true,
-      },
-    }),
-
-    prisma.connection.findMany({
-      where: {
-        OR: [
-          {
-            senderId: otherUserId,
-          },
-          {
-            receiverId: otherUserId,
-          },
-        ],
-
-        status: "ACCEPTED",
-      },
-
-      select: {
-        senderId: true,
-        receiverId: true,
-      },
-    }),
-  ]);
-
-  const otherConnectionIds = new Set(
-    otherConnections.map((connection) =>
-      connection.senderId === otherUserId
-        ? connection.receiverId
-        : connection.senderId,
-    ),
-  );
-
-  const mutualIds = currentConnections
-    .map((connection) =>
-      connection.senderId === currentUserId
-        ? connection.receiverId
-        : connection.senderId,
-    )
-    .filter((id) => otherConnectionIds.has(id));
-
   const users = await prisma.user.findMany({
     where: {
-      id: {
-        in: mutualIds,
-      },
+      AND: [
+        {
+          OR: [
+            {
+              sentConnections: {
+                some: {
+                  receiverId: currentUserId,
+                  status: "ACCEPTED",
+                },
+              },
+            },
+            {
+              receivedConnections: {
+                some: {
+                  senderId: currentUserId,
+                  status: "ACCEPTED",
+                },
+              },
+            },
+          ],
+        },
+        {
+          OR: [
+            {
+              sentConnections: {
+                some: {
+                  receiverId: otherUserId,
+                  status: "ACCEPTED",
+                },
+              },
+            },
+            {
+              receivedConnections: {
+                some: {
+                  senderId: otherUserId,
+                  status: "ACCEPTED",
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
 
     select: compactUserSelect,
