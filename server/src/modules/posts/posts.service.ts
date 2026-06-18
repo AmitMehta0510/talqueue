@@ -207,37 +207,41 @@ export const createPost = async (userId: string, data: any) => {
   // Mention notifications
   //
   if (data.mentions?.length) {
-    await Promise.all(
-      data.mentions.map((mentionedUserId: string) => {
-        if (mentionedUserId === userId) {
-          return null;
-        }
+    setImmediate(() => {
+      Promise.all(
+        data.mentions.map((mentionedUserId: string) => {
+          if (mentionedUserId === userId) {
+            return null;
+          }
 
-        return createNotification({
-          userId: mentionedUserId,
+          return createNotification({
+            userId: mentionedUserId,
 
-          actorId: userId,
+            actorId: userId,
 
-          type: "POST_MENTION",
+            type: "POST_MENTION",
 
-          title: "Mentioned in a post",
+            title: "Mentioned in a post",
 
-          message: `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
+            message: `${post.author.profile?.fullName || post.author.username} mentioned you in a post`,
 
-          entityType: "POST",
+            entityType: "POST",
 
-          entityId: post.id,
+            entityId: post.id,
 
-          actionUrl: `/posts/${post.id}`,
+            actionUrl: `/posts/${post.id}`,
 
-          metadata: {
-            postId: post.id,
-          },
+            metadata: {
+              postId: post.id,
+            },
 
-          groupKey: `post-mention-${post.id}`,
-        });
-      }),
-    );
+            groupKey: `post-mention-${post.id}`,
+          });
+        }),
+      ).catch((err) => {
+        console.error("Asynchronous post mention notifications failed:", err);
+      });
+    });
   }
 
   //
@@ -335,44 +339,16 @@ export const getFeed = async (
       },
 
       tags: true,
-
-      likes: userId
-        ? {
-            where: {
-              userId,
-            },
-
-            select: {
-              id: true,
-            },
-
-            take: 1,
-          }
-        : false,
-
-      savedBy: userId
-        ? {
-            where: {
-              userId,
-            },
-
-            select: {
-              id: true,
-            },
-
-            take: 1,
-          }
-        : false,
     },
 
     ...(params.cursor
       ? {
-          cursor: {
-            id: params.cursor,
-          },
+        cursor: {
+          id: params.cursor,
+        },
 
-          skip: 1,
-        }
+        skip: 1,
+      }
       : {}),
 
     take: limit + 1,
@@ -382,8 +358,50 @@ export const getFeed = async (
 
   const pagePosts = hasNextPage ? posts.slice(0, limit) : posts;
 
+  let likedPostIds = new Set<string>();
+  let savedPostIds = new Set<string>();
+
+  if (userId && pagePosts.length > 0) {
+    const postIds = pagePosts.map((post) => post.id);
+    const [likes, saved] = await Promise.all([
+      prisma.like.findMany({
+        where: {
+          userId,
+          postId: {
+            in: postIds,
+          },
+        },
+        select: {
+          postId: true,
+        },
+      }),
+      prisma.savedPost.findMany({
+        where: {
+          userId,
+          postId: {
+            in: postIds,
+          },
+        },
+        select: {
+          postId: true,
+        },
+      }),
+    ]);
+
+    likedPostIds = new Set(likes.map((l) => l.postId));
+    savedPostIds = new Set(saved.map((s) => s.postId));
+  }
+
+  const serializedPosts = pagePosts.map((post) => {
+    return {
+      ...post,
+      isLiked: likedPostIds.has(post.id),
+      isSaved: savedPostIds.has(post.id),
+    };
+  });
+
   return {
-    posts: pagePosts.map(serializePostPreview),
+    posts: serializedPosts,
     nextCursor: hasNextPage ? pagePosts[pagePosts.length - 1]?.id : null,
     hasNextPage,
     limit,
@@ -446,30 +464,30 @@ export const getPostById = async (
 
       likes: userId
         ? {
-            where: {
-              userId,
-            },
+          where: {
+            userId,
+          },
 
-            select: {
-              id: true,
-            },
+          select: {
+            id: true,
+          },
 
-            take: 1,
-          }
+          take: 1,
+        }
         : false,
 
       savedBy: userId
         ? {
-            where: {
-              userId,
-            },
+          where: {
+            userId,
+          },
 
-            select: {
-              id: true,
-            },
+          select: {
+            id: true,
+          },
 
-            take: 1,
-          }
+          take: 1,
+        }
         : false,
 
       comments: {
@@ -574,9 +592,10 @@ export const getPostById = async (
 
 // UPDATE POST
 export const updatePost = async (userId: string, postId: string, data: any) => {
-  const post = await prisma.post.findUnique({
+  const post = await prisma.post.findFirst({
     where: {
       id: postId,
+      deletedAt: null,
     },
   });
 
@@ -610,12 +629,12 @@ export const updatePost = async (userId: string, postId: string, data: any) => {
 
   const parsedTags: string[] | undefined = Array.isArray(data.tags)
     ? Array.from(
-        new Set(
-          data.tags
-            .map((t: any) => String(t).trim().toLowerCase())
-            .filter(Boolean),
-        ),
-      )
+      new Set(
+        data.tags
+          .map((t: any) => String(t).trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    )
     : undefined;
 
   const updatedPost = await prisma.$transaction(async (tx) => {
@@ -646,10 +665,10 @@ export const updatePost = async (userId: string, postId: string, data: any) => {
         tags:
           parsedTags !== undefined
             ? {
-                create: parsedTags.map((tag: string) => ({
-                  tag,
-                })),
-              }
+              create: parsedTags.map((tag: string) => ({
+                tag,
+              })),
+            }
             : undefined,
       },
 
@@ -888,39 +907,43 @@ export const createComment = async (
   // Mention notifications
   //
   if (data.mentions?.length) {
-    await Promise.all(
-      data.mentions.map((mentionedUserId: string) => {
-        if (mentionedUserId === userId) {
-          return null;
-        }
+    setImmediate(() => {
+      Promise.all(
+        data.mentions.map((mentionedUserId: string) => {
+          if (mentionedUserId === userId) {
+            return null;
+          }
 
-        return createNotification({
-          userId: mentionedUserId,
+          return createNotification({
+            userId: mentionedUserId,
 
-          actorId: userId,
+            actorId: userId,
 
-          type: "COMMENT_MENTION",
+            type: "COMMENT_MENTION",
 
-          title: "Mentioned in a comment",
+            title: "Mentioned in a comment",
 
-          message: `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
+            message: `${comment.author.profile?.fullName || comment.author.username} mentioned you in a comment`,
 
-          entityType: "COMMENT",
+            entityType: "COMMENT",
 
-          entityId: comment.id,
+            entityId: comment.id,
 
-          actionUrl: `/posts/${postId}`,
+            actionUrl: `/posts/${postId}`,
 
-          metadata: {
-            postId,
+            metadata: {
+              postId,
 
-            commentId: comment.id,
-          },
+              commentId: comment.id,
+            },
 
-          groupKey: `comment-mention-${comment.id}`,
-        });
-      }),
-    );
+            groupKey: `comment-mention-${comment.id}`,
+          });
+        }),
+      ).catch((err) => {
+        console.error("Asynchronous comment mention notifications failed:", err);
+      });
+    });
 
     //
     // Affinity
@@ -958,127 +981,120 @@ export const toggleLike = async (userId: string, postId: string) => {
     throw new AppError("Post not found", 404);
   }
 
-  const existingLike = await prisma.like.findUnique({
-    where: {
-      postId_userId: {
-        postId,
-        userId,
-      },
-    },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.like.create({
+        data: {
+          postId,
+          userId,
+        },
+      });
 
-    select: {
-      id: true,
-    },
-  });
-
-  //
-  // UNLIKE
-  //
-  if (existingLike) {
-    await prisma.like.delete({
-      where: {
-        id: existingLike.id,
-      },
-    });
-
-    await prisma.post.update({
-      where: {
-        id: postId,
-      },
-
-      data: {
-        likesCount: {
-          decrement: 1,
+      await tx.post.update({
+        where: {
+          id: postId,
         },
 
-        engagementScore: {
-          decrement: 1,
+        data: {
+          likesCount: {
+            increment: 1,
+          },
+
+          engagementScore: {
+            increment: 1,
+          },
         },
-      },
+      });
     });
+
+    //
+    // Affinity
+    //
+    if (post.authorId !== userId) {
+      runAffinityUpdates([
+        [userId, post.authorId],
+        [post.authorId, userId],
+      ]);
+    }
+
+    //
+    // Notify
+    //
+    if (post.authorId !== userId) {
+      createNotification({
+        userId: post.authorId,
+
+        actorId: userId,
+
+        type: "LIKE",
+
+        title: "New Like",
+
+        message: "Someone liked your post",
+
+        entityType: "POST",
+
+        entityId: postId,
+
+        actionUrl: `/posts/${postId}`,
+
+        metadata: {
+          postId,
+        },
+
+        groupKey: `post-like-${postId}`,
+      }).catch(console.error);
+    }
+
+    //
+    // Track interaction
+    //
+    trackInteraction(userId, {
+      targetId: postId,
+
+      targetType: "POST",
+
+      interactionType: "LIKE",
+    }).catch(console.error);
 
     return {
-      liked: false,
+      liked: true,
     };
-  }
-  //
-  // LIKE
-  //
-  await prisma.like.create({
-    data: {
-      postId,
-      userId,
-    },
-  });
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Unique constraint collision means already liked; trigger unlike fallback transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.like.delete({
+          where: {
+            postId_userId: {
+              postId,
+              userId,
+            },
+          },
+        });
 
-  await prisma.post.update({
-    where: {
-      id: postId,
-    },
+        await tx.post.update({
+          where: {
+            id: postId,
+          },
 
-    data: {
-      likesCount: {
-        increment: 1,
-      },
+          data: {
+            likesCount: {
+              decrement: 1,
+            },
 
-      engagementScore: {
-        increment: 1,
-      },
-    },
-  });
+            engagementScore: {
+              decrement: 1,
+            },
+          },
+        });
+      });
 
-  //
-  // Affinity
-  //
-  if (post.authorId !== userId) {
-    runAffinityUpdates([
-      [userId, post.authorId],
-      [post.authorId, userId],
-    ]);
-  }
-
-  //
-  // Notify
-  //
-  if (post.authorId !== userId) {
-    createNotification({
-      userId: post.authorId,
-
-      actorId: userId,
-
-      type: "LIKE",
-
-      title: "New Like",
-
-      message: "Someone liked your post",
-
-      entityType: "POST",
-
-      entityId: postId,
-
-      actionUrl: `/posts/${postId}`,
-
-      metadata: {
-        postId,
-      },
-
-      groupKey: `post-like-${postId}`,
-    }).catch(console.error);
-  }
-
-  //
-  // Track interaction
-  //
-  trackInteraction(userId, {
-    targetId: postId,
-
-    targetType: "POST",
-
-    interactionType: "LIKE",
-  }).catch(console.error);
-
-  return {
-    liked: true,
+      return {
+        liked: false,
+      };
+    }
+    throw error;
   };
 };
 
