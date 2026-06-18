@@ -7,6 +7,7 @@ import { startTrendingCron } from "modules/trending/trending.cron";
 import { startProjectSyncCron } from "modules/projects/projects.cron";
 import { startHackathonScraperCron } from "modules/hackathons/scraper/hackathon-scraper.cron";
 import { startJobScraperCron } from "modules/jobs/jobs.cron";
+import { startSkillVerificationCron } from "modules/users/skill-verification.cron";
 import { registerApiRoutes } from "./routes";
 
 const app = express();
@@ -20,6 +21,7 @@ startTrendingCron();
 startProjectSyncCron();
 startHackathonScraperCron();
 startJobScraperCron();
+startSkillVerificationCron();
 
 app.get("/", (req, res) => {
   res.json(

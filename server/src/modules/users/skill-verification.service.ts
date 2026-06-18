@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Prisma } from "@prisma/client";
 import prisma from "shared/database/prisma";
+import AppError from "shared/errors/AppError";
 
 const SYNONYM_MAP: Record<string, string> = {
   "js": "javascript",
@@ -29,10 +30,176 @@ const SYNONYM_MAP: Record<string, string> = {
   "kotlin": "kotlin",
   "swift": "swift",
   "php": "php",
+  "express": "express.js",
+  "nestjs": "nestjs",
+  "spring-boot": "spring boot",
+  "dockerfile": "docker",
 };
 
 // Minimum bytes in GitHub repo to verify a language skill
 const MIN_GITHUB_BYTES = 5000;
+
+// Helper to fetch file content from GitHub repository
+export const fetchRepoFileContent = async (
+  owner: string,
+  repo: string,
+  path: string,
+  headers: any
+): Promise<string | null> => {
+  try {
+    const res = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+      { headers, timeout: 5000 }
+    );
+    if (res.data && res.data.content && res.data.encoding === "base64") {
+      return Buffer.from(res.data.content, "base64").toString("utf8");
+    }
+  } catch (err) {
+    // Gracefully handle 404 or other errors
+  }
+  return null;
+};
+
+// Helper to verify if user is contributor to the repo (anti-cheat check)
+export const verifyUserCommitContribution = async (
+  owner: string,
+  repo: string,
+  authorizedEmails: Set<string>,
+  authorizedUsernames: Set<string>,
+  headers: any
+): Promise<boolean> => {
+  try {
+    const res = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`,
+      { headers, timeout: 5000 }
+    );
+    if (Array.isArray(res.data)) {
+      for (const commit of res.data) {
+        const authorEmail = commit.commit?.author?.email?.toLowerCase();
+        const committerEmail = commit.commit?.committer?.email?.toLowerCase();
+        const authorLogin = commit.author?.login?.toLowerCase();
+        const committerLogin = commit.committer?.login?.toLowerCase();
+        const authorName = commit.commit?.author?.name?.toLowerCase();
+        const committerName = commit.commit?.committer?.name?.toLowerCase();
+
+        if (
+          (authorEmail && authorizedEmails.has(authorEmail)) ||
+          (committerEmail && authorizedEmails.has(committerEmail)) ||
+          (authorLogin && authorizedUsernames.has(authorLogin)) ||
+          (committerLogin && authorizedUsernames.has(committerLogin)) ||
+          (authorName && authorizedUsernames.has(authorName)) ||
+          (committerName && authorizedUsernames.has(committerName))
+        ) {
+          return true;
+        }
+      }
+    }
+  } catch (err) {
+    // Gracefully handle rate limit/errors
+  }
+  return false;
+};
+
+export const matchPackageDependencies = (deps: string[], foundSkills: Set<string>) => {
+  for (const dep of deps) {
+    const normalizedDep = dep.toLowerCase();
+    if (normalizedDep === "express") {
+      foundSkills.add("Express.js");
+      foundSkills.add("Node.js");
+    }
+    if (normalizedDep.includes("nestjs")) {
+      foundSkills.add("NestJS");
+      foundSkills.add("Node.js");
+    }
+    if (normalizedDep === "mongoose") {
+      foundSkills.add("Mongoose");
+      foundSkills.add("MongoDB");
+    }
+    if (normalizedDep === "mongodb") {
+      foundSkills.add("MongoDB");
+    }
+    if (normalizedDep === "react") {
+      foundSkills.add("React");
+    }
+    if (normalizedDep === "next") {
+      foundSkills.add("Next.js");
+    }
+    if (normalizedDep === "vue") {
+      foundSkills.add("Vue.js");
+    }
+    if (normalizedDep === "nuxt") {
+      foundSkills.add("Nuxt.js");
+    }
+    if (normalizedDep.includes("angular")) {
+      foundSkills.add("Angular");
+    }
+    if (normalizedDep === "svelte") {
+      foundSkills.add("Svelte");
+    }
+    if (normalizedDep.includes("prisma")) {
+      foundSkills.add("Prisma");
+    }
+    if (normalizedDep === "sequelize") {
+      foundSkills.add("Sequelize");
+    }
+    if (normalizedDep === "typeorm") {
+      foundSkills.add("TypeORM");
+    }
+    if (normalizedDep === "drizzle-orm") {
+      foundSkills.add("Drizzle ORM");
+    }
+    if (normalizedDep === "fastify") {
+      foundSkills.add("Fastify");
+      foundSkills.add("Node.js");
+    }
+    if (normalizedDep === "hono") {
+      foundSkills.add("Hono");
+      foundSkills.add("Node.js");
+    }
+  }
+};
+
+export const matchPomDependencies = (content: string, foundSkills: Set<string>) => {
+  const lowercaseContent = content.toLowerCase();
+  if (lowercaseContent.includes("spring-boot") || lowercaseContent.includes("springframework.boot")) {
+    foundSkills.add("Spring Boot");
+    foundSkills.add("Java");
+  }
+  if (lowercaseContent.includes("hibernate")) {
+    foundSkills.add("Hibernate");
+    foundSkills.add("Java");
+  }
+  if (lowercaseContent.includes("junit")) {
+    foundSkills.add("JUnit");
+  }
+};
+
+export const matchDockerfile = (content: string, foundSkills: Set<string>) => {
+  foundSkills.add("Docker");
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.toUpperCase().startsWith("FROM")) {
+      const parts = trimmed.split(/\s+/);
+      if (parts.length > 1) {
+        const image = parts[1].toLowerCase();
+        if (image.includes("node")) {
+          foundSkills.add("Node.js");
+        } else if (image.includes("python")) {
+          foundSkills.add("Python");
+        } else if (image.includes("openjdk") || image.includes("maven") || image.includes("gradle")) {
+          foundSkills.add("Java");
+        } else if (image.includes("golang") || image.includes("go:")) {
+          foundSkills.add("Go");
+        } else if (image.includes("rust")) {
+          foundSkills.add("Rust");
+        } else if (image.includes("ubuntu")) {
+          foundSkills.add("Ubuntu");
+        }
+      }
+    }
+  }
+};
 
 export const verifyUserSkills = async (userId: string) => {
   const profile = await prisma.profile.findUnique({
@@ -48,11 +215,57 @@ export const verifyUserSkills = async (userId: string) => {
     include: { skill: true },
   });
 
-  if (!profile && codingProfiles.length === 0) {
-    return { success: false, message: "No profiles linked for verification." };
+  if (!profile || !profile.githubUrl || profile.githubUrl.trim() === "") {
+    throw new AppError("You must fill your GitHub URL on your profile.", 400);
   }
 
   const detectedSkills: Record<string, { verified: boolean; source: string; proof: any }> = {};
+
+  // Get user with experiences and educations to fetch work/college emails for anti-cheat verification
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      experiences: {
+        where: { verified: true },
+        select: { workEmail: true },
+      },
+      educations: {
+        where: { collegeEmailVerified: true },
+        select: { collegeEmail: true },
+      },
+    },
+  });
+
+  const authorizedEmails = new Set<string>();
+  const authorizedUsernames = new Set<string>();
+
+  if (user) {
+    if (user.email) authorizedEmails.add(user.email.toLowerCase());
+    if (user.username) authorizedUsernames.add(user.username.toLowerCase());
+
+    if (profile?.githubUrl) {
+      const ghUsername = profile.githubUrl
+        .replace("https://github.com/", "")
+        .replace("http://github.com/", "")
+        .replace(/\/$/, "")
+        .split("/")[0];
+      if (ghUsername) {
+        authorizedUsernames.add(ghUsername.toLowerCase());
+      }
+    }
+
+    for (const exp of user.experiences) {
+      if (exp.workEmail) {
+        authorizedEmails.add(exp.workEmail.toLowerCase());
+      }
+    }
+
+    for (const edu of user.educations) {
+      if (edu.collegeEmail) {
+        authorizedEmails.add(edu.collegeEmail.toLowerCase());
+      }
+    }
+  }
 
   // 1. GITHUB VERIFICATION
   if (profile?.githubUrl) {
@@ -137,6 +350,80 @@ export const verifyUserSkills = async (userId: string) => {
                   repositories: data.repos.slice(0, 3), // store top 3 repo proofs
                 },
               };
+            }
+          }
+
+          // 2. Framework/Tools parsing with Commit Verification (Anti-Cheat)
+          const repoPromises = reposResponse.data.slice(0, 10).map(async (repo: any) => {
+            const isContributor = await verifyUserCommitContribution(
+              username,
+              repo.name,
+              authorizedEmails,
+              authorizedUsernames,
+              headers
+            );
+
+            if (!isContributor) {
+              return null;
+            }
+
+            // Fetch package.json, pom.xml, and Dockerfile concurrently
+            const [packageJson, pomXml, dockerfile] = await Promise.all([
+              fetchRepoFileContent(username, repo.name, "package.json", headers),
+              fetchRepoFileContent(username, repo.name, "pom.xml", headers),
+              fetchRepoFileContent(username, repo.name, "Dockerfile", headers),
+            ]);
+
+            const repoSkills = new Set<string>();
+            if (packageJson) {
+              try {
+                const parsed = JSON.parse(packageJson);
+                const deps = [
+                  ...Object.keys(parsed.dependencies || {}),
+                  ...Object.keys(parsed.devDependencies || {}),
+                ];
+                matchPackageDependencies(deps, repoSkills);
+              } catch (e) {
+                // Invalid JSON, skip
+              }
+            }
+            if (pomXml) {
+              matchPomDependencies(pomXml, repoSkills);
+            }
+            if (dockerfile) {
+              matchDockerfile(dockerfile, repoSkills);
+            }
+
+            return {
+              repoName: repo.name,
+              skills: Array.from(repoSkills),
+            };
+          });
+
+          const verifiedReposSkills = await Promise.all(repoPromises);
+
+          for (const item of verifiedReposSkills) {
+            if (item && item.skills.length > 0) {
+              for (const skill of item.skills) {
+                const normalizedSkill = skill.toLowerCase();
+                const standardName = SYNONYM_MAP[normalizedSkill] || normalizedSkill;
+
+                // Let's store or update detected skills (accumulating the proof)
+                const existing = detectedSkills[standardName] || detectedSkills[normalizedSkill];
+                const matchedName = existing ? (SYNONYM_MAP[standardName] || standardName) : skill;
+
+                detectedSkills[matchedName.toLowerCase()] = {
+                  verified: true,
+                  source: existing ? `${existing.source}, GITHUB_REPOS` : "GITHUB_REPOS",
+                  proof: {
+                    ...existing?.proof,
+                    githubRepo: {
+                      repoName: item.repoName,
+                      reason: "Extracted from verified framework/config files",
+                    },
+                  },
+                };
+              }
             }
           }
         }
