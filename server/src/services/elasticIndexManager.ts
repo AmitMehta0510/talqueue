@@ -109,6 +109,32 @@ const INDICES_CONFIGS: IndexConfig[] = [
       },
     },
   },
+  {
+    name: "forum_posts",
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 0,
+    },
+    mappings: {
+      properties: {
+        // Text Search fields with standard analyzer for fuzzy/full-text search
+        title: { type: "text", analyzer: "standard" },
+        content: { type: "text", analyzer: "standard" },
+
+        // Keyword fields for exact filtering and aggregations
+        tags: { type: "keyword" },
+        authorId: { type: "keyword" },
+        category: { type: "keyword" },
+
+        // Contextual filters — community scoping and post type
+        communityId: { type: "keyword" },
+        postType: { type: "keyword" },
+
+        // Date field for range queries and time-based sorting
+        createdAt: { type: "date" },
+      },
+    },
+  },
 ];
 
 /**
