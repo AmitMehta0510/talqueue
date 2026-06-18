@@ -36,164 +36,139 @@ export const createReferralRequest = async (
     throw new AppError("Cannot request referral from yourself", 400);
   }
 
-  // Daily anti-spam limit
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const recentRequests = await prisma.referralRequest.count({
-    where: {
-      requesterId,
+  // Find company by id, slug, or name using OR query
+  const conditions: any[] = [];
+  if (data.companyId) conditions.push({ id: data.companyId });
+  if (data.companySlug) conditions.push({ slug: data.companySlug });
+  if (data.companyName) conditions.push({ name: data.companyName });
 
-      createdAt: {
-        gte: oneDayAgo,
+  if (conditions.length === 0) {
+    throw new AppError("Company identification not provided", 400);
+  }
+
+  // Pure database checks and creation operation inside a Serializable transaction block
+  const request = await prisma.$transaction(async (tx) => {
+    const company = await tx.company.findFirst({
+      where: {
+        OR: conditions,
       },
-    },
-  });
-
-  if (recentRequests >= 10) {
-    throw new AppError("Referral request daily limit reached", 429);
-  }
-
-  // Find company by id, slug, or name.
-  const company = data.companyId
-    ? await prisma.company.findUnique({
-        where: {
-          id: data.companyId,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      })
-    : data.companySlug
-      ? await prisma.company.findUnique({
-          where: {
-            slug: data.companySlug,
-          },
-          select: {
-            id: true,
-            name: true,
-          },
-        })
-      : await prisma.company.findUnique({
-          where: {
-            name: data.companyName,
-          },
-          select: {
-            id: true,
-            name: true,
-          },
-        });
-
-  if (!company) {
-    throw new AppError("Company not found", 404);
-  }
-
-  // Verify receiver currently works there
-  const currentEmployee = await prisma.experience.findFirst({
-    where: {
-      userId: receiverId,
-
-      companyId: company.id,
-
-      isCurrent: true,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!currentEmployee) {
-    throw new AppError("User does not currently work at this company", 400);
-  }
-
-  // Prevent duplicates
-  const existingRequest = await prisma.referralRequest.findFirst({
-    where: {
-      requesterId,
-
-      receiverId,
-
-      companyId: company.id,
-
-      jobRole: data.jobRole,
-
-      status: {
-        in: ["PENDING", "ACCEPTED"],
+      select: {
+        id: true,
+        name: true,
       },
-    },
-    select: {
-      id: true,
-    },
-  });
+    });
 
-  if (existingRequest) {
-    throw new AppError("Referral request already exists", 400);
-  }
+    if (!company) {
+      throw new AppError("Company not found", 404);
+    }
 
-  const requester = await prisma.user.findUnique({
-    where: {
-      id: requesterId,
-    },
+    // Daily anti-spam limit
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentRequests = await tx.referralRequest.count({
+      where: {
+        requesterId,
+        createdAt: {
+          gte: oneDayAgo,
+        },
+      },
+    });
 
-    select: {
-      engineeringScore: true,
-    },
-  });
+    if (recentRequests >= 10) {
+      throw new AppError("Referral request daily limit reached", 429);
+    }
 
-  if ((requester?.engineeringScore || 0) < 20) {
-    throw new AppError(
-      "Increase your engineering credibility before requesting referrals",
-      400,
-    );
-  }
+    // Verify receiver currently works there
+    const currentEmployee = await tx.experience.findFirst({
+      where: {
+        userId: receiverId,
+        companyId: company.id,
+        isCurrent: true,
+      },
+      select: {
+        id: true,
+      },
+    });
 
-  // Create request
-  const request = await prisma.referralRequest.create({
-    data: {
-      requesterId,
+    if (!currentEmployee) {
+      throw new AppError("User does not currently work at this company", 400);
+    }
 
-      receiverId,
+    // Prevent duplicates
+    const existingRequest = await tx.referralRequest.findFirst({
+      where: {
+        requesterId,
+        receiverId,
+        companyId: company.id,
+        jobRole: data.jobRole,
+        status: {
+          in: ["PENDING", "ACCEPTED"],
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
 
-      companyId: company.id,
+    if (existingRequest) {
+      throw new AppError("Referral request already exists", 400);
+    }
 
-      externalJobId: data.jobId,
+    // Requester score check
+    const requester = await tx.user.findUnique({
+      where: {
+        id: requesterId,
+      },
+      select: {
+        engineeringScore: true,
+      },
+    });
 
-      jobRole: data.jobRole,
+    if ((requester?.engineeringScore || 0) < 20) {
+      throw new AppError(
+        "Increase your engineering credibility before requesting referrals",
+        400,
+      );
+    }
 
-      jobUrl: data.jobUrl,
-
-      message: data.message,
-
-      githubUrl: data.githubUrl,
-
-      codingProfileUrl: data.codingProfileUrl,
-
-      resumeUrl: data.resumeUrl,
-
-      linkedinUrl: data.linkedinUrl,
-
-      portfolioUrl: data.portfolioUrl,
-    },
-
-    include: {
-      requester: {
-        select: {
-          username: true,
-          profile: {
-            select: {
-              fullName: true,
+    // Create request
+    return tx.referralRequest.create({
+      data: {
+        requesterId,
+        receiverId,
+        companyId: company.id,
+        externalJobId: data.jobId,
+        jobRole: data.jobRole,
+        jobUrl: data.jobUrl,
+        message: data.message,
+        githubUrl: data.githubUrl,
+        codingProfileUrl: data.codingProfileUrl,
+        resumeUrl: data.resumeUrl,
+        linkedinUrl: data.linkedinUrl,
+        portfolioUrl: data.portfolioUrl,
+      },
+      include: {
+        requester: {
+          select: {
+            username: true,
+            profile: {
+              select: {
+                fullName: true,
+              },
             },
           },
         },
-      },
-
-      company: {
-        select: {
-          name: true,
+        company: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
+    });
+  }, {
+    isolationLevel: "Serializable"
   });
 
+  // Post-transaction side effects (external to transactional integrity)
   await Promise.all([
     calculateUserAffinity(requesterId, receiverId),
     calculateUserAffinity(receiverId, requesterId),
@@ -211,11 +186,8 @@ export const createReferralRequest = async (
 
   createNotification({
     userId: receiverId,
-
     type: "REFERRAL",
-
     title: "New Referral Request",
-
     message: `${request.requester.profile?.fullName || request.requester.username} requested a referral for ${request.company.name}`,
   }).catch(console.error);
 
@@ -530,6 +502,20 @@ export const getReceivedReferralRequests = async (
               endDate: true,
             },
           },
+          targetAffinities: {
+            where: {
+              userId,
+            },
+            select: {
+              score: true,
+              interactionCount: true,
+              messageScore: true,
+              collaborationScore: true,
+              skillSimilarityScore: true,
+              socialScore: true,
+              recruiterScore: true,
+            },
+          },
         },
       },
     },
@@ -541,29 +527,7 @@ export const getReceivedReferralRequests = async (
   const hasNextPage = requests.length === limit;
   const nextCursor = hasNextPage ? requests[requests.length - 1].id : null;
 
-  // attach affinity data
-  const affinityMap = new Map<string, any>();
-  const affinities = await prisma.userAffinity.findMany({
-    where: { userId, targetUserId: { in: requests.map((r) => r.requesterId) } },
-  });
-  for (const a of affinities) affinityMap.set(a.targetUserId, a as any);
-
-  const enrichedRequests = requests.map((request) => {
-    const affinity = affinityMap.get(request.requesterId);
-    return {
-      ...request,
-      requesterMeta: {
-        engineeringScore: request.requester.engineeringScore,
-        reputationScore: request.requester.reputationScore,
-        affinityScore: affinity?.score || 0,
-        interactionCount: affinity?.interactionCount || 0,
-        collaborationScore: affinity?.collaborationScore || 0,
-        skillSimilarityScore: affinity?.skillSimilarityScore || 0,
-      },
-    };
-  });
-
-  return { limit, nextCursor, hasNextPage, requests: enrichedRequests };
+  return { limit, nextCursor, hasNextPage, requests };
 };
 
 export const getSentReferralRequests = async (
@@ -594,6 +558,20 @@ export const getSentReferralRequests = async (
               endDate: true,
             },
           },
+          targetAffinities: {
+            where: {
+              userId,
+            },
+            select: {
+              score: true,
+              interactionCount: true,
+              messageScore: true,
+              collaborationScore: true,
+              skillSimilarityScore: true,
+              socialScore: true,
+              recruiterScore: true,
+            },
+          },
         },
       },
     },
@@ -605,27 +583,5 @@ export const getSentReferralRequests = async (
   const hasNextPage = requests.length === limit;
   const nextCursor = hasNextPage ? requests[requests.length - 1].id : null;
 
-  // attach affinity data
-  const affinityMap = new Map<string, any>();
-  const affinities = await prisma.userAffinity.findMany({
-    where: { userId, targetUserId: { in: requests.map((r) => r.receiverId) } },
-  });
-  for (const a of affinities) affinityMap.set(a.targetUserId, a as any);
-
-  const enrichedRequests = requests.map((request) => {
-    const affinity = affinityMap.get(request.receiverId);
-    return {
-      ...request,
-      receiverMeta: {
-        engineeringScore: request.receiver.engineeringScore,
-        reputationScore: request.receiver.reputationScore,
-        affinityScore: affinity?.score || 0,
-        interactionCount: affinity?.interactionCount || 0,
-        collaborationScore: affinity?.collaborationScore || 0,
-        skillSimilarityScore: affinity?.skillSimilarityScore || 0,
-      },
-    };
-  });
-
-  return { limit, nextCursor, hasNextPage, requests: enrichedRequests };
+  return { limit, nextCursor, hasNextPage, requests };
 };
