@@ -13,6 +13,7 @@ export type FeedContext = {
   followingIdSet?: Set<string>;
   skillNames: string[];
   skillNameSet?: Set<string>;
+  skillRegex?: RegExp;
   isFresher: boolean;
   interactionMap: Map<string, number>;
   affinityMap: Map<string, number>;
@@ -79,19 +80,41 @@ const getSkillNameSet = (context: FeedContext) => {
   return context.skillNameSet || new Set(context.skillNames.map((skill) => skill.toLowerCase()));
 };
 
+export const getSkillRegex = (context: FeedContext) => {
+  if (context.skillRegex) {
+    return context.skillRegex;
+  }
+  const skillNameSet = getSkillNameSet(context);
+  if (skillNameSet.size === 0) {
+    return null;
+  }
+  const escapedSkills = Array.from(skillNameSet).map((skill) =>
+    skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  escapedSkills.sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(escapedSkills.join("|"), "g");
+  context.skillRegex = pattern;
+  return pattern;
+};
+
 const countTextSkillMatches = (value: unknown, context: FeedContext) => {
   const text = typeof value === "string" ? value.toLowerCase() : "";
-  const skillNameSet = getSkillNameSet(context);
-
-  let matches = 0;
-
-  for (const skill of skillNameSet) {
-    if (text.includes(skill)) {
-      matches += 1;
-    }
+  if (!text) {
+    return 0;
   }
 
-  return matches;
+  const regex = getSkillRegex(context);
+  if (!regex) {
+    return 0;
+  }
+
+  regex.lastIndex = 0;
+  const matches = text.match(regex);
+  if (!matches) {
+    return 0;
+  }
+
+  return new Set(matches).size;
 };
 
 const countArraySkillMatches = (value: unknown, context: FeedContext) => {

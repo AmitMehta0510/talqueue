@@ -1,4 +1,4 @@
-import { FeedContext, getCreatorId, RankedFeedItem } from "./feed-ranking.service";
+import { FeedContext, getCreatorId, RankedFeedItem, getSkillRegex } from "./feed-ranking.service";
 import { FEED_SCORE_WEIGHTS } from "./feed-score-config.service";
 
 export const applyAiFeedRanking = async (
@@ -36,19 +36,20 @@ export const applyAiFeedRanking = async (
       // POSTS
       if (item.type === "POST") {
         const content = item.data.content?.toLowerCase() || "";
-
-        for (const skill of skillNameSet) {
-          if (
-            typeof skill === "string" &&
-            content.includes(skill)
-          ) {
-            score += FEED_SCORE_WEIGHTS.aiReranking.postSkillMatch;
+        if (content) {
+          const regex = getSkillRegex(context);
+          if (regex) {
+            regex.lastIndex = 0;
+            const matches = content.match(regex);
+            if (matches) {
+              const uniqueMatches = new Set(matches);
+              score += uniqueMatches.size * FEED_SCORE_WEIGHTS.aiReranking.postSkillMatch;
+            }
           }
         }
       }
-
       // PROJECTS
-      if (item.type === "PROJECT") {
+      else if (item.type === "PROJECT") {
         const techStack = Array.isArray(item.data.techStack)
           ? item.data.techStack
           : [];
@@ -62,9 +63,8 @@ export const applyAiFeedRanking = async (
         score +=
           overlap.length * FEED_SCORE_WEIGHTS.aiReranking.projectSkillMatch;
       }
-
       // JOBS
-      if (item.type === "JOB") {
+      else if (item.type === "JOB") {
         const skillsRequired = Array.isArray(item.data.skillsRequired)
           ? item.data.skillsRequired
           : [];
@@ -100,9 +100,7 @@ export const applyAiFeedRanking = async (
 
     if (creatorTrustLevel === "ELITE") {
       score += FEED_SCORE_WEIGHTS.aiReranking.eliteCreator;
-    }
-
-    if (creatorTrustLevel === "ADVANCED") {
+    } else if (creatorTrustLevel === "ADVANCED") {
       score += FEED_SCORE_WEIGHTS.aiReranking.advancedCreator;
     }
 

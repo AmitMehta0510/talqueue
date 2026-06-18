@@ -20,7 +20,7 @@ type TrendingConfig<T> = {
     item: T,
     trendingScore: number,
     engagementScore: number,
-  ) => Promise<unknown>;
+  ) => any;
 };
 
 const DEFAULT_TRENDING_BATCH_SIZE = 25;
@@ -45,92 +45,55 @@ const calculateDefaultTrendingScore = (
   return velocityScore + engagementScore * 0.4;
 };
 
-const upsertTrendingSnapshot = async (
-  entityId: string,
-
-  entityType: TrendingEntityType,
-
-  score: number,
-
-  velocityScore: number,
-
-  engagementDelta: number,
-) => {
-  const calculatedAt = new Date();
-
-  return prisma.trendingSnapshot.upsert({
-    where: {
-      entityId_entityType: {
-        entityId,
-
-        entityType: entityType as FeedItemType,
-      },
-    },
-
-    update: {
-      score,
-
-      velocityScore,
-
-      engagementDelta,
-
-      calculatedAt,
-    },
-
-    create: {
-      entityId,
-
-      entityType: entityType as FeedItemType,
-
-      score,
-
-      velocityScore,
-
-      engagementDelta,
-
-      calculatedAt,
-    },
-  });
-};
-
 const calculateTrendingEntities = async <T>(config: TrendingConfig<T>) => {
   const items = await config.findMany();
-
-  for (const chunk of chunkItems(
-    items,
-
-    config.batchSize || DEFAULT_TRENDING_BATCH_SIZE,
-  )) {
-    await Promise.all(
-      chunk.map(async (item) => {
-      const engagementScore = config.getEngagementScore(item);
-
-      const velocityScore = engagementScore / (calculateHoursOld(config.getCreatedAt(item)) + 2);
-
-      const trendingScore = (
-        config.getTrendingScore || calculateDefaultTrendingScore
-      )(item, velocityScore, engagementScore);
-
-      const entityId = config.getId(item);
-
-      await Promise.all([
-        config.updateEntity(item, trendingScore, engagementScore),
-
-        upsertTrendingSnapshot(
-          entityId,
-
-          config.entityType,
-
-          trendingScore,
-
-          velocityScore,
-
-          engagementScore,
-        ),
-      ]);
-      }),
-    );
+  if (items.length === 0) {
+    return;
   }
+
+  const updateOperations: any[] = [];
+  const snapshotRecords: any[] = [];
+  const entityIds: string[] = [];
+
+  for (const item of items) {
+    const engagementScore = config.getEngagementScore(item);
+    const velocityScore = engagementScore / (calculateHoursOld(config.getCreatedAt(item)) + 2);
+    const trendingScore = (
+      config.getTrendingScore || calculateDefaultTrendingScore
+    )(item, velocityScore, engagementScore);
+
+    const entityId = config.getId(item);
+    entityIds.push(entityId);
+
+    const updateOp = config.updateEntity(item, trendingScore, engagementScore);
+    if (updateOp) {
+      updateOperations.push(updateOp);
+    }
+
+    snapshotRecords.push({
+      entityId,
+      entityType: config.entityType as FeedItemType,
+      score: trendingScore,
+      velocityScore,
+      engagementDelta: engagementScore,
+      calculatedAt: new Date(),
+    });
+  }
+
+  await prisma.$transaction([
+    ...updateOperations,
+    prisma.trendingSnapshot.deleteMany({
+      where: {
+        entityType: config.entityType as FeedItemType,
+        entityId: {
+          in: entityIds,
+        },
+      },
+    }),
+    prisma.trendingSnapshot.createMany({
+      data: snapshotRecords,
+    }),
+  ]);
 };
 
 export const calculateTrendingPosts = async () => {
