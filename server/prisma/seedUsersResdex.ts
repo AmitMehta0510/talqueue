@@ -18,6 +18,7 @@
 import { PrismaClient, EmploymentType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { syncUserToResdex } from "../src/services/resdexSyncService";
+import { initElasticsearchIndices } from "../src/services/elasticIndexManager";
 
 const prisma = new PrismaClient();
 
@@ -285,6 +286,9 @@ const CANDIDATES = [
 
 async function main() {
   console.log("🚀 Starting Resdex seed script...\n");
+
+  // Initialize Elasticsearch indices and mappings
+  await initElasticsearchIndices();
 
   const hashedPassword = await bcrypt.hash("Password123!", 10);
 
