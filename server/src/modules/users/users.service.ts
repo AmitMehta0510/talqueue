@@ -1,6 +1,7 @@
 import prisma from "shared/database/prisma";
 import { EmploymentType, Prisma, SkillLevel } from "@prisma/client";
 import AppError from "shared/errors/AppError";
+import { syncUserToResdex } from "services/resdexSyncService";
 import { addReputation } from "../reputation/reputation.service";
 import { createActivity } from "../activities/activity.service";
 import { calculateEngineeringScore } from "../reputation/engineering-score.service";
@@ -1117,6 +1118,9 @@ export const updateProfile = async (
       console.error("Skill verification background job error:", err);
     });
   }
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 };
 
 export const addSkill = async (userId: string, data: AddSkillData) => {
@@ -1152,7 +1156,7 @@ export const addSkill = async (userId: string, data: AddSkillData) => {
     }
   }
 
-  return prisma.userSkill.upsert({
+  const result = await prisma.userSkill.upsert({
     where: {
       userId_skillId: {
         userId,
@@ -1174,6 +1178,11 @@ export const addSkill = async (userId: string, data: AddSkillData) => {
       skill: true,
     },
   });
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
+
+  return result;
 };
 
 export const addExperience = async (
@@ -1358,6 +1367,9 @@ export const addExperience = async (
     calculateEngineeringScore(userId),
   ]).catch(console.error);
 
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
+
   return experience;
 };
 
@@ -1377,7 +1389,7 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
     throw new AppError("End year cannot be before start year", 400);
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // ── Track A: Known college in DB ─────────────────────────────────────
     if (hasKnownCollege) {
       const college = await tx.college.findUnique({
@@ -1504,6 +1516,11 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
 
     return education;
   });
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
+
+  return result;
 };
 
 // ─── Remove Operations ──────────────────────────────────────────────────────
@@ -1521,6 +1538,9 @@ export const removeSkill = async (userId: string, skillId: string) => {
   await prisma.userSkill.delete({ where: { id: userSkill.id } });
 
   calculateEngineeringScore(userId).catch(console.error);
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 
   return { id: userSkill.id };
 };
@@ -1543,6 +1563,9 @@ export const removeExperience = async (userId: string, experienceId: string) => 
     }),
     calculateEngineeringScore(userId),
   ]).catch(console.error);
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 
   return { id: experienceId };
 };
@@ -1594,6 +1617,9 @@ export const removeEducation = async (userId: string, educationId: string) => {
       });
     }
   });
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 
   return { id: educationId };
 };
@@ -1728,6 +1754,9 @@ export const updateExperience = async (
   }
 
   calculateEngineeringScore(userId).catch(console.error);
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 
   return updated;
 };
@@ -1886,6 +1915,9 @@ export const updateEducation = async (
   if (cgpaChanged) {
     void notifyCgpaChange(userId, existing.collegeId, data.cgpa);
   }
+
+  // Sync user profile to Resdex
+  syncUserToResdex(userId);
 
   return result;
 };

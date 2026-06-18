@@ -71,6 +71,44 @@ const INDICES_CONFIGS: IndexConfig[] = [
       },
     },
   },
+  {
+    name: "users_resdex",
+    settings: {
+      number_of_shards: 1,
+      number_of_replicas: 0,
+    },
+    mappings: {
+      properties: {
+        // Text fields with standard analyzer
+        fullName: { type: "text", analyzer: "standard" },
+        about: { type: "text", analyzer: "standard" },
+        
+        // Nested structures for education and experience arrays
+        education: {
+          type: "nested",
+          properties: {
+            collegeName: { type: "text", analyzer: "standard" },
+          },
+        },
+        experience: {
+          type: "nested",
+          properties: {
+            companyName: { type: "text", analyzer: "standard" },
+          },
+        },
+        
+        // Verified skills (array of strings)
+        verified_skills: { type: "keyword" },
+        
+        // Floating point field for CGPA range queries
+        cgpa: { type: "float" },
+        
+        // Integer numbers
+        graduationYear: { type: "integer" },
+        experienceYears: { type: "integer" },
+      },
+    },
+  },
 ];
 
 /**

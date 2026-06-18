@@ -2,6 +2,7 @@ import axios from "axios";
 import { Prisma } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
+import { syncUserToResdex } from "services/resdexSyncService";
 
 const SYNONYM_MAP: Record<string, string> = {
   "js": "javascript",
@@ -560,6 +561,9 @@ export const verifyUserSkills = async (userId: string) => {
       data: { trustLevel },
     });
   }
+
+  // Sync candidate profile to Resdex
+  syncUserToResdex(userId);
 
   return {
     success: true,
