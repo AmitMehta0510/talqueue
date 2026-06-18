@@ -119,7 +119,7 @@ export const updatePostHandler =  asyncHandler(
           req.body
         );
 
-      const updatedPost =
+      const { post, removedMedia } =
         await updatePost(
           req.user.id,
           req.params.id,
@@ -128,7 +128,7 @@ export const updatePostHandler =  asyncHandler(
 
       res.json(
         successResponse(
-          updatedPost,
+          { post, removedMedia },
           "Post updated"
         )
       );

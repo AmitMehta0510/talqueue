@@ -14,6 +14,12 @@ export const createPostSchema =
 
     media: z.any().optional(),
 
+    images: z.array(z.string()).optional(),
+
+    videos: z.array(z.string()).optional(),
+
+    video: z.union([z.string(), z.array(z.string())]).optional(),
+
     attachments:
       z.any().optional(),
 
@@ -64,6 +70,15 @@ export const updatePostSchema =
 
     media:
       z.any().optional(),
+
+    images:
+      z.array(z.string()).optional(),
+
+    videos:
+      z.array(z.string()).optional(),
+
+    video:
+      z.union([z.string(), z.array(z.string())]).optional(),
 
     attachments:
       z.any().optional(),

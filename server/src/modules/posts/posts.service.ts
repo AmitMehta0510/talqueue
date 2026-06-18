@@ -65,8 +65,97 @@ const serializePostPreview = (post: any) => {
   };
 };
 
+export const validateAndProcessMedia = (media: any): string[] => {
+  if (!media) return [];
+
+  if (Array.isArray(media)) {
+    const videoExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv", ".m4v"];
+    const isVideo = (url: string) => {
+      try {
+        const parsedUrl = new URL(url);
+        const pathname = parsedUrl.pathname.toLowerCase();
+        return videoExtensions.some(ext => pathname.endsWith(ext));
+      } catch (e) {
+        return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+      }
+    };
+
+    const images: string[] = [];
+    const videos: string[] = [];
+
+    for (const item of media) {
+      if (typeof item === "string") {
+        if (isVideo(item)) {
+          videos.push(item);
+        } else {
+          images.push(item);
+        }
+      }
+    }
+
+    if (images.length > 10) {
+      throw new AppError("Maximum of 10 images are allowed", 400);
+    }
+    if (videos.length > 1) {
+      throw new AppError("Maximum of 1 video is allowed", 400);
+    }
+    return media;
+  }
+
+  if (typeof media === "object") {
+    let images: string[] = [];
+    let videos: string[] = [];
+
+    if (Array.isArray(media.images)) {
+      images = media.images.filter((item: any) => typeof item === "string");
+    }
+
+    if (Array.isArray(media.videos)) {
+      videos = media.videos.filter((item: any) => typeof item === "string");
+    } else if (typeof media.videos === "string") {
+      videos = [media.videos];
+    }
+
+    if (media.video) {
+      if (Array.isArray(media.video)) {
+        videos = [...videos, ...media.video.filter((item: any) => typeof item === "string")];
+      } else if (typeof media.video === "string") {
+        videos.push(media.video);
+      }
+    }
+
+    videos = Array.from(new Set(videos));
+
+    if (images.length > 10) {
+      throw new AppError("Maximum of 10 images are allowed", 400);
+    }
+
+    if (videos.length > 1) {
+      throw new AppError("Maximum of 1 video is allowed", 400);
+    }
+
+    return [...images, ...videos];
+  }
+
+  return [];
+};
+
+export const extractAndProcessMedia = (data: any): string[] => {
+  let mediaPayload = data.media;
+  if (!mediaPayload && (data.images || data.videos || data.video)) {
+    mediaPayload = {
+      images: data.images,
+      videos: data.videos,
+      video: data.video,
+    };
+  }
+  return validateAndProcessMedia(mediaPayload);
+};
+
 // CREATE POST
 export const createPost = async (userId: string, data: any) => {
+  const processedMedia = extractAndProcessMedia(data);
+
   const post = await prisma.post.create({
     data: {
       authorId: userId,
@@ -75,7 +164,7 @@ export const createPost = async (userId: string, data: any) => {
 
       type: data.type,
 
-      media: data.media,
+      media: processedMedia,
 
       attachments: data.attachments,
 
@@ -89,7 +178,7 @@ export const createPost = async (userId: string, data: any) => {
 
       departmentId: data.departmentId,
 
-      companyCommunityId: data.companyCommunityId,
+      communityId: data.companyCommunityId,
 
       projectId: data.projectId,
 
@@ -495,52 +584,84 @@ export const updatePost = async (userId: string, postId: string, data: any) => {
     throw new AppError("Unauthorized", 403);
   }
 
-  //
-  // Replace tags
-  //
-  if (data.tags) {
-    await prisma.postTag.deleteMany({
-      where: {
-        postId,
-      },
-    });
+  let processedMedia: string[] | undefined = undefined;
+  let removedMedia: string[] = [];
+
+  const hasMediaPayload =
+    data.media !== undefined ||
+    data.images !== undefined ||
+    data.videos !== undefined ||
+    data.video !== undefined;
+
+  if (hasMediaPayload) {
+    processedMedia = extractAndProcessMedia(data);
+
+    let oldMedia: string[] = [];
+    if (post.media && Array.isArray(post.media)) {
+      oldMedia = post.media.map((item: any) => String(item));
+    }
+
+    removedMedia = oldMedia.filter((url) => !processedMedia!.includes(url));
   }
 
-  return prisma.post.update({
-    where: {
-      id: postId,
-    },
+  const parsedTags: string[] | undefined = Array.isArray(data.tags)
+    ? Array.from(
+        new Set(
+          data.tags
+            .map((t: any) => String(t).trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      )
+    : undefined;
 
-    data: {
-      content: data.content,
-
-      media: data.media,
-
-      attachments: data.attachments,
-
-      thumbnailUrl: data.thumbnailUrl,
-
-      visibility: data.visibility,
-
-      tags: data.tags
-        ? {
-            create: data.tags.map((tag: string) => ({
-              tag: tag.toLowerCase(),
-            })),
-          }
-        : undefined,
-    },
-
-    include: {
-      author: {
-        include: {
-          profile: true,
+  const updatedPost = await prisma.$transaction(async (tx) => {
+    if (parsedTags !== undefined) {
+      await tx.postTag.deleteMany({
+        where: {
+          postId,
         },
+      });
+    }
+
+    return tx.post.update({
+      where: {
+        id: postId,
       },
 
-      tags: true,
-    },
+      data: {
+        content: data.content,
+
+        media: processedMedia,
+
+        attachments: data.attachments,
+
+        thumbnailUrl: data.thumbnailUrl,
+
+        visibility: data.visibility,
+
+        tags:
+          parsedTags !== undefined
+            ? {
+                create: parsedTags.map((tag: string) => ({
+                  tag,
+                })),
+              }
+            : undefined,
+      },
+
+      include: {
+        author: {
+          include: {
+            profile: true,
+          },
+        },
+
+        tags: true,
+      },
+    });
   });
+
+  return { post: updatedPost, removedMedia };
 };
 
 // DELETE POST
