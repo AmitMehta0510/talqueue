@@ -34,6 +34,7 @@ import externalApplicationRoutes from "modules/externalApplications/externalAppl
 import placementDriveRoutes from "modules/placementDrives/placementDrives.routes";
 import driveInviteRoutes from "modules/driveInvites/driveInvites.routes";
 import resumeRoutes from "modules/resume/resume.routes";
+import resdexRoutes from "modules/resdex/resdex.routes";
 import { successResponse } from "shared/utils/apiResponse";
 
 export const API_PREFIX = "/api/v1";
@@ -83,6 +84,7 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "placementDrives", path: "/placement-drives", router: placementDriveRoutes },
   { key: "driveInvites", path: "/drive-invites", router: driveInviteRoutes },
   { key: "resume", path: "/resume", router: resumeRoutes },
+  { key: "resdex", path: "/resdex", router: resdexRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(
