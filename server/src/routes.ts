@@ -33,6 +33,7 @@ import eventRoutes from "modules/events/events.routes";
 import externalApplicationRoutes from "modules/externalApplications/externalApplications.routes";
 import placementDriveRoutes from "modules/placementDrives/placementDrives.routes";
 import driveInviteRoutes from "modules/driveInvites/driveInvites.routes";
+import resumeRoutes from "modules/resume/resume.routes";
 import { successResponse } from "shared/utils/apiResponse";
 
 export const API_PREFIX = "/api/v1";
@@ -81,6 +82,7 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "externalApplications", path: "/external-applications", router: externalApplicationRoutes },
   { key: "placementDrives", path: "/placement-drives", router: placementDriveRoutes },
   { key: "driveInvites", path: "/drive-invites", router: driveInviteRoutes },
+  { key: "resume", path: "/resume", router: resumeRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(
