@@ -1,20 +1,7 @@
-import prisma from "shared/database/prisma";
-
-export const applyRepetitionPrevention = async (
-  userId: string,
-  feed: any[],) => {
-  const recentImpressions = await prisma.recommendationImpression.findMany({
-    where: {
-      userId,
-    },
-
-    orderBy: {
-      createdAt: "desc",
-    },
-
-    take: 500,
-  });
-
+export const applyRepetitionPrevention = (
+  feed: any[],
+  recentImpressions: { entityType: string; entityId: string }[],
+) => {
   const seenMap = new Map<string, number>();
 
   for (const impression of recentImpressions) {
@@ -39,8 +26,9 @@ export const applyRepetitionPrevention = async (
   });
 };
 
-export const applyRecommendationFatiguePrevention = async (
-  feed: any[]) => {
+export const applyRecommendationFatiguePrevention = (
+  feed: any[],
+) => {
   const authorFrequency = new Map<string, number>();
 
   const companyFrequency = new Map<string, number>();
@@ -81,7 +69,7 @@ export const applyRecommendationFatiguePrevention = async (
   });
 };
 
-export const applyExplorationDiversity = async (feed: any[]) => {
+export const applyExplorationDiversity = (feed: any[]) => {
   return feed.map((item, index) => {
     // Every 5th item gets diversity boost
     if (index % 5 === 0) {
@@ -95,20 +83,22 @@ export const applyExplorationDiversity = async (feed: any[]) => {
   });
 };
 
-export const applySmartReranking = async (
-  userId: string,
-  feed: any[],) => {
+export const applySmartReranking = (
+  feed: any[],
+  recentImpressions: { entityType: string; entityId: string }[],
+) => {
   // Repetition prevention
-  let ranked = await applyRepetitionPrevention(userId, feed);
+  let ranked = applyRepetitionPrevention(feed, recentImpressions);
 
   // Fatigue prevention
-  ranked = await applyRecommendationFatiguePrevention(ranked);
+  ranked = applyRecommendationFatiguePrevention(ranked);
 
   // Diversity
-  ranked = await applyExplorationDiversity(ranked);
+  ranked = applyExplorationDiversity(ranked);
 
   // Final ranking
   ranked.sort((a, b) => b.score - a.score);
 
   return ranked;
 };
+

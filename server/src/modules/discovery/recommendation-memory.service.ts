@@ -61,64 +61,6 @@ export const trackRecommendationImpression = async (
   });
 };
 
-export const applyRecommendationMemoryPenalty = async (
-  userId: string,
-
-  entityId: string,
-
-  entityType: any,
-
-  score: number,
-) => {
-  const impressions = await prisma.recommendationImpression.count({
-    where: {
-      userId,
-
-      entityId,
-
-      entityType,
-
-      clicked: false,
-    },
-  });
-
-  //
-  // Penalty multiplier
-  //
-  const penalty = impressions * 8;
-
-  return Math.max(score - penalty, 0);
-};
-
-export const applyRecommendationMemoryBoost = async (
-  userId: string,
-
-  entityId: string,
-
-  entityType: any,
-
-  score: number,
-) => {
-  const clicks = await prisma.recommendationImpression.count({
-    where: {
-      userId,
-
-      entityId,
-
-      entityType,
-
-      clicked: true,
-    },
-  });
-
-  //
-  // Boost
-  //
-  const boost = clicks * 12;
-
-  return score + boost;
-};
-
 export const getRecommendationMemoryMap = async (userId: string) => {
   const impressions = await prisma.recommendationImpression.findMany({
     where: {

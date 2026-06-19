@@ -13,38 +13,25 @@ export const generateFeedCandidates = async (
 
   strategy: CandidateStrategy = "discovery",
 ) => {
-  // USER
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+  // Concurrently fetch user profile details, follows list, and user affinities
+  const [user, follows, affinities] = await Promise.all([
+    prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
 
-    include: {
-      profile: true,
+      include: {
+        profile: true,
 
-      interestProfile: true,
+        interestProfile: true,
 
-      skills: {
-        include: {
-          skill: true,
+        skills: {
+          include: {
+            skill: true,
+          },
         },
       },
-    },
-  });
-
-  if (!user) {
-    return {
-      posts: [],
-      projects: [],
-      hackathons: [],
-      jobs: [],
-      companies: [],
-    };
-  }
-
-  // FOLLOWING & AFFINITY
-
-  const [follows, affinities] = await Promise.all([
+    }),
     prisma.follow.findMany({
       where: {
         followerId: userId,
@@ -70,6 +57,16 @@ export const generateFeedCandidates = async (
       take: 100,
     }),
   ]);
+
+  if (!user) {
+    return {
+      posts: [],
+      projects: [],
+      hackathons: [],
+      jobs: [],
+      companies: [],
+    };
+  }
 
   const followingIds = follows.map((f) => f.followingId);
 

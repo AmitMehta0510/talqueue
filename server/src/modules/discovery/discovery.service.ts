@@ -1,3 +1,4 @@
+import prisma from "shared/database/prisma";
 import { generateFeedCandidates } from "./candidate-generator.service";
 
 import { applyFeedDiversity } from "./feed-diversity.service";
@@ -34,14 +35,25 @@ const applyMemoryToItems = (
 };
 
 export const getDiscoveryFeed = async (userId: string) => {
-  //create context
-  const context = await buildFeedContext(userId);
-
-  // Candidates
-  const candidates = await generateFeedCandidates(userId);
-
-  // Memory Map
-  const memoryMap = await getRecommendationMemoryMap(userId);
+  // Pre-fetch all dependencies in a single parallel block
+  const [context, candidates, memoryMap, recentImpressions] = await Promise.all([
+    buildFeedContext(userId),
+    generateFeedCandidates(userId),
+    getRecommendationMemoryMap(userId),
+    prisma.recommendationImpression.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        entityType: true,
+        entityId: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 500,
+    }),
+  ]);
 
   // Unified feed
   const feed: RankedFeedItem[] = [
@@ -80,11 +92,12 @@ export const getDiscoveryFeed = async (userId: string) => {
 
   const feedWithMemory = applyMemoryToItems(feed, memoryMap);
 
-  // Ranking
-  const ranked = await applySmartReranking(userId, feedWithMemory);
+  // Ranking (now fully synchronous)
+  const ranked = applySmartReranking(feedWithMemory, recentImpressions);
 
   // Diversity
   const diversified = await applyFeedDiversity(ranked);
 
   return diversified.slice(0, 60);
 };
+
