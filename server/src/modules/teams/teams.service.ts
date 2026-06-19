@@ -1,4 +1,5 @@
 import prisma from "shared/database/prisma";
+import { Prisma } from "@prisma/client";
 
 import AppError from "shared/errors/AppError";
 
@@ -15,14 +16,10 @@ import { calculateUserAffinity } from "modules/affinity/affinity.service";
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 export const createTeam = async (ownerId: string, data: any) => {
-  //
   // Remove duplicates
-  //
   const uniqueMembers = Array.from(new Set([...(data.members || []), ownerId]));
 
-  //
   // Create team
-  //
   const team = await prisma.team.create({
     data: {
       name: data.name,
@@ -53,9 +50,7 @@ export const createTeam = async (ownerId: string, data: any) => {
     },
   });
 
-  //
   // Create team conversation
-  //
   await prisma.conversation.create({
     data: {
       type: "TEAM",
@@ -70,9 +65,7 @@ export const createTeam = async (ownerId: string, data: any) => {
     },
   });
 
-  //
   // Reputation reward
-  //
   addReputation(
     ownerId,
 
@@ -87,9 +80,7 @@ export const createTeam = async (ownerId: string, data: any) => {
     },
   ).catch(console.error);
 
-  //
   // Activity
-  //
   createActivity(
     ownerId,
 
@@ -104,9 +95,7 @@ export const createTeam = async (ownerId: string, data: any) => {
     },
   ).catch(console.error);
 
-  //
   // Team creation affinity
-  //
   await Promise.all(
     uniqueMembers.map(async (memberId: string) => {
       if (memberId === ownerId) {
@@ -117,14 +106,10 @@ export const createTeam = async (ownerId: string, data: any) => {
 
       await calculateUserAffinity(memberId, ownerId);
 
-      //
       // Engineering score recalculation
-      //
       await calculateEngineeringScore(memberId);
 
-      //
       // Notify invited members
-      //
       createNotification({
         userId: memberId,
 
@@ -277,58 +262,53 @@ export const inviteMember = async (
     },
   });
 
-  const inviter = await prisma.user.findUnique({
-    where: {
-      id: invitedById,
-    },
+  // Offload social graph signal (affinity) and analytics indicators (activity, notifications) to background macro-task
+  setImmediate(() => {
+    (async () => {
+      try {
+        const [inviter, team] = await Promise.all([
+          prisma.user.findUnique({
+            where: {
+              id: invitedById,
+            },
+            include: {
+              profile: true,
+            },
+          }),
+          prisma.team.findUnique({
+            where: {
+              id: teamId,
+            },
+          }),
+          calculateUserAffinity(invitedById, data.invitedUserId),
+          calculateUserAffinity(data.invitedUserId, invitedById),
+        ]);
 
-    include: {
-      profile: true,
-    },
+        await Promise.all([
+          createActivity(
+            invitedById,
+            "TEAM_INVITE_SENT",
+            "Invited user to team",
+            `Invited user to join "${team?.name}"`,
+            {
+              teamId,
+              invitedUserId: data.invitedUserId,
+            },
+          ),
+          createNotification({
+            userId: data.invitedUserId,
+            type: "TEAM_INVITE",
+            title: "New Team Invite",
+            message: `${inviter?.profile?.fullName || inviter?.username || "Someone"} invited you to join "${team?.name}"`,
+          }),
+        ]);
+      } catch (err) {
+        console.error("Error executing background side-effects in inviteMember:", err);
+      }
+    })();
   });
 
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-    },
-  });
-
-  // Affinity
-  //
-  await calculateUserAffinity(invitedById, data.invitedUserId);
-
-  await calculateUserAffinity(data.invitedUserId, invitedById);
-
-  //
-  // Activity
-  //
-  createActivity(
-    invitedById,
-
-    "TEAM_INVITE_SENT",
-
-    "Invited user to team",
-
-    `Invited user to join "${team?.name}"`,
-
-    {
-      teamId,
-      invitedUserId: data.invitedUserId,
-    },
-  ).catch(console.error);
-
-  //
-  // Notification
-  //
-  createNotification({
-    userId: data.invitedUserId,
-
-    type: "TEAM_INVITE",
-
-    title: "New Team Invite",
-
-    message: `${inviter?.profile?.fullName || inviter?.username || "Someone"} invited you to join "${team?.name}"`,
-  }).catch(console.error);
+  return invite;
 };
 
 export const reviewInvite = async (
@@ -358,6 +338,7 @@ export const reviewInvite = async (
     throw new AppError("Invite already reviewed", 400);
   }
 
+  let memberAdded = false;
   const result = await prisma.$transaction(async (tx) => {
     const updatedInvite = await tx.teamInvite.update({
       where: {
@@ -387,54 +368,7 @@ export const reviewInvite = async (
           },
         });
 
-        // Reputation reward
-        addReputation(
-          userId,
-
-          "TEAM_JOINED",
-
-          5,
-
-          "Joined a team",
-
-          {
-            teamId: invite.teamId,
-          },
-        ).catch(console.error);
-
-        //
-        // Team reputation
-        //
-        addTeamReputation(invite.teamId, 10).catch(console.error);
-
-        //
-        // Engineering score
-        //
-        calculateEngineeringScore(userId).catch(console.error);
-
-        //
-        // Affinity
-        //
-        await calculateUserAffinity(invite.invitedById, userId);
-
-        await calculateUserAffinity(userId, invite.invitedById);
-
-        //
-        // Activity
-        //
-        createActivity(
-          userId,
-
-          "TEAM_JOINED",
-
-          "Joined a team",
-
-          `Joined team "${invite.team.name}"`,
-
-          {
-            teamId: invite.teamId,
-          },
-        ).catch(console.error);
+        memberAdded = true;
 
         const teamConversation = await tx.conversation.findFirst({
           where: {
@@ -458,28 +392,67 @@ export const reviewInvite = async (
     return updatedInvite;
   });
 
-  const receiver = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
+  // Offload social graph signals and analytics updates to a background task
+  setImmediate(() => {
+    (async () => {
+      try {
+        const sideEffects: Promise<any>[] = [];
 
-    include: {
-      profile: true,
-    },
+        if (memberAdded) {
+          sideEffects.push(
+            addReputation(
+              userId,
+              "TEAM_JOINED",
+              5,
+              "Joined a team",
+              {
+                teamId: invite.teamId,
+              },
+            ),
+            addTeamReputation(invite.teamId, 10),
+            calculateEngineeringScore(userId),
+            calculateUserAffinity(invite.invitedById, userId),
+            calculateUserAffinity(userId, invite.invitedById),
+            createActivity(
+              userId,
+              "TEAM_JOINED",
+              "Joined a team",
+              `Joined team "${invite.team.name}"`,
+              {
+                teamId: invite.teamId,
+              },
+            ),
+          );
+        }
+
+        // Fetch receiver details for the notification
+        const receiver = await prisma.user.findUnique({
+          where: {
+            id: userId,
+          },
+          include: {
+            profile: true,
+          },
+        });
+
+        sideEffects.push(
+          createNotification({
+            userId: invite.invitedById,
+            type: "TEAM_INVITE",
+            title: status === "ACCEPTED" ? "Invite Accepted" : "Invite Rejected",
+            message:
+              status === "ACCEPTED"
+                ? `${receiver?.profile?.fullName || receiver?.username || "Someone"} accepted your team invite`
+                : `${receiver?.profile?.fullName || receiver?.username || "Someone"} rejected your team invite`,
+          })
+        );
+
+        await Promise.all(sideEffects);
+      } catch (err) {
+        console.error("Error executing background side-effects in reviewInvite:", err);
+      }
+    })();
   });
-
-  createNotification({
-    userId: invite.invitedById,
-
-    type: "TEAM_INVITE",
-
-    title: status === "ACCEPTED" ? "Invite Accepted" : "Invite Rejected",
-
-    message:
-      status === "ACCEPTED"
-        ? `${receiver?.profile?.fullName || receiver?.username || "Someone"} accepted your team invite`
-        : `${receiver?.profile?.fullName || receiver?.username || "Someone"} rejected your team invite`,
-  }).catch(console.error);
 
   return result;
 };
@@ -561,71 +534,67 @@ export const removeTeamMember = async (
     },
   });
 
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-    },
+  // Offload reputation updates, activities, notifications, affinities to background macro-task
+  setImmediate(() => {
+    (async () => {
+      try {
+        const team = await prisma.team.findUnique({
+          where: {
+            id: teamId,
+          },
+        });
+
+        const sideEffects: Promise<any>[] = [];
+
+        sideEffects.push(
+          createNotification({
+            userId: memberUserId,
+
+            type: "TEAM_INVITE",
+
+            title: "Removed From Team",
+
+            message: `You were removed from ${team?.name || "a team"}`,
+          }),
+          addReputation(
+            memberUserId,
+
+            "TEAM_REMOVED",
+
+            -7,
+
+            "Removed from team",
+
+            {
+              teamId,
+            },
+          ),
+          addTeamReputation(teamId, -5),
+          calculateEngineeringScore(memberUserId),
+          calculateUserAffinity(requesterId, memberUserId),
+          calculateUserAffinity(memberUserId, requesterId),
+          createActivity(
+            requesterId,
+
+            "TEAM_MEMBER_REMOVED",
+
+            "Removed team member",
+
+            "Removed a member from team",
+
+            {
+              teamId,
+              memberUserId,
+            },
+          )
+        );
+
+        await Promise.all(sideEffects);
+      } catch (err) {
+        console.error("Error executing background side-effects in removeTeamMember:", err);
+      }
+    })();
   });
-
-  createNotification({
-    userId: memberUserId,
-
-    type: "TEAM_INVITE",
-
-    title: "Removed From Team",
-
-    message: `You were removed from ${team?.name || "a team"}`,
-  }).catch(console.error);
-
-  // Reputation penalty
-  addReputation(
-    memberUserId,
-
-    "TEAM_REMOVED",
-
-    -7,
-
-    "Removed from team",
-
-    {
-      teamId,
-    },
-  ).catch(console.error);
-
-  //
-  // Team reputation penalty
-  //
-  addTeamReputation(teamId, -5).catch(console.error);
-
-  //
-  // Engineering score recalculation
-  //
-  calculateEngineeringScore(memberUserId).catch(console.error);
-
-  //
-  // Affinity recalculation
-  //
-  await calculateUserAffinity(requesterId, memberUserId);
-
-  await calculateUserAffinity(memberUserId, requesterId);
-
-  //
-  // Activity
-  //
-  createActivity(
-    requesterId,
-
-    "TEAM_MEMBER_REMOVED",
-
-    "Removed team member",
-
-    "Removed a member from team",
-
-    {
-      teamId,
-      memberUserId,
-    },
-  ).catch(console.error);
 
   return {
     success: true,
@@ -655,47 +624,37 @@ export const leaveTeam = async (userId: string, teamId: string) => {
     },
   });
 
-  // Reputation penalty
-  addReputation(
-    userId,
+  // Offload reputation updates, activity logs, engineering score to background macro-task
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [];
 
-    "TEAM_LEFT",
+    sideEffects.push(
+      addReputation(
+        userId,
+        "TEAM_LEFT",
+        -3,
+        "Left a team",
+        {
+          teamId,
+        },
+      ),
+      addTeamReputation(teamId, -2),
+      calculateEngineeringScore(userId),
+      createActivity(
+        userId,
+        "TEAM_LEFT",
+        "Left a team",
+        "Left a team",
+        {
+          teamId,
+        },
+      )
+    );
 
-    -3,
-
-    "Left a team",
-
-    {
-      teamId,
-    },
-  ).catch(console.error);
-
-  //
-  // Team reputation penalty
-  //
-  addTeamReputation(teamId, -2).catch(console.error);
-
-  //
-  // Engineering score
-  //
-  calculateEngineeringScore(userId).catch(console.error);
-
-  //
-  // Activity
-  //
-  createActivity(
-    userId,
-
-    "TEAM_LEFT",
-
-    "Left a team",
-
-    "Left a team",
-
-    {
-      teamId,
-    },
-  ).catch(console.error);
+    Promise.all(sideEffects).catch((err) => {
+      console.error("Error executing background side-effects in leaveTeam:", err);
+    });
+  });
 
   return {
     success: true,
@@ -703,40 +662,32 @@ export const leaveTeam = async (userId: string, teamId: string) => {
 };
 
 export const archiveTeam = async (ownerId: string, teamId: string) => {
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-    },
-  });
-
-  if (!team) {
-    throw new AppError("Team not found", 404);
+  let updatedTeam;
+  try {
+    updatedTeam = await prisma.team.update({
+      where: {
+        id: teamId,
+        ownerId,
+      },
+      data: {
+        status: "ARCHIVED",
+        archivedAt: new Date(),
+      },
+    });
+  } catch (error: any) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      throw new AppError("Team not found or unauthorized", 404);
+    }
+    throw error;
   }
 
-  if (team.ownerId !== ownerId) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  const updatedTeam = prisma.team.update({
-    where: {
-      id: teamId,
-    },
-
-    data: {
-      status: "ARCHIVED",
-
-      archivedAt: new Date(),
-    },
-  });
-
-  //
   // Team reputation reduction
-  //
   await addTeamReputation(teamId, -10);
 
-  //
   // Activity
-  //
   createActivity(
     ownerId,
 
@@ -744,7 +695,7 @@ export const archiveTeam = async (ownerId: string, teamId: string) => {
 
     "Archived a team",
 
-    `Archived team "${team.name}"`,
+    `Archived team "${updatedTeam.name}"`,
 
     {
       teamId,
@@ -755,40 +706,32 @@ export const archiveTeam = async (ownerId: string, teamId: string) => {
 };
 
 export const restoreTeam = async (ownerId: string, teamId: string) => {
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-    },
-  });
-
-  if (!team) {
-    throw new AppError("Team not found", 404);
+  let updatedTeam;
+  try {
+    updatedTeam = await prisma.team.update({
+      where: {
+        id: teamId,
+        ownerId,
+      },
+      data: {
+        status: "ACTIVE",
+        archivedAt: null,
+      },
+    });
+  } catch (error: any) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      throw new AppError("Team not found or unauthorized", 404);
+    }
+    throw error;
   }
 
-  if (team.ownerId !== ownerId) {
-    throw new AppError("Unauthorized", 403);
-  }
-
-  const updatedTeam = prisma.team.update({
-    where: {
-      id: teamId,
-    },
-
-    data: {
-      status: "ACTIVE",
-
-      archivedAt: null,
-    },
-  });
-
-  //
   // Team reputation recovery
-  //
   await addTeamReputation(teamId, 5);
 
-  //
   // Activity
-  //
   createActivity(
     ownerId,
 
@@ -796,7 +739,7 @@ export const restoreTeam = async (ownerId: string, teamId: string) => {
 
     "Restored a team",
 
-    `Restored team "${team.name}"`,
+    `Restored team "${updatedTeam.name}"`,
 
     {
       teamId,
@@ -817,30 +760,22 @@ export const deleteTeam = async (ownerId: string, teamId: string) => {
     },
   });
 
-  //
   // Not found
-  //
   if (!team) {
     throw new AppError("Team not found", 404);
   }
 
-  //
   // Already deleted
-  //
   if (team.status === "DELETED" || team.deletedAt) {
     throw new AppError("Team already deleted", 400);
   }
 
-  //
   // Authorization
-  //
   if (team.ownerId !== ownerId) {
     throw new AppError("Unauthorized", 403);
   }
 
-  //
   // Soft delete
-  //
   const updatedTeam = await prisma.team.update({
     where: {
       id: teamId,
@@ -853,59 +788,57 @@ export const deleteTeam = async (ownerId: string, teamId: string) => {
     },
   });
 
-  //
-  // Team reputation penalty
-  //
-  await addTeamReputation(teamId, -50);
+  // Offload member loop processing and team reputation penalty to background macro-task
+  setImmediate(() => {
+    (async () => {
+      try {
+        const sideEffects: Promise<any>[] = [];
 
-  //
-  // Member penalties
-  //
-  await Promise.all(
-    team.members.map(async (member) => {
-      await addReputation(
-        member.userId,
+        // Team reputation penalty
+        sideEffects.push(addTeamReputation(teamId, -50));
 
-        "TEAM_DELETED",
+        // Member penalties
+        team.members.forEach((member) => {
+          sideEffects.push(
+            addReputation(
+              member.userId,
+              "TEAM_DELETED",
+              -10,
+              "Team deleted",
+              {
+                teamId,
+              },
+            ),
+            calculateEngineeringScore(member.userId),
+            createActivity(
+              member.userId,
+              "TEAM_DELETED",
+              "Team deleted",
+              `Team "${team.name}" was deleted`,
+              {
+                teamId,
+              },
+            )
+          );
 
-        -10,
+          if (member.userId !== ownerId) {
+            sideEffects.push(
+              createNotification({
+                userId: member.userId,
+                type: "TEAM_INVITE",
+                title: "Team Deleted",
+                message: `Team "${team.name}" was deleted`,
+              })
+            );
+          }
+        });
 
-        "Team deleted",
-
-        {
-          teamId,
-        },
-      );
-
-      await calculateEngineeringScore(member.userId);
-
-      await createActivity(
-        member.userId,
-
-        "TEAM_DELETED",
-
-        "Team deleted",
-
-        `Team "${team.name}" was deleted`,
-
-        {
-          teamId,
-        },
-      );
-
-      if (member.userId !== ownerId) {
-        createNotification({
-          userId: member.userId,
-
-          type: "TEAM_INVITE",
-
-          title: "Team Deleted",
-
-          message: `Team "${team.name}" was deleted`,
-        }).catch(console.error);
+        await Promise.all(sideEffects);
+      } catch (err) {
+        console.error("Error executing background side-effects in deleteTeam:", err);
       }
-    }),
-  );
+    })();
+  });
 
   return updatedTeam;
 };
@@ -917,14 +850,14 @@ export const updateTeam = async (
   teamId: string,
   data: { name?: string; description?: string },
 ) => {
-  const team = await prisma.team.findUnique({ where: { id: teamId } });
-  if (!team) throw new AppError("Team not found", 404);
-
   // Allow OWNER or ADMIN
   const membership = await prisma.teamMember.findFirst({
     where: { teamId, userId: ownerId },
   });
-  if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+  if (!membership) {
+    throw new AppError("Team not found or unauthorized", 404);
+  }
+  if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
     throw new AppError("Unauthorized", 403);
   }
 
@@ -940,13 +873,15 @@ export const updateTeam = async (
     },
   });
 
-  createActivity(
-    ownerId,
-    "TEAM_UPDATED",
-    "Updated a team",
-    `Updated team "${updated.name}"`,
-    { teamId },
-  ).catch(console.error);
+  setImmediate(() => {
+    createActivity(
+      ownerId,
+      "TEAM_UPDATED",
+      "Updated a team",
+      `Updated team "${updated.name}"`,
+      { teamId },
+    ).catch(console.error);
+  });
 
   return updated;
 };
@@ -978,14 +913,22 @@ export const promoteMember = async (
     include: { user: { include: { profile: true } } },
   });
 
-  const team = await prisma.team.findUnique({ where: { id: teamId } });
-
-  createNotification({
-    userId: memberUserId,
-    type: "TEAM_INVITE",
-    title: "Role Updated",
-    message: `Your role in "${team?.name}" was changed to ${newRole}`,
-  }).catch(console.error);
+  // Offload team fetch and notification dispatch to background macro-task
+  setImmediate(() => {
+    (async () => {
+      try {
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+        await createNotification({
+          userId: memberUserId,
+          type: "TEAM_INVITE",
+          title: "Role Updated",
+          message: `Your role in "${team?.name || "the team"}" was changed to ${newRole}`,
+        });
+      } catch (err) {
+        console.error("Error executing background side-effects in promoteMember:", err);
+      }
+    })();
+  });
 
   return updated;
 };
@@ -998,6 +941,7 @@ export const getMyPendingInvites = async (userId: string) => {
       invitedUserId: userId,
       status: "PENDING",
     },
+    take: 50,
     include: {
       team: {
         include: {
