@@ -1,4 +1,5 @@
-﻿import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
+import AppError from "shared/errors/AppError";
 import * as service from "./driveInvites.service";
 
 export const sendInvite = async (req: Request, res: Response, next: NextFunction) => {
@@ -12,7 +13,13 @@ export const sendInvite = async (req: Request, res: Response, next: NextFunction
 
 export const listInvitesForCollege = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await service.listInvitesForCollege(req.user!.id, req.params.collegeId as string);
+    const { page, limit } = req.query;
+    const result = await service.listInvitesForCollege(
+      req.user!.id,
+      req.params.collegeId as string,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+    );
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -21,7 +28,13 @@ export const listInvitesForCollege = async (req: Request, res: Response, next: N
 
 export const listInvitesSentByCompany = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await service.listInvitesSentByCompany(req.user!.id, req.params.companyId as string);
+    const { page, limit } = req.query;
+    const result = await service.listInvitesSentByCompany(
+      req.user!.id,
+      req.params.companyId as string,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+    );
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -32,8 +45,7 @@ export const respondToInvite = async (req: Request, res: Response, next: NextFun
   try {
     const { action } = req.body;
     if (!["ACCEPT", "REJECT"].includes(action)) {
-      res.status(400).json({ success: false, message: "action must be ACCEPT or REJECT" });
-      return;
+      throw new AppError("Invalid input parameter options payload value provided", 400);
     }
     const result = await service.respondToInvite(req.user!.id, req.params.inviteId as string, action);
     res.json({ success: true, data: result });
@@ -50,4 +62,3 @@ export const withdrawInvite = async (req: Request, res: Response, next: NextFunc
     next(err);
   }
 };
-

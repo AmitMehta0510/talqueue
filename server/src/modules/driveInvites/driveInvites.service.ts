@@ -37,10 +37,10 @@ export const sendInvite = async (actorId: string, data: SendInviteData) => {
   const direction = data.initiatedBy || "COMPANY_TO_COLLEGE";
 
   if (direction === "COMPANY_TO_COLLEGE") {
-    // Recruiter sends invite to a college â†’ validate recruiter has company access
+    // Recruiter sends invite to a college → validate recruiter has company access
     await assertCompanyAccess(actorId, data.companyId);
   } else {
-    // College TPO invites a company â†’ validate TPO/CDCR
+    // College TPO invites a company → validate TPO/CDCR
     const isTpoOrCdcr = await isCollegeAdminOrCdcr(actorId, data.collegeId);
     if (!isTpoOrCdcr) {
       throw new AppError("Only college admins or CDCR members can invite companies.", 403);
@@ -83,56 +83,65 @@ export const sendInvite = async (actorId: string, data: SendInviteData) => {
     },
   });
 
-  // Notify the target side's admins
-  if (direction === "COMPANY_TO_COLLEGE") {
-    // Notify all college admins for this college
-    const collegeAdmins = await prisma.collegeAdmin.findMany({
-      where: { collegeId: data.collegeId },
-      select: { userId: true },
-    });
-    await Promise.all(
-      collegeAdmins.map((ca) =>
-        prisma.notification.create({
-          data: {
-            userId: ca.userId,
-            actorId,
-            type: "PLACEMENT_DRIVE_INVITE",
-            title: "Campus Drive Invitation",
-            message: `${company.name} has invited your college for a placement drive: "${data.driveTitle}".`,
-            actionUrl: `/colleges`,
-          },
-        }),
-      ),
-    );
-  } else {
-    // Notify company admins
-    const companyAdmins = await prisma.companyAdmin.findMany({
-      where: { companyId: data.companyId },
-      select: { userId: true },
-    });
-    await Promise.all(
-      companyAdmins.map((ca) =>
-        prisma.notification.create({
-          data: {
-            userId: ca.userId,
-            actorId,
-            type: "PLACEMENT_DRIVE_INVITE",
-            title: "Campus Drive Request",
-            message: `${college.name} has invited your company to conduct a placement drive: "${data.driveTitle}".`,
-            actionUrl: `/recruiter`,
-          },
-        }),
-      ),
-    );
-  }
+  // Notify the target side's admins in the background asynchronously
+  setImmediate(async () => {
+    try {
+      if (direction === "COMPANY_TO_COLLEGE") {
+        // Notify all college admins for this college
+        const collegeAdmins = await prisma.collegeAdmin.findMany({
+          where: { collegeId: data.collegeId },
+          select: { userId: true },
+        });
+        if (collegeAdmins.length > 0) {
+          await prisma.notification.createMany({
+            data: collegeAdmins.map((ca) => ({
+              userId: ca.userId,
+              actorId,
+              type: "PLACEMENT_DRIVE_INVITE",
+              title: "Campus Drive Invitation",
+              message: `${company.name} has invited your college for a placement drive: "${data.driveTitle}".`,
+              actionUrl: `/colleges`,
+            })),
+          });
+        }
+      } else {
+        // Notify company admins
+        const companyAdmins = await prisma.companyAdmin.findMany({
+          where: { companyId: data.companyId },
+          select: { userId: true },
+        });
+        if (companyAdmins.length > 0) {
+          await prisma.notification.createMany({
+            data: companyAdmins.map((ca) => ({
+              userId: ca.userId,
+              actorId,
+              type: "PLACEMENT_DRIVE_INVITE",
+              title: "Campus Drive Request",
+              message: `${college.name} has invited your company to conduct a placement drive: "${data.driveTitle}".`,
+              actionUrl: `/recruiter`,
+            })),
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send invite notifications asynchronously:", error);
+    }
+  });
 
   return invite;
 };
 
-// LIST INVITES FOR A COLLEGE (TPO view â€” incoming COMPANY_TO_COLLEGE)
-export const listInvitesForCollege = async (actorId: string, collegeId: string) => {
+// LIST INVITES FOR A COLLEGE (TPO view — incoming COMPANY_TO_COLLEGE)
+export const listInvitesForCollege = async (
+  actorId: string,
+  collegeId: string,
+  page = 1,
+  limit = 20,
+) => {
   const isTpoOrCdcr = await isCollegeAdminOrCdcr(actorId, collegeId);
   if (!isTpoOrCdcr) throw new AppError("Unauthorized", 403);
+
+  const safeLimit = Math.min(limit, 50);
 
   return prisma.placementDriveInvite.findMany({
     where: {
@@ -146,12 +155,21 @@ export const listInvitesForCollege = async (actorId: string, collegeId: string) 
       placementDrive: { select: { id: true, status: true } },
     },
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
-// LIST INVITES SENT BY COMPANY (recruiter view â€” their outgoing invites)
-export const listInvitesSentByCompany = async (actorId: string, companyId: string) => {
+// LIST INVITES SENT BY COMPANY (recruiter view — their outgoing invites)
+export const listInvitesSentByCompany = async (
+  actorId: string,
+  companyId: string,
+  page = 1,
+  limit = 20,
+) => {
   await assertCompanyAccess(actorId, companyId);
+
+  const safeLimit = Math.min(limit, 50);
 
   return prisma.placementDriveInvite.findMany({
     where: { companyId },
@@ -162,6 +180,8 @@ export const listInvitesSentByCompany = async (actorId: string, companyId: strin
       placementDrive: { select: { id: true, status: true } },
     },
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
@@ -196,46 +216,48 @@ export const respondToInvite = async (
   }
   if (!isAuthorized) throw new AppError("Unauthorized to respond to this invite", 403);
 
-  let placementDriveId: string | undefined;
+  const updated = await prisma.$transaction(async (tx) => {
+    let placementDriveId: string | undefined;
 
-  if (action === "ACCEPT") {
-    // Auto-create the placement drive from the invite data
-    const drive = await prisma.placementDrive.create({
+    if (action === "ACCEPT") {
+      // Auto-create the placement drive from the invite data
+      const drive = await tx.placementDrive.create({
+        data: {
+          driveTitle: invite.driveTitle,
+          companyId: invite.companyId,
+          targetCollegeId: invite.collegeId,
+          postedById: actorId,
+          driveDate: invite.driveDate,
+          applyDeadline: invite.applyDeadline,
+          roles: invite.roles,
+          stipendMin: invite.stipendMin,
+          stipendMax: invite.stipendMax,
+          salaryMin: invite.salaryMin,
+          salaryMax: invite.salaryMax,
+          currency: invite.currency,
+          minCgpa: invite.minCgpa,
+          eligibleBranches: invite.eligibleBranches,
+          eligibleYears: invite.eligibleYears,
+          description: invite.description,
+          status: "UPCOMING",
+        },
+      });
+      placementDriveId = drive.id;
+    }
+
+    return tx.placementDriveInvite.update({
+      where: { id: inviteId },
       data: {
-        driveTitle: invite.driveTitle,
-        companyId: invite.companyId,
-        targetCollegeId: invite.collegeId,
-        postedById: actorId,
-        driveDate: invite.driveDate,
-        applyDeadline: invite.applyDeadline,
-        roles: invite.roles,
-        stipendMin: invite.stipendMin,
-        stipendMax: invite.stipendMax,
-        salaryMin: invite.salaryMin,
-        salaryMax: invite.salaryMax,
-        currency: invite.currency,
-        minCgpa: invite.minCgpa,
-        eligibleBranches: invite.eligibleBranches,
-        eligibleYears: invite.eligibleYears,
-        description: invite.description,
-        status: "UPCOMING",
+        status: action === "ACCEPT" ? "ACCEPTED" : "REJECTED",
+        reviewedAt: new Date(),
+        ...(placementDriveId ? { placementDriveId } : {}),
+      },
+      include: {
+        company: { select: { id: true, name: true, logoUrl: true } },
+        college: { select: { id: true, name: true } },
+        placementDrive: { select: { id: true, status: true, driveTitle: true } },
       },
     });
-    placementDriveId = drive.id;
-  }
-
-  const updated = await prisma.placementDriveInvite.update({
-    where: { id: inviteId },
-    data: {
-      status: action === "ACCEPT" ? "ACCEPTED" : "REJECTED",
-      reviewedAt: new Date(),
-      ...(placementDriveId ? { placementDriveId } : {}),
-    },
-    include: {
-      company: { select: { id: true, name: true, logoUrl: true } },
-      college: { select: { id: true, name: true } },
-      placementDrive: { select: { id: true, status: true, driveTitle: true } },
-    },
   });
 
   // Notify the invite creator
@@ -244,15 +266,19 @@ export const respondToInvite = async (
       ? `Your placement drive invite for "${invite.driveTitle}" was accepted! The drive is now live.`
       : `Your placement drive invite for "${invite.driveTitle}" was declined.`;
 
-  await prisma.notification.create({
-    data: {
-      userId: invite.createdById,
-      actorId,
-      type: "PLACEMENT_DRIVE_INVITE",
-      title: action === "ACCEPT" ? "Drive Invite Accepted" : "Drive Invite Declined",
-      message: notifMsg,
-      actionUrl: action === "ACCEPT" ? `/jobs` : `/recruiter`,
-    },
+  setImmediate(() => {
+    prisma.notification.create({
+      data: {
+        userId: invite.createdById,
+        actorId,
+        type: "PLACEMENT_DRIVE_INVITE",
+        title: action === "ACCEPT" ? "Drive Invite Accepted" : "Drive Invite Declined",
+        message: notifMsg,
+        actionUrl: action === "ACCEPT" ? `/jobs` : `/recruiter`,
+      },
+    }).catch((err) => {
+      console.error("Failed to create respond invite notification:", err);
+    });
   });
 
   return updated;
@@ -273,4 +299,3 @@ export const withdrawInvite = async (actorId: string, inviteId: string) => {
     data: { status: "WITHDRAWN" },
   });
 };
-
