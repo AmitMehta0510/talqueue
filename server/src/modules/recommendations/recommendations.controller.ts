@@ -19,13 +19,9 @@ import {
 } from "./recommendations.service";
 
 import {
-
   recommendJobsForUserAdvanced,
-
   recommendCollaborators,
-
   recommendProjectsForUser,
-
 } from "./recommendation-engine.service";
 
 
@@ -54,10 +50,16 @@ export const getSavedJobsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const jobs =
         await getSavedJobs(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -72,10 +74,16 @@ export const getRecommendedJobsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const jobs =
         await getRecommendedJobs(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -90,9 +98,16 @@ export const getTrendingJobsHandler =
       req: Request,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 15 : limit;
 
       const jobs =
-        await getTrendingJobs();
+        await getTrendingJobs(
+          safePage,
+          safeLimitParam
+        );
 
       res.json(
         successResponse(jobs)
@@ -106,10 +121,16 @@ export const getInternshipRecommendationsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const jobs =
         await getInternshipRecommendations(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -124,10 +145,16 @@ export const getAdvancedRecommendedJobsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const jobs =
         await recommendJobsForUserAdvanced(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -142,10 +169,16 @@ export const getRecommendedCollaboratorsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const collaborators =
         await recommendCollaborators(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -162,10 +195,16 @@ export const getRecommendedProjectsHandler =
       req: any,
       res: Response
     ) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const safePage = isNaN(page as number) ? 1 : page;
+      const safeLimitParam = isNaN(limit as number) ? 20 : limit;
 
       const projects =
         await recommendProjectsForUser(
-          req.user.id
+          req.user.id,
+          safePage,
+          safeLimitParam
         );
 
       res.json(
@@ -174,4 +213,4 @@ export const getRecommendedProjectsHandler =
         )
       );
     }
-  );  
+  );

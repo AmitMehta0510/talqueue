@@ -1,266 +1,168 @@
 import prisma from "shared/database/prisma";
 
-export const calculateJobRecommendationScore =  async (
-    userId: string,
-    job: any
-  ) => {
+export const calculateJobRecommendationScoreSync = (
+  user: any,
+  job: any
+): number => {
+  if (!user) {
+    return 0;
+  }
 
-    //
-    // User
-    //
-    const user =
-      await prisma.user.findUnique({
+  let score = 0;
 
-        where: {
-          id: userId,
-        },
+  //
+  // Skills
+  //
+  const userSkills = (user.skills || []).map(
+    (s: any) => s.skill?.name?.toLowerCase() || ""
+  ).filter(Boolean);
 
-        include: {
+  const requiredSkills = (job.skillsRequired || []).map(
+    (skill: string) => skill.toLowerCase()
+  );
 
-          skills: {
-            include: {
-              skill: true,
-            },
+  const userSkillsSet = new Set(userSkills);
+  const matchedSkills = requiredSkills.filter(
+    (skill: string) => userSkillsSet.has(skill)
+  );
+
+  score += matchedSkills.length * 15;
+
+  //
+  // Engineering score
+  //
+  score += Math.min(
+    (user.engineeringScore || 0) * 0.05,
+    100
+  );
+
+  //
+  // Trust level
+  //
+  const trustWeights: Record<string, number> = {
+    BEGINNER: 5,
+    EMERGING: 15,
+    VERIFIED: 35,
+    ADVANCED: 60,
+    ELITE: 100,
+  };
+
+  score += trustWeights[user.trustLevel] || 0;
+
+  //
+  // Verified projects
+  //
+  const verifiedProjects = (user.projectMemberships || []).filter(
+    (membership: any) => membership.project?.verified
+  ).length;
+
+  score += verifiedProjects * 20;
+
+  //
+  // Live projects
+  //
+  const liveProjects = (user.projectMemberships || []).filter(
+    (membership: any) => membership.project?.liveUrl
+  ).length;
+
+  score += liveProjects * 10;
+
+  //
+  // GitHub strength
+  //
+  const totalStars = (user.projectMemberships || []).reduce(
+    (acc: number, membership: any) => acc + (membership.project?.starsCount || 0),
+    0
+  );
+
+  score += Math.min(totalStars * 0.5, 50);
+
+  //
+  // Experience relevance
+  //
+  const yearsExperience = (user.experiences || []).reduce(
+    (acc: number, exp: any) => {
+      const end = exp.endDate ? new Date(exp.endDate) : new Date();
+      const start = new Date(exp.startDate);
+      const months = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30);
+      return acc + months;
+    },
+    0
+  ) / 12;
+
+  score += Math.min(yearsExperience * 10, 50);
+
+  //
+  // Clamp
+  //
+  return Math.min(Math.round(score), 1000);
+};
+
+export const recommendJobsForUserAdvanced = async (
+  userId: string,
+  page = 1,
+  limit = 20
+) => {
+  //
+  // Open jobs and user prefetch in parallel
+  //
+  const [user, jobs] = await Promise.all([
+    prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        skills: {
+          include: {
+            skill: true,
           },
-
-          experiences: true,
-
-          projectMemberships: {
-            include: {
-              project: true,
-            },
+        },
+        experiences: true,
+        projectMemberships: {
+          include: {
+            project: true,
           },
         },
-      });
+      },
+    }),
+    prisma.job.findMany({
+      where: {
+        status: "OPEN",
+      },
+      include: {
+        company: true,
+      },
+      take: 200,
+    }),
+  ]);
 
-    if (!user) {
-      return 0;
-    }
+  if (!user) {
+    return [];
+  }
 
-    let score = 0;
-
-    //
-    // Skills
-    //
-    const userSkills =
-      user.skills.map(
-        (s) =>
-          s.skill.name
-            .toLowerCase()
-      );
-
-    const requiredSkills =
-      (
-        job.skillsRequired ||
-        []
-      ).map(
-        (skill: string) =>
-          skill.toLowerCase()
-      );
-
-    const matchedSkills =
-      requiredSkills.filter(
-        (
-          skill: string
-        ) =>
-          userSkills.includes(
-            skill
-          )
-      );
-
-    score +=
-      matchedSkills.length *
-      15;
-
-    //
-    // Engineering score
-    //
-    score += Math.min(
-      user.engineeringScore *
-        0.05,
-      100
-    );
-
-    //
-    // Trust level
-    //
-    const trustWeights = {
-
-      BEGINNER: 5,
-
-      EMERGING: 15,
-
-      VERIFIED: 35,
-
-      ADVANCED: 60,
-
-      ELITE: 100,
+  //
+  // Rank jobs
+  //
+  const ranked = jobs.map((job) => {
+    const recommendationScore = calculateJobRecommendationScoreSync(user, job);
+    return {
+      ...job,
+      recommendationScore,
     };
+  });
 
-    score +=
-      trustWeights[
-        user.trustLevel
-      ] || 0;
+  //
+  // Sort
+  //
+  ranked.sort(
+    (a, b) => b.recommendationScore - a.recommendationScore
+  );
 
-    //
-    // Verified projects
-    //
-    const verifiedProjects =
-      user.projectMemberships.filter(
-        (membership) =>
-          membership.project
-            .verified
-      ).length;
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+  return ranked.slice(skip, skip + safeLimit);
+};
 
-    score +=
-      verifiedProjects * 20;
-
-    //
-    // Live projects
-    //
-    const liveProjects =
-      user.projectMemberships.filter(
-        (membership) =>
-          membership.project
-            .liveUrl
-      ).length;
-
-    score +=
-      liveProjects * 10;
-
-    //
-    // GitHub strength
-    //
-    const totalStars =
-      user.projectMemberships.reduce(
-        (
-          acc,
-          membership
-        ) =>
-          acc +
-          membership.project
-            .starsCount,
-
-        0
-      );
-
-    score += Math.min(
-      totalStars * 0.5,
-      50
-    );
-
-    //
-    // Experience relevance
-    //
-    const yearsExperience =
-      user.experiences.reduce(
-        (
-          acc,
-          exp
-        ) => {
-
-          const end =
-            exp.endDate ||
-            new Date();
-
-          const months =
-            (
-              end.getTime() -
-              exp.startDate.getTime()
-            ) /
-            (
-              1000 *
-              60 *
-              60 *
-              24 *
-              30
-            );
-
-          return (
-            acc +
-            months
-          );
-        },
-
-        0
-      ) / 12;
-
-    score += Math.min(
-      yearsExperience * 10,
-      50
-    );
-
-    //
-    // Clamp
-    //
-    return Math.min(
-      Math.round(score),
-      1000
-    );
-  };
-
-export const recommendJobsForUserAdvanced =  async (
-    userId: string,
-    limit = 20
-  ) => {
-
-    //
-    // Open jobs
-    //
-    const jobs =
-      await prisma.job.findMany({
-
-        where: {
-          status: "OPEN",
-        },
-
-        include: {
-          company: true,
-        },
-
-        take: 200,
-      });
-
-    //
-    // Rank jobs
-    //
-    const ranked =
-      await Promise.all(
-
-        jobs.map(
-          async (job) => {
-
-            const recommendationScore =
-              await calculateJobRecommendationScore(
-                userId,
-                job
-              );
-
-            return {
-
-              ...job,
-
-              recommendationScore,
-            };
-          }
-        )
-      );
-
-    //
-    // Sort
-    //
-    ranked.sort(
-      (a, b) =>
-        b.recommendationScore -
-        a.recommendationScore
-    );
-
-    return ranked.slice(
-      0,
-      limit
-    );
-  };
-  
 const SKILL_CATEGORIES: Record<string, string[]> = {
   frontend: [
     "react", "vue", "angular", "html", "css", "javascript", "typescript",
@@ -288,6 +190,12 @@ const SKILL_CATEGORIES: Record<string, string[]> = {
   ]
 };
 
+// Cached Sets for O(1) SKILL_CATEGORIES keyword lookups
+const SKILL_CATEGORIES_SETS: Record<string, Set<string>> = {};
+for (const [category, keywords] of Object.entries(SKILL_CATEGORIES)) {
+  SKILL_CATEGORIES_SETS[category] = new Set(keywords);
+}
+
 export const calculateCosineSimilarity = (tagsA: string[], tagsB: string[]): number => {
   const cleanA = tagsA.map(t => t.toLowerCase().trim()).filter(Boolean);
   const cleanB = tagsB.map(t => t.toLowerCase().trim()).filter(Boolean);
@@ -296,8 +204,11 @@ export const calculateCosineSimilarity = (tagsA: string[], tagsB: string[]): num
 
   const allTags = Array.from(new Set([...cleanA, ...cleanB]));
 
-  const vectorA = allTags.map(tag => cleanA.includes(tag) ? 1 : 0);
-  const vectorB = allTags.map(tag => cleanB.includes(tag) ? 1 : 0);
+  const setA = new Set(cleanA);
+  const setB = new Set(cleanB);
+
+  const vectorA = allTags.map(tag => setA.has(tag) ? 1 : 0);
+  const vectorB = allTags.map(tag => setB.has(tag) ? 1 : 0);
 
   let dotProduct = 0;
   let magnitudeA = 0;
@@ -322,8 +233,8 @@ export const getSkillCategories = (skills: string[]): Set<string> => {
   const cleanSkills = skills.map(s => s.toLowerCase().trim());
 
   for (const skill of cleanSkills) {
-    for (const [category, keywords] of Object.entries(SKILL_CATEGORIES)) {
-      if (keywords.includes(skill) || skill.includes(category)) {
+    for (const [category, keywordSet] of Object.entries(SKILL_CATEGORIES_SETS)) {
+      if (keywordSet.has(skill) || skill.includes(category)) {
         categories.add(category);
       }
     }
@@ -358,6 +269,7 @@ export const matchLookingForSkills = (userSkills: string[], lookingForText?: str
 
 export const recommendCollaborators = async (
   userId: string,
+  page = 1,
   limit = 20
 ) => {
   const currentUser = await prisma.user.findUnique({
@@ -378,6 +290,7 @@ export const recommendCollaborators = async (
   }
 
   const currentSkills = currentUser.skills.map((s) => s.skill.name.toLowerCase());
+  const currentSkillsSet = new Set(currentSkills);
 
   const engineers = await prisma.user.findMany({
     where: {
@@ -398,7 +311,7 @@ export const recommendCollaborators = async (
 
   const ranked = engineers.map((engineer) => {
     const skills = engineer.skills.map((s) => s.skill.name.toLowerCase());
-    const sharedSkills = skills.filter((skill) => currentSkills.includes(skill));
+    const sharedSkills = skills.filter((skill) => currentSkillsSet.has(skill));
 
     const similarity = calculateCosineSimilarity(currentSkills, skills);
     const complementarity = calculateComplementarity(currentSkills, skills);
@@ -426,11 +339,14 @@ export const recommendCollaborators = async (
 
   ranked.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
-  return ranked.slice(0, limit);
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+  return ranked.slice(skip, skip + safeLimit);
 };
 
 export const recommendProjectsForUser = async (
   userId: string,
+  page = 1,
   limit = 20
 ) => {
   const userSkills = await prisma.userSkill.findMany({
@@ -492,7 +408,7 @@ export const recommendProjectsForUser = async (
 
   ranked.sort((a, b) => b.recommendationScore - a.recommendationScore);
 
-  return ranked.slice(0, limit);
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+  return ranked.slice(skip, skip + safeLimit);
 };
-  
-  
