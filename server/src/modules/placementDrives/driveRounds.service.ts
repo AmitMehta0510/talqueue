@@ -159,73 +159,83 @@ export const shortlistForRound = async (
 
   await assertRoundManagementAccess(actorId, round.drive.id);
 
-  // Bulk insert to shortlist table (skipping existing ones to avoid unique constraints violation)
-  const shortlistsToCreate = [];
-  for (const appId of applicationIds) {
-    const existing = await prisma.placementDriveRoundShortlist.findUnique({
+  const [createdCount] = await prisma.$transaction(async (tx) => {
+    // 1. Direct unique matching index fetch findMany arrays
+    const existingShortlists = await tx.placementDriveRoundShortlist.findMany({
       where: {
-        roundId_applicationId: {
-          roundId,
-          applicationId: appId,
-        },
+        roundId,
+        applicationId: { in: applicationIds },
       },
+      select: { applicationId: true },
     });
-    if (!existing) {
-      shortlistsToCreate.push({
+
+    const existingAppIds = new Set(existingShortlists.map((es) => es.applicationId));
+    const shortlistsToCreate = applicationIds
+      .filter((appId) => !existingAppIds.has(appId))
+      .map((appId) => ({
         roundId,
         applicationId: appId,
+      }));
+
+    if (shortlistsToCreate.length > 0) {
+      await tx.placementDriveRoundShortlist.createMany({
+        data: shortlistsToCreate,
       });
     }
-  }
 
-  if (shortlistsToCreate.length > 0) {
-    await prisma.placementDriveRoundShortlist.createMany({
-      data: shortlistsToCreate,
-    });
-  }
+    // Update application status if specified
+    if (updateStatus) {
+      await tx.placementDriveApplication.updateMany({
+        where: {
+          id: { in: applicationIds },
+        },
+        data: {
+          status: updateStatus,
+        },
+      });
+    }
 
-  // Update application status if specified
+    return [shortlistsToCreate.length];
+  });
+
+  // Notify all advanced students in the background
   if (updateStatus) {
-    await prisma.placementDriveApplication.updateMany({
-      where: {
-        id: { in: applicationIds },
-      },
-      data: {
-        status: updateStatus,
-      },
+    setImmediate(async () => {
+      try {
+        const applications = await prisma.placementDriveApplication.findMany({
+          where: { id: { in: applicationIds } },
+          select: { userId: true },
+        });
+
+        if (applications.length > 0) {
+          const statusLabel: Record<PlacementDriveApplicationStatus, string> = {
+            APPLIED: "Applied",
+            SHORTLISTED: "Shortlisted",
+            INTERVIEW_R1: "Round 1 Interview",
+            INTERVIEW_R2: "Round 2 Interview",
+            INTERVIEW_R3: "Round 3 Interview",
+            PPO_OFFERED: "PPO Offered",
+            SELECTED: "Selected 🎉",
+            REJECTED: "Not Selected",
+            WITHDRAWN: "Withdrawn",
+          };
+
+          await prisma.notification.createMany({
+            data: applications.map((app) => ({
+              userId: app.userId,
+              actorId,
+              type: "PLACEMENT_DRIVE_APPLIED",
+              title: `Shortlisted for ${round.roundType}`,
+              message: `Congratulations! You have been advanced to ${statusLabel[updateStatus] ?? updateStatus} for "${round.drive.driveTitle}".`,
+              actionUrl: `/jobs`,
+            })),
+          });
+        }
+      } catch (err) {
+        console.error("Failed to generate advanced status notifications:", err);
+      }
     });
-
-    // Notify all advanced students
-    const statusLabel: Record<PlacementDriveApplicationStatus, string> = {
-      APPLIED: "Applied",
-      SHORTLISTED: "Shortlisted",
-      INTERVIEW_R1: "Round 1 Interview",
-      INTERVIEW_R2: "Round 2 Interview",
-      INTERVIEW_R3: "Round 3 Interview",
-      PPO_OFFERED: "PPO Offered",
-      SELECTED: "Selected 🎉",
-      REJECTED: "Not Selected",
-      WITHDRAWN: "Withdrawn",
-    };
-
-    const applications = await prisma.placementDriveApplication.findMany({
-      where: { id: { in: applicationIds } },
-      select: { userId: true },
-    });
-
-    if (applications.length > 0) {
-      await prisma.notification.createMany({
-        data: applications.map((app) => ({
-          userId: app.userId,
-          actorId,
-          type: "PLACEMENT_DRIVE_APPLIED",
-          title: `Shortlisted for ${round.roundType}`,
-          message: `Congratulations! You have been advanced to ${statusLabel[updateStatus] ?? updateStatus} for "${round.drive.driveTitle}".`,
-          actionUrl: `/jobs`,
-        })),
-      });
-    }
   }
 
-  return { success: true, count: shortlistsToCreate.length };
+  return { success: true, count: createdCount };
 };

@@ -4,6 +4,7 @@ import * as roundService from "./driveRounds.service";
 import * as analyticsService from "./driveAnalytics.service";
 import { PlacementDriveApplicationStatus } from "@prisma/client";
 import asyncHandler from "shared/utils/asyncHandler";
+import AppError from "shared/errors/AppError";
 
 export const createPlacementDrive = asyncHandler(async (req: Request, res: Response) => {
   const result = await service.createPlacementDrive(req.user!.id, req.body);
@@ -22,15 +23,18 @@ export const getAllDrivesForCollege = asyncHandler(async (req: Request, res: Res
   const { collegeId } = req.params;
   const isTpoOrCdcr = await service.isCollegeAdminOrCdcr(req.user!.id, collegeId as string);
   if (!isTpoOrCdcr) {
-    res.status(403).json({ success: false, message: "Unauthorized" });
-    return;
+    throw new AppError("Unauthorized access role clearance required", 403);
   }
-  const result = await service.getAllDrivesForCollege(collegeId as string);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await service.getAllDrivesForCollege(collegeId as string, page, limit);
   res.json({ success: true, data: result });
 });
 
 export const getMyPostedDrives = asyncHandler(async (req: Request, res: Response) => {
-  const result = await service.getMyPostedDrives(req.user!.id);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await service.getMyPostedDrives(req.user!.id, page, limit);
   res.json({ success: true, data: result });
 });
 
@@ -59,12 +63,16 @@ export const applyToDrive = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const getMyDriveApplications = asyncHandler(async (req: Request, res: Response) => {
-  const result = await service.getMyDriveApplications(req.user!.id);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await service.getMyDriveApplications(req.user!.id, page, limit);
   res.json({ success: true, data: result });
 });
 
 export const getDriveApplicants = asyncHandler(async (req: Request, res: Response) => {
-  const result = await service.getDriveApplicants(req.user!.id, req.params.id as string);
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await service.getDriveApplicants(req.user!.id, req.params.id as string, page, limit);
   res.json({ success: true, data: result });
 });
 
@@ -137,8 +145,7 @@ export const getCollegePlacementStats = asyncHandler(async (req: Request, res: R
   const collegeId = req.params.collegeId as string;
   const isTpoOrCdcr = await service.isCollegeAdminOrCdcr(req.user!.id, collegeId);
   if (!isTpoOrCdcr) {
-    res.status(403).json({ success: false, message: "Unauthorized" });
-    return;
+    throw new AppError("Unauthorized access role clearance required", 403);
   }
   const academicYear = req.query.year ? Number(req.query.year) : undefined;
   const result = await analyticsService.getCollegePlacementStats(collegeId, academicYear);

@@ -55,31 +55,33 @@ const assertCompanyAccess = async (userId: string, companyId: string) => {
 };
 
 export const isCollegeAdminOrCdcr = async (userId: string, collegeId: string): Promise<boolean> => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      roles: {
-        select: {
-          role: { select: { name: true } },
+  const [user, collegeAdmin, cdcrMember] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        roles: {
+          select: {
+            role: { select: { name: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.collegeAdmin.findFirst({
+      where: { userId, collegeId },
+      select: { id: true },
+    }),
+    prisma.cdcrMember.findFirst({
+      where: { userId, collegeId },
+      select: { id: true },
+    }),
+  ]);
+
   const roleNames = new Set((user?.roles || []).map((ur) => ur.role?.name).filter(Boolean));
   if (roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN") || roleNames.has("ADMIN")) {
     return true;
   }
 
-  const collegeAdmin = await prisma.collegeAdmin.findFirst({
-    where: { userId, collegeId },
-    select: { id: true },
-  });
   if (collegeAdmin) return true;
-
-  const cdcrMember = await prisma.cdcrMember.findFirst({
-    where: { userId, collegeId },
-    select: { id: true },
-  });
   if (cdcrMember) return true;
 
   return false;
@@ -365,7 +367,12 @@ export const getDrivesForCollege = async (
 };
 
 // GET ALL DRIVES FOR A COLLEGE (including closed — for admins/TPO)
-export const getAllDrivesForCollege = async (collegeId: string) => {
+export const getAllDrivesForCollege = async (
+  collegeId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
   return prisma.placementDrive.findMany({
     where: { targetCollegeId: collegeId },
     include: {
@@ -374,11 +381,38 @@ export const getAllDrivesForCollege = async (collegeId: string) => {
       },
     },
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
+// PRIVATE HELPER TO CHECK OWNERSHIP OR COLLEGE ADMIN/CDCR ACCESS
+const assertDriveOwnershipOrAdminAccess = async (
+  userId: string,
+  driveId: string,
+  unauthorizedMessage = "Unauthorized to modify this placement drive",
+) => {
+  const drive = await prisma.placementDrive.findUnique({
+    where: { id: driveId },
+    select: { id: true, targetCollegeId: true, postedById: true },
+  });
+  if (!drive) throw new AppError("Drive not found", 404);
+
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, drive.targetCollegeId);
+  const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
+  if (!isAuthorized) {
+    throw new AppError(unauthorizedMessage, 403);
+  }
+  return drive;
+};
+
 // GET MY POSTED DRIVES (recruiter view)
-export const getMyPostedDrives = async (userId: string) => {
+export const getMyPostedDrives = async (
+  userId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
   return prisma.placementDrive.findMany({
     where: { postedById: userId },
     include: {
@@ -390,6 +424,8 @@ export const getMyPostedDrives = async (userId: string) => {
       },
     },
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
@@ -399,17 +435,7 @@ export const updatePlacementDrive = async (
   driveId: string,
   data: UpdatePlacementDriveData,
 ) => {
-  const drive = await prisma.placementDrive.findUnique({
-    where: { id: driveId },
-    select: { id: true, targetCollegeId: true, postedById: true },
-  });
-  if (!drive) throw new AppError("Drive not found", 404);
-
-  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, drive.targetCollegeId);
-  const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
-  if (!isAuthorized) {
-    throw new AppError("Unauthorized to modify this placement drive", 403);
-  }
+  await assertDriveOwnershipOrAdminAccess(userId, driveId, "Unauthorized to modify this placement drive");
 
   return prisma.placementDrive.update({
     where: { id: driveId },
@@ -446,17 +472,7 @@ export const updatePlacementDrive = async (
 
 // CLOSE DRIVE
 export const closePlacementDrive = async (userId: string, driveId: string) => {
-  const drive = await prisma.placementDrive.findUnique({
-    where: { id: driveId },
-    select: { id: true, targetCollegeId: true, postedById: true },
-  });
-  if (!drive) throw new AppError("Drive not found", 404);
-
-  const isTpoOrCdcr = await isCollegeAdminOrCdcr(userId, drive.targetCollegeId);
-  const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
-  if (!isAuthorized) {
-    throw new AppError("Unauthorized to close this placement drive", 403);
-  }
+  await assertDriveOwnershipOrAdminAccess(userId, driveId, "Unauthorized to close this placement drive");
 
   return prisma.placementDrive.update({
     where: { id: driveId },
@@ -536,15 +552,19 @@ export const applyToDrive = async (userId: string, driveId: string, note?: strin
 
   // ── Notify the drive poster (recruiter/TPO) ───────────────────────────────
   if (drive.postedById !== userId) {
-    await prisma.notification.create({
-      data: {
-        userId: drive.postedById,
-        actorId: userId,
-        type: "PLACEMENT_DRIVE_APPLIED",
-        title: "New Placement Drive Application",
-        message: `A student applied to your placement drive: ${drive.driveTitle}`,
-        actionUrl: `/placement-drives/${driveId}/applicants`,
-      },
+    setImmediate(() => {
+      prisma.notification.create({
+        data: {
+          userId: drive.postedById,
+          actorId: userId,
+          type: "PLACEMENT_DRIVE_APPLIED",
+          title: "New Placement Drive Application",
+          message: `A student applied to your placement drive: ${drive.driveTitle}`,
+          actionUrl: `/placement-drives/${driveId}/applicants`,
+        },
+      }).catch((err) => {
+        console.error("Failed to create application notification:", err);
+      });
     });
   }
 
@@ -552,7 +572,12 @@ export const applyToDrive = async (userId: string, driveId: string, note?: strin
 };
 
 // GET MY DRIVE APPLICATIONS (student view)
-export const getMyDriveApplications = async (userId: string) => {
+export const getMyDriveApplications = async (
+  userId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
   return prisma.placementDriveApplication.findMany({
     where: { userId },
     include: {
@@ -564,11 +589,18 @@ export const getMyDriveApplications = async (userId: string) => {
       },
     },
     orderBy: { appliedAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
 // GET APPLICANTS FOR A DRIVE (recruiter / TPO view)
-export const getDriveApplicants = async (userId: string, driveId: string) => {
+export const getDriveApplicants = async (
+  userId: string,
+  driveId: string,
+  page = 1,
+  limit = 20,
+) => {
   const drive = await prisma.placementDrive.findUnique({
     where: { id: driveId },
     select: { id: true, postedById: true, targetCollegeId: true },
@@ -579,6 +611,7 @@ export const getDriveApplicants = async (userId: string, driveId: string) => {
   const isAuthorized = drive.postedById === userId || isTpoOrCdcr;
   if (!isAuthorized) throw new AppError("Unauthorized to view applicants", 403);
 
+  const safeLimit = Math.min(limit, 50);
   return prisma.placementDriveApplication.findMany({
     where: { driveId },
     include: {
@@ -597,6 +630,8 @@ export const getDriveApplicants = async (userId: string, driveId: string) => {
       },
     },
     orderBy: { appliedAt: "asc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
   });
 };
 
@@ -660,15 +695,19 @@ export const updateApplicationStatus = async (
     WITHDRAWN: "Withdrawn",
   };
 
-  await prisma.notification.create({
-    data: {
-      userId: application.userId,
-      actorId,
-      type: "PLACEMENT_DRIVE_APPLIED",
-      title: "Placement Drive Application Update",
-      message: `Your application for "${application.drive.driveTitle}" has been updated: ${statusLabel[status] ?? status}.`,
-      actionUrl: `/jobs`,
-    },
+  setImmediate(() => {
+    prisma.notification.create({
+      data: {
+        userId: application.userId,
+        actorId,
+        type: "PLACEMENT_DRIVE_APPLIED",
+        title: "Placement Drive Application Update",
+        message: `Your application for "${application.drive.driveTitle}" has been updated: ${statusLabel[status] ?? status}.`,
+        actionUrl: `/jobs`,
+      },
+    }).catch((err) => {
+      console.error("Failed to create application update notification:", err);
+    });
   });
 
   return updated;
