@@ -1,9 +1,9 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
-import { JobStatus } from "@prisma/client";
+import { JobStatus, Prisma } from "@prisma/client";
 import { createNotification } from "modules/notificatios/notifications.service";
 import slugify from "slugify";
-import { syncJobToElastic, syncHackathonToElastic } from "services/elasticSync";
+import { syncJobToElastic, syncHackathonToElastic, syncProjectToElastic } from "services/elasticSync";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL HELPERS
@@ -15,8 +15,9 @@ const ensureUserExists = async (userId: string) => {
   return user;
 };
 
-const ensureCollegeExists = async (collegeId: string) => {
-  const college = await prisma.college.findUnique({ where: { id: collegeId } });
+const ensureCollegeExists = async (collegeId: string, tx?: TxClient) => {
+  const db = tx ?? prisma;
+  const college = await db.college.findUnique({ where: { id: collegeId } });
   if (!college) throw new AppError("College not found", 404);
   return college;
 };
@@ -27,64 +28,111 @@ const ensureCompanyExists = async (companyId: string) => {
   return company;
 };
 
-const ensureRole = async (name: string) => {
-  return prisma.role.upsert({
+/** Prisma interactive-transaction client type alias for internal helpers. */
+type TxClient = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+
+const ensureRole = async (name: string, tx?: TxClient) => {
+  const db = tx ?? prisma;
+  return db.role.upsert({
     where: { name },
     update: {},
     create: { name },
   });
 };
 
-const grantRole = async (userId: string, roleName: string) => {
-  const role = await ensureRole(roleName);
-  const existing = await prisma.userRole.findFirst({
+const grantRole = async (userId: string, roleName: string, tx?: TxClient) => {
+  const db = tx ?? prisma;
+  const role = await ensureRole(roleName, tx);
+  const existing = await db.userRole.findFirst({
     where: { userId, roleId: role.id },
   });
   if (!existing) {
-    await prisma.userRole.create({ data: { userId, roleId: role.id } });
+    await db.userRole.create({ data: { userId, roleId: role.id } });
   }
   return role;
 };
 
-const revokeRoleIfOrphaned = async (userId: string, roleName: string, checkQuery: any) => {
-  const role = await prisma.role.findUnique({ where: { name: roleName } });
+const revokeRoleIfOrphaned = async (
+  userId: string,
+  roleName: string,
+  checkQuery: { model: keyof TxClient; where: Record<string, unknown> },
+  tx?: TxClient,
+) => {
+  const db = tx ?? prisma;
+  const role = await db.role.findUnique({ where: { name: roleName } });
   if (!role) return;
-  const otherAssignments = await (prisma[checkQuery.model] as any).count({
+  const otherAssignments = await (db[checkQuery.model] as any).count({
     where: { userId, ...checkQuery.where },
   });
   if (otherAssignments === 0) {
-    await prisma.userRole.deleteMany({ where: { userId, roleId: role.id } });
+    await db.userRole.deleteMany({ where: { userId, roleId: role.id } });
   }
 };
 
+/**
+ * Ensures the given user holds the ADMIN community role in every community
+ * tied to the specified institution (college or company).
+ *
+ * Optimisation: loads ALL existing memberships in a single query, then
+ * issues at most TWO bulk writes (updateMany + createMany) — eliminating
+ * the previous N+1 sequential loop.
+ *
+ * Accepts an optional `tx` client so callers inside `prisma.$transaction`
+ * can pass the transaction handle; defaults to the global `prisma` client.
+ */
 const ensureInstitutionAdminInCommunities = async (
   userId: string,
   type: "COLLEGE" | "COMPANY",
-  entityId: string
+  entityId: string,
+  tx?: TxClient,
 ) => {
-  const communities = await prisma.community.findMany({
-    where:
-      type === "COLLEGE"
-        ? { collegeId: entityId }
-        : { companyId: entityId },
+  const db = tx ?? prisma;
+
+  // ── Step 1: fetch all communities for this institution (one query) ────────
+  const communities = await db.community.findMany({
+    where: type === "COLLEGE" ? { collegeId: entityId } : { companyId: entityId },
     select: { id: true },
   });
 
-  for (const community of communities) {
-    const existing = await prisma.communityMember.findFirst({
-      where: { communityId: community.id, userId },
-    });
-    if (existing) {
-      await prisma.communityMember.update({
-        where: { id: existing.id },
+  if (communities.length === 0) return;
+
+  const communityIds = communities.map((c) => c.id);
+
+  // ── Step 2: load existing memberships in bulk (one query) ─────────────────
+  const existingMemberships = await db.communityMember.findMany({
+    where: { communityId: { in: communityIds }, userId },
+    select: { id: true, communityId: true },
+  });
+
+  // Build a Set of community IDs that already have a membership row
+  const existingCommunityIds = new Set(existingMemberships.map((m) => m.communityId));
+
+  // ── Step 3: split into update targets vs create targets ──────────────────
+  const toUpdate = existingMemberships.map((m) => m.communityId);
+  const toCreate = communityIds.filter((id) => !existingCommunityIds.has(id));
+
+  // ── Step 4: two bulk writes (zero N+1 queries) ────────────────────────────
+  const writes: Promise<unknown>[] = [];
+
+  if (toUpdate.length > 0) {
+    writes.push(
+      db.communityMember.updateMany({
+        where: { communityId: { in: toUpdate }, userId },
         data: { role: "ADMIN" },
-      });
-    } else {
-      await prisma.communityMember.create({
-        data: { communityId: community.id, userId, role: "ADMIN" },
-      });
-    }
+      }),
+    );
   }
+
+  if (toCreate.length > 0) {
+    writes.push(
+      db.communityMember.createMany({
+        data: toCreate.map((communityId) => ({ communityId, userId, role: "ADMIN" })),
+        skipDuplicates: true,
+      }),
+    );
+  }
+
+  await Promise.all(writes);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,19 +147,28 @@ export const assignCollegeAdmin = async (
   await ensureUserExists(userId);
   const college = await ensureCollegeExists(collegeId);
 
-  const existing = await prisma.collegeAdmin.findFirst({
-    where: { userId, collegeId },
+  // ── Transactional block: record creation + role grant + community mapping ──
+  // All writes succeed together or roll back atomically; partial states are
+  // impossible once the transaction commits.
+  const assignment = await prisma.$transaction(async (tx) => {
+    const existing = await tx.collegeAdmin.findFirst({
+      where: { userId, collegeId },
+    });
+    if (existing) throw new AppError("User is already an admin for this college", 409);
+
+    const record = await tx.collegeAdmin.create({
+      data: { userId, collegeId, grantedById: actorId },
+      include: { user: { select: { id: true, username: true, email: true } } },
+    });
+
+    await grantRole(userId, "COLLEGE_ADMIN", tx);
+    await ensureInstitutionAdminInCommunities(userId, "COLLEGE", collegeId, tx);
+
+    return record;
   });
-  if (existing) throw new AppError("User is already an admin for this college", 409);
 
-  const assignment = await prisma.collegeAdmin.create({
-    data: { userId, collegeId, grantedById: actorId },
-    include: { user: { select: { id: true, username: true, email: true } } },
-  });
-
-  await grantRole(userId, "COLLEGE_ADMIN");
-  await ensureInstitutionAdminInCommunities(userId, "COLLEGE", collegeId);
-
+  // ── Side-effect: notification is intentionally outside the transaction ──
+  // A notification write failure must not roll back the admin assignment.
   await createNotification({
     userId,
     actorId,
@@ -126,17 +183,22 @@ export const assignCollegeAdmin = async (
 };
 
 export const removeCollegeAdmin = async (userId: string, collegeId: string) => {
-  const record = await prisma.collegeAdmin.findFirst({
-    where: { userId, collegeId },
-  });
-  if (!record) throw new AppError("Assignment not found", 404);
+  // ── Transactional block: delete record + conditional role revoke ───────────
+  await prisma.$transaction(async (tx) => {
+    const record = await tx.collegeAdmin.findFirst({
+      where: { userId, collegeId },
+    });
+    if (!record) throw new AppError("Assignment not found", 404);
 
-  await prisma.collegeAdmin.delete({ where: { id: record.id } });
+    await tx.collegeAdmin.delete({ where: { id: record.id } });
 
-  // Revoke COLLEGE_ADMIN role if no more college assignments
-  await revokeRoleIfOrphaned(userId, "COLLEGE_ADMIN", {
-    model: "collegeAdmin",
-    where: { NOT: { collegeId } },
+    // Revoke COLLEGE_ADMIN role only if the user has no remaining college assignments
+    await revokeRoleIfOrphaned(
+      userId,
+      "COLLEGE_ADMIN",
+      { model: "collegeAdmin", where: { NOT: { collegeId } } },
+      tx,
+    );
   });
 
   return { message: "College admin removed successfully" };
@@ -180,19 +242,25 @@ export const assignCompanyAdmin = async (
   await ensureUserExists(userId);
   const company = await ensureCompanyExists(companyId);
 
-  const existing = await prisma.companyAdmin.findFirst({
-    where: companyAdminWhereFilter(userId, companyId, officeCity),
+  // ── Transactional block: record creation + role grant + community mapping ──
+  const assignment = await prisma.$transaction(async (tx) => {
+    const existing = await tx.companyAdmin.findFirst({
+      where: companyAdminWhereFilter(userId, companyId, officeCity),
+    });
+    if (existing) throw new AppError("User is already an admin for this company scope", 409);
+
+    const record = await tx.companyAdmin.create({
+      data: { userId, companyId, officeCity, grantedById: actorId },
+      include: { user: { select: { id: true, username: true, email: true } } },
+    });
+
+    await grantRole(userId, "COMPANY_ADMIN", tx);
+    await ensureInstitutionAdminInCommunities(userId, "COMPANY", companyId, tx);
+
+    return record;
   });
-  if (existing) throw new AppError("User is already an admin for this company scope", 409);
 
-  const assignment = await prisma.companyAdmin.create({
-    data: { userId, companyId, officeCity, grantedById: actorId },
-    include: { user: { select: { id: true, username: true, email: true } } },
-  });
-
-  await grantRole(userId, "COMPANY_ADMIN");
-  await ensureInstitutionAdminInCommunities(userId, "COMPANY", companyId);
-
+  // ── Side-effect: notification is intentionally outside the transaction ──
   const scopeText = officeCity ? ` (${officeCity} office)` : "";
   await createNotification({
     userId,
@@ -212,16 +280,21 @@ export const removeCompanyAdmin = async (
   companyId: string,
   officeCity?: string
 ) => {
-  const record = await prisma.companyAdmin.findFirst({
-    where: companyAdminWhereFilter(userId, companyId, officeCity),
-  });
-  if (!record) throw new AppError("Assignment not found", 404);
+  // ── Transactional block: delete record + conditional role revoke ───────────
+  await prisma.$transaction(async (tx) => {
+    const record = await tx.companyAdmin.findFirst({
+      where: companyAdminWhereFilter(userId, companyId, officeCity),
+    });
+    if (!record) throw new AppError("Assignment not found", 404);
 
-  await prisma.companyAdmin.delete({ where: { id: record.id } });
+    await tx.companyAdmin.delete({ where: { id: record.id } });
 
-  await revokeRoleIfOrphaned(userId, "COMPANY_ADMIN", {
-    model: "companyAdmin",
-    where: { companyId: { not: companyId } },
+    await revokeRoleIfOrphaned(
+      userId,
+      "COMPANY_ADMIN",
+      { model: "companyAdmin", where: { companyId: { not: companyId } } },
+      tx,
+    );
   });
 
   return { message: "Company admin removed successfully" };
@@ -261,6 +334,61 @@ export const getAdminStats = async () => {
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - 7);
 
+  // ── Helper: safely extract an integer from a Prisma groupBy _count value ──
+  // Prisma returns either `{ _all: number }` (object shape) or a plain `number`.
+  const extractCount = (raw: number | { _all: number }): number =>
+    typeof raw === "object" ? raw._all : raw;
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // THREE CONCURRENT TRACKS — all launched simultaneously via the outer
+  // Promise.all so the DB can schedule them in parallel.
+  //
+  //  Track 1 — plain entity counts (with soft-delete / archive guards)
+  //  Track 2 — filtered / conditional counts
+  //  Track 3 — groupBy distribution queries
+  // ──────────────────────────────────────────────────────────────────────────
+  const [track1, track2, track3] = await Promise.all([
+
+    // ── Track 1: plain entity counts ───────────────────────────────────────
+    // Models with `deletedAt` carry a { deletedAt: null } guard.
+    // Models with both `deletedAt` AND `archivedAt` (Project, Hackathon)
+    // carry both guards so soft-deleted and archived rows are excluded.
+    Promise.all([
+      prisma.user.count(),
+      prisma.college.count(),
+      prisma.company.count(),
+      prisma.project.count({ where: { deletedAt: null, archivedAt: null } }),
+      prisma.job.count({ where: { deletedAt: null } }),
+      prisma.post.count({ where: { deletedAt: null } }),
+      prisma.hackathon.count({ where: { deletedAt: null, archivedAt: null } }),
+      prisma.community.count(),
+      prisma.referralRequest.count(),
+      prisma.connection.count(),
+      prisma.message.count({ where: { deletedAt: null } }),
+    ]),
+
+    // ── Track 2: filtered / conditional counts ──────────────────────────────
+    Promise.all([
+      prisma.job.count({ where: { status: JobStatus.OPEN, deletedAt: null } }),
+      prisma.project.count({ where: { status: "OPEN", deletedAt: null, archivedAt: null } }),
+      prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.user.count({ where: { createdAt: { gte: weekStart } } }),
+    ]),
+
+    // ── Track 3: groupBy distribution queries ───────────────────────────────
+    Promise.all([
+      prisma.user.groupBy({ by: ["status"], _count: true }),
+      prisma.user.groupBy({ by: ["trustLevel"], _count: true }),
+      prisma.userRole.groupBy({
+        by: ["roleId"],
+        _count: true,
+        where: { role: { name: { in: PLATFORM_ADMIN_ROLES_LIST } } },
+      }),
+      prisma.user.groupBy({ by: ["primaryRole"], _count: true }),
+    ]),
+  ]);
+
+  // ── Destructure tracks ─────────────────────────────────────────────────────
   const [
     userCount,
     collegeCount,
@@ -273,50 +401,20 @@ export const getAdminStats = async () => {
     referralCount,
     connectionCount,
     messageCount,
-    activeJobCount,
-    openProjectCount,
-    newUsersToday,
-    newUsersThisWeek,
-    statusDistribution,
-    trustLevelDistribution,
-    platformRoleDistribution,
-    userRoleDistribution,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.college.count(),
-    prisma.company.count(),
-    prisma.project.count(),
-    prisma.job.count(),
-    prisma.post.count(),
-    prisma.hackathon.count(),
-    prisma.community.count(),
-    prisma.referralRequest.count(),
-    prisma.connection.count(),
-    prisma.message.count(),
-    prisma.job.count({ where: { status: JobStatus.OPEN } }),
-    prisma.project.count({ where: { status: "OPEN" } }),
-    prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
-    prisma.user.count({ where: { createdAt: { gte: weekStart } } }),
-    prisma.user.groupBy({ by: ["status"], _count: true }),
-    prisma.user.groupBy({ by: ["trustLevel"], _count: true }),
-    prisma.userRole.groupBy({
-      by: ["roleId"],
-      _count: true,
-      where: {
-        role: {
-          name: {
-            in: PLATFORM_ADMIN_ROLES_LIST,
-          },
-        },
-      },
-    }),
-    prisma.user.groupBy({ by: ["primaryRole"], _count: true }),
-  ]);
+  ] = track1;
 
-  // Resolve role names for platformRoleDistribution
-  const roleIds = platformRoleDistribution.map((r: any) => r.roleId);
+  const [activeJobCount, openProjectCount, newUsersToday, newUsersThisWeek] = track2;
+
+  const [statusDistribution, trustLevelDistribution, platformRoleDistribution, userRoleDistribution] = track3;
+
+  // ── Sequential follow-up: resolve role names for platformRoleDistribution ──
+  // This query depends on roleIds from track 3, so it runs after the main
+  // concurrent block rather than racing it.
+  const roleIds = platformRoleDistribution.map((r) => r.roleId);
   const roles = await prisma.role.findMany({ where: { id: { in: roleIds } } });
-  const roleMap = Object.fromEntries(roles.map((r: { id: string; name: string }) => [r.id, r.name]));
+  const roleMap = Object.fromEntries(
+    roles.map((r: { id: string; name: string }) => [r.id, r.name]),
+  );
 
   return {
     userCount,
@@ -334,23 +432,23 @@ export const getAdminStats = async () => {
     openProjectCount,
     newUsersToday,
     newUsersThisWeek,
-    statusDistribution: statusDistribution.map((g: any) => ({
+    statusDistribution: statusDistribution.map((g) => ({
       status: g.status,
-      count: (g._count as any)._all ?? g._count,
+      count: extractCount(g._count),
     })),
-    trustLevelDistribution: trustLevelDistribution.map((g: any) => ({
+    trustLevelDistribution: trustLevelDistribution.map((g) => ({
       trustLevel: g.trustLevel,
-      count: (g._count as any)._all ?? g._count,
+      count: extractCount(g._count),
     })),
-    platformRoleDistribution: platformRoleDistribution.map((g: any) => ({
+    platformRoleDistribution: platformRoleDistribution.map((g) => ({
       roleName: roleMap[g.roleId] || g.roleId,
-      count: (g._count as any)._all ?? g._count,
+      count: extractCount(g._count),
     })),
     userRoleDistribution: userRoleDistribution
-      .filter((g: any) => g.primaryRole !== null && g.primaryRole !== undefined)
-      .map((g: any) => ({
+      .filter((g) => g.primaryRole !== null && g.primaryRole !== undefined)
+      .map((g) => ({
         role: g.primaryRole,
-        count: (g._count as any)._all ?? g._count,
+        count: extractCount(g._count),
       })),
   };
 };
@@ -359,7 +457,23 @@ export const getAdminStats = async () => {
 // USER MANAGEMENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const USER_SELECT = {
+const USER_LIST_SELECT = {
+  id: true,
+  username: true,
+  email: true,
+  status: true,
+  primaryRole: true,
+  trustLevel: true,
+  createdAt: true,
+  profile: {
+    select: {
+      fullName: true,
+      avatarUrl: true,
+    },
+  },
+} as const;
+
+const USER_DETAIL_SELECT = {
   id: true,
   username: true,
   email: true,
@@ -406,7 +520,7 @@ export const listUsers = async (
   const take = limit + 1;
   const users = await prisma.user.findMany({
     where,
-    select: USER_SELECT,
+    select: USER_LIST_SELECT,
     orderBy: { createdAt: "desc" },
     take,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -425,7 +539,7 @@ export const getUserDetail = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      ...USER_SELECT,
+      ...USER_DETAIL_SELECT,
       educations: true,
       experiences: true,
       skills: { include: { skill: true } },
@@ -439,8 +553,13 @@ export const getUserDetail = async (userId: string) => {
 
 export const updateUserStatus = async (
   userId: string,
-  status: "ACTIVE" | "INACTIVE" | "BANNED"
+  status: "ACTIVE" | "INACTIVE" | "BANNED",
+  actorId: string
 ) => {
+  if (actorId === userId) {
+    throw new AppError("Self-banning or deactivation is not allowed", 403);
+  }
+
   await ensureUserExists(userId);
 
   // Guard: SUPER_ADMIN accounts cannot have their status changed via the admin panel
@@ -502,7 +621,10 @@ export const removePlatformAdmin = async (userId: string, actorId: string) => {
 
 export const adminListPosts = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
-  const where: any = q ? { content: { contains: q, mode: "insensitive" } } : {};
+  const where: any = {
+    deletedAt: null,
+    ...(q ? { content: { contains: q, mode: "insensitive" } } : {}),
+  };
   const take = limit + 1;
 
   const posts = await prisma.post.findMany({
@@ -530,7 +652,10 @@ export const adminListPosts = async (params: { q?: string; limit?: number; curso
 export const adminDeletePost = async (postId: string) => {
   const post = await prisma.post.findUnique({ where: { id: postId } });
   if (!post) throw new AppError("Post not found", 404);
-  await prisma.post.delete({ where: { id: postId } });
+  await prisma.post.update({
+    where: { id: postId },
+    data: { deletedAt: new Date() },
+  });
   return { message: "Post removed successfully" };
 };
 
@@ -540,7 +665,11 @@ export const adminDeletePost = async (postId: string) => {
 
 export const adminListHackathons = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
-  const where: any = q ? { title: { contains: q, mode: "insensitive" } } : {};
+  const where: any = {
+    deletedAt: null,
+    archivedAt: null,
+    ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
+  };
   const take = limit + 1;
 
   const hackathons = await prisma.hackathon.findMany({
@@ -569,13 +698,21 @@ export const adminUpdateHackathonStatus = async (hackathonId: string, status: st
   
   const isActivating = hackathon.status === "DRAFT" && (targetStatus === "OPEN" || targetStatus === "LIVE");
   
-  return prisma.hackathon.update({
+  const updatedHackathon = await prisma.hackathon.update({
     where: { id: hackathonId },
     data: {
       status: targetStatus as any,
       ...(isActivating ? { verified: true } : {}),
     },
   });
+
+  try {
+    syncHackathonToElastic(updatedHackathon.id);
+  } catch (error) {
+    console.error(`Failed to trigger elastic sync for hackathon ${updatedHackathon.id}:`, error);
+  }
+
+  return updatedHackathon;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -584,7 +721,10 @@ export const adminUpdateHackathonStatus = async (hackathonId: string, status: st
 
 export const adminListProjects = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
-  const where: any = q ? { title: { contains: q, mode: "insensitive" } } : {};
+  const where: any = {
+    deletedAt: null,
+    ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
+  };
   const take = limit + 1;
 
   const projects = await prisma.project.findMany({
@@ -610,9 +750,18 @@ export const adminListProjects = async (params: { q?: string; limit?: number; cu
 };
 
 export const adminUpdateProjectStatus = async (projectId: string, status: string) => {
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  const project = await prisma.project.findFirst({ where: { id: projectId, deletedAt: null } });
   if (!project) throw new AppError("Project not found", 404);
-  return prisma.project.update({ where: { id: projectId }, data: { status: status as any } });
+  const updatedProject = await prisma.project.update({
+    where: { id: projectId },
+    data: { status: status as any },
+  });
+
+  Promise.resolve(syncProjectToElastic(updatedProject.id)).catch((error) => {
+    console.error(`[ES Sync] Failed to sync updated project '${updatedProject.id}' to Elasticsearch:`, error?.message || error);
+  });
+
+  return updatedProject;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -621,9 +770,10 @@ export const adminUpdateProjectStatus = async (projectId: string, status: string
 
 export const adminListJobs = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
-  const where: any = q
-    ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { company: { name: { contains: q, mode: "insensitive" } } }] }
-    : {};
+  const where: any = {
+    deletedAt: null,
+    ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { company: { name: { contains: q, mode: "insensitive" } } }] } : {}),
+  };
   const take = limit + 1;
 
   const jobs = await prisma.job.findMany({
@@ -643,7 +793,7 @@ export const adminListJobs = async (params: { q?: string; limit?: number; cursor
 };
 
 export const adminDeleteJob = async (jobId: string) => {
-  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  const job = await prisma.job.findFirst({ where: { id: jobId, deletedAt: null } });
   if (!job) throw new AppError("Job not found", 404);
   await prisma.job.update({
     where: { id: jobId },
@@ -652,11 +802,14 @@ export const adminDeleteJob = async (jobId: string) => {
       deletedAt: new Date(),
     },
   });
+  Promise.resolve(syncJobToElastic(jobId)).catch((err) => {
+    console.error(`[ES Sync] Failed to sync deleted job '${jobId}' to Elasticsearch:`, err);
+  });
   return { message: "Job removed successfully (soft deleted)" };
 };
 
 export const adminUpdateJob = async (jobId: string, data: any) => {
-  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  const job = await prisma.job.findFirst({ where: { id: jobId, deletedAt: null } });
   if (!job) throw new AppError("Job not found", 404);
 
   const updatedJob = await prisma.job.update({
@@ -682,7 +835,9 @@ export const adminUpdateJob = async (jobId: string, data: any) => {
       status: data.status !== undefined ? data.status : undefined,
     },
   });
-  syncJobToElastic(updatedJob.id);
+  Promise.resolve(syncJobToElastic(updatedJob.id)).catch((err) => {
+    console.error(`[ES Sync] Failed to sync updated job '${updatedJob.id}' to Elasticsearch:`, err);
+  });
   return updatedJob;
 };
 
@@ -722,7 +877,9 @@ export const adminCreateJob = async (adminId: string, data: any) => {
       status: data.status || "OPEN",
     },
   });
-  syncJobToElastic(job.id);
+  Promise.resolve(syncJobToElastic(job.id)).catch((err) => {
+    console.error(`[ES Sync] Failed to sync created job '${job.id}' to Elasticsearch:`, err);
+  });
   return job;
 };
 
@@ -732,8 +889,12 @@ export const adminCreateJob = async (adminId: string, data: any) => {
 
 export const adminListCommunities = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
-  const where: any = q ? { name: { contains: q, mode: "insensitive" } } : {};
-  const take = limit + 1;
+  const boundedLimit = Math.min(Math.max(1, limit), 100);
+  const where: any = {
+    deletedAt: null,
+    ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+  };
+  const take = boundedLimit + 1;
 
   const communities = await prisma.community.findMany({
     where,
@@ -747,8 +908,8 @@ export const adminListCommunities = async (params: { q?: string; limit?: number;
     },
   });
 
-  const hasNextPage = communities.length > limit;
-  const page = hasNextPage ? communities.slice(0, limit) : communities;
+  const hasNextPage = communities.length > boundedLimit;
+  const page = hasNextPage ? communities.slice(0, boundedLimit) : communities;
   return { communities: page, nextCursor: hasNextPage ? page[page.length - 1].id : null, hasNextPage };
 };
 
@@ -756,7 +917,7 @@ export const adminUpdateCommunity = async (
   communityId: string,
   updates: { archived?: boolean; verified?: boolean }
 ) => {
-  const community = await prisma.community.findUnique({ where: { id: communityId } });
+  const community = await prisma.community.findFirst({ where: { id: communityId, deletedAt: null } });
   if (!community) throw new AppError("Community not found", 404);
 
   const data: any = {};
@@ -772,10 +933,11 @@ export const adminUpdateCommunity = async (
 
 export const adminListReferrals = async (params: { q?: string; limit?: number; cursor?: string }) => {
   const { q, limit = 20, cursor } = params;
+  const boundedLimit = Math.min(Math.max(1, limit), 100);
   const where: any = q
     ? { OR: [{ companyName: { contains: q, mode: "insensitive" } }, { jobRole: { contains: q, mode: "insensitive" } }] }
     : {};
-  const take = limit + 1;
+  const take = boundedLimit + 1;
 
   const referrals = await prisma.referralRequest.findMany({
     where,
@@ -800,8 +962,8 @@ export const adminListReferrals = async (params: { q?: string; limit?: number; c
     },
   });
 
-  const hasNextPage = referrals.length > limit;
-  const page = hasNextPage ? referrals.slice(0, limit) : referrals;
+  const hasNextPage = referrals.length > boundedLimit;
+  const page = hasNextPage ? referrals.slice(0, boundedLimit) : referrals;
   return { referrals: page, nextCursor: hasNextPage ? page[page.length - 1].id : null, hasNextPage };
 };
 
@@ -813,23 +975,27 @@ export const adminCreateDepartment = async (
   actorId: string,
   data: { name: string; collegeId: string; hod?: string }
 ) => {
-  await ensureCollegeExists(data.collegeId);
+  return prisma.$transaction(async (tx) => {
+    await ensureCollegeExists(data.collegeId, tx);
 
-  const existing = await prisma.department.findFirst({
-    where: { name: { equals: data.name, mode: "insensitive" }, collegeId: data.collegeId },
-  });
-  if (existing) throw new AppError("Department with this name already exists", 409);
+    const existing = await tx.department.findFirst({
+      where: { name: { equals: data.name, mode: "insensitive" }, collegeId: data.collegeId },
+    });
+    if (existing) throw new AppError("Department with this name already exists", 409);
 
-  return prisma.department.create({
-    data: { name: data.name, collegeId: data.collegeId, hod: data.hod },
+    return tx.department.create({
+      data: { name: data.name, collegeId: data.collegeId, hod: data.hod },
+    });
   });
 };
 
-export const adminListDepartments = async (collegeId: string) => {
+export const adminListDepartments = async (collegeId: string, limit = 50) => {
+  const safeLimit = Math.min(Math.max(1, limit), 100);
   await ensureCollegeExists(collegeId);
   return prisma.department.findMany({
     where: { collegeId },
     orderBy: { name: "asc" },
+    take: safeLimit,
   });
 };
 
@@ -837,10 +1003,12 @@ export const adminListDepartments = async (collegeId: string) => {
 // COMPANY REQUEST MANAGEMENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const adminListCompanyRequests = async (status?: string) => {
+export const adminListCompanyRequests = async (status?: string, limit = 50) => {
+  const safeLimit = Math.min(Math.max(1, limit), 100);
   return prisma.companyRequest.findMany({
     where: status ? { status: status as any } : {},
     orderBy: { createdAt: "desc" },
+    take: safeLimit,
     include: {
       requestedBy: {
         select: {
@@ -858,95 +1026,100 @@ export const adminApproveCompanyRequest = async (
   requestId: string,
   options?: { logoUrl?: string; websiteUrl?: string; headquarters?: string; industry?: string }
 ) => {
-  const request = await prisma.companyRequest.findUnique({ where: { id: requestId } });
-  if (!request) throw new AppError("Company request not found", 404);
-  if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.companyRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new AppError("Company request not found", 404);
+    if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
 
-  const pendingData = request.pendingJobData as any;
-  const companyDetails = pendingData?.companyDetails || {};
+    const pendingData = request.pendingJobData as any;
+    const companyDetails = pendingData?.companyDetails || {};
 
-  // Create the company
-  const slugBase = request.companyName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const slug = `${slugBase}-${Date.now()}`;
+    // Create the company
+    const slugBase = request.companyName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const slug = `${slugBase}-${Date.now()}`;
 
-  const company = await prisma.company.create({
-    data: {
-      name: request.companyName,
-      slug,
-      verified: true,
-      logoUrl: options?.logoUrl || companyDetails.logoUrl || null,
-      websiteUrl: options?.websiteUrl || companyDetails.websiteUrl || null,
-      headquarters: options?.headquarters || companyDetails.headquarters || null,
-      industry: options?.industry || companyDetails.industry || null,
-      description: companyDetails.description || null,
-      tagline: companyDetails.tagline || null,
-      foundedYear: companyDetails.foundedYear ? Number(companyDetails.foundedYear) : null,
-      type: companyDetails.type || null,
-      size: companyDetails.size || null,
-      careersPageUrl: companyDetails.careersPageUrl || null,
-      githubUrl: companyDetails.githubUrl || null,
-    },
-  });
-
-  // Create the job if a title exists (it's a job post request)
-  let job = null;
-  if (pendingData && pendingData.title) {
-    const jobSlugBase = `${pendingData.title}-${company.name}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-    const jobSlug = `${jobSlugBase}-${Date.now()}`;
-
-    job = await prisma.job.create({
+    const company = await tx.company.create({
       data: {
-        companyId: company.id,
-        postedById: request.requestedById,
-        title: pendingData.title,
-        slug: jobSlug,
-        description: pendingData.description,
-        requirements: pendingData.requirements,
-        responsibilities: pendingData.responsibilities,
-        location: pendingData.location,
-        workMode: pendingData.workMode,
-        type: pendingData.type,
-        experienceLevel: pendingData.experienceLevel,
-        salaryMin: pendingData.salaryMin,
-        salaryMax: pendingData.salaryMax,
-        currency: pendingData.currency || "INR",
-        skillsRequired: pendingData.skillsRequired || [],
-        applicationDeadline: pendingData.applicationDeadline ? new Date(pendingData.applicationDeadline) : null,
-        applyUrl: pendingData.applyUrl,
-        featured: pendingData.featured || false,
+        name: request.companyName,
+        slug,
+        verified: true,
+        logoUrl: options?.logoUrl || companyDetails.logoUrl || null,
+        websiteUrl: options?.websiteUrl || companyDetails.websiteUrl || null,
+        headquarters: options?.headquarters || companyDetails.headquarters || null,
+        industry: options?.industry || companyDetails.industry || null,
+        description: companyDetails.description || null,
+        tagline: companyDetails.tagline || null,
+        foundedYear: companyDetails.foundedYear ? Number(companyDetails.foundedYear) : null,
+        type: companyDetails.type || null,
+        size: companyDetails.size || null,
+        careersPageUrl: companyDetails.careersPageUrl || null,
+        githubUrl: companyDetails.githubUrl || null,
       },
-      select: { id: true, title: true },
     });
-    syncJobToElastic(job.id);
-  }
 
-  // Update company request status
-  await prisma.companyRequest.update({
-    where: { id: requestId },
-    data: {
-      status: "APPROVED",
-      companyId: company.id,
-      jobId: job ? job.id : null,
-      reviewedById: adminId,
-      reviewedAt: new Date(),
-    },
+    // Create the job if a title exists (it's a job post request)
+    let job: { id: string; title: string } | null = null;
+    if (pendingData && pendingData.title) {
+      const jobSlugBase = `${pendingData.title}-${company.name}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const jobSlug = `${jobSlugBase}-${Date.now()}`;
+
+      job = await tx.job.create({
+        data: {
+          companyId: company.id,
+          postedById: request.requestedById,
+          title: pendingData.title,
+          slug: jobSlug,
+          description: pendingData.description,
+          requirements: pendingData.requirements,
+          responsibilities: pendingData.responsibilities,
+          location: pendingData.location,
+          workMode: pendingData.workMode,
+          type: pendingData.type,
+          experienceLevel: pendingData.experienceLevel,
+          salaryMin: pendingData.salaryMin,
+          salaryMax: pendingData.salaryMax,
+          currency: pendingData.currency || "INR",
+          skillsRequired: pendingData.skillsRequired || [],
+          applicationDeadline: pendingData.applicationDeadline ? new Date(pendingData.applicationDeadline) : null,
+          applyUrl: pendingData.applyUrl,
+          featured: pendingData.featured || false,
+        },
+        select: { id: true, title: true },
+      });
+      
+      Promise.resolve(syncJobToElastic(job!.id)).catch((err) => {
+        console.error(`[ES Sync] Failed to sync job '${job!.id}' to Elasticsearch:`, err);
+      });
+    }
+
+    // Update company request status
+    await tx.companyRequest.update({
+      where: { id: requestId },
+      data: {
+        status: "APPROVED",
+        companyId: company.id,
+        jobId: job ? job.id : null,
+        reviewedById: adminId,
+        reviewedAt: new Date(),
+      },
+    });
+
+    // Notify the requester
+    await tx.notification.create({
+      data: {
+        userId: request.requestedById,
+        type: "SYSTEM",
+        title: job ? "Company Approved & Job Posted!" : "Company Registration Approved!",
+        message: job 
+          ? `Your company "${request.companyName}" has been verified. Your job "${job.title}" is now live.`
+          : `Your registration request for "${request.companyName}" has been verified and approved.`,
+        entityType: job ? "JOB" : "COMPANY",
+        entityId: job ? job.id : company.id,
+      },
+    });
+
+    return { success: true, company, job };
   });
-
-  // Notify the requester
-  await prisma.notification.create({
-    data: {
-      userId: request.requestedById,
-      type: "SYSTEM",
-      title: job ? "Company Approved & Job Posted!" : "Company Registration Approved!",
-      message: job 
-        ? `Your company "${request.companyName}" has been verified. Your job "${job.title}" is now live.`
-        : `Your registration request for "${request.companyName}" has been verified and approved.`,
-      entityType: job ? "JOB" : "COMPANY",
-      entityId: job ? job.id : company.id,
-    },
-  });
-
-  return { success: true, company, job };
 };
 
 export const adminRejectCompanyRequest = async (
@@ -954,31 +1127,33 @@ export const adminRejectCompanyRequest = async (
   requestId: string,
   reviewNotes?: string,
 ) => {
-  const request = await prisma.companyRequest.findUnique({ where: { id: requestId } });
-  if (!request) throw new AppError("Company request not found", 404);
-  if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.companyRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new AppError("Company request not found", 404);
+    if (request.status !== "PENDING") throw new AppError("Request is not in PENDING state", 400);
 
-  await prisma.companyRequest.update({
-    where: { id: requestId },
-    data: {
-      status: "REJECTED",
-      reviewedById: adminId,
-      reviewNotes: reviewNotes || null,
-      reviewedAt: new Date(),
-    },
+    await tx.companyRequest.update({
+      where: { id: requestId },
+      data: {
+        status: "REJECTED",
+        reviewedById: adminId,
+        reviewNotes: reviewNotes || null,
+        reviewedAt: new Date(),
+      },
+    });
+
+    // Notify the recruiter
+    await tx.notification.create({
+      data: {
+        userId: request.requestedById,
+        type: "SYSTEM",
+        title: "Company Request Rejected",
+        message: `Your request to add "${request.companyName}" was rejected.${reviewNotes ? ` Reason: ${reviewNotes}` : ""}`,
+      },
+    });
+
+    return { success: true };
   });
-
-  // Notify the recruiter
-  await prisma.notification.create({
-    data: {
-      userId: request.requestedById,
-      type: "SYSTEM",
-      title: "Company Request Rejected",
-      message: `Your request to add "${request.companyName}" was rejected.${reviewNotes ? ` Reason: ${reviewNotes}` : ""}`,
-    },
-  });
-
-  return { success: true };
 };
 
 export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
@@ -1004,7 +1179,9 @@ export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
       status: data.status !== undefined ? data.status : undefined,
     },
   });
-  syncHackathonToElastic(updatedHackathon.id);
+  Promise.resolve(syncHackathonToElastic(updatedHackathon.id)).catch((err) => {
+    console.error(`[ES Sync] Failed to sync updated hackathon '${updatedHackathon.id}' to Elasticsearch:`, err);
+  });
   return updatedHackathon;
 };
 

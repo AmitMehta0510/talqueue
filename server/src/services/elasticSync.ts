@@ -273,3 +273,15 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
   }
 }
 
+/**
+ * Synchronizes a project record to Elasticsearch (Stub / Placeholder).
+ * Fail-soft: Logs indexing errors but does not reject or throw.
+ */
+export function syncProjectToElastic(projectId: string): void {
+  try {
+    console.log(`[ES Sync] syncProjectToElastic called for project ID '${projectId}' (Stub)`);
+  } catch (error: any) {
+    console.error(`[ES Sync] Failed to sync project '${projectId}' to Elasticsearch:`, error?.message || error);
+  }
+}
+

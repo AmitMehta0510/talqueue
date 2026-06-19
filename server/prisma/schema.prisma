@@ -2697,6 +2697,7 @@ model Community {
 
   archived Boolean @default(false)
   archivedAt DateTime?
+  deletedAt  DateTime?
 
   searchable Boolean @default(true)
 

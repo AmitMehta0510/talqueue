@@ -39,6 +39,8 @@ import {
   adminTriggerJobScraperHandler,
 } from "./admin.controller";
 
+import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
+
 const router = Router();
 
 // All admin routes require authentication + platform admin role
@@ -49,6 +51,9 @@ router.use(protect, requirePlatformAdmin);
 // ============================================================
 
 router.get("/stats", getAdminStatsHandler);
+
+// Analytics dashboard (SUPER_ADMIN | PLATFORM_ADMIN only — enforced in controller)
+router.get("/analytics/dashboard", getAdminDashboardAnalyticsHandler);
 
 router.get("/users", listUsersHandler);
 router.get("/users/:userId", getUserDetailHandler);

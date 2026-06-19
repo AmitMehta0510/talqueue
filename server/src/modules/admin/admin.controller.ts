@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import asyncHandler from "shared/utils/asyncHandler";
 import { successResponse } from "shared/utils/apiResponse";
 
@@ -50,19 +50,19 @@ import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 // ============================================================
 
 export const assignCollegeAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { collegeId } = req.params;
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params as { collegeId: string };
     const { userId } = assignCollegeAdminSchema.parse(req.body);
 
-    const result = await assignCollegeAdmin(req.user.id, userId, collegeId);
+    const result = await assignCollegeAdmin(req.user!.id, userId, collegeId);
 
     res.status(201).json(successResponse(result, result.message));
   },
 );
 
 export const removeCollegeAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { collegeId, userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { collegeId, userId } = req.params as { collegeId: string; userId: string };
 
     const result = await removeCollegeAdmin(userId, collegeId);
 
@@ -71,7 +71,7 @@ export const removeCollegeAdminHandler = asyncHandler(
 );
 
 export const listCollegeAdminsHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (req: Request, res: Response) => {
     const { collegeId } = req.params as { collegeId: string };
 
     const admins = await listCollegeAdmins(collegeId);
@@ -85,19 +85,19 @@ export const listCollegeAdminsHandler = asyncHandler(
 // ============================================================
 
 export const assignCompanyAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { companyId } = req.params;
+  async (req: Request, res: Response) => {
+    const { companyId } = req.params as { companyId: string };
     const { userId, officeCity } = assignCompanyAdminSchema.parse(req.body);
 
-    const result = await assignCompanyAdmin(req.user.id, userId, companyId, officeCity);
+    const result = await assignCompanyAdmin(req.user!.id, userId, companyId, officeCity);
 
     res.status(201).json(successResponse(result, result.message));
   },
 );
 
 export const removeCompanyAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { companyId, userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { companyId, userId } = req.params as { companyId: string; userId: string };
     const { officeCity } = req.query as { officeCity?: string };
 
     const result = await removeCompanyAdmin(userId, companyId, officeCity);
@@ -107,7 +107,7 @@ export const removeCompanyAdminHandler = asyncHandler(
 );
 
 export const listCompanyAdminsHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (req: Request, res: Response) => {
     const { companyId } = req.params as { companyId: string };
 
     const admins = await listCompanyAdmins(companyId);
@@ -121,14 +121,14 @@ export const listCompanyAdminsHandler = asyncHandler(
 // ============================================================
 
 export const getAdminStatsHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (_req: Request, res: Response) => {
     const stats = await getAdminStats();
     res.json(successResponse(stats));
   },
 );
 
 export const listUsersHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (req: Request, res: Response) => {
     const { search, limit, cursor } = req.query as {
       search?: string;
       limit?: string;
@@ -136,46 +136,48 @@ export const listUsersHandler = asyncHandler(
     };
 
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
-    const result = await listUsers(search, parsedLimit, cursor);
+    // Clamp to a safe ceiling so callers cannot trigger unbounded table scans
+    const safeLimit = Math.min(parsedLimit, 100);
+    const result = await listUsers(search, safeLimit, cursor);
 
     res.json(successResponse(result));
   },
 );
 
 export const getUserDetailHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { userId } = req.params as { userId: string };
     const user = await getUserDetail(userId);
     res.json(successResponse(user));
   },
 );
 
 export const updateUserStatusHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { userId } = req.params as { userId: string };
     const { status } = updateUserStatusSchema.parse(req.body);
 
-    const result = await updateUserStatus(userId, status);
+    const result = await updateUserStatus(userId, status, req.user!.id);
 
     res.json(successResponse(result, `User status updated to ${status}`));
   },
 );
 
 export const assignPlatformAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { userId } = req.params as { userId: string };
 
-    const result = await assignPlatformAdmin(req.user.id, userId);
+    const result = await assignPlatformAdmin(req.user!.id, userId);
 
     res.status(201).json(successResponse(result, result.message));
   },
 );
 
 export const removePlatformAdminHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { userId } = req.params;
+  async (req: Request, res: Response) => {
+    const { userId } = req.params as { userId: string };
 
-    const result = await removePlatformAdmin(userId, req.user.id);
+    const result = await removePlatformAdmin(userId, req.user!.id);
 
     res.json(successResponse(result, result.message));
   },
@@ -186,11 +188,12 @@ export const removePlatformAdminHandler = asyncHandler(
 // ============================================================
 
 export const adminListPostsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListPosts({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -198,19 +201,20 @@ export const adminListPostsHandler = asyncHandler(
 );
 
 export const adminDeletePostHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { postId } = req.params;
+  async (req: Request, res: Response) => {
+    const { postId } = req.params as { postId: string };
     const result = await adminDeletePost(postId);
     res.json(successResponse(result, result.message));
   },
 );
 
 export const adminListHackathonsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListHackathons({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -218,20 +222,21 @@ export const adminListHackathonsHandler = asyncHandler(
 );
 
 export const adminUpdateHackathonStatusHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { hackathonId } = req.params;
-    const { status } = req.body;
+  async (req: Request, res: Response) => {
+    const { hackathonId } = req.params as { hackathonId: string };
+    const { status } = req.body as { status: string };
     const result = await adminUpdateHackathonStatus(hackathonId, status);
     res.json(successResponse(result));
   },
 );
 
 export const adminListProjectsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListProjects({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -239,20 +244,21 @@ export const adminListProjectsHandler = asyncHandler(
 );
 
 export const adminUpdateProjectStatusHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { projectId } = req.params;
-    const { status } = req.body;
+  async (req: Request, res: Response) => {
+    const { projectId } = req.params as { projectId: string };
+    const { status } = req.body as { status: string };
     const result = await adminUpdateProjectStatus(projectId, status);
     res.json(successResponse(result));
   },
 );
 
 export const adminListJobsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListJobs({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -260,34 +266,35 @@ export const adminListJobsHandler = asyncHandler(
 );
 
 export const adminDeleteJobHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { jobId } = req.params;
+  async (req: Request, res: Response) => {
+    const { jobId } = req.params as { jobId: string };
     const result = await adminDeleteJob(jobId);
     res.json(successResponse(result, result.message));
   },
 );
 
 export const adminUpdateJobHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { jobId } = req.params;
+  async (req: Request, res: Response) => {
+    const { jobId } = req.params as { jobId: string };
     const result = await adminUpdateJob(jobId, req.body);
     res.json(successResponse(result, "Job updated successfully"));
   },
 );
 
 export const adminCreateJobHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const result = await adminCreateJob(req.user.id, req.body);
+  async (req: Request, res: Response) => {
+    const result = await adminCreateJob(req.user!.id, req.body);
     res.status(201).json(successResponse(result, "Job created successfully"));
   },
 );
 
 export const adminListCommunitiesHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListCommunities({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -295,20 +302,21 @@ export const adminListCommunitiesHandler = asyncHandler(
 );
 
 export const adminUpdateCommunityHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { communityId } = req.params;
-    const { archived, verified } = req.body;
+  async (req: Request, res: Response) => {
+    const { communityId } = req.params as { communityId: string };
+    const { archived, verified } = req.body as { archived?: boolean; verified?: boolean };
     const result = await adminUpdateCommunity(communityId, { archived, verified });
     res.json(successResponse(result));
   },
 );
 
 export const adminListReferralsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { q, limit, cursor } = req.query as any;
+  async (req: Request, res: Response) => {
+    const { q, limit, cursor } = req.query as { q?: string; limit?: string; cursor?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
     const result = await adminListReferrals({
       q,
-      limit: limit ? parseInt(limit, 10) : 20,
+      limit: Math.min(parsedLimit, 100),
       cursor,
     });
     res.json(successResponse(result));
@@ -320,18 +328,20 @@ export const adminListReferralsHandler = asyncHandler(
 // ============================================================
 
 export const adminCreateDepartmentHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { collegeId } = req.params;
-    const { name, hod } = req.body;
-    const result = await adminCreateDepartment(req.user.id, { name, collegeId, hod });
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params as { collegeId: string };
+    const { name, hod } = req.body as { name: string; hod?: string };
+    const result = await adminCreateDepartment(req.user!.id, { name, collegeId, hod });
     res.status(201).json(successResponse(result, "Department created successfully"));
   },
 );
 
 export const adminListDepartmentsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { collegeId } = req.params;
-    const departments = await adminListDepartments(collegeId);
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params as { collegeId: string };
+    const { limit } = req.query as { limit?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const departments = await adminListDepartments(collegeId, parsedLimit);
     res.json(successResponse(departments));
   },
 );
@@ -341,48 +351,49 @@ export const adminListDepartmentsHandler = asyncHandler(
 // ============================================================
 
 export const adminListCompanyRequestsHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { status } = req.query as any;
-    const requests = await adminListCompanyRequests(status);
+  async (req: Request, res: Response) => {
+    const { status, limit } = req.query as { status?: string; limit?: string };
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const requests = await adminListCompanyRequests(status, parsedLimit);
     res.json(successResponse(requests));
   },
 );
 
 export const adminApproveCompanyRequestHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { requestId } = req.params;
-    const options = req.body || {};
-    const result = await adminApproveCompanyRequest(req.user.id, requestId, options);
+  async (req: Request, res: Response) => {
+    const { requestId } = req.params as { requestId: string };
+    const options = (req.body as Record<string, unknown>) || {};
+    const result = await adminApproveCompanyRequest(req.user!.id, requestId, options);
     res.json(successResponse(result, "Company approved and job posted successfully"));
   },
 );
 
 export const adminRejectCompanyRequestHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { requestId } = req.params;
-    const { reviewNotes } = req.body || {};
-    const result = await adminRejectCompanyRequest(req.user.id, requestId, reviewNotes);
+  async (req: Request, res: Response) => {
+    const { requestId } = req.params as { requestId: string };
+    const { reviewNotes } = (req.body as { reviewNotes?: string }) || {};
+    const result = await adminRejectCompanyRequest(req.user!.id, requestId, reviewNotes);
     res.json(successResponse(result, "Company request rejected"));
   },
 );
 
 export const adminUpdateHackathonHandler = asyncHandler(
-  async (req: any, res: Response) => {
-    const { hackathonId } = req.params;
+  async (req: Request, res: Response) => {
+    const { hackathonId } = req.params as { hackathonId: string };
     const result = await adminUpdateHackathon(hackathonId, req.body);
     res.json(successResponse(result, "Hackathon updated successfully"));
   },
 );
 
 export const adminTriggerScraperHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (_req: Request, res: Response) => {
     const result = await runAllScrapers();
     res.json(successResponse(result, "Scraper run completed successfully"));
   },
 );
 
 export const adminTriggerJobScraperHandler = asyncHandler(
-  async (req: any, res: Response) => {
+  async (_req: Request, res: Response) => {
     const result = await runJobScrape();
     res.json(successResponse(result, "Job scraper run completed successfully"));
   },
