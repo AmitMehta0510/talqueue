@@ -325,11 +325,16 @@ export const buildResumePdf = async (userId: string): Promise<{ buffer: Buffer; 
   const htmlContent = getResumeHtml(resumeData);
 
   // Use Puppeteer to generate PDF
-  let browser;
+  let browser: any = null;
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--no-zygote",
+      ],
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "load" });
@@ -353,8 +358,10 @@ export const buildResumePdf = async (userId: string): Promise<{ buffer: Buffer; 
     console.error("PDF Generation failed:", error);
     throw new AppError(`Failed to generate PDF resume: ${error.message}`, 500);
   } finally {
-    if (browser) {
-      await browser.close();
+    if (browser !== null) {
+      await browser.close().catch((err: any) => {
+        console.error("Failed to close puppeteer browser instance:", err);
+      });
     }
   }
 };
