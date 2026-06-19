@@ -39,7 +39,8 @@ export const getEventsHandler = asyncHandler(
     const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
     const safePage = isNaN(page as number) ? 1 : page;
-    const safeLimitParam = isNaN(limit as number) ? 10 : limit;
+    const rawLimit = isNaN(limit as number) ? 10 : (limit as number);
+    const safeLimitParam = Math.min(Math.max(1, rawLimit), 100);
 
     const events = await getEvents(filters, { page: safePage, limit: safeLimitParam }, req.user?.id);
 
@@ -52,7 +53,8 @@ export const getEventAttendeesHandler = asyncHandler(
     const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
     const safePage = isNaN(page as number) ? 1 : page;
-    const safeLimitParam = isNaN(limit as number) ? 10 : limit;
+    const rawLimit = isNaN(limit as number) ? 10 : (limit as number);
+    const safeLimitParam = Math.min(Math.max(1, rawLimit), 100);
 
     const result = await getEventAttendees(req.params.id, { page: safePage, limit: safeLimitParam });
 
@@ -71,7 +73,8 @@ export const getEventByIdHandler = asyncHandler(
 export const updateEventHandler = asyncHandler(
   async (req: any, res: Response) => {
     const validatedData = updateEventSchema.parse(req.body);
-    const event = await updateEvent(req.user.id, req.params.id, validatedData);
+    const isAdministrativeActor = req.user.roles?.map((r: any) => r.role?.name).includes('SUPER_ADMIN') || false;
+    const event = await updateEvent(req.user.id, req.params.id, validatedData, isAdministrativeActor);
 
     res.json(successResponse(event, "Event updated successfully!"));
   }
@@ -79,7 +82,8 @@ export const updateEventHandler = asyncHandler(
 
 export const deleteEventHandler = asyncHandler(
   async (req: any, res: Response) => {
-    await deleteEvent(req.user.id, req.params.id);
+    const isAdministrativeActor = req.user.roles?.map((r: any) => r.role?.name).includes('SUPER_ADMIN') || false;
+    await deleteEvent(req.user.id, req.params.id, isAdministrativeActor);
 
     res.json(successResponse(null, "Event deleted successfully!"));
   }

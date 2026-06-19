@@ -185,7 +185,7 @@ export const getEvents = async (
   return events.map((e) => ({ ...e, userRSVPStatus: null }));
 };
 
-export const updateEvent = async (userId: string, id: string, data: any) => {
+export const updateEvent = async (userId: string, id: string, data: any, isAdministrativeActor: boolean = false) => {
   const event = await prisma.event.findUnique({
     where: { id },
   });
@@ -194,7 +194,7 @@ export const updateEvent = async (userId: string, id: string, data: any) => {
     throw new AppError("Event not found", 404);
   }
 
-  if (event.createdById !== userId) {
+  if (event.createdById !== userId && !isAdministrativeActor) {
     throw new AppError("Unauthorized to modify this event", 403);
   }
 
@@ -227,7 +227,7 @@ export const updateEvent = async (userId: string, id: string, data: any) => {
   return updated;
 };
 
-export const deleteEvent = async (userId: string, id: string) => {
+export const deleteEvent = async (userId: string, id: string, isAdministrativeActor: boolean = false) => {
   const event = await prisma.event.findUnique({
     where: { id },
   });
@@ -236,7 +236,7 @@ export const deleteEvent = async (userId: string, id: string) => {
     throw new AppError("Event not found", 404);
   }
 
-  if (event.createdById !== userId) {
+  if (event.createdById !== userId && !isAdministrativeActor) {
     throw new AppError("Unauthorized to delete this event", 403);
   }
 
