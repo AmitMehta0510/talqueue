@@ -14,7 +14,13 @@ export const createExternalApplication = async (req: Request, res: Response, nex
 export const getMyExternalApplications = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
-    const result = await service.getMyExternalApplications(userId);
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+
+    const parsedPage = isNaN(page) || page < 1 ? 1 : page;
+    const parsedLimit = isNaN(limit) || limit < 1 ? 20 : limit;
+
+    const result = await service.getMyExternalApplications(userId, parsedPage, parsedLimit);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);

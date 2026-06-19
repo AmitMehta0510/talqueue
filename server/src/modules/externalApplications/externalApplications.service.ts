@@ -24,21 +24,19 @@ export const createExternalApplication = async (
   userId: string,
   data: CreateExternalApplicationData,
 ) => {
-  // If jobId provided, verify the job exists
+  // If jobId provided, verify the job exists and prevent duplicate tracking
   if (data.jobId) {
-    const job = await prisma.job.findUnique({
-      where: { id: data.jobId },
-      select: { id: true },
-    });
+    const [job, existing] = await Promise.all([
+      prisma.job.findUnique({
+        where: { id: data.jobId },
+        select: { id: true },
+      }),
+      prisma.externalJobApplication.findFirst({
+        where: { userId, jobId: data.jobId },
+        select: { id: true },
+      }),
+    ]);
     if (!job) throw new AppError("Job not found", 404);
-  }
-
-  // Prevent duplicate external tracking for same job
-  if (data.jobId) {
-    const existing = await prisma.externalJobApplication.findFirst({
-      where: { userId, jobId: data.jobId },
-      select: { id: true },
-    });
     if (existing) throw new AppError("Already tracking this application", 400);
   }
 
@@ -60,10 +58,19 @@ export const createExternalApplication = async (
 };
 
 // GET MINE
-export const getMyExternalApplications = async (userId: string) => {
+export const getMyExternalApplications = async (
+  userId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+
   return prisma.externalJobApplication.findMany({
     where: { userId },
     orderBy: { appliedAt: "desc" },
+    skip,
+    take: safeLimit,
   });
 };
 
@@ -73,30 +80,36 @@ export const updateExternalApplicationStatus = async (
   id: string,
   data: UpdateExternalApplicationData,
 ) => {
-  const record = await prisma.externalJobApplication.findFirst({
-    where: { id, userId },
-    select: { id: true },
-  });
-
-  if (!record) throw new AppError("Application not found", 404);
-
-  return prisma.externalJobApplication.update({
-    where: { id },
-    data: {
-      status: data.status,
-      notes: data.notes !== undefined ? data.notes : undefined,
-    },
-  });
+  try {
+    return await prisma.externalJobApplication.update({
+      where: {
+        id_userId: { id, userId },
+      },
+      data: {
+        status: data.status,
+        notes: data.notes !== undefined ? data.notes : undefined,
+      },
+    });
+  } catch (err: any) {
+    if (err.code === "P2025") {
+      throw new AppError("Application not found", 404);
+    }
+    throw err;
+  }
 };
 
 // DELETE
 export const deleteExternalApplication = async (userId: string, id: string) => {
-  const record = await prisma.externalJobApplication.findFirst({
-    where: { id, userId },
-    select: { id: true },
-  });
-
-  if (!record) throw new AppError("Application not found", 404);
-
-  return prisma.externalJobApplication.delete({ where: { id } });
+  try {
+    return await prisma.externalJobApplication.delete({
+      where: {
+        id_userId: { id, userId },
+      },
+    });
+  } catch (err: any) {
+    if (err.code === "P2025") {
+      throw new AppError("Application not found", 404);
+    }
+    throw err;
+  }
 };
