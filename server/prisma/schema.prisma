@@ -489,6 +489,7 @@ model User {
   lastActiveAt DateTime?
 
   verifiedEngineer Boolean @default(false)
+  isEmailVerified Boolean @default(false)
 
   availabilityStatus String?
 

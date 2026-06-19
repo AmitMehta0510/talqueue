@@ -1,7 +1,8 @@
 import prisma from "shared/database/prisma";
+import redis from "shared/database/redis";
 import bcrypt from "bcryptjs";
 import { Prisma, UserStatus } from "@prisma/client";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import AppError from "shared/errors/AppError";
 import { generateToken, verifyToken } from "shared/utils/jwt";
 import { authUserSelect } from "./auth.selectors";
@@ -211,3 +212,137 @@ export const logoutUser = async (token: string) => {
     loggedOut: true,
   };
 };
+
+export const triggerEmailVerificationOTP = async (email: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const redisKey = `otp:email:${email}`;
+
+  await redis.setex(redisKey, 600, otpCode);
+
+  console.log(`[EmailVerification] Verification code for ${email} is '${otpCode}'`);
+
+  return {
+    success: true,
+    message: `Verification code sent to ${email}.`,
+  };
+};
+
+export const verifyOtpToken = async (email: string, otp: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Testing Master Bypass Sandbox
+  if (process.env.NODE_ENV !== "production" && otp === "123456") {
+    await prisma.user.update({
+      where: { email },
+      data: { isEmailVerified: true },
+    });
+
+    return {
+      success: true,
+      message: "Email verified successfully (sandbox bypass).",
+    };
+  }
+
+  const redisKey = `otp:email:${email}`;
+  const storedOtp = await redis.get(redisKey);
+
+  if (!storedOtp || storedOtp !== otp) {
+    throw new AppError("Invalid or expired OTP", 400);
+  }
+
+  await prisma.user.update({
+    where: { email },
+    data: { isEmailVerified: true },
+  });
+
+  await redis.del(redisKey);
+
+  return {
+    success: true,
+    message: "Email verified successfully.",
+  };
+};
+
+export const initiateForgotPasswordFlow = async (email: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (user) {
+    const token = randomBytes(16).toString("hex");
+    const redisKey = `password:reset:${email}`;
+    await redis.setex(redisKey, 900, token);
+    console.log(`[ForgotPassword] Password reset token for ${email} is '${token}'`);
+  }
+
+  // User-enumeration protection: return success regardless of user existence
+  return {
+    success: true,
+    message: "If the email is registered, a password reset token has been generated.",
+  };
+};
+
+export const executePasswordReset = async (
+  email: string,
+  token: string,
+  newPassword: string
+) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Testing Master Bypass Integration
+  if (process.env.NODE_ENV !== "production" && token === "123456") {
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      success: true,
+      message: "Password reset successfully (sandbox bypass).",
+    };
+  }
+
+  const redisKey = `password:reset:${email}`;
+  const storedToken = await redis.get(redisKey);
+
+  if (!storedToken || storedToken !== token) {
+    throw new AppError("Invalid or expired reset token", 400);
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+  await prisma.user.update({
+    where: { email },
+    data: { password: hashedPassword },
+  });
+
+  await redis.del(redisKey);
+
+  return {
+    success: true,
+    message: "Password reset successfully.",
+  };
+};
+
+

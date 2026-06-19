@@ -31,3 +31,30 @@ export const loginSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const sendOtpSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export const verifyOtpSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  otp: z.string().min(1),
+});
+
+export type SendOtpInput = z.infer<typeof sendOtpSchema>;
+export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  token: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+

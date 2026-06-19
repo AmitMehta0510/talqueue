@@ -11,6 +11,7 @@ export const authUserSelect = {
   postCount: true,
   profileCompleteness: true,
   verifiedEngineer: true,
+  isEmailVerified: true,
   availabilityStatus: true,
   reputationScore: true,
   engineeringScore: true,
