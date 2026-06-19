@@ -11,7 +11,7 @@ export const getMyTimelineHandler = asyncHandler(
     const cursor = (req.query.cursor as string) || undefined;
     const rawLimit =
       Number.parseInt((req.query.limit as string) || "20", 10) || 20;
-    const limit = Math.min(100, Math.max(1, rawLimit));
+    const limit = Math.min(Math.max(1, rawLimit), 50);
 
     const timeline = await getUserTimeline(req.user.id, {
       cursor,
