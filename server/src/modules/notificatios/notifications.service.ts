@@ -1,5 +1,6 @@
 import { NotificationType } from "@prisma/client";
 import prisma from "shared/database/prisma";
+import redis from "shared/database/redis";
 
 export const createNotification =  async (data: {
     userId: string;
@@ -23,7 +24,7 @@ export const createNotification =  async (data: {
     groupKey?: string;
   }) => {
 
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         ...data,
       },
@@ -36,6 +37,18 @@ export const createNotification =  async (data: {
         },
       },
     });
+
+    try {
+      const redisKey = `notif:unread:${data.userId}`;
+      const exists = await redis.exists(redisKey);
+      if (exists) {
+        await redis.incr(redisKey);
+      }
+    } catch (err: any) {
+      console.warn("[NotificationService] Redis increment failed:", err?.message || err);
+    }
+
+    return notification;
   };
 
 export const getMyNotifications =  async (
@@ -115,17 +128,34 @@ export const getMyNotifications =  async (
       return n;
     });
 
-    const unreadCount =
-      await prisma.notification.count({
+    const redisKey = `notif:unread:${userId}`;
+    let unreadCount: number;
 
+    try {
+      const cached = await redis.get(redisKey);
+      if (cached !== null) {
+        unreadCount = parseInt(cached, 10);
+        await redis.expire(redisKey, 30);
+      } else {
+        unreadCount = await prisma.notification.count({
+          where: {
+            userId,
+            isRead: false,
+            archived: false,
+          },
+        });
+        await redis.set(redisKey, unreadCount.toString(), "EX", 30);
+      }
+    } catch (err: any) {
+      console.warn("[NotificationService] Redis read failed, falling back to database count:", err?.message || err);
+      unreadCount = await prisma.notification.count({
         where: {
           userId,
-
           isRead: false,
-
           archived: false,
         },
       });
+    }
 
     return {
       notifications: enrichedNotifications,
@@ -140,11 +170,12 @@ export const markAsRead =  async (
     userId: string
   ) => {
 
-    return prisma.notification.updateMany({
+    const result = await prisma.notification.updateMany({
 
       where: {
         id: notificationId,
         userId,
+        isRead: false,
       },
 
       data: {
@@ -155,13 +186,30 @@ export const markAsRead =  async (
           new Date(),
       },
     });
+
+    if (result.count > 0) {
+      try {
+        const redisKey = `notif:unread:${userId}`;
+        const exists = await redis.exists(redisKey);
+        if (exists) {
+          const val = await redis.decr(redisKey);
+          if (val < 0) {
+            await redis.set(redisKey, "0", "EX", 30);
+          }
+        }
+      } catch (err: any) {
+        console.warn("[NotificationService] Redis decrement failed:", err?.message || err);
+      }
+    }
+
+    return result;
   };
 
 export const markAllAsRead =  async (
     userId: string
   ) => {
 
-    return prisma.notification.updateMany({
+    const result = await prisma.notification.updateMany({
 
       where: {
         userId,
@@ -179,6 +227,15 @@ export const markAllAsRead =  async (
           new Date(),
       },
     });
+
+    try {
+      const redisKey = `notif:unread:${userId}`;
+      await redis.set(redisKey, "0", "EX", 30);
+    } catch (err: any) {
+      console.warn("[NotificationService] Redis reset failed:", err?.message || err);
+    }
+
+    return result;
   };
 
 export const archiveNotification =  async (
@@ -186,7 +243,18 @@ export const archiveNotification =  async (
     userId: string
   ) => {
 
-    return prisma.notification.updateMany({
+    const notif = await prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        userId,
+      },
+      select: {
+        isRead: true,
+        archived: true,
+      },
+    });
+
+    const result = await prisma.notification.updateMany({
 
       where: {
         id: notificationId,
@@ -197,6 +265,23 @@ export const archiveNotification =  async (
         archived: true,
       },
     });
+
+    if (notif && !notif.isRead && !notif.archived) {
+      try {
+        const redisKey = `notif:unread:${userId}`;
+        const exists = await redis.exists(redisKey);
+        if (exists) {
+          const val = await redis.decr(redisKey);
+          if (val < 0) {
+            await redis.set(redisKey, "0", "EX", 30);
+          }
+        }
+      } catch (err: any) {
+        console.warn("[NotificationService] Redis archive decrement failed:", err?.message || err);
+      }
+    }
+
+    return result;
   };
 
 export const deleteNotification =  async (
