@@ -37,6 +37,7 @@ import resumeRoutes from "modules/resume/resume.routes";
 import resdexRoutes from "modules/resdex/resdex.routes";
 import forumRoutes from "routes/forum.routes";
 import { successResponse } from "shared/utils/apiResponse";
+import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 
 export const API_PREFIX = "/api/v1";
 
@@ -108,7 +109,15 @@ export const registerApiRoutes = (app: Express) => {
     );
   });
 
-  for (const { path, router } of apiRouteEntries) {
-    app.use(`${API_PREFIX}${path}`, router);
+  for (const { key, path, router } of apiRouteEntries) {
+    let rateLimiter;
+    if (key === "auth") {
+      rateLimiter = authRateLimiter;
+    } else if (key === "search" || key === "resdex") {
+      rateLimiter = searchRateLimiter;
+    } else {
+      rateLimiter = apiRateLimiter;
+    }
+    app.use(`${API_PREFIX}${path}`, rateLimiter, router);
   }
 };

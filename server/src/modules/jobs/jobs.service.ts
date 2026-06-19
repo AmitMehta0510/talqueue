@@ -13,6 +13,12 @@ import { createActivity } from "modules/activities/activity.service";
 
 import { generateSlug } from "shared/utils/slugify";
 
+import redis from "shared/database/redis";
+
+// ─── Redis key for the global jobs listing cache ──────────────────────────────
+const JOBS_LISTING_CACHE_KEY = "jobs:listing:all";
+const JOBS_LISTING_TTL_SECONDS = 60;
+
 //
 // HELPERS
 //
@@ -192,6 +198,11 @@ export const createJob = async (userId: string, data: any) => {
   // Sync to Elasticsearch
   syncJobsToElasticBulk([job.id]);
 
+  // Invalidate the global job listing cache so the new job appears immediately
+  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
+    console.error("[Jobs Cache] Failed to invalidate listing cache after createJob:", err?.message || err);
+  });
+
   //
   // ACTIVITY
   //
@@ -302,7 +313,23 @@ export const getJobs = async (page = 1, limit = 20) => {
 
   const skip = (page - 1) * safeLimit;
 
-  return prisma.job.findMany({
+  // ── Cache-aside: check Redis first ──────────────────────────────────────────
+  // We use a single global key because any mutation (create/archive/delete)
+  // invalidates the entire listing. Pagination offsets are applied post-cache.
+  try {
+    const cached = await redis.get(JOBS_LISTING_CACHE_KEY);
+    if (cached) {
+      const allJobs: any[] = JSON.parse(cached);
+      // Slice the in-memory result to honour the requested page/limit
+      return allJobs.slice(skip, skip + safeLimit);
+    }
+  } catch (cacheErr: any) {
+    // Cache read failure is non-fatal — fall through to Prisma
+    console.warn("[Jobs Cache] Redis read failed, falling back to Prisma:", cacheErr?.message || cacheErr);
+  }
+
+  // ── Cache miss: query Prisma, then populate cache ────────────────────────────
+  const allJobs = await prisma.job.findMany({
     where: {
       status: "OPEN",
 
@@ -366,11 +393,17 @@ export const getJobs = async (page = 1, limit = 20) => {
     orderBy: {
       createdAt: "desc",
     },
-
-    skip,
-
-    take: safeLimit,
   });
+
+  // Populate cache in the background — do not block the HTTP response
+  redis
+    .setex(JOBS_LISTING_CACHE_KEY, JOBS_LISTING_TTL_SECONDS, JSON.stringify(allJobs))
+    .catch((err: any) => {
+      console.warn("[Jobs Cache] Failed to populate listing cache:", err?.message || err);
+    });
+
+  // Return the paginated slice from the freshly fetched full list
+  return allJobs.slice(skip, skip + safeLimit);
 };
 
 //
@@ -625,6 +658,11 @@ export const archiveJob = async (
     },
   });
 
+  // Invalidate job listing cache — archived job must no longer appear
+  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
+    console.error("[Jobs Cache] Failed to invalidate listing cache after archiveJob:", err?.message || err);
+  });
+
   //
   // ACTIVITY
   //
@@ -665,6 +703,11 @@ export const deleteJob = async (
 
       deletedAt: new Date(),
     },
+  });
+
+  // Invalidate job listing cache — deleted job must no longer appear
+  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
+    console.error("[Jobs Cache] Failed to invalidate listing cache after deleteJob:", err?.message || err);
   });
 
   //

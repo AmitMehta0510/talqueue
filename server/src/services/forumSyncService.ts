@@ -88,6 +88,10 @@ export async function flushBuffer(): Promise<void> {
     const post = postsMap.get(postId);
     if (post) {
       const doc = {
+        // Derive a synthetic title from the first 100 chars of content so that
+        // the `title^3` boost in forumSearchController's multi_match query works.
+        // The Post model has no dedicated title field — content is the primary text.
+        title: (post.content as string).slice(0, 100).trim(),
         content: post.content,
         tags: (post.tags || []).map((t: any) => t.tag),
         authorId: post.authorId,
