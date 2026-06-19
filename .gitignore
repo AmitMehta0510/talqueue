@@ -2,3 +2,8 @@ node_modules/
 dist/
 *.log
 *.err
+
+# Environment files — NEVER commit credentials
+.env
+.env.*
+!.env.example

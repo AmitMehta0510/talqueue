@@ -1233,6 +1233,9 @@ model Notification {
   @@index([type])
   @@index([createdAt])
   @@index([isRead])
+  // Composite indexes for production inbox queries
+  @@index([userId, archived])
+  @@index([userId, isRead, createdAt])
 }
 
 model Project {
@@ -2090,6 +2093,9 @@ model MentorshipRequest {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+
+  @@index([requesterId])
+  @@index([mentorId, status])
 }
 
 model Company {
@@ -2233,6 +2239,9 @@ model Job {
   deletedAt  DateTime?
 
   companyRequest CompanyRequest?
+
+  @@index([companyId, status])
+  @@index([type, status])
 }
 
 enum CompanyRequestStatus {
@@ -2316,6 +2325,8 @@ model JobApplication {
   updatedAt DateTime @updatedAt
 
   @@unique([jobId, applicantId])
+  @@index([jobId, status])
+  @@index([applicantId])
 }
 
 model SavedJob {
@@ -2919,6 +2930,10 @@ model Event {
   @@index([collegeId])
   @@index([companyId])
   @@index([communityId])
+  // Composite indexes for filtered event queries
+  @@index([collegeId, type])
+  @@index([companyId, type])
+  @@index([startDate])
 }
 
 model EventRSVP {
