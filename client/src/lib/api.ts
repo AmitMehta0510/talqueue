@@ -2029,6 +2029,14 @@ export const api = {
     request<any>(`/admin/content/communities/${communityId}`, { method: "PATCH", body }),
   adminListReferrals: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ referrals: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/referrals${toQuery(params)}`, options),
+  adminListEvents: (params?: { collegeId?: string; companyId?: string; communityId?: string; type?: string; page?: number; limit?: number }, options?: EndpointOptions) =>
+    request<Event[]>(`/admin/events${toQuery(params || {})}`, options),
+  adminListEventAttendees: (eventId: string, params?: { page?: number; limit?: number }, options?: EndpointOptions) =>
+    request<any>(`/admin/events/${eventId}/attendees${toQuery(params || {})}`, options),
+  adminUpdateEvent: (eventId: string, body: any) =>
+    request<Event>(`/admin/events/${eventId}`, { method: "PUT", body }),
+  adminDeleteEvent: (eventId: string) =>
+    request<any>(`/admin/events/${eventId}`, { method: "DELETE" }),
   // Department Management
   adminCreateDepartment: (collegeId: string, body: { name: string; hod?: string }) =>
     request<any>(`/admin/colleges/${collegeId}/departments`, { method: "POST", body }),

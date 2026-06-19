@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { protect } from "modules/auth/auth.middleware";
-import { requirePlatformAdmin } from "shared/middleware/requirePlatformAdmin";
+import { protect, protect as isAuthenticated } from "modules/auth/auth.middleware";
+import { requirePlatformAdmin, requirePlatformAdmin as isAdminOrSuperAdmin } from "shared/middleware/requirePlatformAdmin";
 import { requireSuperAdmin } from "shared/middleware/requireSuperAdmin";
 
 import {
@@ -40,6 +40,12 @@ import {
 } from "./admin.controller";
 
 import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
+import {
+  getEventsHandler,
+  getEventAttendeesHandler,
+  updateEventHandler,
+  deleteEventHandler,
+} from "modules/events/events.controller";
 
 const router = Router();
 
@@ -113,6 +119,12 @@ router.patch("/content/communities/:communityId", adminUpdateCommunityHandler);
 
 // Referrals
 router.get("/content/referrals", adminListReferralsHandler);
+
+// Events
+router.get("/events", isAuthenticated, isAdminOrSuperAdmin, getEventsHandler);
+router.get("/events/:id/attendees", isAuthenticated, isAdminOrSuperAdmin, getEventAttendeesHandler);
+router.put("/events/:id", isAuthenticated, isAdminOrSuperAdmin, updateEventHandler);
+router.delete("/events/:id", isAuthenticated, isAdminOrSuperAdmin, deleteEventHandler);
 
 // ============================================================
 // COMPANY REQUESTS (recruiter-submitted, pending admin approval)

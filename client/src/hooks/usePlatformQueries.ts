@@ -4148,6 +4148,58 @@ export const useAdminReferralsQuery = (q: string) => {
   });
 };
 
+export const useAdminEventsQuery = (params?: { collegeId?: string; companyId?: string; communityId?: string; type?: string; page?: number; limit?: number }) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
+  return useQuery({
+    queryKey: ["admin", "content", "events", params],
+    queryFn: async ({ signal }) => {
+      const result = await api.adminListEvents(params, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
+export const useAdminDeleteEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (eventId: string) => api.adminDeleteEvent(eventId),
+    onSuccess: () => {
+      showToast("success", "Event deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "events"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminUpdateEventMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: ({ eventId, data }: { eventId: string; data: any }) => api.adminUpdateEvent(eventId, data),
+    onSuccess: () => {
+      showToast("success", "Event updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin", "content", "events"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAdminListEventAttendeesQuery = (eventId: string, params?: { page?: number; limit?: number }) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
+  return useQuery({
+    queryKey: ["admin", "content", "events", eventId, "attendees", params],
+    queryFn: async ({ signal }) => {
+      const result = await api.adminListEventAttendees(eventId, params, { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && isPlatformAdmin && eventId),
+  });
+};
+
 // ─── ADMIN DEPARTMENT MANAGEMENT ──────────────────────────────────────────────
 
 export const useAdminCreateDepartmentMutation = () => {
