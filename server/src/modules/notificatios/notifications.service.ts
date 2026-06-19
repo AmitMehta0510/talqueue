@@ -1,3 +1,4 @@
+import { NotificationType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 
 export const createNotification =  async (data: {
@@ -5,7 +6,7 @@ export const createNotification =  async (data: {
 
     actorId?: string;
 
-    type: any;
+    type: NotificationType;
 
     title: string;
 
@@ -88,22 +89,21 @@ export const getMyNotifications =  async (
       .filter((n) => n.type === "CONNECTION_REQUEST" && n.metadata && typeof (n.metadata as any).connectionId === "string")
       .map((n) => (n.metadata as any).connectionId as string);
 
-    let connectionMap: Record<string, string> = {};
+    const connectionMap = new Map<string, string>();
     if (connectionIds.length > 0) {
       const connections = await prisma.connection.findMany({
         where: { id: { in: connectionIds } },
         select: { id: true, status: true },
       });
-      connectionMap = connections.reduce((acc, conn) => {
-        acc[conn.id] = conn.status;
-        return acc;
-      }, {} as Record<string, string>);
+      for (const conn of connections) {
+        connectionMap.set(conn.id, conn.status);
+      }
     }
 
     const enrichedNotifications = notifications.map((n) => {
       if (n.type === "CONNECTION_REQUEST" && n.metadata && typeof (n.metadata as any).connectionId === "string") {
         const connectionId = (n.metadata as any).connectionId;
-        const status = connectionMap[connectionId] || "PENDING";
+        const status = connectionMap.get(connectionId) || "PENDING";
         return {
           ...n,
           metadata: {

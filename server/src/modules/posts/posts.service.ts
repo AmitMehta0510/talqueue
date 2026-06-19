@@ -1339,7 +1339,7 @@ export const toggleSavePost = async (userId: string, postId: string) => {
 
       actorId: userId,
 
-      type: "SAVE",
+      type: "POST_SAVED",
 
       title: "Post Saved",
 
