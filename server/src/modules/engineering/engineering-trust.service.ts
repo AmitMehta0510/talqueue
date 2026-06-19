@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 
 export const calculateTrustLevel = async (userId: string) => {
   //
-  // USER
+  // USER WITH RELATION CONSOLIDATION
   //
   const user = await prisma.user.findUnique({
     where: {
@@ -12,6 +12,41 @@ export const calculateTrustLevel = async (userId: string) => {
       engineeringScore: true,
       reputationScore: true,
       trustLevel: true,
+      projectMemberships: {
+        select: {
+          project: {
+            select: {
+              verified: true,
+              status: true,
+            },
+          },
+        },
+      },
+      experiences: {
+        where: {
+          verified: true,
+        },
+        select: {
+          id: true,
+        },
+      },
+      teamMemberships: {
+        select: {
+          team: {
+            select: {
+              hackathonWins: {
+                select: {
+                  hackathon: {
+                    select: {
+                      verified: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -19,61 +54,29 @@ export const calculateTrustLevel = async (userId: string) => {
     return "BEGINNER";
   }
 
-  const [
-    verifiedProjects,
-    completedProjects,
-    verifiedExperiences,
-    hackathonWins,
-    verifiedHackathonWins,
-  ] = await Promise.all([
-    prisma.projectMember.count({
-      where: {
-        userId,
-        project: {
-          verified: true,
-        },
-      },
-    }),
-    prisma.projectMember.count({
-      where: {
-        userId,
-        project: {
-          status: "COMPLETED",
-        },
-      },
-    }),
-    prisma.experience.count({
-      where: {
-        userId,
-        verified: true,
-      },
-    }),
-    prisma.hackathonWinner.count({
-      where: {
-        team: {
-          members: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-    }),
-    prisma.hackathonWinner.count({
-      where: {
-        hackathon: {
-          verified: true,
-        },
-        team: {
-          members: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-    }),
-  ]);
+  const verifiedProjects = user.projectMemberships.filter(
+    (membership) => membership.project?.verified
+  ).length;
+
+  const completedProjects = user.projectMemberships.filter(
+    (membership) => membership.project?.status === "COMPLETED"
+  ).length;
+
+  const verifiedExperiences = user.experiences.length;
+
+  let hackathonWins = 0;
+  let verifiedHackathonWins = 0;
+
+  for (const membership of user.teamMemberships) {
+    if (membership.team?.hackathonWins) {
+      hackathonWins += membership.team.hackathonWins.length;
+      for (const win of membership.team.hackathonWins) {
+        if (win.hackathon?.verified) {
+          verifiedHackathonWins += 1;
+        }
+      }
+    }
+  }
 
   // ENGINEERING SCORE
   const engineeringScore = user.engineeringScore ?? 0;

@@ -20,10 +20,11 @@ export const getEngineeringPortfolioHandler =
       res: Response
     ) => {
 
+      const { username } = req.params || {};
+      const safeUsername = typeof username === "string" ? username : "";
       const portfolio =
         await getEngineeringPortfolio(
-          req.params
-            .username as string
+          safeUsername
         );
 
       res.json(

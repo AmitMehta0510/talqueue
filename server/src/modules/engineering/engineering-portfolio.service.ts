@@ -1,6 +1,14 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 
+interface PortfolioStatsAccumulator {
+  totalStars: number;
+  totalForks: number;
+  totalCommits: number;
+  verifiedProjects: number;
+  completedProjects: number;
+}
+
 export const getEngineeringPortfolio = async (username: string) => {
   // User
   const user = await prisma.user.findUnique({
@@ -130,11 +138,11 @@ export const getEngineeringPortfolio = async (username: string) => {
     }))
     .filter((project) => Boolean(project && project.id));
 
-  const stats = projects.reduce(
+  const stats = projects.reduce<PortfolioStatsAccumulator>(
     (acc, project) => {
-      acc.totalStars += project.starsCount;
-      acc.totalForks += project.forksCount;
-      acc.totalCommits += project.commitCount;
+      acc.totalStars += project.starsCount ?? 0;
+      acc.totalForks += project.forksCount ?? 0;
+      acc.totalCommits += project.commitCount ?? 0;
 
       if (project.verified) {
         acc.verifiedProjects += 1;
