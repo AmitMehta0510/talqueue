@@ -6,6 +6,8 @@ export const createHackathonSchema =
 
     description: z.string().min(20),
 
+    shortDescription: z.string().optional().nullable(),
+
     bannerUrl: z.string().optional(),
 
     startDate: z.string(),
@@ -44,7 +46,36 @@ export const createHackathonSchema =
 
     tags:
       z.array(z.string()).optional(),
+
+    logoUrl:
+      z.string().optional().nullable(),
+
+    tracks:
+      z.any().optional(),
+
+    rules:
+      z.any().optional(),
+
+    prizes:
+      z.any().optional(),
+
+    judgingCriteria:
+      z.any().optional(),
+
+    organizerType:
+      z.enum(["COMPANY", "COLLEGE", "COMMUNITY", "STARTUP", "INDIVIDUAL"]).optional().nullable(),
+
+    sponsorName:
+      z.string().optional().nullable(),
+
+    sponsorWebsite:
+      z.string().optional().nullable(),
+
+    status:
+      z.enum(["DRAFT", "OPEN", "LIVE", "ARCHIVED", "DELETED", "COMPLETED"]).optional().nullable(),
   });
+
+export type CreateHackathonInput = z.infer<typeof createHackathonSchema>;
 
 export const registerTeamSchema =
   z.object({

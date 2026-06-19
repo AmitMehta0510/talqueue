@@ -19,6 +19,7 @@ import { calculateUserAffinity } from "modules/affinity/affinity.service";
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 
 import slugify from "slugify";
+import { CreateHackathonInput, createHackathonSchema } from "./hackathons.validation";
 
 const HACKATHON_DEFAULT_INCLUDE = {
   createdBy: {
@@ -113,8 +114,10 @@ export const calculateSubmissionRankingScore = (submission: {
   return rankingScore;
 };
 
-export const createHackathon = async (userId: string, data: any) => {
-  const slug = slugify(data.title, {
+export const createHackathon = async (userId: string, data: CreateHackathonInput) => {
+  const validatedData = await createHackathonSchema.parseAsync(data);
+
+  const slug = slugify(validatedData.title, {
     lower: true,
     strict: true,
     trim: true,
@@ -130,61 +133,61 @@ export const createHackathon = async (userId: string, data: any) => {
 
   const hackathon = await prisma.hackathon.create({
     data: {
-      title: data.title,
+      title: validatedData.title,
 
       verified: isAdmin,
 
       slug,
 
-      shortDescription: data.shortDescription,
+      shortDescription: validatedData.shortDescription,
 
-      description: data.description,
+      description: validatedData.description,
 
-      bannerUrl: data.bannerUrl,
+      bannerUrl: validatedData.bannerUrl,
 
-      logoUrl: data.logoUrl,
+      logoUrl: validatedData.logoUrl,
 
-      startDate: new Date(data.startDate),
+      startDate: new Date(validatedData.startDate),
 
-      endDate: new Date(data.endDate),
+      endDate: new Date(validatedData.endDate),
 
-      registrationDeadline: new Date(data.registrationDeadline),
+      registrationDeadline: new Date(validatedData.registrationDeadline),
 
-      maxTeamSize: data.maxTeamSize,
+      maxTeamSize: validatedData.maxTeamSize,
 
-      minTeamSize: data.minTeamSize !== undefined ? data.minTeamSize : 1,
+      minTeamSize: validatedData.minTeamSize !== undefined ? validatedData.minTeamSize : 1,
 
-      tracks: data.tracks,
+      tracks: validatedData.tracks,
 
-      rules: data.rules,
+      rules: validatedData.rules,
 
-      prizes: data.prizes,
+      prizes: validatedData.prizes,
 
-      judgingCriteria: data.judgingCriteria,
+      judgingCriteria: validatedData.judgingCriteria,
 
-      organizerName: data.organizerName,
+      organizerName: validatedData.organizerName,
 
-      organizerWebsite: data.organizerWebsite,
+      organizerWebsite: validatedData.organizerWebsite,
 
-      organizerType: data.organizerType,
+      organizerType: validatedData.organizerType,
 
-      sponsorName: data.sponsorName,
+      sponsorName: validatedData.sponsorName,
 
-      sponsorWebsite: data.sponsorWebsite,
+      sponsorWebsite: validatedData.sponsorWebsite,
 
-      mode: data.mode,
+      mode: validatedData.mode,
 
-      location: data.location,
+      location: validatedData.location,
 
-      isExternal: Boolean(data.isExternal),
+      isExternal: Boolean(validatedData.isExternal),
 
-      sourcePlatform: data.sourcePlatform,
+      sourcePlatform: validatedData.sourcePlatform,
 
-      externalUrl: data.externalUrl,
+      externalUrl: validatedData.externalUrl,
 
-      status: data.status || "DRAFT",
+      status: validatedData.status || "DRAFT",
 
-      tags: data.tags,
+      tags: validatedData.tags,
 
       createdById: userId,
     },
@@ -192,25 +195,32 @@ export const createHackathon = async (userId: string, data: any) => {
     include: HACKATHON_DEFAULT_INCLUDE,
   });
 
-  // Sync to Elasticsearch
-  syncHackathonToElastic(hackathon.id);
+  // Non-blocking side effects executed inside setImmediate frame
+  setImmediate(() => {
+    try {
+      // Sync to Elasticsearch
+      syncHackathonToElastic(hackathon.id);
 
-  // Non-blocking side effects
-  void Promise.all([
-    addReputation(userId, "HACKATHON_CREATED", 10, "Created a hackathon", {
-      hackathonId: hackathon.id,
-    }),
+      // Other non-blocking side effects
+      void Promise.all([
+        addReputation(userId, "HACKATHON_CREATED", 10, "Created a hackathon", {
+          hackathonId: hackathon.id,
+        }),
 
-    createActivity(
-      userId,
-      "HACKATHON_CREATED",
-      "Created a hackathon",
-      `Created hackathon "${hackathon.title}"`,
-      {
-        hackathonId: hackathon.id,
-      },
-    ),
-  ]).catch(console.error);
+        createActivity(
+          userId,
+          "HACKATHON_CREATED",
+          "Created a hackathon",
+          `Created hackathon "${hackathon.title}"`,
+          {
+            hackathonId: hackathon.id,
+          },
+        ),
+      ]).catch(console.error);
+    } catch (err) {
+      console.error("[createHackathon Side-Effects Error]:", err);
+    }
+  });
 
   return hackathon;
 };
@@ -362,19 +372,15 @@ export const getHackathons = async (
     where: {
       AND: andClauses,
     },
-
     include: HACKATHON_WITH_COUNTS_INCLUDE,
-    take: 100,
+    orderBy: [
+      { trendingScore: "desc" },
+      { createdAt: "desc" },
+    ],
+    take: 50,
   });
 
-  return hackathons
-    .map((hackathon) => ({
-      ...hackathon,
-
-      rankingScore: calculateHackathonRankingScore(hackathon),
-    }))
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-    .slice(0, 50);
+  return hackathons;
 };
 
 export const getHackathonById = async (
@@ -699,53 +705,34 @@ export const registerTeamForHackathon = async (
     throw new AppError("Registration closed", 400);
   }
 
-  const [team, existingRegistration] = await Promise.all([
-    prisma.team.findUnique({
-      where: {
-        id: teamId,
-      },
+  const team = await prisma.team.findUnique({
+    where: {
+      id: teamId,
+    },
 
-      include: {
-        members: {
-          select: {
-            userId: true,
-          },
-        },
-
-        projects: {
-          select: {
-            verified: true,
-          },
-        },
-
-        _count: {
-          select: {
-            hackathonRegistrations: true,
-          },
-        },
-      },
-    }),
-
-    prisma.hackathonRegistration.findUnique({
-      where: {
-        hackathonId_teamId: {
-          hackathonId,
-          teamId,
+    include: {
+      members: {
+        select: {
+          userId: true,
         },
       },
 
-      select: {
-        id: true,
+      projects: {
+        select: {
+          verified: true,
+        },
       },
-    }),
-  ]);
+
+      _count: {
+        select: {
+          hackathonRegistrations: true,
+        },
+      },
+    },
+  });
 
   if (!team) {
     throw new AppError("Team not found", 404);
-  }
-
-  if (existingRegistration) {
-    throw new AppError("Team already registered", 400);
   }
 
   if (team.members.length > hackathon.maxTeamSize) {
@@ -779,69 +766,83 @@ export const registerTeamForHackathon = async (
   }
 
   // Atomic registration + counter increment
-  const [registration] = await prisma.$transaction([
-    prisma.hackathonRegistration.create({
-      data: {
-        hackathonId,
-        teamId,
-      },
-    }),
-
-    prisma.hackathon.update({
-      where: {
-        id: hackathonId,
-      },
-
-      data: {
-        registrationCount: {
-          increment: 1,
+  let registration;
+  try {
+    const [createdRegistration] = await prisma.$transaction([
+      prisma.hackathonRegistration.create({
+        data: {
+          hackathonId,
+          teamId,
         },
-      },
-    }),
-  ]);
+      }),
 
-  // Background side effects
-  void Promise.all([
-    addTeamReputation(teamId, rewardPoints),
+      prisma.hackathon.update({
+        where: {
+          id: hackathonId,
+        },
 
-    rewardTeamMembers(
-      teamId,
-      "HACKATHON_REGISTERED",
-      rewardPoints,
-      "Registered for hackathon",
-      {
-        hackathonId,
-      },
-    ),
+        data: {
+          registrationCount: {
+            increment: 1,
+          },
+        },
+      }),
+    ]);
+    registration = createdRegistration;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new AppError("Team already registered", 400);
+    }
+    throw error;
+  }
 
-    ...team.members.map((member) =>
-      createActivity(
-        member.userId,
+  // Non-blocking side effects executed inside setImmediate frame
+  setImmediate(() => {
+    void Promise.all([
+      addTeamReputation(teamId, rewardPoints),
+
+      rewardTeamMembers(
+        teamId,
         "HACKATHON_REGISTERED",
+        rewardPoints,
         "Registered for hackathon",
-        `Registered for "${hackathon.title}"`,
         {
           hackathonId,
         },
       ),
-    ),
 
-    createNotification({
-      userId: hackathon.createdById,
+      ...team.members.map((member) =>
+        createActivity(
+          member.userId,
+          "HACKATHON_REGISTERED",
+          "Registered for hackathon",
+          `Registered for "${hackathon.title}"`,
+          {
+            hackathonId,
+          },
+        ),
+      ),
 
-      type: "SYSTEM",
+      createNotification({
+        userId: hackathon.createdById,
 
-      title: "New Hackathon Registration",
+        type: "SYSTEM",
 
-      message: `A new team registered for "${hackathon.title}"`,
-    }),
+        title: "New Hackathon Registration",
 
-    ...team.members.flatMap((member) => [
-      calculateUserAffinity(member.userId, hackathon.createdById),
+        message: `A new team registered for "${hackathon.title}"`,
+      }),
 
-      calculateUserAffinity(hackathon.createdById, member.userId),
-    ]),
-  ]).catch(console.error);
+      ...team.members.flatMap((member) => [
+        calculateUserAffinity(member.userId, hackathon.createdById),
+
+        calculateUserAffinity(hackathon.createdById, member.userId),
+      ]),
+    ]).catch(console.error);
+  });
 
   return registration;
 };
@@ -1080,72 +1081,78 @@ export const submitProjectToHackathon = async (
 
     submission = createdSubmission;
 
-    void Promise.all([
-      addTeamReputation(data.teamId, rewardPoints),
+    // Non-blocking side effects executed inside setImmediate frame
+    setImmediate(() => {
+      void Promise.all([
+        addTeamReputation(data.teamId, rewardPoints),
 
-      rewardTeamMembers(
-        data.teamId,
-        "HACKATHON_SUBMISSION",
-        rewardPoints,
-        "Submitted hackathon project",
-        {
-          hackathonId,
-          projectId: data.projectId,
-        },
-      ),
-
-      ...team.members.map((member) =>
-        createActivity(
-          member.userId,
-          "HACKATHON_SUBMITTED",
+        rewardTeamMembers(
+          data.teamId,
+          "HACKATHON_SUBMISSION",
+          rewardPoints,
           "Submitted hackathon project",
-          `Submitted "${project.title}" to "${registration.hackathon.title}"`,
           {
             hackathonId,
             projectId: data.projectId,
           },
         ),
-      ),
-    ]).catch(console.error);
+
+        ...team.members.map((member) =>
+          createActivity(
+            member.userId,
+            "HACKATHON_SUBMITTED",
+            "Submitted hackathon project",
+            `Submitted "${project.title}" to "${registration.hackathon.title}"`,
+            {
+              hackathonId,
+              projectId: data.projectId,
+            },
+          ),
+        ),
+      ]).catch(console.error);
+    });
   }
 
   const owner = team.members.find((member) => member.role === "OWNER");
 
-  void Promise.all([
-    createNotification({
-      userId: registration.hackathon.createdById,
+  // Non-blocking side effects executed inside setImmediate frame
+  setImmediate(() => {
+    void Promise.all([
+      createNotification({
+        userId: registration.hackathon.createdById,
 
-      type: "SYSTEM",
+        type: "SYSTEM",
 
-      title: "New Hackathon Submission",
+        title: "New Hackathon Submission",
 
-      message: `A new project was submitted to "${registration.hackathon.title}"`,
-    }),
+        message: `A new project was submitted to "${registration.hackathon.title}"`,
+      }),
 
-    ...(owner && owner.userId !== userId
-      ? [
-          createNotification({
-            userId: owner.userId,
+      ...(owner && owner.userId !== userId
+        ? [
+            createNotification({
+              userId: owner.userId,
 
-            type: "SYSTEM",
+              type: "SYSTEM",
 
-            title: "Hackathon Submission Updated",
+              title: "Hackathon Submission Updated",
 
-            message: "Your team's project was submitted",
-          }),
-        ]
-      : []),
+              message: "Your team's project was submitted",
+            }),
+          ]
+        : []),
 
-    ...team.members.flatMap((member) => [
-      calculateUserAffinity(member.userId, registration.hackathon.createdById),
+      ...team.members.flatMap((member) => [
+        calculateUserAffinity(member.userId, registration.hackathon.createdById),
 
-      calculateUserAffinity(registration.hackathon.createdById, member.userId),
-    ]),
+        calculateUserAffinity(registration.hackathon.createdById, member.userId),
+      ]),
 
-    ...project.members.map((member) =>
-      calculateUserAffinity(userId, member.userId),
-    ),
-  ]).catch(console.error);
+      ...project.members.map((member) =>
+        calculateUserAffinity(userId, member.userId),
+      ),
+    ]).catch(console.error);
+  });
 
   return submission;
 };
@@ -1207,48 +1214,51 @@ export const reviewRegistration = async (
 
   const reputationDelta = status === "APPROVED" ? 10 : -2;
 
-  void Promise.all([
-    addTeamReputation(registration.teamId, reputationDelta),
+  // Non-blocking side effects executed inside setImmediate frame
+  setImmediate(() => {
+    void Promise.all([
+      addTeamReputation(registration.teamId, reputationDelta),
 
-    ...(status === "APPROVED"
-      ? [
-          rewardTeamMembers(
-            registration.teamId,
-            "HACKATHON_APPROVED",
-            5,
-            "Hackathon registration approved",
-            {
-              hackathonId: registration.hackathonId,
-            },
-          ),
-        ]
-      : []),
+      ...(status === "APPROVED"
+        ? [
+            rewardTeamMembers(
+              registration.teamId,
+              "HACKATHON_APPROVED",
+              5,
+              "Hackathon registration approved",
+              {
+                hackathonId: registration.hackathonId,
+              },
+            ),
+          ]
+        : []),
 
-    ...registration.team.members.map((member) =>
-      createActivity(
-        member.userId,
-        status === "APPROVED" ? "HACKATHON_APPROVED" : "HACKATHON_REJECTED",
+      ...registration.team.members.map((member) =>
+        createActivity(
+          member.userId,
+          status === "APPROVED" ? "HACKATHON_APPROVED" : "HACKATHON_REJECTED",
 
-        status === "APPROVED"
-          ? "Hackathon registration approved"
-          : "Hackathon registration rejected",
+          status === "APPROVED"
+            ? "Hackathon registration approved"
+            : "Hackathon registration rejected",
 
-        status === "APPROVED"
-          ? `Approved for "${registration.hackathon.title}"`
-          : `Rejected from "${registration.hackathon.title}"`,
+          status === "APPROVED"
+            ? `Approved for "${registration.hackathon.title}"`
+            : `Rejected from "${registration.hackathon.title}"`,
 
-        {
-          hackathonId: registration.hackathonId,
-        },
+          {
+            hackathonId: registration.hackathonId,
+          },
+        ),
       ),
-    ),
 
-    ...registration.team.members.flatMap((member) => [
-      calculateUserAffinity(organizerId, member.userId),
+      ...registration.team.members.flatMap((member) => [
+        calculateUserAffinity(organizerId, member.userId),
 
-      calculateUserAffinity(member.userId, organizerId),
-    ]),
-  ]).catch(console.error);
+        calculateUserAffinity(member.userId, organizerId),
+      ]),
+    ]).catch(console.error);
+  });
 
   return updatedRegistration;
 };
@@ -1257,48 +1267,44 @@ export const archiveHackathon = async (
   organizerId: string,
   hackathonId: string,
 ) => {
-  //
-  // OWNERSHIP + STATUS VALIDATION
-  //
-  const hackathon = await prisma.hackathon.findFirst({
-    where: {
-      id: hackathonId,
+  let updatedHackathon;
+  try {
+    updatedHackathon = await prisma.hackathon.update({
+      where: {
+        id: hackathonId,
+        createdById: organizerId,
+        status: {
+          notIn: ["DELETED", "ARCHIVED"],
+        },
+      },
 
-      createdById: organizerId,
-    },
+      data: {
+        status: "ARCHIVED",
 
-    select: {
-      id: true,
-      title: true,
-      status: true,
-    },
-  });
-
-  if (!hackathon) {
-    throw new AppError("Hackathon not found or unauthorized", 404);
+        archivedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { status: true, createdById: true },
+      });
+      if (!hackathon || hackathon.createdById !== organizerId) {
+        throw new AppError("Hackathon not found or unauthorized", 404);
+      }
+      if (hackathon.status === "ARCHIVED") {
+        throw new AppError("Hackathon already archived", 400);
+      }
+      if (hackathon.status === "DELETED") {
+        throw new AppError("Hackathon not found or unauthorized", 404);
+      }
+    }
+    throw error;
   }
-
-  //
-  // PREVENT DUPLICATE ARCHIVE
-  //
-  if (hackathon.status === "ARCHIVED") {
-    throw new AppError("Hackathon already archived", 400);
-  }
-
-  //
-  // SOFT ARCHIVE
-  //
-  const updatedHackathon = await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      status: "ARCHIVED",
-
-      archivedAt: new Date(),
-    },
-  });
 
   //
   // NON BLOCKING SIDE EFFECTS
@@ -1311,7 +1317,7 @@ export const archiveHackathon = async (
 
       "Archived a hackathon",
 
-      `Archived hackathon "${hackathon.title}"`,
+      `Archived hackathon "${updatedHackathon.title}"`,
 
       {
         hackathonId,
@@ -1326,40 +1332,54 @@ export const deleteHackathon = async (
   organizerId: string,
   hackathonId: string,
 ) => {
-  //
-  // FETCH HACKATHON + COUNTS
-  //
-  const hackathon = await prisma.hackathon.findFirst({
-    where: {
-      id: hackathonId,
-
-      createdById: organizerId,
-    },
-
-    include: {
-      _count: {
-        select: {
-          registrations: true,
-
-          submissions: true,
-
-          judges: true,
-
-          winners: true,
+  let updatedHackathon;
+  try {
+    updatedHackathon = await prisma.hackathon.update({
+      where: {
+        id: hackathonId,
+        createdById: organizerId,
+        status: {
+          not: "DELETED",
         },
       },
-    },
-  });
 
-  if (!hackathon) {
-    throw new AppError("Hackathon not found or unauthorized", 404);
-  }
+      data: {
+        status: "DELETED",
 
-  //
-  // PREVENT DUPLICATE DELETE
-  //
-  if (hackathon.status === "DELETED") {
-    throw new AppError("Hackathon already deleted", 400);
+        deletedAt: new Date(),
+      },
+
+      include: {
+        _count: {
+          select: {
+            registrations: true,
+
+            submissions: true,
+
+            judges: true,
+
+            winners: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      const hackathon = await prisma.hackathon.findUnique({
+        where: { id: hackathonId },
+        select: { status: true, createdById: true },
+      });
+      if (!hackathon || hackathon.createdById !== organizerId) {
+        throw new AppError("Hackathon not found or unauthorized", 404);
+      }
+      if (hackathon.status === "DELETED") {
+        throw new AppError("Hackathon already deleted", 400);
+      }
+    }
+    throw error;
   }
 
   //
@@ -1367,33 +1387,18 @@ export const deleteHackathon = async (
   //
   let penalty = -20;
 
-  penalty -= hackathon._count.registrations * 2;
+  penalty -= updatedHackathon._count.registrations * 2;
 
-  penalty -= hackathon._count.submissions * 5;
+  penalty -= updatedHackathon._count.submissions * 5;
 
-  penalty -= hackathon._count.judges * 10;
+  penalty -= updatedHackathon._count.judges * 10;
 
-  penalty -= hackathon._count.winners * 15;
+  penalty -= updatedHackathon._count.winners * 15;
 
   //
   // MAX PENALTY CAP
   //
   penalty = Math.max(penalty, -150);
-
-  //
-  // SOFT DELETE
-  //
-  const updatedHackathon = await prisma.hackathon.update({
-    where: {
-      id: hackathonId,
-    },
-
-    data: {
-      status: "DELETED",
-
-      deletedAt: new Date(),
-    },
-  });
 
   //
   // NON BLOCKING SIDE EFFECTS
@@ -1426,7 +1431,7 @@ export const deleteHackathon = async (
 
       "Deleted a hackathon",
 
-      `Deleted hackathon "${hackathon.title}"`,
+      `Deleted hackathon "${updatedHackathon.title}"`,
 
       {
         hackathonId,
@@ -1707,6 +1712,22 @@ export const evaluateSubmission = async (
   try {
     evaluation = await prisma.$transaction(async (tx) => {
       //
+      // PRE-CHECK PREVENT DEADLOCK/DUPLICATE
+      //
+      const existingEvaluation = await tx.hackathonEvaluation.findUnique({
+        where: {
+          submissionId_judgeId: {
+            submissionId,
+            judgeId: judge.id,
+          },
+        },
+      });
+
+      if (existingEvaluation) {
+        throw new AppError("Submission already evaluated", 400);
+      }
+
+      //
       // CREATE EVALUATION
       //
       const createdEvaluation = await tx.hackathonEvaluation.create({
@@ -1809,80 +1830,85 @@ export const evaluateSubmission = async (
   //
   // NON BLOCKING SIDE EFFECTS
   //
-  const judgeUser = await judgeUserPromise;
+  // Non-blocking side effects executed inside setImmediate frame
+  setImmediate(() => {
+    judgeUserPromise
+      .then((judgeUser) => {
+        void Promise.all([
+          //
+          // JUDGE REWARD
+          //
+          addReputation(
+            judgeUserId,
 
-  void Promise.all([
-    //
-    // JUDGE REWARD
-    //
-    addReputation(
-      judgeUserId,
+            "HACKATHON_EVALUATED",
 
-      "HACKATHON_EVALUATED",
+            5,
 
-      5,
+            "Evaluated hackathon submission",
 
-      "Evaluated hackathon submission",
+            {
+              hackathonId: submission.hackathonId,
 
-      {
-        hackathonId: submission.hackathonId,
+              submissionId,
+            },
+          ),
 
-        submissionId,
-      },
-    ),
+          //
+          // ACTIVITY
+          //
+          createActivity(
+            judgeUserId,
 
-    //
-    // ACTIVITY
-    //
-    createActivity(
-      judgeUserId,
+            "HACKATHON_SUBMISSION_REVIEWED",
 
-      "HACKATHON_SUBMISSION_REVIEWED",
+            "Reviewed hackathon submission",
 
-      "Reviewed hackathon submission",
+            `Reviewed submission for "${submission.hackathon.title}"`,
 
-      `Reviewed submission for "${submission.hackathon.title}"`,
+            {
+              hackathonId: submission.hackathonId,
 
-      {
-        hackathonId: submission.hackathonId,
+              submissionId,
+            },
+          ),
 
-        submissionId,
-      },
-    ),
+          //
+          // OWNER NOTIFICATION
+          //
+          ...(owner
+            ? [
+                createNotification({
+                  userId: owner.userId,
 
-    //
-    // OWNER NOTIFICATION
-    //
-    ...(owner
-      ? [
-          createNotification({
-            userId: owner.userId,
+                  type: "HACKATHON_JUDGING",
 
-            type: "HACKATHON_JUDGING",
+                  title: "Submission Evaluated",
 
-            title: "Submission Evaluated",
+                  message: `${judgeUser?.profile?.fullName || judgeUser?.username} reviewed your submission for "${submission.hackathon.title}"`,
+                }),
+              ]
+            : []),
 
-            message: `${judgeUser?.profile?.fullName || judgeUser?.username} reviewed your submission for "${submission.hackathon.title}"`,
-          }),
-        ]
-      : []),
+          //
+          // ENGINEERING SCORE RECALC
+          //
+          ...submission.team.members.map((member) =>
+            calculateEngineeringScore(member.userId),
+          ),
 
-    //
-    // ENGINEERING SCORE RECALC
-    //
-    ...submission.team.members.map((member) =>
-      calculateEngineeringScore(member.userId),
-    ),
+          //
+          // AFFINITIES
+          //
+          ...submission.team.members.flatMap((member) => [
+            calculateUserAffinity(judgeUserId, member.userId),
 
-    //
-    // AFFINITIES
-    //
-    ...submission.team.members.flatMap((member) => [
-      calculateUserAffinity(judgeUserId, member.userId),
-
-      calculateUserAffinity(member.userId, judgeUserId),
-    ]),
-  ]).catch(console.error);
+            calculateUserAffinity(member.userId, judgeUserId),
+          ]),
+        ]).catch(console.error);
+      })
+      .catch(console.error);
+  });
 
   return evaluation;
 };
@@ -1922,23 +1948,13 @@ export const getHackathonLeaderboard = async (hackathonId: string) => {
     orderBy: {
       finalScore: "desc",
     },
+    take: 50,
   });
-
-  const rankedSubmissions = submissions
-    .map((submission) => ({
-      ...submission,
-      rankingScore: calculateSubmissionRankingScore(submission),
-    }))
-    .sort((a, b) => b.rankingScore - a.rankingScore)
-    .map((submission, index) => ({
-      rank: index + 1,
-      ...submission,
-    }));
 
   return {
     hackathon,
-    totalSubmissions: rankedSubmissions.length,
-    leaderboard: rankedSubmissions,
+    totalSubmissions: submissions.length,
+    leaderboard: submissions,
   };
 };
 
@@ -2101,105 +2117,92 @@ export const declareHackathonWinners = async (
     }),
   ]);
 
-  //
-  // SIDE EFFECTS
-  //
-  const sideEffects: Promise<any>[] = [];
+  // Non-blocking side effects executed inside setImmediate frame sequentially
+  setImmediate(async () => {
+    try {
+      for (let index = 0; index < winnerEntries.length; index++) {
+        const winner = winnerEntries[index];
 
-  for (let index = 0; index < winnerEntries.length; index++) {
-    const winner = winnerEntries[index];
+        const submission = winners[index];
 
-    const submission = winners[index];
+        const reward = rewards[winner.position as 1 | 2 | 3];
 
-    const reward = rewards[winner.position as 1 | 2 | 3];
+        //
+        // TEAM REWARD
+        //
+        await addTeamReputation(submission.teamId, reward);
 
-    //
-    // TEAM REWARD
-    //
-    sideEffects.push(addTeamReputation(submission.teamId, reward));
+        //
+        // MEMBER REWARDS
+        //
+        for (const member of submission.team.members) {
+          await addReputation(
+            member.userId,
 
-    //
-    // MEMBER REWARDS
-    //
-    for (const member of submission.team.members) {
-      sideEffects.push(
-        addReputation(
-          member.userId,
+            "HACKATHON_WON",
 
-          "HACKATHON_WON",
+            reward,
 
-          reward,
+            `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in hackathon`,
 
-          `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in hackathon`,
-
-          {
-            hackathonId,
-          },
-        ),
-      );
-
-      sideEffects.push(
-        createActivity(
-          member.userId,
-
-          "HACKATHON_WON",
-
-          "Won a hackathon",
-
-          `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in "${hackathon.title}"`,
-
-          {
-            hackathonId,
-          },
-        ),
-      );
-
-      sideEffects.push(
-        createNotification({
-          userId: member.userId,
-
-          type: "HACKATHON_WINNER",
-
-          title: "Hackathon Winner",
-
-          message: `${organizer?.profile?.fullName || organizer?.username} declared your team ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place winner in "${hackathon.title}"`,
-        }),
-      );
-
-      sideEffects.push(
-        awardBadge(
-          member.userId,
-
-          winner.position === 1 ? "hackathon-champion" : "hackathon-winner",
-        ),
-      );
-
-      sideEffects.push(calculateEngineeringScore(member.userId));
-
-      //
-      // ORGANIZER AFFINITY
-      //
-      sideEffects.push(calculateUserAffinity(organizerId, member.userId));
-
-      sideEffects.push(calculateUserAffinity(member.userId, organizerId));
-
-      //
-      // TEAM AFFINITY
-      //
-      for (const otherMember of submission.team.members) {
-        if (otherMember.userId !== member.userId) {
-          sideEffects.push(
-            calculateUserAffinity(member.userId, otherMember.userId),
+            {
+              hackathonId,
+            },
           );
+
+          await createActivity(
+            member.userId,
+
+            "HACKATHON_WON",
+
+            "Won a hackathon",
+
+            `Won ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place in "${hackathon.title}"`,
+
+            {
+              hackathonId,
+            },
+          );
+
+          await createNotification({
+            userId: member.userId,
+
+            type: "HACKATHON_WINNER",
+
+            title: "Hackathon Winner",
+
+            message: `${organizer?.profile?.fullName || organizer?.username} declared your team ${winner.position}${winner.position === 1 ? "st" : winner.position === 2 ? "nd" : "rd"} place winner in "${hackathon.title}"`,
+          });
+
+          await awardBadge(
+            member.userId,
+
+            winner.position === 1 ? "hackathon-champion" : "hackathon-winner",
+          );
+
+          await calculateEngineeringScore(member.userId);
+
+          //
+          // ORGANIZER AFFINITY
+          //
+          await calculateUserAffinity(organizerId, member.userId);
+
+          await calculateUserAffinity(member.userId, organizerId);
+
+          //
+          // TEAM AFFINITY
+          //
+          for (const otherMember of submission.team.members) {
+            if (otherMember.userId !== member.userId) {
+              await calculateUserAffinity(member.userId, otherMember.userId);
+            }
+          }
         }
       }
+    } catch (err) {
+      console.error("[declareHackathonWinners side effects sequential execution error]:", err);
     }
-  }
-
-  //
-  // EXECUTE SIDE EFFECTS
-  //
-  void Promise.all(sideEffects).catch(console.error);
+  });
 
   return {
     success: true,

@@ -1619,6 +1619,8 @@ model Hackathon {
   conversations Conversation[]
 
   @@unique([sourceId, sourcePlatform])
+  @@index([trendingScore])
+  @@index([createdAt])
 }
 
 model HackathonRegistration {
