@@ -93,7 +93,7 @@ export const getEngineeringPortfolio = async (username: string) => {
               id: true,
               name: true,
               description: true,
-              imageUrl: true,
+              iconUrl: true,
               category: true,
             },
           },
