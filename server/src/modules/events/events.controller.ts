@@ -4,6 +4,7 @@ import { successResponse } from "shared/utils/apiResponse";
 import {
   createEvent,
   getEventById,
+  getEventAttendees,
   getEvents,
   updateEvent,
   deleteEvent,
@@ -11,6 +12,9 @@ import {
 } from "./events.service";
 import { createEventSchema, updateEventSchema } from "./events.validation";
 import { RSVPStatus } from "@prisma/client";
+import AppError from "shared/errors/AppError";
+
+
 
 export const createEventHandler = asyncHandler(
   async (req: any, res: Response) => {
@@ -32,9 +36,27 @@ export const getEventsHandler = asyncHandler(
       type: req.query.type?.toString(),
     };
 
-    const events = await getEvents(filters, req.user?.id);
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const safePage = isNaN(page as number) ? 1 : page;
+    const safeLimitParam = isNaN(limit as number) ? 10 : limit;
+
+    const events = await getEvents(filters, { page: safePage, limit: safeLimitParam }, req.user?.id);
 
     res.json(successResponse(events));
+  }
+);
+
+export const getEventAttendeesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const safePage = isNaN(page as number) ? 1 : page;
+    const safeLimitParam = isNaN(limit as number) ? 10 : limit;
+
+    const result = await getEventAttendees(req.params.id, { page: safePage, limit: safeLimitParam });
+
+    res.json(successResponse(result));
   }
 );
 
@@ -67,8 +89,7 @@ export const rsvpEventHandler = asyncHandler(
   async (req: any, res: Response) => {
     const { status } = req.body;
     if (!status || !Object.values(RSVPStatus).includes(status)) {
-      res.status(400).json({ success: false, message: "Valid RSVP status is required" });
-      return;
+      throw new AppError("Valid RSVP status parameter is required", 400);
     }
 
     const rsvp = await rsvpEvent(req.user.id, req.params.id, status as RSVPStatus);

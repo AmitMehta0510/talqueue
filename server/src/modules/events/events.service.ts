@@ -49,17 +49,6 @@ export const getEventById = async (id: string, userId?: string) => {
       college: true,
       company: true,
       community: true,
-      rsvps: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              profile: { select: { fullName: true, avatarUrl: true } },
-            },
-          },
-        },
-      },
     },
   });
 
@@ -87,12 +76,70 @@ export const getEventById = async (id: string, userId?: string) => {
   };
 };
 
-export const getEvents = async (filters: {
-  collegeId?: string;
-  companyId?: string;
-  communityId?: string;
-  type?: string;
-}, userId?: string) => {
+export const getEventAttendees = async (
+  eventId: string,
+  pagination: { page?: number; limit?: number } = {}
+) => {
+  const page = pagination.page || 1;
+  const limit = pagination.limit || 10;
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { id: true },
+  });
+
+  if (!event) {
+    throw new AppError("Event not found", 404);
+  }
+
+  const rsvps = await prisma.eventRSVP.findMany({
+    where: { eventId },
+    skip,
+    take: safeLimit,
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const total = await prisma.eventRSVP.count({
+    where: { eventId },
+  });
+
+  return {
+    rsvps,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit),
+    },
+  };
+};
+
+export const getEvents = async (
+  filters: {
+    collegeId?: string;
+    companyId?: string;
+    communityId?: string;
+    type?: string;
+  },
+  pagination: { page?: number; limit?: number } = {},
+  userId?: string
+) => {
+  const page = pagination.page || 1;
+  const limit = pagination.limit || 10;
+  const safeLimit = Math.min(limit, 50);
+  const skip = (page - 1) * safeLimit;
+
   const where: any = {};
 
   if (filters.collegeId) where.collegeId = filters.collegeId;
@@ -103,6 +150,8 @@ export const getEvents = async (filters: {
   const events = await prisma.event.findMany({
     where,
     orderBy: { startDate: "asc" },
+    skip,
+    take: safeLimit,
     include: {
       createdBy: {
         select: {
@@ -199,46 +248,49 @@ export const deleteEvent = async (userId: string, id: string) => {
 };
 
 export const rsvpEvent = async (userId: string, eventId: string, status: RSVPStatus) => {
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
-    include: {
-      _count: {
-        select: { rsvps: true },
-      },
-    },
-  });
-
-  if (!event) {
-    throw new AppError("Event not found", 404);
-  }
-
-  // Check capacity limit if setting to GOING
-  if (status === RSVPStatus.GOING && event.capacity && event._count.rsvps >= event.capacity) {
-    // Check if the user is already going (so we're just updating status or keeping it)
-    const existing = await prisma.eventRSVP.findUnique({
-      where: { eventId_userId: { eventId, userId } },
+  return prisma.$transaction(async (tx) => {
+    const event = await tx.event.findUnique({
+      where: { id: eventId },
     });
-    if (existing?.status !== RSVPStatus.GOING) {
-      throw new AppError("Event capacity has been reached", 400);
-    }
-  }
 
-  const rsvp = await prisma.eventRSVP.upsert({
-    where: {
-      eventId_userId: {
+    if (!event) {
+      throw new AppError("Event not found", 404);
+    }
+
+    // Check capacity limit if setting to GOING
+    if (status === RSVPStatus.GOING && event.capacity) {
+      const activeRsvpsCount = await tx.eventRSVP.count({
+        where: { eventId, status: RSVPStatus.GOING },
+      });
+
+      if (activeRsvpsCount >= event.capacity) {
+        // Check if the user is already going (so we're just updating status or keeping it)
+        const existing = await tx.eventRSVP.findUnique({
+          where: { eventId_userId: { eventId, userId } },
+        });
+        if (existing?.status !== RSVPStatus.GOING) {
+          throw new AppError("Event capacity has been reached", 400);
+        }
+      }
+    }
+
+    const rsvp = await tx.eventRSVP.upsert({
+      where: {
+        eventId_userId: {
+          eventId,
+          userId,
+        },
+      },
+      update: {
+        status,
+      },
+      create: {
         eventId,
         userId,
+        status,
       },
-    },
-    update: {
-      status,
-    },
-    create: {
-      eventId,
-      userId,
-      status,
-    },
-  });
+    });
 
-  return rsvp;
+    return rsvp;
+  });
 };
