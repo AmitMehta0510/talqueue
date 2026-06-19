@@ -644,6 +644,18 @@ const getOrCreateCompany = async (
 };
 
 export const getMyProfile = async (userId: string) => {
+  const cacheKey = `profile:${userId}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      await redis.expire(cacheKey, 180);
+      return parsed;
+    }
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Redis get failed for user ${userId}:`, err?.message || err);
+  }
+
   const user = await prisma.user.findUnique({
     where: {
       id: userId,
@@ -654,6 +666,12 @@ export const getMyProfile = async (userId: string) => {
 
   if (!user) {
     throw new AppError("User not found", 404);
+  }
+
+  try {
+    await redis.setex(cacheKey, 180, JSON.stringify(user));
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Redis set failed for user ${userId}:`, err?.message || err);
   }
 
   return user;
@@ -676,11 +694,39 @@ export const getMyFullProfile = async (userId: string) => {
 };
 
 export const getUserFullProfile = async (userId: string) => {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  let resolvedId = userId;
+  if (!isUuid) {
+    const user = await prisma.user.findFirst({
+      where: { username: userId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    resolvedId = user.id;
+  }
+
+  const cacheKey = `profile:${resolvedId}`;
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.skills) {
+        await redis.expire(cacheKey, 180);
+        const { email: _email, ...publicUser } = parsed;
+        return publicUser;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Redis get failed for user ${resolvedId}:`, err?.message || err);
+  }
+
   const user = await prisma.user.findFirst({
     where: {
       OR: [
-        { id: userId },
-        { username: userId },
+        { id: resolvedId },
+        { username: resolvedId },
       ],
     },
 
@@ -689,6 +735,12 @@ export const getUserFullProfile = async (userId: string) => {
 
   if (!user) {
     throw new AppError("User not found", 404);
+  }
+
+  try {
+    await redis.setex(cacheKey, 180, JSON.stringify(user));
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Redis set failed for user ${resolvedId}:`, err?.message || err);
   }
 
   const { email: _email, ...publicUser } = user;
@@ -911,7 +963,7 @@ export const updateProfile = async (
     ...profileData
   } = data;
 
-  return prisma.$transaction(async (tx) => {
+  const updatedUser = await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({
       where: {
         id: userId,
@@ -1128,6 +1180,14 @@ export const updateProfile = async (
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
+
+  return updatedUser;
 };
 
 export const addSkill = async (userId: string, data: AddSkillData) => {
@@ -1188,6 +1248,12 @@ export const addSkill = async (userId: string, data: AddSkillData) => {
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return result;
 };
@@ -1372,6 +1438,12 @@ export const addExperience = async (
     }
   });
 
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
+
   return experience;
 };
 
@@ -1535,6 +1607,12 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
     }
   });
 
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
+
   return result;
 };
 
@@ -1556,6 +1634,12 @@ export const removeSkill = async (userId: string, skillId: string) => {
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return { id: userSkill.id };
 };
@@ -1581,6 +1665,12 @@ export const removeExperience = async (userId: string, experienceId: string) => 
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return { id: experienceId };
 };
@@ -1635,6 +1725,12 @@ export const removeEducation = async (userId: string, educationId: string) => {
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return { id: educationId };
 };
@@ -1772,6 +1868,12 @@ export const updateExperience = async (
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return updated;
 };
@@ -1933,6 +2035,12 @@ export const updateEducation = async (
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+
+  try {
+    await redis.del(`profile:${userId}`);
+  } catch (err: any) {
+    console.warn(`[Profile Cache] Invalidation failed for user ${userId}:`, err?.message || err);
+  }
 
   return result;
 };
