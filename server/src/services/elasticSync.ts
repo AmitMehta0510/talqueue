@@ -194,3 +194,82 @@ export function syncJobToElastic(jobId: string): void {
       console.error(`[ES Sync] Failed to sync job '${jobId}' to Elasticsearch:`, error?.message || error);
     });
 }
+
+/**
+ * Synchronizes multiple job records to Elasticsearch in bulk.
+ * Fetches the records and their company names from PostgreSQL and upserts or deletes them in the 'jobs' index.
+ */
+export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
+  if (!jobIds || jobIds.length === 0) return;
+
+  const uniqueIds = Array.from(new Set(jobIds));
+
+  try {
+    const jobs = await prisma.job.findMany({
+      where: {
+        id: { in: uniqueIds },
+      },
+      include: {
+        company: {
+          select: { name: true },
+        },
+      },
+    });
+
+    const jobsMap = new Map<string, any>();
+    for (const j of jobs) {
+      jobsMap.set(j.id, j);
+    }
+
+    const operations: any[] = [];
+
+    for (const id of uniqueIds) {
+      const j = jobsMap.get(id);
+      if (!j || j.deletedAt || j.status === "DELETED") {
+        operations.push({ delete: { _index: "jobs", _id: id } });
+      } else {
+        operations.push({ index: { _index: "jobs", _id: id } });
+        operations.push({
+          title: j.title,
+          description: j.description,
+          companyName: j.company?.name || "Unknown Company",
+          requirements: j.requirements,
+          status: j.status,
+          type: j.type,
+          workMode: j.workMode,
+          location: j.location,
+          experienceLevel: j.experienceLevel,
+          skillsRequired: j.skillsRequired || [],
+          salaryMin: j.salaryMin,
+          salaryMax: j.salaryMax,
+          ppoOffered: j.ppoOffered,
+          featured: j.featured,
+          createdAt: j.createdAt,
+        });
+      }
+    }
+
+    if (operations.length === 0) return;
+
+    console.log(`[ES Sync] Flushing bulk of ${operations.length} operations to Elasticsearch for jobs...`);
+    const response = await elasticClient.bulk({ operations });
+
+    if (response.errors) {
+      console.error("[ES Sync] Bulk sync errors occurred for jobs:");
+      if (response.items) {
+        for (const item of response.items) {
+          const action = Object.keys(item)[0];
+          const result = (item as any)[action];
+          if (result && result.error) {
+            console.error(`  - Failed action for ID '${result._id}':`, result.error);
+          }
+        }
+      }
+    } else {
+      console.log(`[ES Sync] Successfully synced bulk jobs to Elasticsearch.`);
+    }
+  } catch (error: any) {
+    console.error("[ES Sync] Elasticsearch bulk sync failed for jobs:", error?.message || error);
+  }
+}
+

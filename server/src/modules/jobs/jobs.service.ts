@@ -1,6 +1,7 @@
 import prisma from "shared/database/prisma";
 import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
-import { syncJobToElastic } from "services/elasticSync";
+import { syncJobsToElasticBulk } from "services/elasticSync";
+import { z } from "zod";
 
 import AppError from "shared/errors/AppError";
 
@@ -83,6 +84,32 @@ export const createJob = async (userId: string, data: any) => {
   }
 
   //
+  // FEATURED MUTATION SECURITY CHECK
+  // Only platform admins or company admins for this company can set featured: true
+  //
+  if (data.featured === true) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        roles: {
+          select: { role: { select: { name: true } } },
+        },
+      },
+    });
+    const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
+    const isPlatformAdmin = roleNames.has("PLATFORM_ADMIN");
+    const isCompanyAdmin = !!adminRecord;
+
+    if (!isPlatformAdmin && !isCompanyAdmin) {
+      throw new AppError(
+        "Only company administrators or platform administrators can post featured jobs",
+        403,
+      );
+    }
+  }
+
+
+  //
   // SLUG
   //
   const baseSlug = generateSlug(`${data.title}-${company.name}`);
@@ -163,7 +190,7 @@ export const createJob = async (userId: string, data: any) => {
   });
 
   // Sync to Elasticsearch
-  syncJobToElastic(job.id);
+  syncJobsToElasticBulk([job.id]);
 
   //
   // ACTIVITY
@@ -201,90 +228,68 @@ export const createJob = async (userId: string, data: any) => {
     },
   ).catch(console.error);
 
-  //
-  // FETCH CONNECTIONS + EMPLOYEES
-  //
-  const [connections, employees] = await Promise.all([
-    prisma.connection.findMany({
-      where: {
-        status: "ACCEPTED",
-
-        OR: [
-          {
-            senderId: userId,
-          },
-
-          {
-            receiverId: userId,
-          },
-        ],
-      },
-
-      select: {
-        senderId: true,
-
-        receiverId: true,
-      },
-    }),
-
-    prisma.experience.findMany({
-      where: {
-        companyId: company.id,
-
-        isCurrent: true,
-      },
-
-      select: {
-        userId: true,
-      },
-    }),
-  ]);
-
-  //
-  // CONNECTION NOTIFICATIONS
-  //
-  const connectionNotifications = connections.map((connection) => {
-    const targetUserId =
-      connection.senderId === userId
-        ? connection.receiverId
-        : connection.senderId;
-
-    return createNotification({
-      userId: targetUserId,
-
-      type: "SYSTEM",
-
-      title: "New Job Posted",
-
-      message: `${job.title} role posted at ${company.name}`,
-    });
-  });
-
-  //
-  // EMPLOYEE NOTIFICATIONS
-  //
-  const employeeNotifications = employees
-
-    .filter((employee) => employee.userId !== userId)
-
-    .map((employee) =>
-      createNotification({
-        userId: employee.userId,
-
-        type: "SYSTEM",
-
-        title: "New Opening At Your Company",
-
-        message: `${job.title} opening was posted at ${company.name}`,
+  // Offload connection and employee notifications to background execution
+  setImmediate(() => {
+    Promise.all([
+      prisma.connection.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            {
+              senderId: userId,
+            },
+            {
+              receiverId: userId,
+            },
+          ],
+        },
+        select: {
+          senderId: true,
+          receiverId: true,
+        },
       }),
-    );
+      prisma.experience.findMany({
+        where: {
+          companyId: company.id,
+          isCurrent: true,
+        },
+        select: {
+          userId: true,
+        },
+      }),
+    ])
+      .then(([connections, employees]) => {
+        const connectionNotifications = connections.map((connection) => {
+          const targetUserId =
+            connection.senderId === userId
+              ? connection.receiverId
+              : connection.senderId;
 
-  //
-  // FIRE IN PARALLEL
-  //
-  Promise.all([...connectionNotifications, ...employeeNotifications]).catch(
-    console.error,
-  );
+          return createNotification({
+            userId: targetUserId,
+            type: "SYSTEM",
+            title: "New Job Posted",
+            message: `${job.title} role posted at ${company.name}`,
+          });
+        });
+
+        const employeeNotifications = employees
+          .filter((employee) => employee.userId !== userId)
+          .map((employee) =>
+            createNotification({
+              userId: employee.userId,
+              type: "SYSTEM",
+              title: "New Opening At Your Company",
+              message: `${job.title} opening was posted at ${company.name}`,
+            }),
+          );
+
+        return Promise.all([...connectionNotifications, ...employeeNotifications]);
+      })
+      .catch((error) => {
+        console.error("[Job Notifications] Background notification dispatch failed:", error);
+      });
+  });
 
   return job;
 };
@@ -698,36 +703,68 @@ export const deleteJob = async (
 
   return job;
 };
+const requestCompanyAndCreateJobSchema = z.object({
+  companyName: z.string().min(2).max(100),
+  title: z.string().min(2).max(100),
+  description: z.string().min(10).max(5000),
+  requirements: z.string().max(5000).optional().nullable(),
+  responsibilities: z.string().max(5000).optional().nullable(),
+  perks: z.string().max(5000).optional().nullable(),
+  location: z.string().max(100).optional().nullable(),
+  workMode: z.enum(["REMOTE", "HYBRID", "ONSITE"]).optional().nullable(),
+  type: z.enum(["FULL_TIME", "INTERNSHIP", "PART_TIME", "CONTRACT", "FREELANCE"]),
+  experienceLevel: z.string().max(100).optional().nullable(),
+  salaryMin: z.number().int().nonnegative().optional().nullable(),
+  salaryMax: z.number().int().nonnegative().optional().nullable(),
+  currency: z.string().max(10).optional().nullable(),
+  openings: z.number().int().positive().max(1000).optional().nullable(),
+  skillsRequired: z.array(z.string().max(50)).max(20).default([]),
+  applicationDeadline: z.string().optional().nullable(),
+  applyUrl: z.string().max(512).optional().nullable(),
+  featured: z.boolean().optional().default(false),
+});
+
 // REQUEST COMPANY AND CREATE JOB (pending admin approval)
 //
 export const requestCompanyAndCreateJob = async (
   userId: string,
   data: any,
 ) => {
+  const validated = requestCompanyAndCreateJobSchema.safeParse(data);
+  if (!validated.success) {
+    throw new AppError(
+      `Invalid request data: ${validated.error.issues
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
+        .join(", ")}`,
+      400,
+    );
+  }
+  const validatedData = validated.data;
+
   // Store the entire job payload for later posting
   const pendingJobData = {
-    title: data.title,
-    description: data.description,
-    requirements: data.requirements,
-    responsibilities: data.responsibilities,
-    location: data.location,
-    workMode: data.workMode,
-    type: data.type,
-    experienceLevel: data.experienceLevel,
-    salaryMin: data.salaryMin,
-    salaryMax: data.salaryMax,
-    currency: data.currency || "INR",
-    openings: data.openings,
-    skillsRequired: data.skillsRequired || [],
-    applicationDeadline: data.applicationDeadline,
-    applyUrl: data.applyUrl,
-    featured: data.featured || false,
+    title: validatedData.title,
+    description: validatedData.description,
+    requirements: validatedData.requirements,
+    responsibilities: validatedData.responsibilities,
+    location: validatedData.location,
+    workMode: validatedData.workMode,
+    type: validatedData.type,
+    experienceLevel: validatedData.experienceLevel,
+    salaryMin: validatedData.salaryMin,
+    salaryMax: validatedData.salaryMax,
+    currency: validatedData.currency || "INR",
+    openings: validatedData.openings,
+    skillsRequired: validatedData.skillsRequired,
+    applicationDeadline: validatedData.applicationDeadline,
+    applyUrl: validatedData.applyUrl,
+    featured: false, // Force false for requested company pending approval
   };
 
   const request = await prisma.companyRequest.create({
     data: {
       requestedById: userId,
-      companyName: data.companyName,
+      companyName: validatedData.companyName,
       pendingJobData,
     },
     select: {
@@ -741,7 +778,7 @@ export const requestCompanyAndCreateJob = async (
   return {
     pending: true,
     requestId: request.id,
-    message: `Company "${data.companyName}" is pending admin verification. Your job will be posted automatically once approved.`,
+    message: `Company "${validatedData.companyName}" is pending admin verification. Your job will be posted automatically once approved.`,
   };
 };
 

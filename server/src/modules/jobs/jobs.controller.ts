@@ -51,7 +51,9 @@ export const getCompanyJobsHandler = asyncHandler(async (req: Request, res: Resp
 });
 
 export const getRecruiterJobsHandler = asyncHandler(async (req: any, res: Response) => {
-  const jobs = await getRecruiterJobs(req.user.id);
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+  const jobs = await getRecruiterJobs(req.user.id, page, limit);
   res.json(successResponse(jobs));
 });
 

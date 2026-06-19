@@ -23,6 +23,8 @@ import {
   updateApplicationStatusSchema,
 } from "./jobApplications.validation";
 
+import { paginationQuerySchema } from "shared/validation/query";
+
 export const applyToJobHandler =  asyncHandler(
     async (
       req: any,
@@ -55,10 +57,13 @@ export const getMyApplicationsHandler =  asyncHandler(
       req: any,
       res: Response
     ) => {
+      const query = paginationQuerySchema.parse(req.query);
 
       const applications =
         await getMyApplications(
-          req.user.id
+          req.user.id,
+          query.page,
+          query.limit
         );
 
       res.json(
@@ -74,11 +79,14 @@ export const getJobApplicationsHandler =  asyncHandler(
       req: any,
       res: Response
     ) => {
+      const query = paginationQuerySchema.parse(req.query);
 
       const applications =
         await getJobApplications(
           req.user.id,
-          req.params.jobId as string
+          req.params.jobId as string,
+          query.page,
+          query.limit
         );
 
       res.json(

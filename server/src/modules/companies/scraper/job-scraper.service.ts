@@ -2,7 +2,7 @@ import axios from "axios";
 import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { JobType, WorkMode, JobStatus } from "@prisma/client";
-import { syncJobToElastic } from "services/elasticSync";
+import { syncJobsToElasticBulk } from "services/elasticSync";
 
 // Mapping of seeded companies to their public Greenhouse board tokens
 const GREENHOUSE_TOKENS: Record<string, string> = {
@@ -154,6 +154,7 @@ export async function runJobScrape() {
   let updated = 0;
   let staleArchived = 0;
   let totalProcessed = 0;
+  const processedJobIds: string[] = [];
 
   for (const company of companies) {
     const greenhouseToken = GREENHOUSE_TOKENS[company.slug];
@@ -181,49 +182,42 @@ export async function runJobScrape() {
           const workMode = parseWorkMode(locationName);
           const skillsRequired = extractSkills(jobTitle, description);
 
-          const existing = await prisma.job.findUnique({
+          const upserted = await prisma.job.upsert({
             where: { slug },
-            select: { id: true }
+            create: {
+              companyId: company.id,
+              title: jobTitle,
+              slug,
+              description,
+              requirements,
+              responsibilities,
+              location: locationName,
+              type,
+              workMode,
+              applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
+              skillsRequired,
+              status: "OPEN",
+              externalJobId: externalId
+            },
+            update: {
+              title: jobTitle,
+              description,
+              requirements,
+              responsibilities,
+              location: locationName,
+              type,
+              workMode,
+              applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
+              skillsRequired,
+              status: "OPEN"
+            }
           });
 
-          if (existing) {
-            await prisma.job.update({
-              where: { id: existing.id },
-              data: {
-                title: jobTitle,
-                description,
-                requirements,
-                responsibilities,
-                location: locationName,
-                type,
-                workMode,
-                applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
-                skillsRequired,
-                status: "OPEN"
-              }
-            });
-            syncJobToElastic(existing.id);
-            updated++;
-          } else {
-            const newJob = await prisma.job.create({
-              data: {
-                companyId: company.id,
-                title: jobTitle,
-                slug,
-                description,
-                requirements,
-                responsibilities,
-                location: locationName,
-                type,
-                workMode,
-                applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
-                skillsRequired,
-                status: "OPEN",
-                externalJobId: externalId
-              }
-            });
-            syncJobToElastic(newJob.id);
+          processedJobIds.push(upserted.id);
+          if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
             created++;
+          } else {
+            updated++;
           }
         }
       } else if (ashbyToken) {
@@ -248,49 +242,42 @@ export async function runJobScrape() {
           const workMode = parseWorkMode(locationName);
           const skillsRequired = extractSkills(jobTitle, `${descPlain} ${jobTitle}`);
 
-          const existing = await prisma.job.findUnique({
+          const upserted = await prisma.job.upsert({
             where: { slug },
-            select: { id: true }
+            create: {
+              companyId: company.id,
+              title: jobTitle,
+              slug,
+              description: descPlain || jobTitle,
+              requirements: requirements || null,
+              responsibilities: responsibilities || null,
+              location: locationName,
+              type,
+              workMode,
+              applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
+              skillsRequired,
+              status: "OPEN",
+              externalJobId: externalId
+            },
+            update: {
+              title: jobTitle,
+              description: descPlain || jobTitle,
+              requirements: requirements || null,
+              responsibilities: responsibilities || null,
+              location: locationName,
+              type,
+              workMode,
+              applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
+              skillsRequired,
+              status: "OPEN"
+            }
           });
 
-          if (existing) {
-            await prisma.job.update({
-              where: { id: existing.id },
-              data: {
-                title: jobTitle,
-                description: descPlain || jobTitle,
-                requirements: requirements || null,
-                responsibilities: responsibilities || null,
-                location: locationName,
-                type,
-                workMode,
-                applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
-                skillsRequired,
-                status: "OPEN"
-              }
-            });
-            syncJobToElastic(existing.id);
-            updated++;
-          } else {
-            const newJob = await prisma.job.create({
-              data: {
-                companyId: company.id,
-                title: jobTitle,
-                slug,
-                description: descPlain || jobTitle,
-                requirements: requirements || null,
-                responsibilities: responsibilities || null,
-                location: locationName,
-                type,
-                workMode,
-                applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
-                skillsRequired,
-                status: "OPEN",
-                externalJobId: externalId
-              }
-            });
-            syncJobToElastic(newJob.id);
+          processedJobIds.push(upserted.id);
+          if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
             created++;
+          } else {
+            updated++;
           }
         }
       } else {
@@ -307,49 +294,42 @@ export async function runJobScrape() {
           const locationName = company.headquarters || "Remote";
           const skillsRequired = extractSkills(jobTitle, description);
 
-          const existing = await prisma.job.findUnique({
+          const upserted = await prisma.job.upsert({
             where: { slug },
-            select: { id: true }
+            create: {
+              companyId: company.id,
+              title: jobTitle,
+              slug,
+              description,
+              requirements,
+              responsibilities,
+              location: locationName,
+              type: template.type as JobType,
+              workMode: template.workMode as WorkMode,
+              applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
+              skillsRequired,
+              status: "OPEN",
+              externalJobId: externalId
+            },
+            update: {
+              title: jobTitle,
+              description,
+              requirements,
+              responsibilities,
+              location: locationName,
+              type: template.type as JobType,
+              workMode: template.workMode as WorkMode,
+              applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
+              skillsRequired,
+              status: "OPEN"
+            }
           });
 
-          if (existing) {
-            await prisma.job.update({
-              where: { id: existing.id },
-              data: {
-                title: jobTitle,
-                description,
-                requirements,
-                responsibilities,
-                location: locationName,
-                type: template.type as JobType,
-                workMode: template.workMode as WorkMode,
-                applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
-                skillsRequired,
-                status: "OPEN"
-              }
-            });
-            syncJobToElastic(existing.id);
-            updated++;
-          } else {
-            const newJob = await prisma.job.create({
-              data: {
-                companyId: company.id,
-                title: jobTitle,
-                slug,
-                description,
-                requirements,
-                responsibilities,
-                location: locationName,
-                type: template.type as JobType,
-                workMode: template.workMode as WorkMode,
-                applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
-                skillsRequired,
-                status: "OPEN",
-                externalJobId: externalId
-              }
-            });
-            syncJobToElastic(newJob.id);
+          processedJobIds.push(upserted.id);
+          if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
             created++;
+          } else {
+            updated++;
           }
         }
       }
@@ -369,6 +349,11 @@ export async function runJobScrape() {
     } catch (err) {
       console.error(`[Job Scraper] Failed to process jobs for company ${company.name}:`, err);
     }
+  }
+
+  // Bulk sync processed jobs to Elasticsearch
+  if (processedJobIds.length > 0) {
+    await syncJobsToElasticBulk(processedJobIds);
   }
 
   console.log(`[Job Scraper] Seeding complete. Processed: ${totalProcessed} companies. Created: ${created}, Updated: ${updated}, Stale Cleaned: ${staleArchived}`);
