@@ -6,15 +6,15 @@ export const createReferralRequestSchema = z
 
     companySlug: z.string().optional(),
 
-    companyName: z.string().min(2).optional(),
+    companyName: z.string().trim().min(2).max(100).optional(),
 
-    jobRole: z.string().min(2),
+    jobRole: z.string().trim().min(2).max(100),
 
     jobId: z.string().optional(),
 
     jobUrl: z.string().optional(),
 
-    message: z.string().optional(),
+    message: z.string().trim().max(1000).optional(),
 
     githubUrl: z.string().optional(),
 

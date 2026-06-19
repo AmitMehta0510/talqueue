@@ -77,12 +77,13 @@ export const createReferralRequest = async (
       throw new AppError("Referral request daily limit reached", 429);
     }
 
-    // Verify receiver currently works there
+    // Verify receiver currently works there with a verified experience
     const currentEmployee = await tx.experience.findFirst({
       where: {
         userId: receiverId,
         companyId: company.id,
         isCurrent: true,
+        verified: true,
       },
       select: {
         id: true,
@@ -90,7 +91,10 @@ export const createReferralRequest = async (
     });
 
     if (!currentEmployee) {
-      throw new AppError("User does not currently work at this company", 400);
+      throw new AppError(
+        "User does not currently work at this company with a verified experience",
+        400,
+      );
     }
 
     // Prevent duplicates
@@ -169,10 +173,14 @@ export const createReferralRequest = async (
   });
 
   // Post-transaction side effects (external to transactional integrity)
-  await Promise.all([
-    calculateUserAffinity(requesterId, receiverId),
-    calculateUserAffinity(receiverId, requesterId),
-  ]);
+  // Offloaded to a setImmediate macro-task so affinity compute does not block
+  // the HTTP response cycle.
+  setImmediate(() => {
+    Promise.all([
+      calculateUserAffinity(requesterId, receiverId),
+      calculateUserAffinity(receiverId, requesterId),
+    ]).catch(console.error);
+  });
 
   createActivity(
     requesterId,
@@ -304,12 +312,14 @@ export const reviewReferralRequest = async (
   });
 
   //
-  // Affinity update
+  // Affinity update — offloaded so it does not block the response cycle.
   //
-  await Promise.all([
-    calculateUserAffinity(request.requesterId, request.receiverId),
-    calculateUserAffinity(request.receiverId, request.requesterId),
-  ]);
+  setImmediate(() => {
+    Promise.all([
+      calculateUserAffinity(request.requesterId, request.receiverId),
+      calculateUserAffinity(request.receiverId, request.requesterId),
+    ]).catch(console.error);
+  });
 
   //
   // ACCEPTED
@@ -370,12 +380,15 @@ export const reviewReferralRequest = async (
     calculateEngineeringScore(request.requesterId).catch(console.error);
 
     //
-    // Strong affinity update
+    // Strong affinity update — separate setImmediate from the general-path
+    // affinity update above so ordering is preserved as independent macro-tasks.
     //
-    await Promise.all([
-      calculateUserAffinity(request.requesterId, request.receiverId),
-      calculateUserAffinity(request.receiverId, request.requesterId),
-    ]);
+    setImmediate(() => {
+      Promise.all([
+        calculateUserAffinity(request.requesterId, request.receiverId),
+        calculateUserAffinity(request.receiverId, request.requesterId),
+      ]).catch(console.error);
+    });
 
     //
     // Reward referrer
