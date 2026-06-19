@@ -6,40 +6,48 @@ import {
   getProjectMembers,
 } from "./project.helpers";
 
-export const recalculateProjectAffinities =
-  async (
-    projectId: string,
+export const recalculateProjectAffinities = (
+  projectId: string,
 
-    excludeUserId?: string,
-  ) => {
-    const members =
-      await getProjectMembers(projectId);
+  excludeUserId?: string,
+): Promise<void> => {
+  return new Promise<void>((resolve) => {
+    setImmediate(async () => {
+      try {
+        const members = await getProjectMembers(projectId);
 
-    const promises: Promise<any>[] = [];
+        const promises: Promise<any>[] = [];
 
-    for (const member of members) {
-      if (
-        excludeUserId &&
-        member.userId === excludeUserId
-      ) {
-        continue;
-      }
+        for (const member of members) {
+          if (
+            excludeUserId &&
+            member.userId === excludeUserId
+          ) {
+            continue;
+          }
 
-      for (const other of members) {
-        if (
-          member.userId === other.userId
-        ) {
-          continue;
+          for (const other of members) {
+            if (
+              member.userId === other.userId
+            ) {
+              continue;
+            }
+
+            promises.push(
+              calculateUserAffinity(
+                member.userId,
+                other.userId,
+              ),
+            );
+          }
         }
 
-        promises.push(
-          calculateUserAffinity(
-            member.userId,
-            other.userId,
-          ),
-        );
+        await Promise.all(promises);
+      } catch (error) {
+        console.error("recalculateProjectAffinities failed", error);
+      } finally {
+        resolve();
       }
-    }
-
-    await Promise.all(promises);
-  };
+    });
+  });
+};

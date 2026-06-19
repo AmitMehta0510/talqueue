@@ -166,7 +166,7 @@ export const calculateProjectVerificationScore =
           )
         );
 
-      if (diffDays <= 30) {
+      if (diffDays >= 0 && diffDays <= 30) {
         score += 10;
       }
     }
@@ -174,8 +174,11 @@ export const calculateProjectVerificationScore =
     //
     // Clamp
     //
-    return Math.min(
-      Math.round(score),
-      100
+    return Math.max(
+      0,
+      Math.min(
+        Math.round(score),
+        100
+      )
     );
   };

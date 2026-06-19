@@ -19,9 +19,9 @@ export interface CreateProjectData {
 
   videoDemoUrl?: string;
 
-  screenshots?: any;
+  screenshots?: string[];
 
-  techStack?: any;
+  techStack?: string[];
 
   deploymentStatus?: DeploymentStatus;
 
@@ -43,9 +43,9 @@ export interface UpdateProjectData {
 
   videoDemoUrl?: string;
 
-  screenshots?: any;
+  screenshots?: string[];
 
-  techStack?: any;
+  techStack?: string[];
 
   deploymentStatus?: DeploymentStatus;
 

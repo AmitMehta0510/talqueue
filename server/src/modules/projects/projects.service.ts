@@ -28,6 +28,15 @@ import { getOwnedProject } from "./project-access.service";
 
 import { CreateProjectData, UpdateProjectData } from "./project.types";
 
+const generateRandomAlphanumeric = (length = 5): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 export const createProject = async (
   userId: string,
   data: CreateProjectData,
@@ -40,18 +49,7 @@ export const createProject = async (
     strict: true,
   });
 
-  let slug = baseSlug;
-
-  let counter = 1;
-
-  while (
-    await prisma.project.findUnique({
-      where: { slug },
-      select: { id: true },
-    })
-  ) {
-    slug = `${baseSlug}-${counter++}`;
-  }
+  const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
 
   //
   // CREATE PROJECT
@@ -115,80 +113,84 @@ export const createProject = async (
   });
 
   //
-  // BACKGROUND SIDE EFFECTS
+  // OFFLOAD TO MACRO-TASK LAYER (setImmediate)
   //
-  void Promise.all([
-    addReputation(userId, "PROJECT_CREATED", 5, "Created a project", {
-      projectId: project.id,
-    }),
-
-    createActivity(
-      userId,
-      "PROJECT_CREATED",
-      "Created a project",
-      `Created project "${project.title}"`,
-      {
+  setImmediate(() => {
+    //
+    // BACKGROUND SIDE EFFECTS
+    //
+    Promise.all([
+      addReputation(userId, "PROJECT_CREATED", 5, "Created a project", {
         projectId: project.id,
-      },
-    ),
+      }),
 
-    recalculateProjectAffinities(project.id),
-  ]).catch(console.error);
+      createActivity(
+        userId,
+        "PROJECT_CREATED",
+        "Created a project",
+        `Created project "${project.title}"`,
+        {
+          projectId: project.id,
+        },
+      ),
 
-  //
-  // GITHUB SYNC
-  //
-  if (project.githubUrl) {
-    void fetchGithubRepository(project.githubUrl)
-      .then(async (githubData) => {
-        const verificationScore = calculateProjectVerificationScore({
-          ...project,
-          ...githubData,
-        });
+      recalculateProjectAffinities(project.id),
+    ]).catch(console.error);
 
-        const verified = verificationScore >= 60;
-
-        await prisma.project.update({
-          where: {
-            id: project.id,
-          },
-
-          data: {
+    //
+    // GITHUB SYNC
+    //
+    if (project.githubUrl) {
+      fetchGithubRepository(project.githubUrl)
+        .then(async (githubData) => {
+          const verificationScore = calculateProjectVerificationScore({
+            ...project,
             ...githubData,
+          });
 
-            verified,
+          const verified = verificationScore >= 60;
 
-            lastGithubSyncAt: new Date(),
-          },
-        });
+          await prisma.project.update({
+            where: {
+              id: project.id,
+            },
 
-        if (verified) {
-          await Promise.all([
-            addReputation(
-              userId,
-              "PROJECT_VERIFIED",
-              40,
-              "Verified engineering project",
-              {
-                projectId: project.id,
-              },
-            ),
+            data: {
+              ...githubData,
 
-            createActivity(
-              userId,
-              "PROJECT_VERIFIED",
-              "Verified a project",
-              `Project "${project.title}" became verified`,
-              {
-                projectId: project.id,
-              },
-            ),
-          ]);
-        }
-      })
+              verified,
 
-      .catch(console.error);
-  }
+              lastGithubSyncAt: new Date(),
+            },
+          });
+
+          if (verified) {
+            await Promise.all([
+              addReputation(
+                userId,
+                "PROJECT_VERIFIED",
+                40,
+                "Verified engineering project",
+                {
+                  projectId: project.id,
+                },
+              ),
+
+              createActivity(
+                userId,
+                "PROJECT_VERIFIED",
+                "Verified a project",
+                `Project "${project.title}" became verified`,
+                {
+                  projectId: project.id,
+                },
+              ),
+            ]);
+          }
+        })
+        .catch(console.error);
+    }
+  });
 
   return project;
 };
@@ -387,90 +389,93 @@ export const requestToJoinProject = async (
   },
 ) => {
   //
-  // PROJECT
+  // UNIFIED PARALLEL LOOKUPS & VALIDATIONS
   //
-  const project = await prisma.project.findUnique({
-    where: {
-      id: projectId,
-    },
+  const [
+    project,
+    requester,
+    existingMember,
+    existingPendingRequest,
+    recentRejectedRequest,
+  ] = await Promise.all([
+    prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      select: {
+        id: true,
+        ownerId: true,
+        title: true,
+      },
+    }),
 
-    select: {
-      id: true,
+    prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        username: true,
+        profile: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
+    }),
 
-      ownerId: true,
+    prisma.projectMember.findFirst({
+      where: {
+        projectId,
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    }),
 
-      title: true,
-    },
-  });
+    prisma.projectJoinRequest.findFirst({
+      where: {
+        projectId,
+        userId,
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+      },
+    }),
 
+    prisma.projectJoinRequest.findFirst({
+      where: {
+        projectId,
+        userId,
+        OR: [
+          {
+            status: "REJECTED",
+          },
+          {
+            status: "WITHDRAWN",
+          },
+        ],
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  //
+  // PROJECT EXISTENCE & OWNER CHECK
+  //
   if (!project) {
     throw new AppError("Project not found", 404);
   }
 
-  //
-  // OWNER CHECK
-  //
   if (project.ownerId === userId) {
     throw new AppError("Owner cannot join own project", 400);
   }
-
-  //
-  // PARALLEL VALIDATIONS
-  //
-  const [existingMember, existingPendingRequest, recentRejectedRequest] =
-    await Promise.all([
-      prisma.projectMember.findFirst({
-        where: {
-          projectId,
-
-          userId,
-        },
-
-        select: {
-          id: true,
-        },
-      }),
-
-      prisma.projectJoinRequest.findFirst({
-        where: {
-          projectId,
-
-          userId,
-
-          status: "PENDING",
-        },
-
-        select: {
-          id: true,
-        },
-      }),
-
-      prisma.projectJoinRequest.findFirst({
-        where: {
-          projectId,
-
-          userId,
-
-          OR: [
-            {
-              status: "REJECTED",
-            },
-
-            {
-              status: "WITHDRAWN",
-            },
-          ],
-        },
-
-        orderBy: {
-          createdAt: "desc",
-        },
-
-        select: {
-          createdAt: true,
-        },
-      }),
-    ]);
 
   //
   // ALREADY MEMBER
@@ -498,7 +503,6 @@ export const requestToJoinProject = async (
     if (diff < cooldownMs) {
       throw new AppError(
         `Please wait ${PROJECT_JOIN_REQUEST_COOLDOWN_HOURS} hours before requesting again`,
-
         400,
       );
     }
@@ -518,25 +522,6 @@ export const requestToJoinProject = async (
   });
 
   //
-  // REQUESTER
-  //
-  const requester = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-
-    select: {
-      username: true,
-
-      profile: {
-        select: {
-          fullName: true,
-        },
-      },
-    },
-  });
-
-  //
   // SIDE EFFECTS
   //
   void Promise.all([
@@ -549,7 +534,7 @@ export const requestToJoinProject = async (
 
       title: "New Project Join Request",
 
-      message: `${requester?.profile?.fullName || requester?.username} requested to join "${project.title}"`,
+      message: `${requester?.profile?.fullName || requester?.username || "Someone"} requested to join "${project.title}"`,
 
       entityType: "PROJECT",
 
@@ -600,6 +585,8 @@ export const getProjectJoinRequests = async (
     where: {
       projectId,
     },
+
+    take: 50,
 
     include: {
       user: {
@@ -757,63 +744,65 @@ export const reviewJoinRequest = async (
   });
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [
-    createNotification({
-      userId: request.userId,
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [
+      createNotification({
+        userId: request.userId,
 
-      actorId: ownerId,
+        actorId: ownerId,
 
-      type:
-        status === "ACCEPTED"
-          ? "PROJECT_JOIN_ACCEPTED"
-          : "PROJECT_JOIN_REJECTED",
+        type:
+          status === "ACCEPTED"
+            ? "PROJECT_JOIN_ACCEPTED"
+            : "PROJECT_JOIN_REJECTED",
 
-      title:
-        status === "ACCEPTED"
-          ? "Project Request Accepted"
-          : "Project Request Rejected",
+        title:
+          status === "ACCEPTED"
+            ? "Project Request Accepted"
+            : "Project Request Rejected",
 
-      message:
-        status === "ACCEPTED"
-          ? `${owner?.profile?.fullName || owner?.username} accepted your request to join "${request.project.title}"`
-          : `${owner?.profile?.fullName || owner?.username} rejected your request to join "${request.project.title}"`,
+        message:
+          status === "ACCEPTED"
+            ? `${owner?.profile?.fullName || owner?.username} accepted your request to join "${request.project.title}"`
+            : `${owner?.profile?.fullName || owner?.username} rejected your request to join "${request.project.title}"`,
 
-      entityType: "PROJECT",
+        entityType: "PROJECT",
 
-      entityId: request.projectId,
+        entityId: request.projectId,
 
-      actionUrl: `/projects/${request.projectId}`,
+        actionUrl: `/projects/${request.projectId}`,
 
-      metadata: {
-        projectId: request.projectId,
+        metadata: {
+          projectId: request.projectId,
 
-        requestId,
-      },
+          requestId,
+        },
 
-      groupKey: `project-review-${request.projectId}`,
-    }),
-  ];
-
-  //
-  // ACCEPT SIDE EFFECTS
-  //
-  if (status === "ACCEPTED") {
-    sideEffects.push(
-      addReputation(request.userId, "PROJECT_JOINED", 10, "Joined a project", {
-        projectId: request.projectId,
+        groupKey: `project-review-${request.projectId}`,
       }),
+    ];
 
-      calculateUserAffinity(ownerId, request.userId),
+    //
+    // ACCEPT SIDE EFFECTS
+    //
+    if (status === "ACCEPTED") {
+      sideEffects.push(
+        addReputation(request.userId, "PROJECT_JOINED", 10, "Joined a project", {
+          projectId: request.projectId,
+        }),
 
-      calculateUserAffinity(request.userId, ownerId),
+        calculateUserAffinity(ownerId, request.userId),
 
-      recalculateProjectAffinities(request.projectId),
-    );
-  }
+        calculateUserAffinity(request.userId, ownerId),
 
-  void Promise.all(sideEffects).catch(console.error);
+        recalculateProjectAffinities(request.projectId),
+      );
+    }
+
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return result;
 };
@@ -873,9 +862,9 @@ export const inviteUserToProject = async (
   }
 
   //
-  // OWNERSHIP + VALIDATIONS
+  // CONCURRENT VALIDATIONS & OWNER LOOKUP
   //
-  const [project, existingMember, existingInvite] = await Promise.all([
+  const [project, existingMember, existingInvite, owner] = await Promise.all([
     prisma.project.findFirst({
       where: {
         id: projectId,
@@ -917,6 +906,22 @@ export const inviteUserToProject = async (
         id: true,
       },
     }),
+
+    prisma.user.findUnique({
+      where: {
+        id: ownerId,
+      },
+
+      select: {
+        username: true,
+
+        profile: {
+          select: {
+            fullName: true,
+          },
+        },
+      },
+    }),
   ]);
 
   //
@@ -956,56 +961,39 @@ export const inviteUserToProject = async (
   });
 
   //
-  // OWNER
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const owner = await prisma.user.findUnique({
-    where: {
-      id: ownerId,
-    },
+  setImmediate(() => {
+    Promise.all([
+      createNotification({
+        userId: invitedUserId,
 
-    select: {
-      username: true,
+        actorId: ownerId,
 
-      profile: {
-        select: {
-          fullName: true,
+        type: "PROJECT_INVITE",
+
+        title: "Project Invitation",
+
+        message: `${owner?.profile?.fullName || owner?.username || "Someone"} invited you to join "${project.title}"`,
+
+        entityType: "PROJECT",
+
+        entityId: projectId,
+
+        actionUrl: `/projects/${projectId}`,
+
+        metadata: {
+          projectId,
+
+          inviteId: invite.id,
         },
-      },
-    },
+
+        groupKey: `project-invite-${projectId}`,
+      }),
+
+      calculateUserAffinity(ownerId, invitedUserId),
+    ]).catch(console.error);
   });
-
-  //
-  // SIDE EFFECTS
-  //
-  void Promise.all([
-    createNotification({
-      userId: invitedUserId,
-
-      actorId: ownerId,
-
-      type: "PROJECT_INVITE",
-
-      title: "Project Invitation",
-
-      message: `${owner?.profile?.fullName || owner?.username} invited you to join "${project.title}"`,
-
-      entityType: "PROJECT",
-
-      entityId: projectId,
-
-      actionUrl: `/projects/${projectId}`,
-
-      metadata: {
-        projectId,
-
-        inviteId: invite.id,
-      },
-
-      groupKey: `project-invite-${projectId}`,
-    }),
-
-    calculateUserAffinity(ownerId, invitedUserId),
-  ]).catch(console.error);
 
   return invite;
 };
@@ -1118,70 +1106,72 @@ export const reviewProjectInvite = async (
   });
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [
-    createNotification({
-      userId: invite.invitedById,
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [
+      createNotification({
+        userId: invite.invitedById,
 
-      actorId: userId,
+        actorId: userId,
 
-      type: "PROJECT_INVITE",
+        type: "PROJECT_INVITE",
 
-      title:
-        status === "ACCEPTED"
-          ? "Project Invite Accepted"
-          : "Project Invite Rejected",
+        title:
+          status === "ACCEPTED"
+            ? "Project Invite Accepted"
+            : "Project Invite Rejected",
 
-      message:
-        status === "ACCEPTED"
-          ? `${invitedUser?.profile?.fullName || invitedUser?.username} accepted your invite to join "${invite.project.title}"`
-          : `${invitedUser?.profile?.fullName || invitedUser?.username} rejected your invite to join "${invite.project.title}"`,
+        message:
+          status === "ACCEPTED"
+            ? `${invitedUser?.profile?.fullName || invitedUser?.username || "Someone"} accepted your invite to join "${invite.project.title}"`
+            : `${invitedUser?.profile?.fullName || invitedUser?.username || "Someone"} rejected your invite to join "${invite.project.title}"`,
 
-      entityType: "PROJECT",
+        entityType: "PROJECT",
 
-      entityId: invite.projectId,
+        entityId: invite.projectId,
 
-      actionUrl: `/projects/${invite.projectId}`,
+        actionUrl: `/projects/${invite.projectId}`,
 
-      metadata: {
-        projectId: invite.projectId,
-
-        inviteId,
-      },
-
-      groupKey: `project-invite-review-${invite.projectId}`,
-    }),
-  ];
-
-  //
-  // ACCEPT SIDE EFFECTS
-  //
-  if (status === "ACCEPTED") {
-    sideEffects.push(
-      addReputation(
-        userId,
-
-        "PROJECT_JOINED",
-
-        10,
-
-        "Accepted project invite",
-
-        {
+        metadata: {
           projectId: invite.projectId,
+
+          inviteId,
         },
-      ),
 
-      calculateUserAffinity(userId, invite.invitedById),
+        groupKey: `project-invite-review-${invite.projectId}`,
+      }),
+    ];
 
-      calculateUserAffinity(invite.invitedById, userId),
+    //
+    // ACCEPT SIDE EFFECTS
+    //
+    if (status === "ACCEPTED") {
+      sideEffects.push(
+        addReputation(
+          userId,
 
-      recalculateProjectAffinities(invite.projectId),
-    );
-  }
+          "PROJECT_JOINED",
 
-  void Promise.all(sideEffects).catch(console.error);
+          10,
+
+          "Accepted project invite",
+
+          {
+            projectId: invite.projectId,
+          },
+        ),
+
+        calculateUserAffinity(userId, invite.invitedById),
+
+        calculateUserAffinity(invite.invitedById, userId),
+
+        recalculateProjectAffinities(invite.projectId),
+      );
+    }
+
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return result;
 };
@@ -1229,25 +1219,27 @@ export const leaveProject = async (userId: string, projectId: string) => {
   }
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  void Promise.all([
-    addReputation(
-      userId,
+  setImmediate(() => {
+    Promise.all([
+      addReputation(
+        userId,
 
-      "PROJECT_LEFT",
+        "PROJECT_LEFT",
 
-      -5,
+        -5,
 
-      "Left a project",
+        "Left a project",
 
-      {
-        projectId,
-      },
-    ),
+        {
+          projectId,
+        },
+      ),
 
-    recalculateProjectAffinities(projectId, userId),
-  ]).catch(console.error);
+      recalculateProjectAffinities(projectId, userId),
+    ]).catch(console.error);
+  });
 
   return {
     success: true,
@@ -1301,25 +1293,27 @@ export const removeProjectMember = async (
   }
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  void Promise.all([
-    addReputation(
-      memberId,
+  setImmediate(() => {
+    Promise.all([
+      addReputation(
+        memberId,
 
-      "PROJECT_REMOVED",
+        "PROJECT_REMOVED",
 
-      -10,
+        -10,
 
-      "Removed from project",
+        "Removed from project",
 
-      {
-        projectId,
-      },
-    ),
+        {
+          projectId,
+        },
+      ),
 
-    recalculateProjectAffinities(projectId, memberId),
-  ]).catch(console.error);
+      recalculateProjectAffinities(projectId, memberId),
+    ]).catch(console.error);
+  });
 
   return {
     success: true,
@@ -1331,7 +1325,8 @@ export const getReceivedProjectInvites = async (
   page = 1,
   limit = 20,
 ) => {
-  const skip = (page - 1) * limit;
+  const clampedLimit = Math.max(1, Math.min(limit, 50));
+  const skip = (page - 1) * clampedLimit;
 
   return prisma.projectInvite.findMany({
     where: {
@@ -1362,7 +1357,7 @@ export const getReceivedProjectInvites = async (
 
     skip,
 
-    take: limit,
+    take: clampedLimit,
   });
 };
 
@@ -1391,7 +1386,8 @@ export const getSentProjectInvites = async (
     throw new AppError("Project not found or unauthorized", 404);
   }
 
-  const skip = (page - 1) * limit;
+  const clampedLimit = Math.max(1, Math.min(limit, 50));
+  const skip = (page - 1) * clampedLimit;
 
   return prisma.projectInvite.findMany({
     where: {
@@ -1412,7 +1408,7 @@ export const getSentProjectInvites = async (
 
     skip,
 
-    take: limit,
+    take: clampedLimit,
   });
 };
 
@@ -1509,78 +1505,80 @@ export const completeProject = async (ownerId: string, projectId: string) => {
   const memberIds = project.members.map((member) => member.userId);
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [];
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [];
 
-  //
-  // MEMBER REWARDS
-  //
-  for (const memberId of memberIds) {
-    sideEffects.push(
-      addReputation(
-        memberId,
+    //
+    // MEMBER REWARDS
+    //
+    for (const memberId of memberIds) {
+      sideEffects.push(
+        addReputation(
+          memberId,
 
-        "PROJECT_COMPLETED",
+          "PROJECT_COMPLETED",
 
-        reputationReward,
+          reputationReward,
 
-        "Completed a project",
+          "Completed a project",
 
-        {
-          projectId,
-        },
-      ),
-
-      createActivity(
-        memberId,
-
-        "PROJECT_COMPLETED",
-
-        "Completed a project",
-
-        `Completed project "${project.title}"`,
-
-        {
-          projectId,
-        },
-      ),
-
-      calculateEngineeringScore(memberId),
-    );
-  }
-
-  //
-  // TEAM REWARD
-  //
-  if (project.teamId) {
-    sideEffects.push(
-      addTeamReputation(
-        project.teamId,
-
-        Math.floor(reputationReward / 2),
-      ),
-
-      prisma.team.update({
-        where: {
-          id: project.teamId,
-        },
-
-        data: {
-          completedProjectsCount: {
-            increment: 1,
+          {
+            projectId,
           },
-        },
-      }),
-    );
-  }
+        ),
 
-  //
-  // AFFINITIES
-  //
-  sideEffects.push(recalculateProjectAffinities(projectId));
+        createActivity(
+          memberId,
 
-  void Promise.all(sideEffects).catch(console.error);
+          "PROJECT_COMPLETED",
+
+          "Completed a project",
+
+          `Completed project "${project.title}"`,
+
+          {
+            projectId,
+          },
+        ),
+
+        calculateEngineeringScore(memberId),
+      );
+    }
+
+    //
+    // TEAM REWARD
+    //
+    if (project.teamId) {
+      sideEffects.push(
+        addTeamReputation(
+          project.teamId,
+
+          Math.floor(reputationReward / 2),
+        ),
+
+        prisma.team.update({
+          where: {
+            id: project.teamId,
+          },
+
+          data: {
+            completedProjectsCount: {
+              increment: 1,
+            },
+          },
+        }),
+      );
+    }
+
+    //
+    // AFFINITIES
+    //
+    sideEffects.push(recalculateProjectAffinities(projectId));
+
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -1637,58 +1635,60 @@ export const archiveProject = async (ownerId: string, projectId: string) => {
   const memberIds = project.members.map((member) => member.userId);
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [];
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [];
 
-  //
-  // MEMBER EFFECTS
-  //
-  for (const memberId of memberIds) {
-    sideEffects.push(
-      addReputation(
-        memberId,
+    //
+    // MEMBER EFFECTS
+    //
+    for (const memberId of memberIds) {
+      sideEffects.push(
+        addReputation(
+          memberId,
 
-        "PROJECT_ARCHIVED",
+          "PROJECT_ARCHIVED",
 
-        -5,
+          -5,
 
-        "Archived a project",
+          "Archived a project",
 
-        {
-          projectId,
-        },
-      ),
+          {
+            projectId,
+          },
+        ),
 
-      createActivity(
-        memberId,
+        createActivity(
+          memberId,
 
-        "PROJECT_ARCHIVED",
+          "PROJECT_ARCHIVED",
 
-        "Archived a project",
+          "Archived a project",
 
-        `Archived project "${project.title}"`,
+          `Archived project "${project.title}"`,
 
-        {
-          projectId,
-        },
-      ),
-    );
-  }
+          {
+            projectId,
+          },
+        ),
+      );
+    }
 
-  //
-  // TEAM PENALTY
-  //
-  if (project.teamId) {
-    sideEffects.push(addTeamReputation(project.teamId, -5));
-  }
+    //
+    // TEAM PENALTY
+    //
+    if (project.teamId) {
+      sideEffects.push(addTeamReputation(project.teamId, -5));
+    }
 
-  //
-  // AFFINITIES
-  //
-  sideEffects.push(recalculateProjectAffinities(projectId));
+    //
+    // AFFINITIES
+    //
+    sideEffects.push(recalculateProjectAffinities(projectId));
 
-  void Promise.all(sideEffects).catch(console.error);
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -1745,58 +1745,60 @@ export const restoreProject = async (ownerId: string, projectId: string) => {
   const memberIds = project.members.map((member) => member.userId);
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [];
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [];
 
-  //
-  // MEMBER EFFECTS
-  //
-  for (const memberId of memberIds) {
-    sideEffects.push(
-      addReputation(
-        memberId,
+    //
+    // MEMBER EFFECTS
+    //
+    for (const memberId of memberIds) {
+      sideEffects.push(
+        addReputation(
+          memberId,
 
-        "PROJECT_RESTORED",
+          "PROJECT_RESTORED",
 
-        3,
+          3,
 
-        "Restored a project",
+          "Restored a project",
 
-        {
-          projectId,
-        },
-      ),
+          {
+            projectId,
+          },
+        ),
 
-      createActivity(
-        memberId,
+        createActivity(
+          memberId,
 
-        "PROJECT_RESTORED",
+          "PROJECT_RESTORED",
 
-        "Restored a project",
+          "Restored a project",
 
-        `Restored project "${project.title}"`,
+          `Restored project "${project.title}"`,
 
-        {
-          projectId,
-        },
-      ),
-    );
-  }
+          {
+            projectId,
+          },
+        ),
+      );
+    }
 
-  //
-  // TEAM RECOVERY
-  //
-  if (project.teamId) {
-    sideEffects.push(addTeamReputation(project.teamId, 3));
-  }
+    //
+    // TEAM RECOVERY
+    //
+    if (project.teamId) {
+      sideEffects.push(addTeamReputation(project.teamId, 3));
+    }
 
-  //
-  // AFFINITIES
-  //
-  sideEffects.push(recalculateProjectAffinities(projectId));
+    //
+    // AFFINITIES
+    //
+    sideEffects.push(recalculateProjectAffinities(projectId));
 
-  void Promise.all(sideEffects).catch(console.error);
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -1883,64 +1885,66 @@ export const deleteProject = async (ownerId: string, projectId: string) => {
   const memberIds = project.members.map((member) => member.userId);
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [];
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [];
 
-  //
-  // MEMBER PENALTIES
-  //
-  for (const memberId of memberIds) {
-    sideEffects.push(
-      addReputation(
-        memberId,
+    //
+    // MEMBER PENALTIES
+    //
+    for (const memberId of memberIds) {
+      sideEffects.push(
+        addReputation(
+          memberId,
 
-        "PROJECT_DELETED",
+          "PROJECT_DELETED",
 
-        reputationPenalty,
+          reputationPenalty,
 
-        "Project deleted",
+          "Project deleted",
 
-        {
-          projectId,
-        },
-      ),
+          {
+            projectId,
+          },
+        ),
 
-      createActivity(
-        memberId,
+        createActivity(
+          memberId,
 
-        "PROJECT_DELETED",
+          "PROJECT_DELETED",
 
-        "Deleted a project",
+          "Deleted a project",
 
-        `Deleted project "${project.title}"`,
+          `Deleted project "${project.title}"`,
 
-        {
-          projectId,
-        },
-      ),
-    );
-  }
+          {
+            projectId,
+          },
+        ),
+      );
+    }
 
-  //
-  // TEAM PENALTY
-  //
-  if (project.teamId) {
-    sideEffects.push(
-      addTeamReputation(
-        project.teamId,
+    //
+    // TEAM PENALTY
+    //
+    if (project.teamId) {
+      sideEffects.push(
+        addTeamReputation(
+          project.teamId,
 
-        Math.floor(reputationPenalty / 2),
-      ),
-    );
-  }
+          Math.floor(reputationPenalty / 2),
+        ),
+      );
+    }
 
-  //
-  // AFFINITIES
-  //
-  sideEffects.push(recalculateProjectAffinities(projectId));
+    //
+    // AFFINITIES
+    //
+    sideEffects.push(recalculateProjectAffinities(projectId));
 
-  void Promise.all(sideEffects).catch(console.error);
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -1969,6 +1973,14 @@ export const updateProject = async (
     !!data.githubUrl && data.githubUrl !== existingProject.githubUrl;
 
   //
+  // SLUG REGENERATION CRITERIA
+  //
+  const titleChanged = !!data.title && data.title !== existingProject.title;
+  const slug = titleChanged
+    ? `${slugify(data.title!, { lower: true, strict: true })}-${generateRandomAlphanumeric(5)}`
+    : undefined;
+
+  //
   // UPDATE
   //
   const updatedProject = await prisma.project.update({
@@ -1979,12 +1991,7 @@ export const updateProject = async (
     data: {
       title: data.title,
 
-      slug: data.title
-        ? slugify(data.title, {
-            lower: true,
-            strict: true,
-          })
-        : undefined,
+      slug,
 
       shortDescription: data.shortDescription,
 
@@ -2011,87 +2018,89 @@ export const updateProject = async (
   });
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [
-    createActivity(
-      ownerId,
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [
+      createActivity(
+        ownerId,
 
-      "PROJECT_UPDATED",
+        "PROJECT_UPDATED",
 
-      "Updated a project",
+        "Updated a project",
 
-      `Updated project "${updatedProject.title}"`,
+        `Updated project "${updatedProject.title}"`,
 
-      {
-        projectId,
-      },
-    ),
+        {
+          projectId,
+        },
+      ),
 
-    recalculateProjectAffinities(projectId),
-  ];
+      recalculateProjectAffinities(projectId),
+    ];
 
-  //
-  // GITHUB RESYNC
-  //
-  if (githubChanged && updatedProject.githubUrl) {
-    sideEffects.push(
-      (async () => {
-        try {
-          const githubData = await fetchGithubRepository(
-            updatedProject.githubUrl!,
-          );
-
-          const verificationScore = calculateProjectVerificationScore({
-            ...updatedProject,
-
-            ...githubData,
-          });
-
-          const verified = verificationScore >= 60;
-
-          await prisma.project.update({
-            where: {
-              id: updatedProject.id,
-            },
-
-            data: {
-              ...githubData,
-
-              verified,
-
-              lastGithubSyncAt: new Date(),
-            },
-          });
-
-          //
-          // VERIFIED REWARD
-          //
-          if (verified) {
-            await addReputation(
-              ownerId,
-
-              "PROJECT_VERIFIED",
-
-              25,
-
-              "Verified a project",
-
-              {
-                projectId: updatedProject.id,
-              },
+    //
+    // GITHUB RESYNC
+    //
+    if (githubChanged && updatedProject.githubUrl) {
+      sideEffects.push(
+        (async () => {
+          try {
+            const githubData = await fetchGithubRepository(
+              updatedProject.githubUrl!,
             );
+
+            const verificationScore = calculateProjectVerificationScore({
+              ...updatedProject,
+
+              ...githubData,
+            });
+
+            const verified = verificationScore >= 60;
+
+            await prisma.project.update({
+              where: {
+                id: updatedProject.id,
+              },
+
+              data: {
+                ...githubData,
+
+                verified,
+
+                lastGithubSyncAt: new Date(),
+              },
+            });
+
+            //
+            // VERIFIED REWARD
+            //
+            if (verified) {
+              await addReputation(
+                ownerId,
+
+                "PROJECT_VERIFIED",
+
+                25,
+
+                "Verified a project",
+
+                {
+                  projectId: updatedProject.id,
+                },
+              );
+            }
+
+            await calculateEngineeringScore(ownerId);
+          } catch (error) {
+            console.error("GitHub Sync Failed", error);
           }
+        })(),
+      );
+    }
 
-          await calculateEngineeringScore(ownerId);
-        } catch (error) {
-          console.error("GitHub Sync Failed", error);
-        }
-      })(),
-    );
-  }
-
-  void Promise.all(sideEffects).catch(console.error);
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -2156,64 +2165,66 @@ export const syncGithubProject = async (userId: string, projectId: string) => {
   });
 
   //
-  // SIDE EFFECTS
+  // STANDALONE BACKGROUND CONTEXT (setImmediate)
   //
-  const sideEffects: Promise<any>[] = [
-    createActivity(
-      userId,
-
-      "PROJECT_SYNCED",
-
-      "Synced GitHub project",
-
-      `Synced GitHub metadata for "${project.title}"`,
-
-      {
-        projectId,
-      },
-    ),
-
-    calculateEngineeringScore(userId),
-
-    recalculateProjectAffinities(projectId),
-  ];
-
-  //
-  // VERIFIED REWARD
-  //
-  if (becameVerified) {
-    sideEffects.push(
-      addReputation(
-        userId,
-
-        "PROJECT_VERIFIED",
-
-        40,
-
-        "Verified engineering project",
-
-        {
-          projectId,
-        },
-      ),
-
+  setImmediate(() => {
+    const sideEffects: Promise<any>[] = [
       createActivity(
         userId,
 
-        "PROJECT_VERIFIED",
+        "PROJECT_SYNCED",
 
-        "Verified a project",
+        "Synced GitHub project",
 
-        `Project "${project.title}" became verified`,
+        `Synced GitHub metadata for "${project.title}"`,
 
         {
           projectId,
         },
       ),
-    );
-  }
 
-  void Promise.all(sideEffects).catch(console.error);
+      calculateEngineeringScore(userId),
+
+      recalculateProjectAffinities(projectId),
+    ];
+
+    //
+    // VERIFIED REWARD
+    //
+    if (becameVerified) {
+      sideEffects.push(
+        addReputation(
+          userId,
+
+          "PROJECT_VERIFIED",
+
+          40,
+
+          "Verified engineering project",
+
+          {
+            projectId,
+          },
+        ),
+
+        createActivity(
+          userId,
+
+          "PROJECT_VERIFIED",
+
+          "Verified a project",
+
+          `Project "${project.title}" became verified`,
+
+          {
+            projectId,
+          },
+        ),
+      );
+    }
+
+    Promise.all(sideEffects).catch(console.error);
+  });
 
   return updatedProject;
 };
@@ -2252,92 +2263,98 @@ export const syncOutdatedProjectsGithub = async () => {
     failed: 0,
   };
 
-  for (const project of projects) {
-    if (!project.githubUrl) continue;
+  const batchSize = 3;
+  for (let i = 0; i < projects.length; i += batchSize) {
+    const batch = projects.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map(async (project) => {
+        if (!project.githubUrl) return;
 
-    try {
-      console.log(`[GitHub Sync Cron] Syncing project: ${project.title} (${project.githubUrl})`);
-      const githubData = await fetchGithubRepository(project.githubUrl);
+        try {
+          console.log(`[GitHub Sync Cron] Syncing project: ${project.title} (${project.githubUrl})`);
+          const githubData = await fetchGithubRepository(project.githubUrl);
 
-      const verificationScore = calculateProjectVerificationScore({
-        ...project,
-        ...githubData,
-      });
+          const verificationScore = calculateProjectVerificationScore({
+            ...project,
+            ...githubData,
+          });
 
-      const engineeringScore = calculateProjectEngineeringScore({
-        ...project,
-        ...githubData,
-      });
+          const engineeringScore = calculateProjectEngineeringScore({
+            ...project,
+            ...githubData,
+          });
 
-      const verified = verificationScore >= 60;
-      const becameVerified = !project.verified && verified;
+          const verified = verificationScore >= 60;
+          const becameVerified = !project.verified && verified;
 
-      await prisma.project.update({
-        where: {
-          id: project.id,
-        },
-        data: {
-          ...githubData,
-          verified,
-          engineeringScore,
-          lastGithubSyncAt: new Date(),
-        },
-      });
-
-      const sideEffects: Promise<any>[] = [
-        createActivity(
-          project.ownerId,
-          "PROJECT_SYNCED",
-          "Synced GitHub project",
-          `Synced GitHub metadata for "${project.title}"`,
-          {
-            projectId: project.id,
-          },
-        ),
-        recalculateProjectAffinities(project.id),
-      ];
-
-      for (const member of project.members) {
-        sideEffects.push(calculateEngineeringScore(member.userId));
-      }
-
-      if (becameVerified) {
-        sideEffects.push(
-          addReputation(
-            project.ownerId,
-            "PROJECT_VERIFIED",
-            40,
-            "Verified engineering project",
-            {
-              projectId: project.id,
+          await prisma.project.update({
+            where: {
+              id: project.id,
             },
-          ),
-          createActivity(
-            project.ownerId,
-            "PROJECT_VERIFIED",
-            "Verified a project",
-            `Project "${project.title}" became verified`,
-            {
-              projectId: project.id,
+            data: {
+              ...githubData,
+              verified,
+              engineeringScore,
+              lastGithubSyncAt: new Date(),
             },
-          ),
-        );
-      }
+          });
 
-      await Promise.all(sideEffects);
-      results.success++;
-    } catch (error: any) {
-      console.error(`[GitHub Sync Cron] Failed syncing project ${project.id}:`, error.message || error);
-      results.failed++;
-      await prisma.project.update({
-        where: {
-          id: project.id,
-        },
-        data: {
-          lastGithubSyncAt: new Date(),
-        },
-      }).catch(console.error);
-    }
+          const sideEffects: Promise<any>[] = [
+            createActivity(
+              project.ownerId,
+              "PROJECT_SYNCED",
+              "Synced GitHub project",
+              `Synced GitHub metadata for "${project.title}"`,
+              {
+                projectId: project.id,
+              },
+            ),
+            recalculateProjectAffinities(project.id),
+          ];
+
+          for (const member of project.members) {
+            sideEffects.push(calculateEngineeringScore(member.userId));
+          }
+
+          if (becameVerified) {
+            sideEffects.push(
+              addReputation(
+                project.ownerId,
+                "PROJECT_VERIFIED",
+                40,
+                "Verified engineering project",
+                {
+                  projectId: project.id,
+                },
+              ),
+              createActivity(
+                project.ownerId,
+                "PROJECT_VERIFIED",
+                "Verified a project",
+                `Project "${project.title}" became verified`,
+                {
+                  projectId: project.id,
+                },
+              ),
+            );
+          }
+
+          await Promise.all(sideEffects);
+          results.success++;
+        } catch (error: any) {
+          console.error(`[GitHub Sync Cron] Failed syncing project ${project.id}:`, error.message || error);
+          results.failed++;
+          await prisma.project.update({
+            where: {
+              id: project.id,
+            },
+            data: {
+              lastGithubSyncAt: new Date(),
+            },
+          }).catch(console.error);
+        }
+      })
+    );
   }
 
   return results;
