@@ -9,9 +9,7 @@ import { trackRecommendationImpression } from "modules/discovery/recommendation-
 import slugify from "slugify";
 import { runCompanySeed } from "./scraper/company-scraper.service";
 
-//
 // HELPERS
-//
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Return a base slug (no DB checks). Creation will attempt insert and handle collisions.
@@ -42,9 +40,7 @@ const assertIsPlatformAdmin = async (userId: string) => {
   }
 };
 
-//
 // CREATE COMPANY
-//
 export const createCompany = async (userId: string, data: any) => {
   await assertIsPlatformAdmin(userId);
   const existingCompany = await prisma.company.findFirst({
@@ -126,9 +122,7 @@ export const createCompany = async (userId: string, data: any) => {
   );
 };
 
-//
 // GET COMPANIES
-//
 export const getCompanies = async (
   page = 1,
   limit = 20,
@@ -297,9 +291,7 @@ export const getCompanies = async (
   };
 };
 
-//
 // GET COMPANY BY SLUG
-//
 export const getCompanyBySlug = async (
   userId: string | undefined,
 
@@ -474,9 +466,7 @@ export const getCompanyBySlug = async (
   };
 };
 
-//
 // GET COMPANY EMPLOYEES
-//
 export const getCompanyEmployees = async (
   companyId: string,
 
@@ -581,27 +571,14 @@ export const getCompanyEmployees = async (
   };
 };
 
-//
 // SEED COMPANIES
-//
 export const seedCompanies = async (userId: string) => {
   await assertIsPlatformAdmin(userId);
   return await runCompanySeed();
 };
 
-//
 // GET COMPANY REFERRERS
-//
 export const getCompanyReferrers = async (companyId: string) => {
-  const companyExists = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { id: true },
-  });
-
-  if (!companyExists) {
-    throw new AppError("Company not found", 404);
-  }
-
   const referrers = await prisma.experience.findMany({
     where: {
       companyId,
@@ -610,6 +587,7 @@ export const getCompanyReferrers = async (companyId: string) => {
         acceptingReferrals: true,
       },
     },
+    take: 50,
     orderBy: [
       {
         user: {
@@ -647,9 +625,7 @@ export const getCompanyReferrers = async (companyId: string) => {
   return referrers;
 };
 
-//
 // REQUEST COMPANY REGISTRATION
-//
 export const requestCompanyRegistration = async (userId: string, data: any) => {
   const request = await prisma.companyRequest.create({
     data: {
@@ -686,52 +662,46 @@ export const requestCompanyRegistration = async (userId: string, data: any) => {
   };
 };
 
-//
 // FOLLOW COMPANY
-//
 export const followCompany = async (userId: string, companyId: string) => {
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { id: true }
-  });
-  if (!company) {
-    throw new AppError("Company not found", 404);
-  }
-
-  await prisma.company.update({
-    where: { id: companyId },
-    data: {
-      followers: {
-        connect: { id: userId }
+  try {
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        followers: {
+          connect: { id: userId }
+        }
       }
-    }
-  });
+    });
 
-  return { success: true, message: "Successfully followed company" };
+    return { success: true, message: "Successfully followed company" };
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new AppError("Company not found", 404);
+    }
+    throw error;
+  }
 };
 
-//
 // UNFOLLOW COMPANY
-//
 export const unfollowCompany = async (userId: string, companyId: string) => {
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { id: true }
-  });
-  if (!company) {
-    throw new AppError("Company not found", 404);
-  }
-
-  await prisma.company.update({
-    where: { id: companyId },
-    data: {
-      followers: {
-        disconnect: { id: userId }
+  try {
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        followers: {
+          disconnect: { id: userId }
+        }
       }
-    }
-  });
+    });
 
-  return { success: true, message: "Successfully unfollowed company" };
+    return { success: true, message: "Successfully unfollowed company" };
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new AppError("Company not found", 404);
+    }
+    throw error;
+  }
 };
 
 export const getCompanyAdminStats = async (companyId: string) => {
@@ -741,69 +711,73 @@ export const getCompanyAdminStats = async (companyId: string) => {
   });
   if (!company) throw new AppError("Company not found", 404);
 
-  const jobsCount = await prisma.job.count({
-    where: { companyId, deletedAt: null }
-  });
-
-  const applicantsCount = await prisma.jobApplication.count({
-    where: { job: { companyId } }
-  });
-
-  const officeManagersCount = await prisma.companyAdmin.count({
-    where: { companyId, officeCity: { not: null } }
-  });
-
-  const recruitersCount = await prisma.experience.count({
-    where: {
-      companyId,
-      isCurrent: true,
-      user: {
-        roles: {
-          some: {
-            role: {
-              name: "RECRUITER"
+  const [
+    jobsCount,
+    applicantsCount,
+    officeManagersCount,
+    recruitersCount,
+    pipelineBreakdown,
+    recentApplicants,
+    recentJobs
+  ] = await Promise.all([
+    prisma.job.count({
+      where: { companyId, deletedAt: null }
+    }),
+    prisma.jobApplication.count({
+      where: { job: { companyId } }
+    }),
+    prisma.companyAdmin.count({
+      where: { companyId, officeCity: { not: null } }
+    }),
+    prisma.experience.count({
+      where: {
+        companyId,
+        isCurrent: true,
+        user: {
+          roles: {
+            some: {
+              role: {
+                name: "RECRUITER"
+              }
             }
           }
         }
       }
-    }
-  });
-
-  const pipelineBreakdown = await prisma.jobApplication.groupBy({
-    by: ["status"],
-    where: { job: { companyId } },
-    _count: true
-  });
+    }),
+    prisma.jobApplication.groupBy({
+      by: ["status"],
+      where: { job: { companyId } },
+      _count: true
+    }),
+    prisma.jobApplication.findMany({
+      where: { job: { companyId } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: {
+        job: { select: { title: true } },
+        applicant: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { fullName: true, avatarUrl: true } }
+          }
+        }
+      }
+    }),
+    prisma.job.findMany({
+      where: { companyId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: {
+        _count: { select: { applications: true } }
+      }
+    })
+  ]);
 
   const pipeline = pipelineBreakdown.map((g) => ({
     status: g.status,
     count: g._count
   }));
-
-  const recentApplicants = await prisma.jobApplication.findMany({
-    where: { job: { companyId } },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    include: {
-      job: { select: { title: true } },
-      applicant: {
-        select: {
-          id: true,
-          username: true,
-          profile: { select: { fullName: true, avatarUrl: true } }
-        }
-      }
-    }
-  });
-
-  const recentJobs = await prisma.job.findMany({
-    where: { companyId, deletedAt: null },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    include: {
-      _count: { select: { applications: true } }
-    }
-  });
 
   return {
     company,
@@ -832,6 +806,7 @@ export const listCompanyRecruiters = async (companyId: string) => {
         }
       }
     },
+    take: 50,
     include: {
       user: {
         select: {
@@ -858,71 +833,83 @@ export const assignCompanyRecruiter = async (actorId: string, companyId: string,
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   if (!company) throw new AppError("Company not found", 404);
 
-  let role = await prisma.role.findUnique({ where: { name: "RECRUITER" } });
-  if (!role) {
-    role = await prisma.role.create({ data: { name: "RECRUITER" } });
-  }
-  const existingRole = await prisma.userRole.findFirst({
-    where: { userId, roleId: role.id }
-  });
-  if (!existingRole) {
-    await prisma.userRole.create({ data: { userId, roleId: role.id } });
-  }
-
-  const existingExp = await prisma.experience.findFirst({
-    where: { userId, companyId, isCurrent: true }
-  });
-  if (!existingExp) {
-    await prisma.experience.create({
-      data: {
-        userId,
-        companyId,
-        title: title || "Recruiter",
-        employmentType: "FULL_TIME",
-        startDate: new Date(),
-        isCurrent: true,
-        description: `Recruitment team member at ${company.name}`
-      }
+  await prisma.$transaction(async (tx) => {
+    let role = await tx.role.findUnique({ where: { name: "RECRUITER" } });
+    if (!role) {
+      role = await tx.role.create({ data: { name: "RECRUITER" } });
+    }
+    const existingRole = await tx.userRole.findFirst({
+      where: { userId, roleId: role.id }
     });
-  }
+    if (!existingRole) {
+      await tx.userRole.create({ data: { userId, roleId: role.id } });
+    }
 
-  await createNotification({
-    userId,
-    actorId,
-    type: "SYSTEM",
-    title: "Recruiter Role Assigned",
-    message: `You have been assigned as a recruiter for ${company.name}.`,
-    entityType: "COMPANY",
-    entityId: companyId
+    const existingExp = await tx.experience.findFirst({
+      where: { userId, companyId, isCurrent: true }
+    });
+    if (!existingExp) {
+      await tx.experience.create({
+        data: {
+          userId,
+          companyId,
+          title: title || "Recruiter",
+          employmentType: "FULL_TIME",
+          startDate: new Date(),
+          isCurrent: true,
+          description: `Recruitment team member at ${company.name}`
+        }
+      });
+    }
+  });
+
+  setImmediate(() => {
+    createNotification({
+      userId,
+      actorId,
+      type: "SYSTEM",
+      title: "Recruiter Role Assigned",
+      message: `You have been assigned as a recruiter for ${company.name}.`,
+      entityType: "COMPANY",
+      entityId: companyId
+    }).catch((err) => {
+      console.error("Failed to create recruiter assignment notification:", err);
+    });
   });
 
   return { message: "Recruiter assigned successfully" };
 };
 
 export const removeCompanyRecruiter = async (companyId: string, userId: string) => {
-  await prisma.experience.updateMany({
-    where: { userId, companyId, isCurrent: true },
-    data: { isCurrent: false, endDate: new Date() }
+  await prisma.$transaction(async (tx) => {
+    await tx.experience.updateMany({
+      where: { userId, companyId, isCurrent: true },
+      data: { isCurrent: false, endDate: new Date() }
+    });
   });
 
-  const otherRecruiterJobs = await prisma.experience.count({
-    where: {
-      userId,
-      isCurrent: true,
-      companyId: { not: companyId }
-    }
-  });
-
-  if (otherRecruiterJobs === 0) {
-    const role = await prisma.role.findUnique({ where: { name: "RECRUITER" } });
-    if (role) {
-      await prisma.userRole.deleteMany({
-        where: { userId, roleId: role.id }
+  setImmediate(() => {
+    prisma.$transaction(async (tx) => {
+      const otherRecruiterJobs = await tx.experience.count({
+        where: {
+          userId,
+          isCurrent: true,
+          companyId: { not: companyId }
+        }
       });
-    }
-  }
+
+      if (otherRecruiterJobs === 0) {
+        const role = await tx.role.findUnique({ where: { name: "RECRUITER" } });
+        if (role) {
+          await tx.userRole.deleteMany({
+            where: { userId, roleId: role.id }
+          });
+        }
+      }
+    }).catch((err) => {
+      console.error("Failed in removeCompanyRecruiter background role cleanup:", err);
+    });
+  });
 
   return { message: "Recruiter removed successfully" };
 };
-
-

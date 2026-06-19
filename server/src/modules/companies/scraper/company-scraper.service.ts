@@ -3,6 +3,7 @@ import path from "path";
 import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { CompanyType, CompanySize } from "@prisma/client";
+import { generateRandomAlphanumeric } from "shared/utils/random";
 
 interface CompanySeedData {
   name: string;
@@ -69,20 +70,11 @@ export async function runCompanySeed() {
         updated++;
       } else {
         // Create new company
+        // Append a 5-char random alphanumeric token to the base slug so that
+        // unique-constraint collisions are bypassed without any DB read loop.
         const baseSlug = slugify(comp.name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
-        
-        // Resolve slug conflict if any exists
-        let slug = baseSlug;
-        let attempt = 0;
-        while (true) {
-          const slugExists = await prisma.company.findUnique({
-            where: { slug },
-            select: { id: true },
-          });
-          if (!slugExists) break;
-          attempt++;
-          slug = `${baseSlug}-${attempt}`;
-        }
+        const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
+
 
         await prisma.company.create({
           data: {
