@@ -56,8 +56,7 @@ export const getTopEngineers =  async (
     const ranked =
       users.map(
         (
-          user,
-          index
+          user
         ) => {
 
           //
@@ -132,9 +131,6 @@ export const getTopEngineers =  async (
               ?.badge || null;
 
           return {
-
-            rank:
-              index + 1,
 
             id:
               user.id,
@@ -331,6 +327,12 @@ export const getTopEngineers =  async (
     const winners =
       await prisma.hackathonWinner.findMany({
 
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 300,
+
         include: {
 
           team: {
@@ -524,6 +526,12 @@ export const getTopEngineers =  async (
             gte: since,
           },
         },
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 1000,
 
         include: {
           user: {

@@ -30,9 +30,11 @@ export const getTopEngineersHandler =
       req: Request,
       res: Response
     ) => {
+      const rawLimit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 50;
+      const limit = Number.isNaN(rawLimit) ? 50 : Math.min(rawLimit, 100);
 
       const result =
-        await getTopEngineers();
+        await getTopEngineers(limit);
 
       res.json(
         successResponse(
@@ -48,9 +50,11 @@ export const getTopProjectsHandler =
       req: Request,
       res: Response
     ) => {
+      const rawLimit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 20;
+      const limit = Number.isNaN(rawLimit) ? 20 : Math.min(rawLimit, 100);
 
       const result =
-        await getTopProjects();
+        await getTopProjects(limit);
 
       res.json(
         successResponse(
@@ -66,9 +70,11 @@ export const getTopHackathonEngineersHandler =
       req: Request,
       res: Response
     ) => {
+      const rawLimit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 20;
+      const limit = Number.isNaN(rawLimit) ? 20 : Math.min(rawLimit, 100);
 
       const result =
-        await getTopHackathonEngineers();
+        await getTopHackathonEngineers(limit);
 
       res.json(
         successResponse(
@@ -84,9 +90,11 @@ export const getTopTeamsHandler =
       req: Request,
       res: Response
     ) => {
+      const rawLimit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 20;
+      const limit = Number.isNaN(rawLimit) ? 20 : Math.min(rawLimit, 100);
 
       const result =
-        await getTopTeams();
+        await getTopTeams(limit);
 
       res.json(
         successResponse(
@@ -102,9 +110,11 @@ export const getFastestGrowingEngineersHandler =
       req: Request,
       res: Response
     ) => {
+      const rawLimit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 20;
+      const limit = Number.isNaN(rawLimit) ? 20 : Math.min(rawLimit, 100);
 
       const result =
-        await getFastestGrowingEngineers();
+        await getFastestGrowingEngineers(limit);
 
       res.json(
         successResponse(
