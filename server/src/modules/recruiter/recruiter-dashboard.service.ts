@@ -22,14 +22,17 @@ export const getRecruiterDashboard = async (recruiterId: string) => {
     throw new AppError("Recruiter not found", 404);
   }
 
-  // Jobs
+  // Jobs — only fetch fields needed; counts come from groupBy
   const jobs = await prisma.job.findMany({
     where: {
       postedById: recruiterId,
     },
 
-    include: {
-      applications: true,
+    select: {
+      id: true,
+      title: true,
+      skillsRequired: true,
+      createdAt: true,
     },
 
     orderBy: {
@@ -37,41 +40,70 @@ export const getRecruiterDashboard = async (recruiterId: string) => {
     },
   });
 
-  // Analytics
-  let totalApplications = 0;
+  const jobIds = jobs.map((j) => j.id);
 
-  let totalShortlisted = 0;
+  // Analytics — single groupBy for status-level totals
+  const statusGroups = jobIds.length
+    ? await prisma.jobApplication.groupBy({
+        by: ["status"],
+        where: {
+          job: { postedById: recruiterId },
+        },
+        _count: { status: true },
+      })
+    : [];
 
-  let totalInterviews = 0;
+  const totalApplications = statusGroups.reduce(
+    (acc, g) => acc + g._count.status,
+    0,
+  );
 
-  let totalHired = 0;
+  const totalShortlisted =
+    statusGroups.find((g) => g.status === "SHORTLISTED")?._count.status ?? 0;
 
-  for (const job of jobs) {
-    totalApplications += job.applications.length;
+  const totalInterviews =
+    statusGroups.find((g) => g.status === "INTERVIEW")?._count.status ?? 0;
 
-    totalShortlisted += job.applications.filter(
-      (application) => application.status === "SHORTLISTED",
-    ).length;
+  const totalHired =
+    statusGroups.find((g) => g.status === "HIRED")?._count.status ?? 0;
 
-    totalInterviews += job.applications.filter(
-      (application) => application.status === "INTERVIEW",
-    ).length;
+  // Per-job counts — second groupBy keyed by jobId + status
+  const jobStatusGroups = jobIds.length
+    ? await prisma.jobApplication.groupBy({
+        by: ["jobId", "status"],
+        where: { jobId: { in: jobIds } },
+        _count: { status: true },
+      })
+    : [];
 
-    totalHired += job.applications.filter(
-      (application) => application.status === "HIRED",
-    ).length;
+  type JobCounts = { total: number; shortlisted: number; hired: number };
+  const jobCountsMap = new Map<string, JobCounts>();
+
+  for (const g of jobStatusGroups) {
+    const existing = jobCountsMap.get(g.jobId) ?? {
+      total: 0,
+      shortlisted: 0,
+      hired: 0,
+    };
+    existing.total += g._count.status;
+    if (g.status === "SHORTLISTED") existing.shortlisted += g._count.status;
+    if (g.status === "HIRED") existing.hired += g._count.status;
+    jobCountsMap.set(g.jobId, existing);
   }
 
-  // Candidate ranking
-  const rankedCandidates = [];
+  // Candidate ranking — chunked Promise.all (3 jobs at a time)
+  const rankedCandidates: Awaited<ReturnType<typeof rankJobCandidates>>= [];
+  const chunkSize = 3;
 
-  for (const job of jobs) {
-    const ranked = await rankJobCandidates(recruiterId, job.id);
-
-    rankedCandidates.push(...ranked);
+  for (let i = 0; i < jobs.length; i += chunkSize) {
+    const chunk = jobs.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map((job) => rankJobCandidates(recruiterId, job.id)),
+    );
+    results.forEach((ranked) => rankedCandidates.push(...ranked));
   }
 
-  // Remove duplicates
+  // Remove duplicates — keep highest overallScore per candidate
   const uniqueCandidates = new Map();
 
   for (const candidate of rankedCandidates) {
@@ -142,21 +174,24 @@ export const getRecruiterDashboard = async (recruiterId: string) => {
       averageCandidateScore: Math.round(averageCandidateScore),
     },
 
-    jobs: jobs.map((job) => ({
-      id: job.id,
+    jobs: jobs.map((job) => {
+      const counts = jobCountsMap.get(job.id) ?? {
+        total: 0,
+        shortlisted: 0,
+        hired: 0,
+      };
+      return {
+        id: job.id,
 
-      title: job.title,
+        title: job.title,
 
-      applicationsCount: job.applications.length,
+        applicationsCount: counts.total,
 
-      shortlistedCount: job.applications.filter(
-        (application) => application.status === "SHORTLISTED",
-      ).length,
+        shortlistedCount: counts.shortlisted,
 
-      hiredCount: job.applications.filter(
-        (application) => application.status === "HIRED",
-      ).length,
-    })),
+        hiredCount: counts.hired,
+      };
+    }),
 
     topCandidates,
 
@@ -323,4 +358,3 @@ export const getJobPipeline = async (recruiterId: string, jobId: string) => {
     pipeline: columns,
   };
 };
-
