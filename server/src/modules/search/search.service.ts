@@ -236,6 +236,8 @@ export const searchUsers =  async (
             {
               skillNames:
                 filters.skills,
+              collegeId:
+                user.profile?.collegeId || undefined,
             }
           ),
 
@@ -314,10 +316,7 @@ export const searchProjects = async (
           relevanceScore:
             calculateProjectSearchScore(
               project,
-              filters.techStack?.map(
-                (s) =>
-                  s.toLowerCase()
-              ) || []
+              techStackTerms
             ),
 
           matchReasons: [
@@ -385,6 +384,14 @@ export const searchHackathons =  async (
 
           ...(filters.featuredOnly && {
             featured: true,
+          }),
+
+          ...(filters.tags?.length && {
+            tags: { hasSome: filters.tags },
+          }),
+
+          ...(filters.difficultyLevels?.length && {
+            difficultyLevel: { in: filters.difficultyLevels as any },
           }),
         },
 
@@ -461,8 +468,8 @@ export const searchJobs = async (filters: SearchJobsFilters) => {
         location: { contains: filters.location, mode: "insensitive" },
       }),
 
-      ...(filters.salaryMin !== undefined && { salaryMax: { gte: filters.salaryMin } }),
-      ...(filters.salaryMax !== undefined && { salaryMin: { lte: filters.salaryMax } }),
+      ...(filters.salaryMin !== undefined && { salaryMin: { gte: filters.salaryMin } }),
+      ...(filters.salaryMax !== undefined && { salaryMax: { lte: filters.salaryMax } }),
 
       ...(postedAfter && { createdAt: { gte: postedAfter } }),
 
@@ -563,7 +570,6 @@ export const searchCommunities = async (filters: SearchCommunitiesFilters) => {
       memberCount: true,
       postCount: true,
       trendingScore: true,
-      _count: { select: { members: true, posts: true } },
     },
     orderBy: [{ trendingScore: "desc" }, { memberCount: "desc" }],
     take: filters.limit || 20,
@@ -587,9 +593,9 @@ export const globalSearch = async (query: string) => {
     ...users.map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),
     ...projects.map((p) => ({ type: "PROJECT", score: p.relevanceScore, data: p.project })),
     ...hackathons.map((h) => ({ type: "HACKATHON", score: h.relevanceScore, data: h.hackathon })),
-    ...jobs.map((j) => ({ type: "JOB", score: (j.featured ? 2 : 1), data: j })),
-    ...companies.map((c) => ({ type: "COMPANY", score: c.verified ? 2 : 1, data: c })),
-    ...communities.map((c) => ({ type: "COMMUNITY", score: c.trendingScore || 0, data: c })),
+    ...jobs.map((j) => ({ type: "JOB", score: j.featured ? 200 : 100, data: j })),
+    ...companies.map((c) => ({ type: "COMPANY", score: c.verified ? 200 : 100, data: c })),
+    ...communities.map((c) => ({ type: "COMMUNITY", score: Math.round((c.trendingScore || 0) * 10), data: c })),
   ];
 
   topResults.sort((a, b) => b.score - a.score);

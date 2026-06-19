@@ -20,6 +20,16 @@ import {
   searchCommunities,
 } from "./search.service";
 
+const parseQueryArray = (val: any): string[] | undefined => {
+  if (!val) return undefined;
+  const arr = val
+    .toString()
+    .split(",")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+  return arr.length > 0 ? arr : undefined;
+};
+
 export const globalSearchHandler =  asyncHandler(
     async (
       req: Request,
@@ -58,37 +68,24 @@ export const searchUsersHandler =asyncHandler(
             req.query.q?.toString(),
 
           collegeIds:
-            req.query.collegeIds
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.collegeIds),
 
           collegeName: req.query.collegeName?.toString() || undefined,
 
           departmentIds:
-            req.query.departmentIds
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.departmentIds),
 
           graduationYears:
-            req.query.graduationYears
-              ?.toString()
-              .split(",")
-              .map(Number),
+            parseQueryArray(req.query.graduationYears)?.map(Number),
 
           skills:
-            req.query.skills
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.skills),
 
           trustLevels:
-            req.query.trustLevels
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.trustLevels),
 
           companyNames:
-            req.query.companyNames
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.companyNames),
 
           role: req.query.role?.toString() || undefined,
 
@@ -109,8 +106,11 @@ export const searchUsersHandler =asyncHandler(
 
           limit:
             req.query.limit
-              ? Number(
-                  req.query.limit
+              ? Math.min(
+                  Number(
+                    req.query.limit
+                  ),
+                  50
                 )
               : 20,
         });
@@ -131,13 +131,13 @@ export const searchProjectsHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const projects = await searchProjects({
       query: req.query.q?.toString(),
-      techStack: req.query.techStack?.toString().split(",").filter(Boolean),
-      domains: req.query.domains?.toString().split(",").filter(Boolean),
-      difficultyLevels: req.query.difficultyLevels?.toString().split(",").filter(Boolean),
+      techStack: parseQueryArray(req.query.techStack),
+      domains: parseQueryArray(req.query.domains),
+      difficultyLevels: parseQueryArray(req.query.difficultyLevels),
       verifiedOnly: req.query.verifiedOnly === "true",
       featuredOnly: req.query.featuredOnly === "true",
       lookingForCollaborators: req.query.lookingForCollaborators === "true",
-      limit: req.query.limit ? Number(req.query.limit) : 20,
+      limit: req.query.limit ? Math.min(Number(req.query.limit), 50) : 20,
     });
     res.json(successResponse(projects));
   }
@@ -159,9 +159,7 @@ export const searchHackathonsHandler =  asyncHandler(
             req.query.q?.toString(),
 
           tags:
-            req.query.tags
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.tags),
 
           verifiedOnly:
             req.query.verifiedOnly ===
@@ -172,14 +170,15 @@ export const searchHackathonsHandler =  asyncHandler(
             "true",
 
           difficultyLevels:
-            req.query.difficultyLevels
-              ?.toString()
-              .split(","),
+            parseQueryArray(req.query.difficultyLevels),
 
           limit:
             req.query.limit
-              ? Number(
-                  req.query.limit
+              ? Math.min(
+                  Number(
+                    req.query.limit
+                  ),
+                  50
                 )
               : 20,
         });
@@ -200,7 +199,7 @@ export const searchJobsHandler = asyncHandler(
     const jobs = await searchJobs({
       query: req.query.q?.toString(),
       companyName: req.query.companyName?.toString(),
-      skills: req.query.skills?.toString().split(",").filter(Boolean),
+      skills: parseQueryArray(req.query.skills),
       workMode: req.query.workMode?.toString(),
       experienceLevel: req.query.experienceLevel?.toString(),
       location: req.query.location?.toString(),
@@ -208,7 +207,7 @@ export const searchJobsHandler = asyncHandler(
       salaryMin: req.query.salaryMin ? Number(req.query.salaryMin) : undefined,
       salaryMax: req.query.salaryMax ? Number(req.query.salaryMax) : undefined,
       postedWithinDays: req.query.postedWithinDays ? Number(req.query.postedWithinDays) : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : 20,
+      limit: req.query.limit ? Math.min(Number(req.query.limit), 50) : 20,
     });
     res.json(successResponse(jobs));
   }
@@ -227,7 +226,7 @@ export const searchCompaniesHandler = asyncHandler(
       hiringEnabled: req.query.hiringEnabled === "true" ? true : req.query.hiringEnabled === "false" ? false : undefined,
       referralEnabled: req.query.referralEnabled === "true" ? true : req.query.referralEnabled === "false" ? false : undefined,
       verified: req.query.verified === "true" ? true : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : 20,
+      limit: req.query.limit ? Math.min(Number(req.query.limit), 50) : 20,
     });
     res.json(successResponse(companies));
   }
@@ -242,7 +241,7 @@ export const searchCommunitiesHandler = asyncHandler(
       query: req.query.q?.toString(),
       type: req.query.type?.toString(),
       category: req.query.category?.toString(),
-      limit: req.query.limit ? Number(req.query.limit) : 20,
+      limit: req.query.limit ? Math.min(Number(req.query.limit), 50) : 20,
     });
     res.json(successResponse(communities));
   }

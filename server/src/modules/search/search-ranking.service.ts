@@ -87,16 +87,17 @@ export const calculateUserSearchScore = (
     context?.skillNames?.length
   ) {
 
-    const userSkills =
+    const userSkillsSet = new Set<string>(
       user.skills.map(
         (s: any) =>
           s.skill.name.toLowerCase()
-      );
+      )
+    );
 
     const overlap =
       context.skillNames.filter(
         (skill) =>
-          userSkills.includes(
+          userSkillsSet.has(
             skill.toLowerCase()
           )
       );
@@ -170,12 +171,16 @@ export const calculateProjectSearchScore = (
       ? project.techStack
       : [];
 
+  const skillNamesSet = new Set<string>(
+    skillNames.map((s) => s.toLowerCase())
+  );
+
   const overlap =
     techStack.filter(
       (tech: any) =>
         typeof tech ===
           "string" &&
-        skillNames.includes(
+        skillNamesSet.has(
           tech.toLowerCase()
         )
     );
