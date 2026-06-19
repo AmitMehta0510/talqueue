@@ -63,6 +63,18 @@ const collegeSelect = {
   },
 } satisfies Prisma.CollegeSelect;
 
+const collegeListSelect = {
+  id: true,
+  name: true,
+  state: true,
+  city: true,
+  country: true,
+  website: true,
+  logoUrl: true,
+  normalizedKey: true,
+  createdAt: true,
+} satisfies Prisma.CollegeSelect;
+
 const departmentSelect = {
   id: true,
   name: true,
@@ -100,9 +112,11 @@ export const isPlatformAdmin = (user: AuthUser) => {
 };
 
 const assertCanManageCollegeCatalog = (user: AuthUser) => {
-  const roleNames = getRoleNames(user);
-  if (!roleNames.has("PLATFORM_ADMIN")) {
-    throw new AppError("Only the platform administrator (PLATFORM_ADMIN) can create colleges", 403);
+  if (!isPlatformAdmin(user)) {
+    throw new AppError(
+      "Only platform administrators (ADMIN, SUPER_ADMIN, PLATFORM_ADMIN) are authorized to manage the college catalog",
+      403,
+    );
   }
 };
 
@@ -258,7 +272,11 @@ export const createCollege = async (
     select: collegeSelect,
   });
 
-  await ensureOfficialCollegeCommunity(user.id, college);
+  setImmediate(() => {
+    ensureOfficialCollegeCommunity(user.id, college).catch((err) => {
+      console.error("Failed to ensure official college community in background:", err);
+    });
+  });
 
   return college;
 };
@@ -279,7 +297,7 @@ export const getAllColleges = async (params: CollegeListParams = {}) => {
   const limit = clampLimit(params.limit);
 
   const colleges = await prisma.college.findMany({
-    select: collegeSelect,
+    select: collegeListSelect,
 
     orderBy: [
       {
@@ -292,11 +310,11 @@ export const getAllColleges = async (params: CollegeListParams = {}) => {
 
     ...(params.cursor
       ? {
-          cursor: {
-            id: params.cursor,
-          },
-          skip: 1,
-        }
+        cursor: {
+          id: params.cursor,
+        },
+        skip: 1,
+      }
       : {}),
 
     take: limit + 1,
@@ -443,42 +461,65 @@ export const getDepartmentsByCollege = async (collegeId: string) => {
 export const importColleges = async (user: AuthUser, colleges: any[]) => {
   assertCanManageCollegeCatalog(user);
 
+  const yieldEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
+
   const results = [];
-  for (const item of colleges) {
-    if (!item.name) continue;
+  const chunkSize = 100;
 
-    const name = normalizeText(item.name);
-    const normalizedKey = normalizeKey(name);
+  for (let i = 0; i < colleges.length; i += chunkSize) {
+    if (i > 0) {
+      await yieldEventLoop();
+    }
 
-    if (!normalizedKey) continue;
+    const chunk = colleges.slice(i, i + chunkSize);
+    const chunkPromises = chunk.map(async (item) => {
+      if (!item.name) return null;
 
-    const college = await prisma.college.upsert({
-      where: {
-        normalizedKey,
-      },
-      update: {
-        name,
-        state: item.state ? normalizeText(item.state) : undefined,
-        city: item.city ? normalizeText(item.city) : undefined,
-        country: item.country ? normalizeText(item.country) : undefined,
-        website: item.website,
-        logoUrl: item.logoUrl,
-        emailDomains: item.emailDomains || [],
-      },
-      create: {
-        name,
-        normalizedKey,
-        state: item.state ? normalizeText(item.state) : undefined,
-        city: item.city ? normalizeText(item.city) : undefined,
-        country: item.country ? normalizeText(item.country) : undefined,
-        website: item.website,
-        logoUrl: item.logoUrl,
-        emailDomains: item.emailDomains || [],
-      },
+      const name = normalizeText(item.name);
+      const normalizedKey = normalizeKey(name);
+
+      if (!normalizedKey) return null;
+
+      const college = await prisma.college.upsert({
+        where: {
+          normalizedKey,
+        },
+        update: {
+          name,
+          state: item.state ? normalizeText(item.state) : undefined,
+          city: item.city ? normalizeText(item.city) : undefined,
+          country: item.country ? normalizeText(item.country) : undefined,
+          website: item.website,
+          logoUrl: item.logoUrl,
+          emailDomains: item.emailDomains || [],
+        },
+        create: {
+          name,
+          normalizedKey,
+          state: item.state ? normalizeText(item.state) : undefined,
+          city: item.city ? normalizeText(item.city) : undefined,
+          country: item.country ? normalizeText(item.country) : undefined,
+          website: item.website,
+          logoUrl: item.logoUrl,
+          emailDomains: item.emailDomains || [],
+        },
+      });
+
+      setImmediate(() => {
+        ensureOfficialCollegeCommunity(user.id, college).catch((err) => {
+          console.error("Failed to ensure official college community in background:", err);
+        });
+      });
+
+      return college;
     });
 
-    await ensureOfficialCollegeCommunity(user.id, college);
-    results.push(college);
+    const chunkResults = await Promise.all(chunkPromises);
+    for (const res of chunkResults) {
+      if (res) {
+        results.push(res);
+      }
+    }
   }
 
   return results;
@@ -702,28 +743,36 @@ export const claimAlumniStatus = async (userId: string, collegeId: string) => {
   });
 
   // Notify college admins
-  const admins = await prisma.collegeAdmin.findMany({
-    where: { collegeId },
-    select: { userId: true },
+  setImmediate(() => {
+    (async () => {
+      try {
+        const admins = await prisma.collegeAdmin.findMany({
+          where: { collegeId },
+          select: { userId: true },
+        });
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { username: true, profile: { select: { fullName: true } } },
+        });
+        const studentName = user?.profile?.fullName || user?.username || "A student";
+
+        if (admins.length > 0) {
+          await prisma.notification.createMany({
+            data: admins.map((adm) => ({
+              userId: adm.userId,
+              actorId: userId,
+              type: "SYSTEM",
+              title: "Pending Alumni Claim",
+              message: `${studentName} has claimed to be an alumni of your college and is pending verification.`,
+              actionUrl: `/colleges/${collegeId}`,
+            })),
+          });
+        }
+      } catch (err) {
+        console.error("Failed to create alumni claim notifications in background:", err);
+      }
+    })();
   });
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { username: true, profile: { select: { fullName: true } } },
-  });
-  const studentName = user?.profile?.fullName || user?.username || "A student";
-  
-  if (admins.length > 0) {
-    await prisma.notification.createMany({
-      data: admins.map((adm) => ({
-        userId: adm.userId,
-        actorId: userId,
-        type: "SYSTEM",
-        title: "Pending Alumni Claim",
-        message: `${studentName} has claimed to be an alumni of your college and is pending verification.`,
-        actionUrl: `/colleges/${collegeId}`,
-      })),
-    });
-  }
 
   return updated;
 };
@@ -752,6 +801,7 @@ export const getPendingAlumniClaims = async (user: AuthUser, collegeId: string) 
         },
       },
     },
+    take: 50,
   });
 };
 
@@ -774,15 +824,19 @@ export const approveAlumniClaim = async (user: AuthUser, collegeId: string, educ
   });
 
   // Notify student
-  await prisma.notification.create({
-    data: {
-      userId: education.userId,
-      actorId: user.id,
-      type: "SYSTEM",
-      title: "Alumni Status Verified",
-      message: "Congratulations! Your college has verified your alumni status.",
-      actionUrl: "/profile",
-    },
+  setImmediate(() => {
+    prisma.notification.create({
+      data: {
+        userId: education.userId,
+        actorId: user.id,
+        type: "SYSTEM",
+        title: "Alumni Status Verified",
+        message: "Congratulations! Your college has verified your alumni status.",
+        actionUrl: "/profile",
+      },
+    }).catch((err) => {
+      console.error("Failed to send alumni verification approval notification in background:", err);
+    });
   });
 
   return updated;
@@ -807,18 +861,20 @@ export const rejectAlumniClaim = async (user: AuthUser, collegeId: string, educa
   });
 
   // Notify student
-  await prisma.notification.create({
-    data: {
-      userId: education.userId,
-      actorId: user.id,
-      type: "SYSTEM",
-      title: "Alumni Claim Rejected",
-      message: "Your alumni verification claim was rejected by your college administrator.",
-      actionUrl: "/profile",
-    },
+  setImmediate(() => {
+    prisma.notification.create({
+      data: {
+        userId: education.userId,
+        actorId: user.id,
+        type: "SYSTEM",
+        title: "Alumni Claim Rejected",
+        message: "Your alumni verification claim was rejected by your college administrator.",
+        actionUrl: "/profile",
+      },
+    }).catch((err) => {
+      console.error("Failed to send alumni verification rejection notification in background:", err);
+    });
   });
 
   return updated;
 };
-
-
