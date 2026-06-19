@@ -1325,6 +1325,13 @@ export const archiveHackathon = async (
     ),
   ]).catch(console.error);
 
+  // ES Sync (Fire-and-forget)
+  try {
+    syncHackathonToElastic(hackathonId);
+  } catch (err) {
+    console.error(`[ES Sync Error] Failed to sync archived hackathon ${hackathonId} to Elasticsearch:`, err);
+  }
+
   return updatedHackathon;
 };
 
@@ -1438,6 +1445,13 @@ export const deleteHackathon = async (
       },
     ),
   ]).catch(console.error);
+
+  // ES Sync (Fire-and-forget)
+  try {
+    syncHackathonToElastic(hackathonId);
+  } catch (err) {
+    console.error(`[ES Sync Error] Failed to sync deleted hackathon ${hackathonId} to Elasticsearch:`, err);
+  }
 
   return updatedHackathon;
 };
@@ -2203,6 +2217,13 @@ export const declareHackathonWinners = async (
       console.error("[declareHackathonWinners side effects sequential execution error]:", err);
     }
   });
+
+  // ES Sync (Fire-and-forget)
+  try {
+    syncHackathonToElastic(hackathonId);
+  } catch (err) {
+    console.error(`[ES Sync Error] Failed to sync completed hackathon ${hackathonId} to Elasticsearch:`, err);
+  }
 
   return {
     success: true,
