@@ -8,7 +8,7 @@
 
 import axios from "axios";
 import prisma from "shared/database/prisma";
-import { syncHackathonToElastic } from "services/elasticSync";
+import { syncHackathonToElastic, syncHackathonsToElasticBulk } from "services/elasticSync";
 import {
   stripHtml,
   sleep,
@@ -70,72 +70,61 @@ async function upsertScrapedHackathon(data: {
   endDate: Date;
   registrationDeadline: Date;
   createdById: string;
-}): Promise<boolean> {
-  const existing = await prisma.hackathon.findUnique({
+}): Promise<{ id: string; isCreated: boolean }> {
+  const result = await prisma.hackathon.upsert({
     where: {
       sourceId_sourcePlatform: {
         sourceId: data.sourceId,
         sourcePlatform: data.sourcePlatform,
       },
     },
-    select: { id: true },
+    update: {
+      title: data.title,
+      bannerUrl: data.bannerUrl,
+      logoUrl: data.logoUrl || null,
+      shortDescription: data.shortDescription || null,
+      description: data.description,
+      organizerName: data.organizerName,
+      externalUrl: data.externalUrl,
+      tags: data.tags,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      registrationDeadline: data.registrationDeadline,
+      mode: data.mode as any,
+      location: data.location,
+      status: data.status as any,
+      verified: data.verified,
+      minTeamSize: data.minTeamSize,
+      maxTeamSize: data.maxTeamSize,
+    },
+    create: {
+      sourceId: data.sourceId,
+      sourcePlatform: data.sourcePlatform,
+      title: data.title,
+      slug: data.slug,
+      description: data.description,
+      shortDescription: data.shortDescription || null,
+      bannerUrl: data.bannerUrl,
+      logoUrl: data.logoUrl || null,
+      organizerName: data.organizerName,
+      externalUrl: data.externalUrl,
+      isExternal: data.isExternal,
+      verified: data.verified,
+      status: data.status as any,
+      mode: data.mode as any,
+      location: data.location,
+      tags: data.tags,
+      minTeamSize: data.minTeamSize,
+      maxTeamSize: data.maxTeamSize,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      registrationDeadline: data.registrationDeadline,
+      createdById: data.createdById,
+    },
   });
 
-  if (existing) {
-    await prisma.hackathon.update({
-      where: { id: existing.id },
-      data: {
-        title: data.title,
-        bannerUrl: data.bannerUrl,
-        logoUrl: data.logoUrl || null,
-        shortDescription: data.shortDescription || null,
-        description: data.description,
-        organizerName: data.organizerName,
-        externalUrl: data.externalUrl,
-        tags: data.tags,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        registrationDeadline: data.registrationDeadline,
-        mode: data.mode as any,
-        location: data.location,
-        status: data.status as any,
-        verified: data.verified,
-        minTeamSize: data.minTeamSize,
-        maxTeamSize: data.maxTeamSize,
-      },
-    });
-    syncHackathonToElastic(existing.id);
-    return false; // updated
-  } else {
-    const created = await prisma.hackathon.create({
-      data: {
-        sourceId: data.sourceId,
-        sourcePlatform: data.sourcePlatform,
-        title: data.title,
-        slug: data.slug,
-        description: data.description,
-        shortDescription: data.shortDescription || null,
-        bannerUrl: data.bannerUrl,
-        logoUrl: data.logoUrl || null,
-        organizerName: data.organizerName,
-        externalUrl: data.externalUrl,
-        isExternal: data.isExternal,
-        verified: data.verified,
-        status: data.status as any,
-        mode: data.mode as any,
-        location: data.location,
-        tags: data.tags,
-        minTeamSize: data.minTeamSize,
-        maxTeamSize: data.maxTeamSize,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        registrationDeadline: data.registrationDeadline,
-        createdById: data.createdById,
-      },
-    });
-    syncHackathonToElastic(created.id);
-    return true; // created
-  }
+  const isCreated = result.createdAt.getTime() === result.updatedAt.getTime();
+  return { id: result.id, isCreated };
 }
 
 
@@ -228,7 +217,7 @@ function parseDevpostDateRange(dateStr: string): {
   return { startDate, endDate };
 }
 
-export async function runDevpostScraper(createdById: string, result: ScraperResult): Promise<void> {
+export async function runDevpostScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   let page = 1;
   let hasMore = true;
 
@@ -268,7 +257,7 @@ export async function runDevpostScraper(createdById: string, result: ScraperResu
           const isClosed = Boolean(item.open_state && !["open", "upcoming"].includes(item.open_state.toLowerCase()));
           const status = calculateScraperStatus(startDate, endDate, isClosed);
 
-          const isCreated = await upsertScrapedHackathon({
+          const { id, isCreated } = await upsertScrapedHackathon({
             sourceId: String(item.id),
             sourcePlatform: "Devpost",
             title: stripHtml(item.title),
@@ -291,6 +280,7 @@ export async function runDevpostScraper(createdById: string, result: ScraperResu
             createdById,
           });
 
+          processedIds.push(id);
           if (isCreated) result.created++;
           else result.updated++;
         } catch (itemError) {
@@ -353,7 +343,7 @@ interface DevfolioResponse {
   pages: number;
 }
 
-export async function runDevfolioScraper(createdById: string, result: ScraperResult): Promise<void> {
+export async function runDevfolioScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   let page = 1;
   let hasMore = true;
   const maxDevfolioPages = 5;
@@ -388,7 +378,7 @@ export async function runDevfolioScraper(createdById: string, result: ScraperRes
 
           const status = calculateScraperStatus(startDate, endDate);
 
-          const isCreated = await upsertScrapedHackathon({
+          const { id, isCreated } = await upsertScrapedHackathon({
             sourceId: item.uuid,
             sourcePlatform: "Devfolio",
             title: stripHtml(item.name),
@@ -413,6 +403,7 @@ export async function runDevfolioScraper(createdById: string, result: ScraperRes
             createdById,
           });
 
+          processedIds.push(id);
           if (isCreated) result.created++;
           else result.updated++;
         } catch (itemError) {
@@ -471,7 +462,7 @@ interface UnstopResponse {
   };
 }
 
-export async function runUnstopScraper(createdById: string, result: ScraperResult): Promise<void> {
+export async function runUnstopScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   let page = 1;
   let hasMore = true;
   const maxUnstopPages = 5;
@@ -517,7 +508,7 @@ export async function runUnstopScraper(createdById: string, result: ScraperResul
 
           const status = calculateScraperStatus(startDate, endDate);
 
-          const isCreated = await upsertScrapedHackathon({
+          const { id, isCreated } = await upsertScrapedHackathon({
             sourceId: String(item.id),
             sourcePlatform: "Unstop",
             title: stripHtml(item.title),
@@ -540,6 +531,7 @@ export async function runUnstopScraper(createdById: string, result: ScraperResul
             createdById,
           });
 
+          processedIds.push(id);
           if (isCreated) result.created++;
           else result.updated++;
         } catch (itemError) {
@@ -634,9 +626,7 @@ interface TaikaiResponse {
   data: {
     challenges: TaikaiChallenge[];
   };
-}
-
-export async function runTaikaiScraper(createdById: string, result: ScraperResult): Promise<void> {
+}export async function runTaikaiScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   let page = 1;
   let hasMore = true;
   const maxTaikaiPages = 3;
@@ -675,7 +665,7 @@ export async function runTaikaiScraper(createdById: string, result: ScraperResul
 
            const status = calculateScraperStatus(startDate, endDate, item.isClosed);
 
-           const isCreated = await upsertScrapedHackathon({
+           const { id, isCreated } = await upsertScrapedHackathon({
             sourceId: item.id,
             sourcePlatform: "TAIKAI",
             title: stripHtml(item.name),
@@ -701,6 +691,7 @@ export async function runTaikaiScraper(createdById: string, result: ScraperResul
             createdById,
           });
 
+          processedIds.push(id);
           if (isCreated) result.created++;
           else result.updated++;
         } catch (itemError) {
@@ -746,7 +737,7 @@ interface HackerEarthResponse {
   total: number;
 }
 
-export async function runHackerEarthScraper(createdById: string, result: ScraperResult): Promise<void> {
+export async function runHackerEarthScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   try {
     const response = await axios.get<HackerEarthResponse>(HACKEREARTH_API, {
       headers: {
@@ -780,7 +771,7 @@ export async function runHackerEarthScraper(createdById: string, result: Scraper
 
         const status = calculateScraperStatus(startDate, endDate);
 
-        const isCreated = await upsertScrapedHackathon({
+        const { id, isCreated } = await upsertScrapedHackathon({
           sourceId: item.slug,
           sourcePlatform: "HackerEarth",
           title: stripHtml(item.title),
@@ -804,6 +795,7 @@ export async function runHackerEarthScraper(createdById: string, result: Scraper
           createdById,
         });
 
+        processedIds.push(id);
         if (isCreated) result.created++;
         else result.updated++;
       } catch (itemError) {
@@ -836,7 +828,7 @@ interface ReskilllEvent {
   tags?: string[];
 }
 
-export async function runReskilllScraper(createdById: string, result: ScraperResult): Promise<void> {
+export async function runReskilllScraper(createdById: string, result: ScraperResult, processedIds: string[]): Promise<void> {
   try {
     const response = await axios.get(RESKILLL_URL, {
       headers: {
@@ -911,7 +903,7 @@ export async function runReskilllScraper(createdById: string, result: ScraperRes
 
         const status = calculateScraperStatus(startDate, endDate);
 
-        const isCreated = await upsertScrapedHackathon({
+        const { id, isCreated } = await upsertScrapedHackathon({
           sourceId: item.id,
           sourcePlatform: "Reskilll",
           title: stripHtml(item.title),
@@ -934,6 +926,7 @@ export async function runReskilllScraper(createdById: string, result: ScraperRes
           createdById,
         });
 
+        processedIds.push(id);
         if (isCreated) result.created++;
         else result.updated++;
       } catch (itemError) {
@@ -967,29 +960,69 @@ export async function runAllScrapers(): Promise<ScraperResult> {
   };
 
   const createdById = await getScraperUserId();
+  const processedIds: string[] = [];
 
   console.log("[Scraper] Starting Devpost scrape...");
-  await runDevpostScraper(createdById, result);
+  try {
+    await runDevpostScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] Devpost scrape failed with exception:", error);
+    result.errors++;
+  }
   await sleep(CRAWL_DELAY_MS);
 
   console.log("[Scraper] Starting Devfolio scrape...");
-  await runDevfolioScraper(createdById, result);
+  try {
+    await runDevfolioScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] Devfolio scrape failed with exception:", error);
+    result.errors++;
+  }
   await sleep(CRAWL_DELAY_MS);
 
   console.log("[Scraper] Starting Unstop scrape...");
-  await runUnstopScraper(createdById, result);
+  try {
+    await runUnstopScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] Unstop scrape failed with exception:", error);
+    result.errors++;
+  }
   await sleep(CRAWL_DELAY_MS);
 
   console.log("[Scraper] Starting TAIKAI scrape...");
-  await runTaikaiScraper(createdById, result);
+  try {
+    await runTaikaiScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] TAIKAI scrape failed with exception:", error);
+    result.errors++;
+  }
   await sleep(CRAWL_DELAY_MS);
 
   console.log("[Scraper] Starting HackerEarth scrape...");
-  await runHackerEarthScraper(createdById, result);
+  try {
+    await runHackerEarthScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] HackerEarth scrape failed with exception:", error);
+    result.errors++;
+  }
   await sleep(CRAWL_DELAY_MS);
 
   console.log("[Scraper] Starting Reskilll scrape...");
-  await runReskilllScraper(createdById, result);
+  try {
+    await runReskilllScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] Reskilll scrape failed with exception:", error);
+    result.errors++;
+  }
+
+  if (processedIds.length > 0) {
+    console.log(`[Scraper] Offloading bulk Elasticsearch sync for ${processedIds.length} hackathons...`);
+    setImmediate(() => {
+      syncHackathonsToElasticBulk(processedIds).catch((err) => {
+        console.error("[Scraper] Bulk sync failed:", err);
+      });
+    });
+  }
 
   return result;
 }
@@ -998,7 +1031,19 @@ export async function runAllScrapers(): Promise<ScraperResult> {
 export async function runDevpostScraperLegacy(): Promise<ScraperResult> {
   const result: ScraperResult = { created: 0, updated: 0, errors: 0, totalFetched: 0 };
   const createdById = await getScraperUserId();
-  await runDevpostScraper(createdById, result);
+  const processedIds: string[] = [];
+  try {
+    await runDevpostScraper(createdById, result, processedIds);
+  } catch (error) {
+    console.error("[Scraper] Legacy Devpost scrape failed with exception:", error);
+    result.errors++;
+  }
+  if (processedIds.length > 0) {
+    setImmediate(() => {
+      syncHackathonsToElasticBulk(processedIds).catch((err) => {
+        console.error("[Scraper] Legacy bulk sync failed:", err);
+      });
+    });
+  }
   return result;
 }
-

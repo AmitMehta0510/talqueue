@@ -60,6 +60,76 @@ export function syncHackathonToElastic(hackathonId: string): void {
 }
 
 /**
+ * Synchronizes multiple hackathon records to Elasticsearch in bulk.
+ * Fetches the records from PostgreSQL and upserts or deletes them in the 'hackathons' index.
+ */
+export async function syncHackathonsToElasticBulk(hackathonIds: string[]): Promise<void> {
+  if (!hackathonIds || hackathonIds.length === 0) return;
+
+  const uniqueIds = Array.from(new Set(hackathonIds));
+
+  try {
+    const hackathons = await prisma.hackathon.findMany({
+      where: {
+        id: { in: uniqueIds },
+      },
+    });
+
+    const hackathonsMap = new Map<string, any>();
+    for (const h of hackathons) {
+      hackathonsMap.set(h.id, h);
+    }
+
+    const operations: any[] = [];
+
+    for (const id of uniqueIds) {
+      const h = hackathonsMap.get(id);
+      if (!h || h.deletedAt || h.status === "DELETED") {
+        operations.push({ delete: { _index: "hackathons", _id: id } });
+      } else {
+        operations.push({ index: { _index: "hackathons", _id: id } });
+        operations.push({
+          title: h.title,
+          description: h.description,
+          shortDescription: h.shortDescription,
+          organizerName: h.organizerName,
+          status: h.status,
+          mode: h.mode,
+          location: h.location,
+          difficultyLevel: h.difficultyLevel,
+          tags: h.tags || [],
+          createdAt: h.createdAt,
+          startDate: h.startDate,
+          endDate: h.endDate,
+        });
+      }
+    }
+
+    if (operations.length === 0) return;
+
+    console.log(`[ES Sync] Flushing bulk of ${operations.length} operations to Elasticsearch...`);
+    const response = await elasticClient.bulk({ operations });
+
+    if (response.errors) {
+      console.error("[ES Sync] Bulk sync errors occurred for hackathons:");
+      if (response.items) {
+        for (const item of response.items) {
+          const action = Object.keys(item)[0];
+          const result = (item as any)[action];
+          if (result && result.error) {
+            console.error(`  - Failed action for ID '${result._id}':`, result.error);
+          }
+        }
+      }
+    } else {
+      console.log(`[ES Sync] Successfully synced bulk hackathons to Elasticsearch.`);
+    }
+  } catch (error: any) {
+    console.error("[ES Sync] Elasticsearch bulk sync failed:", error?.message || error);
+  }
+}
+
+/**
  * Synchronizes a job record to Elasticsearch.
  * Fetches the record and its company name from PostgreSQL and upserts it into the 'jobs' index.
  * Fail-soft: Logs indexing errors but does not reject or throw.

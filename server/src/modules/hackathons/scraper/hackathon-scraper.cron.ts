@@ -26,9 +26,9 @@ export const startHackathonScraperCron = () => {
       console.error("[HackathonStatusCron] Boot transition failed:", err);
     });
 
-  // Daily at 2:00 AM for scraping external platforms
-  cron.schedule("0 2 * * *", async () => {
-    console.log("[HackathonScraper] Starting daily unified scrape...");
+  // Runs at 7:00 AM, 11:00 AM, and 3:00 PM (IST) for scraping external platforms
+  cron.schedule("0 7,11,15 * * *", async () => {
+    console.log("[HackathonScraper] Starting scheduled unified scrape...");
 
     try {
       const result = await runAllScrapers();
@@ -39,6 +39,8 @@ export const startHackathonScraperCron = () => {
     } catch (error) {
       console.error("[HackathonScraper] Cron job failed:", error);
     }
+  }, {
+    timezone: "Asia/Kolkata"
   });
 
   // Every 10 minutes to auto-transition start/end date statuses
@@ -57,7 +59,7 @@ export const startHackathonScraperCron = () => {
   });
 
   console.log(
-    "[HackathonScraper] Cron scheduled — runs daily at 2:00 AM",
+    "[HackathonScraper] Cron scheduled — runs at 7 AM, 11 AM, and 3 PM (IST)",
   );
   console.log(
     "[HackathonStatusCron] Cron scheduled — runs every 10 minutes",
