@@ -39,6 +39,14 @@ export const resdexSearchHandler = asyncHandler(
       throw new AppError("'graduationYear' must be a valid integer.", 400);
     }
 
+    if (body.size !== undefined && (isNaN(Number(body.size)) || Number(body.size) < 0)) {
+      throw new AppError("'size' must be a non-negative number.", 400);
+    }
+
+    if (body.from !== undefined && (isNaN(Number(body.from)) || Number(body.from) < 0)) {
+      throw new AppError("'from' must be a non-negative number.", 400);
+    }
+
     const filters: ResdexSearchFilters = {
       query: body.query?.toString() || undefined,
       skills: body.skills as string[] | undefined,

@@ -1,4 +1,5 @@
 import elasticClient from "services/elasticClient";
+import AppError from "shared/errors/AppError";
 
 export interface ResdexSearchFilters {
   /** Free-text fuzzy search on fullName and about */
@@ -58,6 +59,11 @@ export async function searchResdexCandidates(
     size = 20,
     from = 0,
   } = filters;
+
+  const safeSize = Math.min(size, 50);
+  if (from + safeSize > 10000) {
+    throw new AppError("Result window is too large, from + size must be less than or equal to 10000.", 400);
+  }
 
   // must[] — hard filters that all matched docs must satisfy
   const mustClauses: any[] = [];
@@ -140,7 +146,6 @@ export async function searchResdexCandidates(
   }
   if (shouldClauses.length > 0) {
     boolQuery.should = shouldClauses;
-    boolQuery.minimum_should_match = mustClauses.length > 0 ? 0 : 1;
   }
 
   const esQuery =
@@ -148,13 +153,19 @@ export async function searchResdexCandidates(
       ? { match_all: {} }
       : { bool: boolQuery };
 
-  const response = await elasticClient.search({
-    index: "users_resdex",
-    from,
-    size,
-    query: esQuery,
-    _source: true,
-  });
+  let response;
+  try {
+    response = await elasticClient.search({
+      index: "users_resdex",
+      from,
+      size: safeSize,
+      query: esQuery,
+      _source: true,
+    });
+  } catch (error: any) {
+    console.error("Elasticsearch search query failed:", error);
+    throw new AppError("Candidate search service is temporarily unavailable", 500);
+  }
 
   const hits = response.hits?.hits ?? [];
   const total =
