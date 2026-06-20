@@ -70,6 +70,7 @@ async function upsertScrapedHackathon(data: {
   endDate: Date;
   registrationDeadline: Date;
   createdById: string;
+  postedAt?: Date | null;
 }): Promise<{ id: string; isCreated: boolean }> {
   const result = await prisma.hackathon.upsert({
     where: {
@@ -90,6 +91,7 @@ async function upsertScrapedHackathon(data: {
       startDate: data.startDate,
       endDate: data.endDate,
       registrationDeadline: data.registrationDeadline,
+      postedAt: data.postedAt ?? data.startDate,
       mode: data.mode as any,
       location: data.location,
       status: data.status as any,
@@ -119,6 +121,7 @@ async function upsertScrapedHackathon(data: {
       startDate: data.startDate,
       endDate: data.endDate,
       registrationDeadline: data.registrationDeadline,
+      postedAt: data.postedAt ?? data.startDate,
       createdById: data.createdById,
     },
   });
