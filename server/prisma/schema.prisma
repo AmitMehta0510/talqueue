@@ -1029,6 +1029,7 @@ model CollegeRequest {
   @@index([status])
   @@index([name])
   @@index([aisheCode])
+  @@index([bankAccountNumber])
 }
 
 model Post {
@@ -2946,7 +2947,10 @@ model CdcrMember {
   assignedBy User       @relation("CdcrMemberAssignedBy", fields: [assignedById], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
 
-  // A user can be a CDCR in the same college but in different departments
+  // Note: PostgreSQL unique index allows multiple nulls in departmentId.
+  // We enforce true uniqueness for college-wide members (null departmentId)
+  // via a custom partial unique index in a migration:
+  // CREATE UNIQUE INDEX cdcr_legacy_college_wide_idx ON "CdcrMember" ("userId", "collegeId") WHERE "departmentId" IS NULL;
   @@unique([userId, collegeId, departmentId])
   @@index([collegeId])
   @@index([userId])

@@ -40,7 +40,8 @@ export const submitCollegeRegistrationSchema = z.object({
     .string()
     .min(3)
     .max(50)
-    .regex(/^[A-Z0-9\-]+$/i, "AISHE code must be alphanumeric"),
+    .toUpperCase()
+    .regex(/^[A-Z0-9-]+$/, "AISHE code must be alphanumeric"),
 
   officialEmail: z.string().email("Must be a valid institutional email"),
 
@@ -52,8 +53,9 @@ export const submitCollegeRegistrationSchema = z.object({
 
   bankIfscCode: z
     .string()
+    .toUpperCase()
     .regex(
-      /^[A-Z]{4}0[A-Z0-9]{6}$/i,
+      /^[A-Z]{4}0[A-Z0-9]{6}$/,
       "Invalid IFSC code format (e.g. SBIN0001234)",
     ),
 

@@ -393,33 +393,16 @@ export const createDepartment = async (
   const existingDepartment = await prisma.department.findFirst({
     where: {
       collegeId: data.collegeId,
-      name: {
-        equals: name,
-        mode: "insensitive",
-      },
+      OR: [
+        { name: { equals: name, mode: "insensitive" } },
+        { name: { equals: normalizedDepartmentName.replace(/-/g, " "), mode: "insensitive" } },
+      ],
     },
-
     select: departmentSelect,
   });
 
   if (existingDepartment) {
     return existingDepartment;
-  }
-
-  const sameCollegeDepartments = await prisma.department.findMany({
-    where: {
-      collegeId: data.collegeId,
-    },
-
-    select: departmentSelect,
-  });
-
-  const normalizedDuplicate = sameCollegeDepartments.find(
-    (department) => normalizeKey(department.name) === normalizedDepartmentName,
-  );
-
-  if (normalizedDuplicate) {
-    return normalizedDuplicate;
   }
 
   const department = await prisma.department.create({
@@ -583,32 +566,32 @@ export const deleteCollege = async (user: AuthUser, collegeId: string) => {
 };
 
 export const listCdcrMembers = async (collegeId: string) => {
-  const college = await prisma.college.findUnique({
-    where: { id: collegeId },
-    select: { id: true },
-  });
-  if (!college) throw new AppError("College not found", 404);
-
-  return prisma.cdcrMember.findMany({
-    where: { collegeId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          status: true,
-          profile: {
-            select: {
-              fullName: true,
-              avatarUrl: true,
+  const [members, collegeExists] = await Promise.all([
+    prisma.cdcrMember.findMany({
+      where: { collegeId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            status: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.college.count({ where: { id: collegeId } }),
+  ]);
+
+  if (collegeExists === 0) throw new AppError("College not found", 404);
+  return members;
 };
 
 export const assignCdcrMember = async (
@@ -1056,23 +1039,24 @@ const assertCanManageCdcr = async (
   collegeId: string,
   departmentId?: string,
 ) => {
-  const college = await prisma.college.findUnique({
-    where: { id: collegeId },
-    select: { id: true, name: true, masterAdminUserId: true, tpoUserId: true },
-  });
+  const [college, dept] = await Promise.all([
+    prisma.college.findUnique({
+      where: { id: collegeId },
+      select: { id: true, name: true, masterAdminUserId: true, tpoUserId: true },
+    }),
+    departmentId
+      ? prisma.department.findFirst({
+          where: { id: departmentId, collegeId, hodUserId: actorId },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
 
   if (!college) throw new AppError("College not found", 404);
 
   if (college.masterAdminUserId === actorId) return college;
   if (college.tpoUserId === actorId) return college;
-
-  if (departmentId) {
-    const dept = await prisma.department.findFirst({
-      where: { id: departmentId, collegeId, hodUserId: actorId },
-      select: { id: true },
-    });
-    if (dept) return college;
-  }
+  if (dept) return college;
 
   throw new AppError(
     "Only the college TPO, HOD of the target department, or master CollegeAdmin can manage CDCRs",

@@ -1506,8 +1506,9 @@ export const reviewCollegeRequest = async (
       });
 
       // Step 2: Upsert CollegeAdmin row for the requesting user
-      const existingAdmin = await tx.collegeAdmin.findFirst({
-        where: { userId: request.userId, collegeId: college.id },
+      const existingAdmin = await tx.collegeAdmin.findUnique({
+        where: { userId_collegeId: { userId: request.userId, collegeId: college.id } },
+        select: { id: true },
       });
 
       if (!existingAdmin) {
@@ -1519,6 +1520,8 @@ export const reviewCollegeRequest = async (
           },
         });
       }
+
+      await grantRole(request.userId, "COLLEGE_ADMIN", tx);
 
       // Step 3: Mark request as VERIFIED
       await tx.collegeRequest.update({
