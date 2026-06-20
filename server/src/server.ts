@@ -7,7 +7,6 @@ import { checkElasticsearchHealth } from "services/elasticClient";
 import { initElasticsearchIndices } from "services/elasticIndexManager";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
-import { ensureRolesExist } from "shared/database/seedHelper";
 
 const PORT = process.env.PORT || 5000;
 
@@ -21,7 +20,6 @@ server.listen(PORT, async () => {
   console.log(
     `Server is running on port ${PORT}`
   );
-  await ensureRolesExist();
   const isHealthy = await checkElasticsearchHealth();
   if (isHealthy) {
     await initElasticsearchIndices();
