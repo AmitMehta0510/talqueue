@@ -87,34 +87,38 @@ export const getAdminDashboardAnalytics = async (
   // Normalise startDate to the very beginning of that UTC day
   startDate.setUTCHours(0, 0, 0, 0);
 
-  // ── 2. Concurrent aggregation via Promise.all ───────────────────────────────
-  const [rawRegistrations, rawFootprints] = await Promise.all([
-    // ── 2a. User registrations: group new user rows by calendar day ──────────
-    prisma.user.findMany({
-      where: { createdAt: { gte: startDate, lte: endDate } },
-      select: { createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
+  // ── 2. Concurrent SQL Aggregation via $queryRaw ───────────────────────────────
+  const [registrationsRaw, footprintsRaw] = await Promise.all([
+    // Group and count new user registrations by calendar day in DB
+    prisma.$queryRaw<{ date: string; count: number }[]>`
+      SELECT to_char("createdAt", 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+      FROM "User"
+      WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
+      GROUP BY to_char("createdAt", 'YYYY-MM-DD')
+      ORDER BY date ASC
+    `,
 
-    // ── 2b. User footprint: group ProfileView events by calendar day ─────────
-    prisma.profileView.findMany({
-      where: { createdAt: { gte: startDate, lte: endDate } },
-      select: { createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
+    // Group and count ProfileView events by calendar day in DB
+    prisma.$queryRaw<{ date: string; count: number }[]>`
+      SELECT to_char("createdAt", 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+      FROM "ProfileView"
+      WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
+      GROUP BY to_char("createdAt", 'YYYY-MM-DD')
+      ORDER BY date ASC
+    `
   ]);
 
-  // ── 3. Map raw rows into daily bucket maps ──────────────────────────────────
+  // ── 3. Map raw counts into daily bucket maps ──────────────────────────────────
   const registrationMap: Record<string, number> = {};
-  for (const row of rawRegistrations) {
-    const key = toDateKey(row.createdAt);
-    registrationMap[key] = (registrationMap[key] ?? 0) + 1;
+  for (const row of registrationsRaw) {
+    const key = row.date.slice(0, 10);
+    registrationMap[key] = Number(row.count);
   }
 
   const footprintMap: Record<string, number> = {};
-  for (const row of rawFootprints) {
-    const key = toDateKey(row.createdAt);
-    footprintMap[key] = (footprintMap[key] ?? 0) + 1;
+  for (const row of footprintsRaw) {
+    const key = row.date.slice(0, 10);
+    footprintMap[key] = Number(row.count);
   }
 
   // ── 4. Build dense, zero-filled daily series ────────────────────────────────

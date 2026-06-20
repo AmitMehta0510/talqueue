@@ -1,5 +1,52 @@
 import prisma from "shared/database/prisma";
 
+export interface TrustLevelContext {
+  engineeringScore: number;
+  reputationScore: number;
+  verifiedProjects: number;
+  completedProjects: number;
+  verifiedExperiences: number;
+  hackathonWins: number;
+  verifiedHackathonWins: number;
+}
+
+export const determineTrustLevel = (context: TrustLevelContext) => {
+  let trustLevel: "BEGINNER" | "EMERGING" | "VERIFIED" | "ADVANCED" | "ELITE" = "BEGINNER";
+
+  if (context.engineeringScore >= 100 || context.completedProjects >= 1) {
+    trustLevel = "EMERGING";
+  }
+
+  if (
+    context.verifiedProjects >= 1 ||
+    context.verifiedExperiences >= 1 ||
+    context.hackathonWins >= 1 ||
+    context.verifiedHackathonWins >= 1
+  ) {
+    trustLevel = "VERIFIED";
+  }
+
+  if (
+    context.engineeringScore >= 500 &&
+    (context.verifiedProjects >= 2 ||
+      context.verifiedExperiences >= 1 ||
+      context.verifiedHackathonWins >= 2)
+  ) {
+    trustLevel = "ADVANCED";
+  }
+
+  if (
+    context.engineeringScore >= 1200 &&
+    context.verifiedProjects >= 4 &&
+    (context.verifiedExperiences >= 1 || context.verifiedHackathonWins >= 3) &&
+    context.reputationScore >= 500
+  ) {
+    trustLevel = "ELITE";
+  }
+
+  return trustLevel;
+};
+
 export const calculateTrustLevel = async (userId: string) => {
   //
   // USER WITH RELATION CONSOLIDATION
@@ -78,50 +125,15 @@ export const calculateTrustLevel = async (userId: string) => {
     }
   }
 
-  // ENGINEERING SCORE
-  const engineeringScore = user.engineeringScore ?? 0;
-
-  // REPUTATION
-  const reputationScore = user.reputationScore ?? 0;
-
-  // TRUST LEVEL
-  let trustLevel: "BEGINNER" | "EMERGING" | "VERIFIED" | "ADVANCED" | "ELITE" =
-    "BEGINNER";
-
-  // EMERGING
-  if (engineeringScore >= 100 || completedProjects >= 1) {
-    trustLevel = "EMERGING";
-  }
-
-  // VERIFIED
-  if (
-    verifiedProjects >= 1 ||
-    verifiedExperiences >= 1 ||
-    hackathonWins >= 1 ||
-    verifiedHackathonWins >= 1
-  ) {
-    trustLevel = "VERIFIED";
-  }
-
-  // ADVANCED
-  if (
-    engineeringScore >= 500 &&
-    (verifiedProjects >= 2 ||
-      verifiedExperiences >= 1 ||
-      verifiedHackathonWins >= 2)
-  ) {
-    trustLevel = "ADVANCED";
-  }
-
-  // ELITE
-  if (
-    engineeringScore >= 1200 &&
-    verifiedProjects >= 4 &&
-    (verifiedExperiences >= 1 || verifiedHackathonWins >= 3) &&
-    reputationScore >= 500
-  ) {
-    trustLevel = "ELITE";
-  }
+  const trustLevel = determineTrustLevel({
+    engineeringScore: user.engineeringScore ?? 0,
+    reputationScore: user.reputationScore ?? 0,
+    verifiedProjects,
+    completedProjects,
+    verifiedExperiences,
+    hackathonWins,
+    verifiedHackathonWins,
+  });
 
   if (user.trustLevel !== trustLevel) {
     await prisma.user.update({

@@ -80,8 +80,14 @@ const calculateTrendingEntities = async <T>(config: TrendingConfig<T>) => {
     });
   }
 
+  // Execute updates in parallel chunks of 25 to avoid locking main tables inside the transaction
+  const chunks = chunkItems(updateOperations, config.batchSize || DEFAULT_TRENDING_BATCH_SIZE);
+  for (const chunk of chunks) {
+    await Promise.all(chunk);
+  }
+
+  // Transaction holds only lightweight snapshots delete/inserts
   await prisma.$transaction([
-    ...updateOperations,
     prisma.trendingSnapshot.deleteMany({
       where: {
         entityType: config.entityType as FeedItemType,

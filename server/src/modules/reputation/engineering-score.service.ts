@@ -1,12 +1,21 @@
 import prisma from "shared/database/prisma";
-import { calculateTrustLevel } from "../engineering/engineering-trust.service";
+import { determineTrustLevel } from "../engineering/engineering-trust.service";
 
 export const calculateEngineeringScore = async (
     userId: string
   ) => {
 
-    // USER PROJECTS
-    const projects =  await prisma.project.findMany({
+    // Concurrently fetch User scores, Projects, Experiences, Hackathons & Submissions
+    const [user, projects, experiences, hackathonWinsList, submissions] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          reputationScore: true,
+        },
+      }),
+      prisma.project.findMany({
         where: {
           members: {
             some: {
@@ -16,17 +25,13 @@ export const calculateEngineeringScore = async (
 
           deletedAt: null,
         },
-      });
-
-    // EXPERIENCES
-    const experiences =  await prisma.experience.findMany({
+      }),
+      prisma.experience.findMany({
         where: {
           userId,
         },
-      });
-
-    // HACKATHON WINS
-    const hackathonWins =  await prisma.hackathonWinner.count({
+      }),
+      prisma.hackathonWinner.findMany({
         where: {
           team: {
             members: {
@@ -36,10 +41,15 @@ export const calculateEngineeringScore = async (
             },
           },
         },
-      });
-
-    // HACKATHON SUBMISSIONS
-    const submissions =  await prisma.hackathonSubmission.findMany({
+        select: {
+          hackathon: {
+            select: {
+              verified: true,
+            },
+          },
+        },
+      }),
+      prisma.hackathonSubmission.findMany({
         where: {
           team: {
             members: {
@@ -49,7 +59,12 @@ export const calculateEngineeringScore = async (
             },
           },
         },
-      });
+      }),
+    ]);
+
+    if (!user) {
+      return 0;
+    }
 
     // START SCORE
     let score = 0;
@@ -280,10 +295,11 @@ export const calculateEngineeringScore = async (
 
       score += experienceScore;
     }
-    //Hackathon wins
-    
-    score +=
-      hackathonWins * 40;
+
+    // Hackathon wins
+    const hackathonWinsCount = hackathonWinsList.length;
+    const verifiedHackathonWinsCount = hackathonWinsList.filter((win) => win.hackathon?.verified).length;
+    score += hackathonWinsCount * 40;
 
     // Submission engineering scores
     for (  const submission of submissions ) {
@@ -310,24 +326,32 @@ export const calculateEngineeringScore = async (
       10000
     );
 
-    // Persist
+    // IN-MEMORY COMPILATION: Prep aggregates for single-write Trust update
+    const verifiedProjects = projects.filter((p) => p.verified).length;
+    const completedProjects = projects.filter((p) => p.status === "COMPLETED").length;
+    const verifiedExperiences = experiences.filter((e) => e.verified).length;
+
+    const trustLevel = determineTrustLevel({
+      engineeringScore: score,
+      reputationScore: user.reputationScore ?? 0,
+      verifiedProjects,
+      completedProjects,
+      verifiedExperiences,
+      hackathonWins: hackathonWinsCount,
+      verifiedHackathonWins: verifiedHackathonWinsCount,
+    });
+
+    // Consolidated single write update query
     await prisma.user.update({
       where: {
         id: userId,
       },
 
       data: {
-        engineeringScore:
-          score,
+        engineeringScore: score,
+        trustLevel,
       },
     });
-
-
-// Recalculate trust level
-
-await calculateTrustLevel(
-  userId
-);
 
     return score;
   };
