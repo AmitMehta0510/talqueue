@@ -160,6 +160,17 @@ export const shortlistForRound = async (
   await assertRoundManagementAccess(actorId, round.drive.id);
 
   const [createdCount] = await prisma.$transaction(async (tx) => {
+    // Lock the round row to prevent concurrent shortlisting race conditions
+    const rounds = await tx.$queryRaw<{ maxSlots: number | null }[]>`
+      SELECT "maxSlots" FROM "PlacementDriveRound" WHERE id = ${roundId} FOR UPDATE
+    `;
+    const dbRound = rounds[0];
+
+    // Get current count of shortlisted applications
+    const currentShortlistedCount = await tx.placementDriveRoundShortlist.count({
+      where: { roundId },
+    });
+
     // 1. Direct unique matching index fetch findMany arrays
     const existingShortlists = await tx.placementDriveRoundShortlist.findMany({
       where: {
@@ -176,6 +187,16 @@ export const shortlistForRound = async (
         roundId,
         applicationId: appId,
       }));
+
+    if (dbRound && dbRound.maxSlots !== null && dbRound.maxSlots !== undefined) {
+      const newTotal = currentShortlistedCount + shortlistsToCreate.length;
+      if (newTotal > dbRound.maxSlots) {
+        throw new AppError(
+          `Cannot shortlist candidates. This round has a limit of ${dbRound.maxSlots} slots. Current shortlisted: ${currentShortlistedCount}, attempting to add: ${shortlistsToCreate.length}.`,
+          400
+        );
+      }
+    }
 
     if (shortlistsToCreate.length > 0) {
       await tx.placementDriveRoundShortlist.createMany({

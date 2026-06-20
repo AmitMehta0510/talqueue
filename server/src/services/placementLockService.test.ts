@@ -13,6 +13,7 @@ vi.mock("shared/database/prisma", () => {
         findMany: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
+        groupBy: vi.fn(),
       },
       college: {
         findUnique: vi.fn(),
@@ -32,6 +33,8 @@ describe("Placement Lock Service & Policy Engine", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => {
       return callback(prisma);
     });
+
+    vi.mocked(prisma.placementDriveApplication.groupBy).mockResolvedValue([]);
   });
 
   test("should update status to SELECTED and not trigger freeze lock if policy allows it", async () => {

@@ -1,6 +1,6 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
-import { PlacementDriveApplicationStatus, CollegeOfferPolicy } from "@prisma/client";
+import { PlacementDriveApplicationStatus, CollegeOfferPolicy, Prisma } from "@prisma/client";
 import { processPlacementSelection } from "services/placementLockService";
 
 interface CreatePlacementDriveData {
@@ -541,14 +541,22 @@ export const applyToDrive = async (userId: string, driveId: string, note?: strin
   );
 
   // ── CREATE APPLICATION ────────────────────────────────────────────────────
-  const application = await prisma.placementDriveApplication.create({
-    data: {
-      driveId,
-      userId,
-      note,
-      status: PlacementDriveApplicationStatus.APPLIED,
-    },
-  });
+  let application;
+  try {
+    application = await prisma.placementDriveApplication.create({
+      data: {
+        driveId,
+        userId,
+        note,
+        status: PlacementDriveApplicationStatus.APPLIED,
+      },
+    });
+  } catch (error: any) {
+    if (error.code === "P2002" || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+      throw new AppError("You have already applied to this drive", 409);
+    }
+    throw error;
+  }
 
   // ── Notify the drive poster (recruiter/TPO) ───────────────────────────────
   if (drive.postedById !== userId) {

@@ -85,19 +85,17 @@ export async function evaluatePolicyLock(
     where: { collegeId },
   });
 
-  // Placed students: Students of this college who have at least one SELECTED application
-  const placedStudentsCount = await tx.education.count({
+  // Placed students: Unique students of this college who have at least one SELECTED placement drive application
+  const placedStudents = await tx.placementDriveApplication.groupBy({
+    by: ["userId"],
     where: {
-      collegeId,
-      user: {
-        placementDriveApplications: {
-          some: {
-            status: PlacementDriveApplicationStatus.SELECTED,
-          },
-        },
+      status: PlacementDriveApplicationStatus.SELECTED,
+      drive: {
+        targetCollegeId: collegeId,
       },
     },
   });
+  const placedStudentsCount = placedStudents.length;
 
   const batchPlacedPercentage = totalStudents > 0 ? (placedStudentsCount / totalStudents) * 100 : 0;
 

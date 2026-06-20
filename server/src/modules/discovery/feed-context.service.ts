@@ -7,8 +7,14 @@ export const buildFeedContext = async (userId: string) => {
       id: userId,
     },
 
-    include: {
-      experiences: true,
+    select: {
+      id: true,
+      engineeringScore: true,
+      experiences: {
+        select: {
+          id: true,
+        },
+      },
     },
   });
 
@@ -32,14 +38,23 @@ export const buildFeedContext = async (userId: string) => {
         userId,
       },
 
-      include: {
-        skill: true,
+      select: {
+        skill: {
+          select: {
+            name: true,
+          },
+        },
       },
     }),
 
     prisma.feedInteraction.findMany({
       where: {
         userId,
+      },
+
+      select: {
+        targetType: true,
+        targetId: true,
       },
 
       orderBy: {
@@ -52,6 +67,11 @@ export const buildFeedContext = async (userId: string) => {
     prisma.userAffinity.findMany({
       where: {
         userId,
+      },
+
+      select: {
+        targetUserId: true,
+        score: true,
       },
 
       take: 100,

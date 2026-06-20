@@ -129,8 +129,19 @@ const userFullProfileSelect = {
   ...userProfileSelect,
 
   skills: {
-    include: {
-      skill: true,
+    select: {
+      id: true,
+      level: true,
+      verified: true,
+      verificationSource: true,
+      verificationProof: true,
+      skill: {
+        select: {
+          id: true,
+          name: true,
+          category: true,
+        },
+      },
     },
 
     orderBy: {
@@ -141,8 +152,34 @@ const userFullProfileSelect = {
   },
 
   experiences: {
-    include: {
-      company: true,
+    select: {
+      id: true,
+      title: true,
+      employmentType: true,
+      startDate: true,
+      endDate: true,
+      isCurrent: true,
+      description: true,
+      verified: true,
+      verificationScore: true,
+      verifiedAt: true,
+      workEmail: true,
+      workEmailVerified: true,
+      managerName: true,
+      managerLinkedinUrl: true,
+      managerEmail: true,
+      skillsUsed: true,
+      techStack: true,
+      teamSize: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          websiteUrl: true,
+          slug: true,
+        },
+      },
     },
 
     orderBy: [
@@ -159,9 +196,34 @@ const userFullProfileSelect = {
   },
 
   educations: {
-    include: {
-      college: true,
-      department: true,
+    select: {
+      id: true,
+      degree: true,
+      fieldOfStudy: true,
+      startYear: true,
+      endYear: true,
+      current: true,
+      cgpa: true,
+      backlogs: true,
+      currentYear: true,
+      isAlumni: true,
+      alumniVerified: true,
+      collegeEmail: true,
+      collegeEmailVerified: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          website: true,
+        },
+      },
+      department: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
 
     orderBy: [
@@ -178,8 +240,14 @@ const userFullProfileSelect = {
   },
 
   roles: {
-    include: {
-      role: true,
+    select: {
+      id: true,
+      role: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
 
@@ -191,10 +259,25 @@ const userFullProfileSelect = {
         status: "DELETED",
       },
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      shortDescription: true,
+      githubUrl: true,
+      liveUrl: true,
+      techStack: true,
+      createdAt: true,
       owner: {
-        include: {
-          profile: true,
+        select: {
+          id: true,
+          username: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+            },
+          },
         },
       },
       _count: {

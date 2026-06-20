@@ -493,17 +493,20 @@ export const updateApplicationStatus = async (
         },
       });
 
-      const job = await tx.job.findUnique({
-        where: { id: application.jobId },
-        select: { openings: true },
-      });
+      const jobs = await tx.$queryRaw<{ openings: number | null }[]>`
+        SELECT openings FROM "Job" WHERE id = ${application.jobId} FOR UPDATE
+      `;
+      const job = jobs[0];
 
       if (job && job.openings !== null && job.openings !== undefined) {
-        const nextOpenings = Math.max(0, job.openings - 1);
+        if (job.openings <= 0) {
+          throw new AppError("No openings remaining for this job", 400);
+        }
+        const nextOpenings = job.openings - 1;
         await tx.job.update({
           where: { id: application.jobId },
           data: {
-            openings: { decrement: 1 },
+            openings: nextOpenings,
             status: nextOpenings === 0 ? "CLOSED" : undefined,
           },
         });

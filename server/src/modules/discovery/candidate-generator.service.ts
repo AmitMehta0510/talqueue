@@ -20,14 +20,19 @@ export const generateFeedCandidates = async (
         id: userId,
       },
 
-      include: {
-        profile: true,
-
-        interestProfile: true,
-
+      select: {
+        profile: {
+          select: {
+            collegeId: true,
+          },
+        },
         skills: {
-          include: {
-            skill: true,
+          select: {
+            skill: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -48,6 +53,10 @@ export const generateFeedCandidates = async (
         score: {
           gte: 20,
         },
+      },
+
+      select: {
+        targetUserId: true,
       },
 
       orderBy: {
@@ -188,13 +197,28 @@ export const generateFeedCandidates = async (
         ...(postOr.length ? { OR: postOr } : {}),
       },
 
-      include: {
+      select: {
+        id: true,
+        content: true,
+        type: true,
+        announcement: true,
+        anonymous: true,
+        resourceUrl: true,
+        resourceType: true,
+        media: true,
+        createdAt: true,
         author: {
-          include: {
-            profile: true,
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
           },
         },
-
         _count: {
           select: {
             likes: true,
@@ -220,14 +244,32 @@ export const generateFeedCandidates = async (
         ...(projectOr.length ? { OR: projectOr } : {}),
       },
 
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        shortDescription: true,
+        githubUrl: true,
+        liveUrl: true,
+        techStack: true,
+        createdAt: true,
         owner: {
-          include: {
-            profile: true,
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
           },
         },
-
-        members: true,
+        _count: {
+          select: {
+            members: true,
+          },
+        },
       },
 
       orderBy: {
@@ -247,16 +289,32 @@ export const generateFeedCandidates = async (
             in: ["DRAFT", "DELETED", "ARCHIVED"],
           },
         },
-
-        registrationDeadline: {
-          gte: new Date(),
-        },
-
-        ...(hackathonOr.length ? { OR: hackathonOr } : {}),
       },
 
-      include: {
-        createdBy: true,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        shortDescription: true,
+        bannerUrl: true,
+        logoUrl: true,
+        startDate: true,
+        endDate: true,
+        registrationDeadline: true,
+        maxTeamSize: true,
+        minTeamSize: true,
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
       },
 
       orderBy: {
@@ -276,8 +334,26 @@ export const generateFeedCandidates = async (
         ...(strategy === "discovery" && jobOr.length ? { OR: jobOr } : {}),
       },
 
-      include: {
-        company: true,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        location: true,
+        salaryMin: true,
+        salaryMax: true,
+        currency: true,
+        jobType: true,
+        workMode: true,
+        createdAt: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            slug: true,
+            verified: true,
+          },
+        },
       },
 
       orderBy: {
@@ -290,6 +366,16 @@ export const generateFeedCandidates = async (
     prisma.company.findMany({
       where: {
         hiringEnabled: true,
+      },
+
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        slug: true,
+        verified: true,
+        industry: true,
+        headquarters: true,
       },
 
       orderBy: {
