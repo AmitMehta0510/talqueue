@@ -320,6 +320,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "greenhouse",
+            postedAt: job.updated_at ? new Date(job.updated_at) : null,
           },
           update: {
             title: jobTitle,
@@ -333,6 +334,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             skillsRequired,
             status: "OPEN",
             atsSource: "greenhouse",
+            postedAt: job.updated_at ? new Date(job.updated_at) : null,
           }
         });
 
@@ -413,6 +415,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "lever",
+            postedAt: job.createdAt ? new Date(job.createdAt) : null,
           },
           update: {
             title: jobTitle,
@@ -426,6 +429,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             skillsRequired,
             status: "OPEN",
             atsSource: "lever",
+            postedAt: job.createdAt ? new Date(job.createdAt) : null,
           }
         });
 

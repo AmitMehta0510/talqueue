@@ -2220,6 +2220,8 @@ model Job {
   // Which ATS or pipeline produced this job: 'greenhouse' | 'lever' | 'ashby' | 'mock' | null
   atsSource String?
 
+  postedAt DateTime?
+
   ppoOffered Boolean @default(false)
 
   featured Boolean @default(false)
