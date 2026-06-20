@@ -32,6 +32,8 @@ import { AdminPage } from "./pages/AdminPage";
 import { CompanyAdminPage } from "./pages/CompanyAdminPage";
 import { EventsPage } from "./pages/EventsPage";
 import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
+import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
+
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -232,6 +234,15 @@ function AppRoutes() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/business"
+            element={
+              <RequireAuth>
+                <BusinessOnboardingPage />
+              </RequireAuth>
+            }
+          />
+
           <Route
             path="/companies/:companySlug/admin"
             element={

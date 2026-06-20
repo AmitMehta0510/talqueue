@@ -5,6 +5,8 @@ import {
   TrendingUp, ArrowLeft, RefreshCw, Sparkles, UserPlus, Info, CheckCircle2, ChevronRight, X
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import { api } from "../lib/api";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Avatar } from "../components/ui";
 import { userName } from "../lib/format";
@@ -22,11 +24,12 @@ import {
   useRemoveCompanyRecruiterMutation
 } from "../hooks/usePlatformQueries";
 
-type Tab = "overview" | "managers" | "recruiters" | "jobs";
+type Tab = "overview" | "managers" | "recruiters" | "jobs" | "offices" | "departments";
 
 export function CompanyAdminPage() {
   const { companySlug } = useParams<{ companySlug: string }>();
   const { user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [jobPage, setJobPage] = useState(1);
   const [managedJobId, setManagedJobId] = useState<string | null>(null);
@@ -63,12 +66,50 @@ export function CompanyAdminPage() {
   const [recruiterTitle, setRecruiterTitle] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
+  // Office form states
+  const [officeName, setOfficeName] = useState("");
+  const [officeAddress, setOfficeAddress] = useState("");
+  const [officeCityInput, setOfficeCityInput] = useState("");
+  const [officeManagerId, setOfficeManagerId] = useState("");
+  const [submittingOffice, setSubmittingOffice] = useState(false);
+
+  // Department form states
+  const [deptName, setDeptName] = useState("");
+  const [deptCode, setDeptCode] = useState("");
+  const [submittingDept, setSubmittingDept] = useState(false);
+
+
   const stats = statsQuery.data;
   const admins = adminsQuery.data || [];
   const recruiters = recruitersQuery.data || [];
 
   const globalAdmins = admins.filter((a: any) => !a.officeCity);
   const officeManagers = admins.filter((a: any) => a.officeCity);
+
+  const isGlobalAdmin = useMemo(() => {
+    if (!currentUser || !companyId) return false;
+    const adminship = currentUser.companyAdminships?.find(
+      (a: any) => a.companyId === companyId
+    );
+    return !!adminship && (adminship.officeCity === null || adminship.officeCity === undefined);
+  }, [currentUser, companyId]);
+
+  const tabs = useMemo(() => {
+    const list = [
+      { id: "overview" as Tab, label: "Stats & Funnel", icon: TrendingUp },
+      { id: "managers" as Tab, label: "Office Managers", icon: Shield },
+      { id: "recruiters" as Tab, label: "Recruiter Seats", icon: Users },
+      { id: "jobs" as Tab, label: "Job Postings", icon: Briefcase },
+    ];
+    if (isGlobalAdmin) {
+      list.push(
+        { id: "offices" as Tab, label: "Manage Offices", icon: MapPin },
+        { id: "departments" as Tab, label: "Departments", icon: Building2 }
+      );
+    }
+    return list;
+  }, [isGlobalAdmin]);
+
 
   const isPending =
     assignAdmin.isPending ||
@@ -239,12 +280,7 @@ export function CompanyAdminPage() {
           {/* ── Sidebar Nav ── */}
           <div className="w-full shrink-0 md:w-48">
             <nav className="flex flex-row overflow-x-auto gap-1 border-b border-zinc-800 pb-2 md:flex-col md:border-none md:pb-0 md:space-y-1">
-              {([
-                { id: "overview", label: "Stats & Funnel", icon: TrendingUp },
-                { id: "managers", label: "Office Managers", icon: Shield },
-                { id: "recruiters", label: "Recruiter Seats", icon: Users },
-                { id: "jobs", label: "Job Postings", icon: Briefcase }
-              ] as const).map(({ id, label, icon: Icon }) => (
+              {tabs.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => { setActiveTab(id); setShowAddForm(false); setManagedJobId(null); }}
@@ -753,7 +789,260 @@ export function CompanyAdminPage() {
               )
             )}
 
+            {/* ── VIEW: MANAGE OFFICES ── */}
+            {activeTab === "offices" && isGlobalAdmin && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Manage Office Locations</h2>
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                  >
+                    <Plus size={12} /> Add Office
+                  </button>
+                </div>
+
+                {showAddForm && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!officeName.trim() || !officeCityInput.trim() || !companyId) return;
+                      setSubmittingOffice(true);
+                      try {
+                        await api.createCompanyOffice(companyId, {
+                          name: officeName,
+                          address: officeAddress || undefined,
+                          city: officeCityInput,
+                          managerId: officeManagerId || null,
+                        });
+                        setOfficeName("");
+                        setOfficeAddress("");
+                        setOfficeCityInput("");
+                        setOfficeManagerId("");
+                        setShowAddForm(false);
+                        companyQuery.refetch();
+                        statsQuery.refetch();
+                        showToast("success", "Office location created successfully!");
+                      } catch (err: any) {
+                        showToast("error", err?.message || "Failed to create office location");
+                      } finally {
+                        setSubmittingOffice(false);
+                      }
+                    }}
+                    className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-5 space-y-4 max-w-lg"
+                  >
+                    <div className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <MapPin size={13} className="text-emerald-500" />
+                      Add New Office Location
+                    </div>
+
+                    <div className="space-y-3">
+                      <input
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                        placeholder="Office Name (e.g. Headquarters, Engineering Hub) *"
+                        value={officeName}
+                        onChange={(e) => setOfficeName(e.target.value)}
+                        required
+                      />
+
+                      <input
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                        placeholder="City (e.g. Bangalore, San Francisco) *"
+                        value={officeCityInput}
+                        onChange={(e) => setOfficeCityInput(e.target.value)}
+                        required
+                      />
+
+                      <input
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                        placeholder="Address (optional)"
+                        value={officeAddress}
+                        onChange={(e) => setOfficeAddress(e.target.value)}
+                      />
+
+                      <select
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-400 focus:border-emerald-500 focus:outline-none transition"
+                        value={officeManagerId}
+                        onChange={(e) => setOfficeManagerId(e.target.value)}
+                      >
+                        <option value="">-- Assign Manager (Optional) --</option>
+                        {admins.map((adm: any) => (
+                          <option key={adm.user?.id} value={adm.user?.id}>
+                            {adm.user?.profile?.fullName || adm.user?.username} ({adm.officeCity || "Global"})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={submittingOffice}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-505 transition flex items-center gap-1.5"
+                      >
+                        {submittingOffice && <Loader2 size={12} className="animate-spin" />}
+                        Create Office
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-zinc-805 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition"
+                        onClick={() => setShowAddForm(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Offices List */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {(company.offices || []).length === 0 ? (
+                    <div className="col-span-2 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                      <MapPin size={24} className="text-zinc-500 mb-2" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Offices Registered</h4>
+                      <p className="text-[11px] text-zinc-500 max-w-xs mt-1">
+                        Register office locations to distribute regional candidate hiring coordinates and site allocations.
+                      </p>
+                    </div>
+                  ) : (
+                    company.offices?.map((office: any) => (
+                      <div key={office.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Building2 size={13} className="text-zinc-500" />
+                            {office.name}
+                          </h4>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            {office.city}
+                          </span>
+                        </div>
+                        {office.address && (
+                          <p className="text-[10px] text-zinc-500">{office.address}</p>
+                        )}
+                        {office.managerId && (
+                          <div className="text-[10px] text-zinc-400 border-t border-zinc-850 pt-2 flex items-center gap-1">
+                            <span>Manager Assigned</span>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── VIEW: DEPARTMENTS ── */}
+            {activeTab === "departments" && isGlobalAdmin && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Manage Departments</h2>
+                  <button
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-600/20 transition"
+                  >
+                    <Plus size={12} /> Add Department
+                  </button>
+                </div>
+
+                {showAddForm && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!deptName.trim() || !companyId) return;
+                      setSubmittingDept(true);
+                      try {
+                        await api.createCompanyDepartment(companyId, {
+                          name: deptName,
+                          code: deptCode || undefined,
+                        });
+                        setDeptName("");
+                        setDeptCode("");
+                        setShowAddForm(false);
+                        companyQuery.refetch();
+                        showToast("success", "Department created successfully!");
+                      } catch (err: any) {
+                        showToast("error", err?.message || "Failed to create department");
+                      } finally {
+                        setSubmittingDept(false);
+                      }
+                    }}
+                    className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-5 space-y-4 max-w-lg"
+                  >
+                    <div className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                      <Building2 size={13} className="text-emerald-500" />
+                      Add New Brand Department
+                    </div>
+
+                    <div className="space-y-3">
+                      <input
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                        placeholder="Department Name (e.g. Engineering, Sales, Human Resources) *"
+                        value={deptName}
+                        onChange={(e) => setDeptName(e.target.value)}
+                        required
+                      />
+
+                      <input
+                        className="w-full rounded-lg border border-zinc-805 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+                        placeholder="Department Code (e.g. ENG, HR)"
+                        value={deptCode}
+                        onChange={(e) => setDeptCode(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={submittingDept}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-550 transition flex items-center gap-1.5"
+                      >
+                        {submittingDept && <Loader2 size={12} className="animate-spin" />}
+                        Create Department
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-zinc-805 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition"
+                        onClick={() => setShowAddForm(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Departments List */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {(company.departments || []).length === 0 ? (
+                    <div className="col-span-2 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-8 text-center bg-zinc-900/10">
+                      <Building2 size={24} className="text-zinc-500 mb-2" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">No Departments Registered</h4>
+                      <p className="text-[11px] text-zinc-500 max-w-xs mt-1">
+                        Define internal company units to structure job post routing and employee team mappings.
+                      </p>
+                    </div>
+                  ) : (
+                    company.departments?.map((dept: any) => (
+                      <div key={dept.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Building2 size={13} className="text-zinc-500" />
+                            {dept.name}
+                          </h4>
+                          {dept.code && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                              {dept.code}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
+
 
         </div>
 

@@ -942,7 +942,26 @@ export type Company = {
   };
   isFollowing?: boolean;
   createdAt?: string;
+  offices?: CompanyOffice[];
+  departments?: CompanyDepartment[];
 };
+
+export type CompanyOffice = {
+  id: string;
+  companyId: string;
+  name: string;
+  address?: string | null;
+  city: string;
+  managerId?: string | null;
+};
+
+export type CompanyDepartment = {
+  id: string;
+  companyId: string;
+  name: string;
+  code?: string | null;
+};
+
 
 export type CompanyPage = {
   page: number;
@@ -2906,4 +2925,17 @@ export const api = {
     request<{ id: string; isAlumni: boolean }>(`/colleges/${collegeId}/alumni-claims/${educationId}/reject`, { method: "POST", body: {} }),
   getCollegeStats: (collegeId: string, year?: number, options?: EndpointOptions) =>
     request<PlacementStats>(`/placement-drives/college/${collegeId}/stats${year ? `?year=${year}` : ""}`, options),
+
+  // B2B SaaS Enterprise claims & onboarding
+  submitCompanyClaim: (companyId: string, body: { gstin: string; cin: string; businessEmail: string; corporateDoc: string }) =>
+    request<any>(`/companies/${companyId}/claim`, { method: "POST", body }),
+  submitRecruiterOnboarding: (body: { companyId?: string | null; companyName: string; businessEmail: string }) =>
+    request<any>("/companies/recruiter-onboarding", { method: "POST", body }),
+  createCompanyOffice: (companyId: string, body: { name: string; address?: string; city: string; managerId?: string | null }) =>
+    request<any>(`/companies/${companyId}/offices`, { method: "POST", body }),
+  createCompanyDepartment: (companyId: string, body: { name: string; code?: string }) =>
+    request<any>(`/companies/${companyId}/departments`, { method: "POST", body }),
+  adminReviewBusinessRequest: (requestId: string, action: "APPROVE" | "REJECT") =>
+    request<any>(`/admin/company-requests/${requestId}/review`, { method: "POST", body: { action } }),
 };
+

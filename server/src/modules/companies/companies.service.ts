@@ -347,6 +347,9 @@ export const getCompanyBySlug = async (
 
       createdAt: true,
 
+      offices: true,
+      departments: true,
+
       jobs: {
         where: {
           status: "OPEN",

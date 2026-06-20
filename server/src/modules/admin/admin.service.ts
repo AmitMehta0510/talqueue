@@ -1017,6 +1017,15 @@ export const adminListCompanyRequests = async (status?: string, limit = 50) => {
           profile: { select: { fullName: true, avatarUrl: true } },
         },
       },
+      company: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          gstin: true,
+          cin: true,
+        },
+      },
     },
   });
 };
