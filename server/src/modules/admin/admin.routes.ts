@@ -37,6 +37,7 @@ import {
   adminRejectCompanyRequestHandler,
   adminTriggerScraperHandler,
   adminTriggerJobScraperHandler,
+  reviewBusinessRequestHandler,
 } from "./admin.controller";
 
 import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
@@ -133,5 +134,6 @@ router.delete("/events/:id", isAuthenticated, isAdminOrSuperAdmin, deleteEventHa
 router.get("/company-requests", adminListCompanyRequestsHandler);
 router.post("/company-requests/:requestId/approve", adminApproveCompanyRequestHandler);
 router.post("/company-requests/:requestId/reject", adminRejectCompanyRequestHandler);
+router.post("/company-requests/:requestId/review", reviewBusinessRequestHandler);
 
 export default router;

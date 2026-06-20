@@ -224,6 +224,18 @@ enum CompanySize {
   ENTERPRISE
 }
 
+enum BusinessRequestType {
+  COMPANY_CLAIM
+  RECRUITER_ONBOARDING
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum JobType {
   FULL_TIME
   INTERNSHIP
@@ -2172,6 +2184,14 @@ model Company {
   events          Event[]
   placementDrives PlacementDrive[]
   placementDriveInvites PlacementDriveInvite[]
+
+  gstin              String?             @unique
+  cin                String?             @unique
+  verificationDoc    String?
+  claimedAt          DateTime?
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  offices            CompanyOffice[]
+  departments        CompanyDepartment[]
 }
 
 model Job {
@@ -2283,6 +2303,10 @@ model CompanyRequest {
   reviewNotes String?
 
   reviewedAt DateTime?
+
+  requestType   BusinessRequestType @default(RECRUITER_ONBOARDING)
+  businessEmail String?
+  corporateDoc  String?
 
   requestedBy User @relation(fields: [requestedById], references: [id], onDelete: Cascade)
 
@@ -3126,4 +3150,22 @@ model PlacementDriveRoundShortlist {
   round         PlacementDriveRound       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   application   PlacementDriveApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   @@unique([roundId, applicationId])
+}
+
+model CompanyOffice {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  address   String?
+  city      String
+  managerId String?
+}
+
+model CompanyDepartment {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
 }

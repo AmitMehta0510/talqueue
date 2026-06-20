@@ -26,6 +26,10 @@ import {
   removeCompanyRecruiterHandler,
   listDiscoveredCompaniesHandler,
   bulkReviewDiscoveredCompaniesHandler,
+  submitCompanyClaimHandler,
+  submitRecruiterOnboardingHandler,
+  createCompanyOfficeHandler,
+  createCompanyDepartmentHandler,
 } from "./companies.controller";
 
 const router = Router();
@@ -145,6 +149,30 @@ router.post(
   "/discovered/review",
   protect,
   bulkReviewDiscoveredCompaniesHandler
+);
+
+router.post(
+  "/:companyId/claim",
+  protect,
+  submitCompanyClaimHandler
+);
+
+router.post(
+  "/recruiter-onboarding",
+  protect,
+  submitRecruiterOnboardingHandler
+);
+
+router.post(
+  "/:companyId/offices",
+  protect,
+  createCompanyOfficeHandler
+);
+
+router.post(
+  "/:companyId/departments",
+  protect,
+  createCompanyDepartmentHandler
 );
 
 export default router;

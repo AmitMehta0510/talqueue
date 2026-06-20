@@ -46,3 +46,31 @@ export const createCompanySchema = z.object({
 
   referralEnabled: z.boolean().optional(),
 });
+
+export const submitCompanyClaimSchema = z.object({
+  companyId: z.string().uuid("companyId must be a valid UUID"),
+  gstin: z.string().trim().min(1, "GSTIN is required"),
+  cin: z.string().trim().min(1, "CIN is required"),
+  businessEmail: z.string().email("Invalid business email"),
+  corporateDoc: z.string().url("corporateDoc must be a valid URL"),
+});
+
+export const submitRecruiterOnboardingSchema = z.object({
+  companyId: z.string().uuid("companyId must be a valid UUID").optional().nullable(),
+  companyName: z.string().trim().min(1, "Company name is required"),
+  businessEmail: z.string().email("Invalid business email"),
+});
+
+export const createCompanyOfficeSchema = z.object({
+  companyId: z.string().uuid("companyId must be a valid UUID"),
+  name: z.string().trim().min(1, "Office name is required"),
+  address: z.string().trim().optional(),
+  city: z.string().trim().min(1, "City is required"),
+  managerId: z.string().uuid("managerId must be a valid UUID").optional().nullable(),
+});
+
+export const createCompanyDepartmentSchema = z.object({
+  companyId: z.string().uuid("companyId must be a valid UUID"),
+  name: z.string().trim().min(1, "Department name is required"),
+  code: z.string().trim().optional(),
+});

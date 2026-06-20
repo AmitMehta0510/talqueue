@@ -14,3 +14,7 @@ export const assignCompanyAdminSchema = z.object({
 export const updateUserStatusSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "BANNED"]),
 });
+
+export const reviewBusinessRequestSchema = z.object({
+  action: z.enum(["APPROVE", "REJECT"]),
+});

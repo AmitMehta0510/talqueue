@@ -1185,3 +1185,158 @@ export const adminUpdateHackathon = async (hackathonId: string, data: any) => {
   return updatedHackathon;
 };
 
+export const reviewBusinessRequest = async (
+  adminId: string,
+  requestId: string,
+  action: "APPROVE" | "REJECT"
+) => {
+  const request = await prisma.companyRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request) {
+    throw new AppError("Company request not found", 404);
+  }
+
+  if (request.status !== "PENDING") {
+    throw new AppError("Request is not in PENDING state", 400);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (action === "APPROVE") {
+      if (request.requestType === "COMPANY_CLAIM") {
+        if (!request.companyId) {
+          throw new AppError("Company ID is missing from the claim request", 400);
+        }
+
+        // Update target company row: verificationStatus = 'VERIFIED' and verified = true
+        await tx.company.update({
+          where: { id: request.companyId },
+          data: {
+            verificationStatus: "VERIFIED",
+            verified: true,
+          },
+        });
+
+        // Create a parent record in CompanyAdmin with officeCity = null assigning global brand manager privileges to requestor
+        await tx.companyAdmin.create({
+          data: {
+            userId: request.requestedById,
+            companyId: request.companyId,
+            officeCity: null,
+            grantedById: adminId,
+          },
+        });
+
+        // Update request status to APPROVED
+        await tx.companyRequest.update({
+          where: { id: requestId },
+          data: {
+            status: "APPROVED",
+            reviewedById: adminId,
+            reviewedAt: new Date(),
+          },
+        });
+
+        // Notify user
+        await tx.notification.create({
+          data: {
+            userId: request.requestedById,
+            type: "SYSTEM",
+            title: "Company Claim Approved",
+            message: `Your claim request for company "${request.companyName}" has been approved. You are now a global administrator.`,
+            entityType: "COMPANY",
+            entityId: request.companyId,
+          },
+        });
+      } else if (request.requestType === "RECRUITER_ONBOARDING") {
+        if (!request.companyId) {
+          throw new AppError("Company ID is missing from onboarding request", 400);
+        }
+
+        // Update request status to APPROVED
+        await tx.companyRequest.update({
+          where: { id: requestId },
+          data: {
+            status: "APPROVED",
+            reviewedById: adminId,
+            reviewedAt: new Date(),
+          },
+        });
+
+        // Grant recruiter role to user (using the tx-scoped helper functions)
+        await grantRole(request.requestedById, "RECRUITER", tx);
+
+        // Create current recruiter Experience record if it does not exist
+        const existingExp = await tx.experience.findFirst({
+          where: {
+            userId: request.requestedById,
+            companyId: request.companyId,
+            isCurrent: true,
+          },
+        });
+
+        if (!existingExp) {
+          await tx.experience.create({
+            data: {
+              userId: request.requestedById,
+              companyId: request.companyId,
+              title: "Recruiter",
+              employmentType: "FULL_TIME",
+              startDate: new Date(),
+              isCurrent: true,
+              description: `Recruitment team member at ${request.companyName}`,
+            },
+          });
+        }
+
+        // Notify user
+        await tx.notification.create({
+          data: {
+            userId: request.requestedById,
+            type: "SYSTEM",
+            title: "Recruiter Onboarding Approved",
+            message: `Your recruiter onboarding request for "${request.companyName}" has been approved.`,
+            entityType: "COMPANY",
+            entityId: request.companyId,
+          },
+        });
+      }
+    } else {
+      // action === 'REJECT'
+      await tx.companyRequest.update({
+        where: { id: requestId },
+        data: {
+          status: "REJECTED",
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+        },
+      });
+
+      if (request.requestType === "COMPANY_CLAIM" && request.companyId) {
+        // Reset verification status
+        await tx.company.update({
+          where: { id: request.companyId },
+          data: {
+            verificationStatus: "REJECTED",
+          },
+        });
+      }
+
+      // Notify user
+      await tx.notification.create({
+        data: {
+          userId: request.requestedById,
+          type: "SYSTEM",
+          title: "Business Request Rejected",
+          message: `Your request regarding company "${request.companyName}" was rejected.`,
+          entityType: "COMPANY",
+          entityId: request.companyId || undefined,
+        },
+      });
+    }
+
+    return { success: true };
+  });
+};
+

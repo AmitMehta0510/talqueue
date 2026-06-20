@@ -22,6 +22,10 @@ import {
   removeCompanyRecruiter,
   listDiscoveredCompanies,
   bulkReviewDiscoveredCompanies,
+  submitCompanyClaim,
+  submitRecruiterOnboarding,
+  createCompanyOffice,
+  createCompanyDepartment,
 } from "./companies.service";
 
 import {
@@ -30,7 +34,13 @@ import {
   removeCompanyAdmin,
 } from "modules/admin/admin.service";
 
-import { createCompanySchema } from "./companies.validation";
+import {
+  createCompanySchema,
+  submitCompanyClaimSchema,
+  submitRecruiterOnboardingSchema,
+  createCompanyOfficeSchema,
+  createCompanyDepartmentSchema,
+} from "./companies.validation";
 
 export const createCompanyHandler = asyncHandler(
   async (req: any, res: Response) => {
@@ -244,5 +254,49 @@ export const bulkReviewDiscoveredCompaniesHandler = asyncHandler(
         ? `Successfully verified ${result.processed} company/companies.`
         : `Successfully rejected and removed ${result.processed} company/companies.`;
     res.json(successResponse(result, message));
+  }
+);
+
+export const submitCompanyClaimHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const payload = {
+      ...req.body,
+      companyId: req.params.companyId,
+    };
+    const validatedData = submitCompanyClaimSchema.parse(payload);
+    const result = await submitCompanyClaim(req.user.id, validatedData);
+    res.json(successResponse(result, "Company claim request submitted successfully"));
+  }
+);
+
+export const submitRecruiterOnboardingHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = submitRecruiterOnboardingSchema.parse(req.body);
+    const result = await submitRecruiterOnboarding(req.user.id, validatedData);
+    res.json(successResponse(result, "Recruiter onboarding request processed"));
+  }
+);
+
+export const createCompanyOfficeHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const payload = {
+      ...req.body,
+      companyId: req.params.companyId,
+    };
+    const validatedData = createCompanyOfficeSchema.parse(payload);
+    const office = await createCompanyOffice(req.user.id, validatedData);
+    res.status(201).json(successResponse(office, "Company office created successfully"));
+  }
+);
+
+export const createCompanyDepartmentHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const payload = {
+      ...req.body,
+      companyId: req.params.companyId,
+    };
+    const validatedData = createCompanyDepartmentSchema.parse(payload);
+    const department = await createCompanyDepartment(req.user.id, validatedData);
+    res.status(201).json(successResponse(department, "Company department created successfully"));
   }
 );

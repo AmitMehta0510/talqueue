@@ -1,4 +1,4 @@
-import { CompanySize, CompanyType, Prisma } from "@prisma/client";
+import { CompanySize, CompanyType, Prisma, VerificationStatus, BusinessRequestType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { createNotification } from "modules/notificatios/notifications.service";
@@ -1022,3 +1022,240 @@ export const bulkReviewDiscoveredCompanies = async (
 
   return { processed: targetIds.length, action };
 };
+
+// SUBMIT COMPANY CLAIM
+export const submitCompanyClaim = async (
+  userId: string,
+  data: {
+    companyId: string;
+    gstin: string;
+    cin: string;
+    businessEmail: string;
+    corporateDoc: string;
+  }
+) => {
+  const company = await prisma.company.findUnique({
+    where: { id: data.companyId },
+  });
+
+  if (!company) {
+    throw new AppError("Company not found", 404);
+  }
+
+  // Update target company verification status & fields
+  const updatedCompany = await prisma.company.update({
+    where: { id: data.companyId },
+    data: {
+      verificationStatus: "PENDING",
+      gstin: data.gstin,
+      cin: data.cin,
+      verificationDoc: data.corporateDoc,
+      claimedAt: new Date(),
+    },
+  });
+
+  // Create claim log entry in CompanyRequest
+  const request = await prisma.companyRequest.create({
+    data: {
+      requestedById: userId,
+      companyName: company.name,
+      companyId: company.id,
+      status: "PENDING",
+      requestType: "COMPANY_CLAIM",
+      businessEmail: data.businessEmail,
+      corporateDoc: data.corporateDoc,
+      pendingJobData: {},
+    },
+  });
+
+  return {
+    company: updatedCompany,
+    request,
+  };
+};
+
+// SUBMIT RECRUITER ONBOARDING
+export const submitRecruiterOnboarding = async (
+  userId: string,
+  data: {
+    companyId?: string | null;
+    companyName: string;
+    businessEmail: string;
+  }
+) => {
+  let company = data.companyId
+    ? await prisma.company.findUnique({ where: { id: data.companyId } })
+    : null;
+
+  if (!company) {
+    company = await prisma.company.findFirst({
+      where: {
+        name: {
+          equals: data.companyName,
+          mode: "insensitive",
+        },
+      },
+    });
+  }
+
+  if (company) {
+    // Flow 1: Existing Company
+    const domain = data.businessEmail.split("@")[1]?.toLowerCase();
+    const hasMatchedDomain =
+      domain &&
+      company.emailDomains.map((d) => d.toLowerCase()).includes(domain);
+
+    if (hasMatchedDomain) {
+      console.log(
+        `[Direct Registration Hook] Recruiter onboarding email domain match for user: ${userId}, company: ${company.name}`
+      );
+      
+      // Initialize a pending record in CompanyRequest (per instructions)
+      const request = await prisma.companyRequest.create({
+        data: {
+          requestedById: userId,
+          companyName: company.name,
+          companyId: company.id,
+          status: "PENDING",
+          requestType: "RECRUITER_ONBOARDING",
+          businessEmail: data.businessEmail,
+          pendingJobData: {},
+        },
+      });
+
+      return {
+        requiresOtpVerification: true,
+        status: "OTP_PENDING",
+        requestId: request.id,
+        message: "Email domain matches existing domains. Verification OTP required.",
+      };
+    } else {
+      // Unmatched or domain missing
+      const request = await prisma.companyRequest.create({
+        data: {
+          requestedById: userId,
+          companyName: company.name,
+          companyId: company.id,
+          status: "PENDING",
+          requestType: "RECRUITER_ONBOARDING",
+          businessEmail: data.businessEmail,
+          pendingJobData: {},
+        },
+      });
+
+      return {
+        requiresOtpVerification: false,
+        status: "PENDING",
+        requestId: request.id,
+        message: "Recruiter onboarding request submitted for admin review.",
+      };
+    }
+  } else {
+    // Flow 2: New Shadow Company
+    const baseSlug = generateCompanySlug(data.companyName);
+    let attempt = 0;
+    let finalSlug = baseSlug;
+
+    while (attempt < 5) {
+      const testSlug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
+      const existing = await prisma.company.findUnique({
+        where: { slug: testSlug },
+      });
+      if (!existing) {
+        finalSlug = testSlug;
+        break;
+      }
+      attempt++;
+    }
+
+    const shadowCompany = await prisma.company.create({
+      data: {
+        name: data.companyName,
+        slug: finalSlug,
+        verified: false,
+        discoveredVia: "user-profile",
+      },
+    });
+
+    // Route the recruiter profile link under it
+    await assignCompanyRecruiter(userId, shadowCompany.id, userId, "Recruiter");
+
+    return {
+      success: true,
+      companyId: shadowCompany.id,
+      verified: false,
+      discoveredVia: "user-profile",
+      message: "Shadow company created and recruiter profile linked.",
+    };
+  }
+};
+
+// CREATE COMPANY OFFICE
+export const createCompanyOffice = async (
+  userId: string,
+  data: {
+    companyId: string;
+    name: string;
+    address?: string;
+    city: string;
+    managerId?: string | null;
+  }
+) => {
+  const isAdmin = await prisma.companyAdmin.findFirst({
+    where: {
+      userId,
+      companyId: data.companyId,
+      officeCity: null,
+    },
+  });
+
+  if (!isAdmin) {
+    throw new AppError(
+      "Access denied: only global Company Admins can manage offices",
+      403
+    );
+  }
+
+  return prisma.companyOffice.create({
+    data: {
+      companyId: data.companyId,
+      name: data.name,
+      address: data.address || null,
+      city: data.city,
+      managerId: data.managerId || null,
+    },
+  });
+};
+
+// CREATE COMPANY DEPARTMENT
+export const createCompanyDepartment = async (
+  userId: string,
+  data: {
+    companyId: string;
+    name: string;
+    code?: string;
+  }
+) => {
+  const isAdmin = await prisma.companyAdmin.findFirst({
+    where: {
+      userId,
+      companyId: data.companyId,
+      officeCity: null,
+    },
+  });
+
+  if (!isAdmin) {
+    throw new AppError(
+      "Access denied: only global Company Admins can manage departments",
+      403
+    );
+  }
+
+  return prisma.companyDepartment.create({
+    data: {
+      companyId: data.companyId,
+      name: data.name,
+      code: data.code || null,
+    },
+  });
+};

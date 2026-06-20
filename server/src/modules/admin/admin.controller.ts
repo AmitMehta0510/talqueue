@@ -6,6 +6,7 @@ import {
   assignCollegeAdminSchema,
   assignCompanyAdminSchema,
   updateUserStatusSchema,
+  reviewBusinessRequestSchema,
 } from "./admin.validation";
 
 import {
@@ -40,6 +41,7 @@ import {
   adminListCompanyRequests,
   adminApproveCompanyRequest,
   adminRejectCompanyRequest,
+  reviewBusinessRequest,
 } from "./admin.service";
 
 import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
@@ -397,4 +399,15 @@ export const adminTriggerJobScraperHandler = asyncHandler(
     const result = await runJobScrape();
     res.json(successResponse(result, "Job scraper run completed successfully"));
   },
+);
+
+export const reviewBusinessRequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { requestId } = req.params as { requestId: string };
+    const { action } = reviewBusinessRequestSchema.parse(req.body);
+
+    const result = await reviewBusinessRequest(req.user!.id, requestId, action);
+
+    res.json(successResponse(result, `Request was successfully ${action.toLowerCase()}d.`));
+  }
 );
