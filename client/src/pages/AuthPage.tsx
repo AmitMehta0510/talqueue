@@ -20,7 +20,6 @@ const roleOptions: RoleName[] = [
   "STUDENT",
   "PROFESSOR",
   "PROFESSIONAL",
-  "RECRUITER",
 ];
 
 export function AuthPage() {

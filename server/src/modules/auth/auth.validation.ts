@@ -4,7 +4,6 @@ export const publicSignupRoles = [
   "STUDENT",
   "PROFESSOR",
   "PROFESSIONAL",
-  "RECRUITER",
 ] as const;
 
 export const registerSchema = z.object({
