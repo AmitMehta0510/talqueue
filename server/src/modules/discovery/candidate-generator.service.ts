@@ -8,90 +8,103 @@ export const buildOr = (
   return conditions.filter(Boolean) as Record<string, unknown>[];
 };
 
+export interface PreFetchedFeedContext {
+  followingIds: string[];
+  affinityUserIds: string[];
+  skillNames: string[];
+  collegeId?: string | null;
+}
+
 export const generateFeedCandidates = async (
   userId: string,
-
   strategy: CandidateStrategy = "discovery",
+  preFetched?: PreFetchedFeedContext,
+  pagination?: { cursor?: string; limit?: number }
 ) => {
-  // Concurrently fetch user profile details, follows list, and user affinities
-  const [user, follows, affinities] = await Promise.all([
-    prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
+  let followingIds: string[] = [];
+  let affinityUserIds: string[] = [];
+  let skillNames: string[] = [];
+  let collegeId: string | null = null;
 
-      select: {
-        profile: {
-          select: {
-            collegeId: true,
-          },
+  if (preFetched) {
+    followingIds = preFetched.followingIds;
+    affinityUserIds = preFetched.affinityUserIds;
+    skillNames = preFetched.skillNames;
+    collegeId = preFetched.collegeId ?? null;
+  } else {
+    // Concurrently fetch user profile details, follows list, and user affinities
+    const [user, follows, affinities] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: userId,
         },
-        skills: {
-          select: {
-            skill: {
-              select: {
-                name: true,
+
+        select: {
+          profile: {
+            select: {
+              collegeId: true,
+            },
+          },
+          skills: {
+            select: {
+              skill: {
+                select: {
+                  name: true,
+                },
               },
             },
           },
         },
-      },
-    }),
-    prisma.follow.findMany({
-      where: {
-        followerId: userId,
-      },
-
-      select: {
-        followingId: true,
-      },
-    }),
-    prisma.userAffinity.findMany({
-      where: {
-        userId,
-
-        score: {
-          gte: 20,
+      }),
+      prisma.follow.findMany({
+        where: {
+          followerId: userId,
         },
-      },
 
-      select: {
-        targetUserId: true,
-      },
+        select: {
+          followingId: true,
+        },
+      }),
+      prisma.userAffinity.findMany({
+        where: {
+          userId,
 
-      orderBy: {
-        score: "desc",
-      },
+          score: {
+            gte: 20,
+          },
+        },
 
-      take: 100,
-    }),
-  ]);
+        select: {
+          targetUserId: true,
+        },
 
-  if (!user) {
-    return {
-      posts: [],
-      projects: [],
-      hackathons: [],
-      jobs: [],
-      companies: [],
-    };
+        orderBy: {
+          score: "desc",
+        },
+
+        take: 100,
+      }),
+    ]);
+
+    if (user) {
+      collegeId = user.profile?.collegeId ?? null;
+      skillNames = user.skills.map((s) => s.skill.name);
+    }
+    followingIds = follows.map((f) => f.followingId);
+    affinityUserIds = affinities.map((a) => a.targetUserId);
   }
 
-  const followingIds = follows.map((f) => f.followingId);
-
-  const affinityUserIds = affinities.map((a) => a.targetUserId);
-
-  // SKILLS
-  const skillNames = user.skills.map((s) => s.skill.name);
+  // Clamping follows list limit to avoid heavy IN clause query bottleneck
+  const cappedFollowingIds = followingIds.slice(0, 500);
 
   const postOr = buildOr([
-    strategy === "discovery" && {
+    strategy === "discovery" && cappedFollowingIds.length > 0 && {
       authorId: {
-        in: followingIds,
+        in: cappedFollowingIds,
       },
     },
 
-    strategy === "discovery" && {
+    strategy === "discovery" && affinityUserIds.length > 0 && {
       authorId: {
         in: affinityUserIds,
       },
@@ -107,9 +120,9 @@ export const generateFeedCandidates = async (
       featured: true,
     },
 
-    strategy === "discovery" && user.profile?.collegeId
+    strategy === "discovery" && collegeId
       ? {
-          collegeId: user.profile.collegeId,
+          collegeId: collegeId,
         }
       : null,
 
@@ -121,7 +134,7 @@ export const generateFeedCandidates = async (
   ]);
 
   const projectOr = buildOr([
-    strategy === "discovery" && {
+    strategy === "discovery" && affinityUserIds.length > 0 && {
       ownerId: {
         in: affinityUserIds,
       },
@@ -137,7 +150,7 @@ export const generateFeedCandidates = async (
       },
     },
 
-    {
+    skillNames.length > 0 && {
       searchTags: {
         hasSome: skillNames,
       },
@@ -153,13 +166,13 @@ export const generateFeedCandidates = async (
       verified: true,
     },
 
-    strategy === "discovery" && {
+    strategy === "discovery" && affinityUserIds.length > 0 && {
       createdById: {
         in: affinityUserIds,
       },
     },
 
-    strategy === "personalized" && {
+    strategy === "personalized" && skillNames.length > 0 && {
       tags: {
         hasSome: skillNames,
       },
@@ -171,7 +184,7 @@ export const generateFeedCandidates = async (
       featured: true,
     },
 
-    {
+    skillNames.length > 0 && {
       skillsRequired: {
         hasSome: skillNames,
       },
@@ -183,6 +196,11 @@ export const generateFeedCandidates = async (
       },
     },
   ]);
+
+  const limitPosts = pagination?.limit ? pagination.limit * 3 : (strategy === "discovery" ? 150 : 50);
+  const limitProjects = strategy === "discovery" ? 80 : 30;
+  const limitHackathons = strategy === "discovery" ? 50 : 20;
+  const limitJobs = strategy === "discovery" ? 80 : 30;
 
   const [posts, projects, hackathons, jobs, companies] = await Promise.all([
     // POSTS
@@ -231,7 +249,8 @@ export const generateFeedCandidates = async (
         createdAt: "desc",
       },
 
-      take: strategy === "discovery" ? 150 : 50,
+      take: limitPosts,
+      ...(pagination?.cursor ? { cursor: { id: pagination.cursor }, skip: 1 } : {}),
     }),
 
     // PROJECTS
@@ -276,7 +295,7 @@ export const generateFeedCandidates = async (
         trendingScore: "desc",
       },
 
-      take: strategy === "discovery" ? 80 : 30,
+      take: limitProjects,
     }),
 
     // HACKATHONS
@@ -321,7 +340,7 @@ export const generateFeedCandidates = async (
         registrationDeadline: "asc",
       },
 
-      take: strategy === "discovery" ? 50 : 20,
+      take: limitHackathons,
     }),
 
     // JOBS
@@ -360,7 +379,7 @@ export const generateFeedCandidates = async (
         createdAt: "desc",
       },
 
-      take: strategy === "discovery" ? 80 : 30,
+      take: limitJobs,
     }),
 
     prisma.company.findMany({

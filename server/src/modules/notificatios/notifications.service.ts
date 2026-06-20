@@ -297,3 +297,44 @@ export const deleteNotification =  async (
       },
     });
   };
+
+export const createNotificationsBulk = async (
+  notificationsData: Array<{
+    userId: string;
+    actorId?: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    entityType?: string;
+    entityId?: string;
+    actionUrl?: string;
+    metadata?: any;
+    groupKey?: string;
+  }>
+) => {
+  if (notificationsData.length === 0) {
+    return { count: 0 };
+  }
+
+  const result = await prisma.notification.createMany({
+    data: notificationsData,
+    skipDuplicates: true,
+  });
+
+  setImmediate(async () => {
+    try {
+      const pipeline = redis.pipeline();
+      for (const data of notificationsData) {
+        const redisKey = `notif:unread:${data.userId}`;
+        pipeline.incr(redisKey);
+        pipeline.expire(redisKey, 3600);
+      }
+      await pipeline.exec();
+    } catch (err: any) {
+      console.warn("[NotificationService] Redis bulk pipeline increment failed:", err?.message || err);
+    }
+  });
+
+  return result;
+};
+

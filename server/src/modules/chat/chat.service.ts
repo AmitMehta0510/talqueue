@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
 
 import { calculateUserAffinity } from "modules/affinity/affinity.service";
 
@@ -104,15 +104,12 @@ const notifyMessageRecipients = (
   messageId: string,
   content?: string,
 ) => {
-  for (const participant of participants) {
-    if (participant.muted) {
-      continue;
-    }
-
-    createNotification({
+  const notificationsData = participants
+    .filter((p) => !p.muted)
+    .map((participant) => ({
       userId: participant.userId,
       actorId: senderId,
-      type: "MESSAGE",
+      type: "MESSAGE" as const,
       title: "New Message",
       message: content || "Sent an attachment",
       entityId: conversationId,
@@ -121,7 +118,14 @@ const notifyMessageRecipients = (
         conversationId,
         messageId,
       },
-    }).catch(console.error);
+    }));
+
+  if (notificationsData.length > 0) {
+    setImmediate(() => {
+      createNotificationsBulk(notificationsData).catch((err) => {
+        console.error("[ChatService] Failed to dispatch bulk notifications:", err);
+      });
+    });
   }
 };
 
@@ -341,17 +345,40 @@ export const getMyConversations = async (userId: string) => {
     },
   });
 
-  return conversations.map((conversation) => {
-    const participant = conversation.participants.find(
-      (item) => item.userId === userId,
-    );
+  const enrichedConversations = await Promise.all(
+    conversations.map(async (conversation) => {
+      const participant = conversation.participants.find(
+        (item) => item.userId === userId,
+      );
 
-    return {
-      ...conversation,
+      if (!participant) {
+        return {
+          ...conversation,
+          unreadCount: 0,
+        };
+      }
 
-      unreadCount: participant?.unreadCount || 0,
-    };
-  });
+      const count = await prisma.message.count({
+        where: {
+          conversationId: conversation.id,
+          senderId: {
+            not: userId,
+          },
+          deletedAt: null,
+          createdAt: {
+            gt: participant.lastReadAt ?? new Date(0),
+          },
+        },
+      });
+
+      return {
+        ...conversation,
+        unreadCount: count,
+      };
+    })
+  );
+
+  return enrichedConversations;
 };
 
 export const getConversationMessages = async (
@@ -494,6 +521,18 @@ export const sendMessage = async (
     });
 
     await Promise.all([
+      tx.conversationParticipant.update({
+        where: {
+          conversationId_userId: {
+            conversationId,
+            userId,
+          },
+        },
+        data: {
+          lastReadAt: now,
+          lastDeliveredAt: now,
+        },
+      }),
       tx.conversation.update({
         where: {
           id: conversationId,
@@ -504,20 +543,6 @@ export const sendMessage = async (
           messageCount: {
             increment: 1,
           },
-        },
-      }),
-      tx.conversationParticipant.updateMany({
-        where: {
-          conversationId,
-          NOT: {
-            userId,
-          },
-        },
-        data: {
-          unreadCount: {
-            increment: 1,
-          },
-          lastDeliveredAt: now,
         },
       }),
     ]);
@@ -593,22 +618,12 @@ export const markConversationAsRead = async (
       },
     });
 
-    const updatedMessages = await tx.$queryRaw<{ id: string }[]>`
-      UPDATE "Message"
-      SET "readByUsers" = array_append("readByUsers", ${userId})
-      WHERE "conversationId" = ${conversationId}
-        AND "senderId" <> ${userId}
-        AND "deletedAt" IS NULL
-        AND NOT (${userId} = ANY("readByUsers"))
-      RETURNING "id"
-    `;
-
     return {
       success: true,
       conversationId,
       userId,
       readAt,
-      messageIds: updatedMessages.map((message) => message.id),
+      messageIds: [],
     };
   });
 

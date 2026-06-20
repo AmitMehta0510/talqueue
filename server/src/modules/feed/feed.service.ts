@@ -3,12 +3,22 @@ import { applyAiFeedRanking } from "./feed-ai-ranking.service";
 import { buildFeedContext } from "modules/discovery/feed-context.service";
 import { generateFeedCandidates } from "modules/discovery/candidate-generator.service";
 
-export const getPersonalizedFeedV2 = async (userId: string) => {
-  const [context, candidates] = await Promise.all([
-    buildFeedContext(userId),
+export const getPersonalizedFeedV2 = async (userId: string, cursor?: string, limit = 20) => {
+  const context = await buildFeedContext(userId);
 
-    generateFeedCandidates(userId, "personalized"),
-  ]);
+  const preFetched = {
+    followingIds: context.followingIds,
+    affinityUserIds: Array.from(context.affinityMap.keys()),
+    skillNames: context.skillNames,
+    collegeId: null, // Will be fetched inside generateFeedCandidates if not present or needed
+  };
+
+  const candidates = await generateFeedCandidates(
+    userId,
+    "personalized",
+    preFetched,
+    { cursor, limit }
+  );
 
   // BUILD FEED
   const feed = [
