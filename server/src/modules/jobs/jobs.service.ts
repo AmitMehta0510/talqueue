@@ -121,13 +121,17 @@ export const createJob = async (userId: string, data: any) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        primaryRole: true,
         roles: {
           select: { role: { select: { name: true } } },
         },
       },
     });
     const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
-    const isPlatformAdmin = roleNames.has("PLATFORM_ADMIN");
+    if (user?.primaryRole) {
+      roleNames.add(user.primaryRole);
+    }
+    const isPlatformAdmin = roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN");
     const isCompanyAdmin = !!adminRecord;
 
     if (!isPlatformAdmin && !isCompanyAdmin) {
@@ -815,13 +819,18 @@ const assertIsPlatformAdmin = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      primaryRole: true,
       roles: {
         select: { role: { select: { name: true } } },
       },
     },
   });
   const roleNames = new Set((user?.roles || []).map((r) => r.role.name));
-  if (!roleNames.has("PLATFORM_ADMIN")) {
+  if (user?.primaryRole) {
+    roleNames.add(user.primaryRole);
+  }
+  const isPlatformAdmin = roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN");
+  if (!isPlatformAdmin) {
     throw new AppError("Only the platform administrator (PLATFORM_ADMIN) can seed jobs", 403);
   }
 };

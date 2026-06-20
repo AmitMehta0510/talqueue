@@ -58,7 +58,9 @@ function RequirePlatformAdmin({ children }: { children: ReactNode }) {
     return <PageLoader />;
   }
 
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin =
+    user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN") ||
+    user?.primaryRole === "SUPER_ADMIN";
 
   if (!user || !isPlatformAdmin) {
     return <Navigate to="/feed" replace />;
