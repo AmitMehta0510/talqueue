@@ -798,6 +798,35 @@ export const useRequestCompanyRegistrationMutation = () => {
   });
 };
 
+export const useDiscoveredCompaniesQuery = (page = 1, limit = 30) =>
+  useQuery({
+    queryKey: ["companies", "discovered", page, limit],
+    queryFn: async ({ signal }) => {
+      const result = await api.discoveredCompanies({ page, limit }, { signal });
+      return result.data;
+    },
+  });
+
+export const useReviewDiscoveredCompaniesMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: { companyIds: string[]; action: "VERIFY" | "REJECT" }) =>
+      api.reviewDiscoveredCompanies(payload),
+    onSuccess: (res, variables) => {
+      const msg =
+        variables.action === "VERIFY"
+          ? `✅ Verified ${res.data.processed} company/companies`
+          : `🗑 Rejected ${res.data.processed} company/companies`;
+      showToast("success", msg);
+      queryClient.invalidateQueries({ queryKey: ["companies", "discovered"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 export const useFollowCompanyMutation = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();

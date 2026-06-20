@@ -2093,6 +2093,10 @@ export const api = {
     request<Company>(`/companies/${slug}`, options),
   createCompany: (body: CompanyMutationPayload) =>
     request<Company>("/companies", { method: "POST", body }),
+  discoveredCompanies: (params: { page?: number; limit?: number } = {}, options?: EndpointOptions) =>
+    request<any>(`/companies/discovered${toQuery(params)}`, options),
+  reviewDiscoveredCompanies: (body: { companyIds: string[]; action: "VERIFY" | "REJECT" }) =>
+    request<{ processed: number; action: string }>("/companies/discovered/review", { method: "POST", body }),
   companyEmployees: (
     companyId: string,
     page = 1,

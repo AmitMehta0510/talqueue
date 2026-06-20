@@ -24,6 +24,8 @@ import {
   listCompanyRecruitersHandler,
   assignCompanyRecruiterHandler,
   removeCompanyRecruiterHandler,
+  listDiscoveredCompaniesHandler,
+  bulkReviewDiscoveredCompaniesHandler,
 } from "./companies.controller";
 
 const router = Router();
@@ -128,6 +130,21 @@ router.delete(
   protect,
   requireCompanyGlobalAdmin,
   removeCompanyRecruiterHandler
+);
+
+// ── Platform Admin: Discovered Company Moderation ──
+// GET  /companies/discovered         — list auto-discovered, unverified companies
+// POST /companies/discovered/review  — bulk verify or reject discovered companies
+router.get(
+  "/discovered",
+  protect,
+  listDiscoveredCompaniesHandler
+);
+
+router.post(
+  "/discovered/review",
+  protect,
+  bulkReviewDiscoveredCompaniesHandler
 );
 
 export default router;

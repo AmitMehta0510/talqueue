@@ -8,6 +8,7 @@ import { startProjectSyncCron } from "modules/projects/projects.cron";
 import { startHackathonScraperCron } from "modules/hackathons/scraper/hackathon-scraper.cron";
 import { startJobScraperCron } from "modules/jobs/jobs.cron";
 import { startSkillVerificationCron } from "modules/users/skill-verification.cron";
+import { startCompanyDiscoveryCron } from "modules/companies/scraper/company-discovery.cron";
 import { registerApiRoutes } from "./routes";
 
 const app = express();
@@ -22,6 +23,7 @@ startProjectSyncCron();
 startHackathonScraperCron();
 startJobScraperCron();
 startSkillVerificationCron();
+startCompanyDiscoveryCron();
 
 app.get("/", (req, res) => {
   res.json(

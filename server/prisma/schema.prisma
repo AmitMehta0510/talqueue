@@ -2147,6 +2147,9 @@ model Company {
 
   totalRatings Int @default(0)
 
+  // How this company was added: 'greenhouse-aggregate' | 'lever-aggregate' | 'seeded' | null (manual)
+  discoveredVia String?
+
   experiences Experience[]
 
   jobs Job[]
@@ -2213,6 +2216,9 @@ model Job {
   applyUrl String?
 
   externalJobId String?
+
+  // Which ATS or pipeline produced this job: 'greenhouse' | 'lever' | 'ashby' | 'mock' | null
+  atsSource String?
 
   ppoOffered Boolean @default(false)
 

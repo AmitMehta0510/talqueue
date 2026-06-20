@@ -50,12 +50,46 @@ const GREENHOUSE_TOKENS: Record<string, string> = {
   "retool": "retool",
   "razorpay": "razorpay",
   "inmobi": "inmobi",
-  "onetrust-india": "onetrust"
+  "onetrust-india": "onetrust",
+  // Additional companies added via Phase 1 expansion
+  "palantir": "palantir",
+  "snowflake": "snowflake",
+  "datadog": "datadoghq",
+  "cloudflare": "cloudflare",
+  "okta": "okta",
+  "hashicorp": "hashicorp",
+  "pagerduty": "pagerduty",
+  "mongodb": "mongodb",
+  "cockroach-labs": "cockroachlabs",
+  "postman": "postman",
 };
 
 // Mapping of seeded companies to their public Ashby board tokens
 const ASHBY_TOKENS: Record<string, string> = {
-  "linear": "linear"
+  "linear": "linear",
+};
+
+// Mapping of seeded companies to their public Lever job board slugs
+const LEVER_TOKENS: Record<string, string> = {
+  "shopify": "shopify",
+  "spotify": "spotify",
+  "canva": "canva",
+  "atlassian": "atlassian",
+  "dropbox": "dropbox",
+  "twilio": "twilio",
+  "gitlab": "gitlab",
+  "github": "github",
+  "notion": "notion",
+  "netlify": "netlify",
+  "digital-ocean": "digitalocean",
+  "new-relic": "newrelic",
+  "elastic": "elastic",
+  "fastly": "fastly",
+  "bytedance": "bytedance",
+  "databricks": "databricks",
+  "zoom": "zoom",
+  "slack": "slack",
+  "adobe": "adobe",
 };
 
 // Tech role keywords to filter out non-technical roles
@@ -63,19 +97,55 @@ const TECH_ROLE_KEYWORDS = [
   "engineer", "developer", "software", "backend", "frontend", "fullstack",
   "product manager", "designer", "data scientist", "data analyst", "devops",
   "sre", "architect", "machine learning", "ui/ux", "product design", "qa",
-  "test engineer", "technical", "engineering", "programmer", "ml", "ai", "cloud"
+  "test engineer", "technical", "engineering", "programmer", "ml", "ai", "cloud",
+  "infrastructure", "platform", "security", "research", "analytics", "database",
 ];
 
-// Helper to determine if a job is a tech/engineering role
-function isTechRole(title: string): boolean {
+// ---------------------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips HTML tags from a string and collapses whitespace.
+ * Used to convert rich-text job descriptions from ATSes into plain text.
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<li>/gi, "• ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Returns true if the job title is a tech/engineering role OR an internship/co-op.
+ * Internships are always included regardless of tech keywords — they are highly
+ * relevant to this platform's engineering student audience.
+ */
+function isTechOrInternRole(title: string): boolean {
   const t = title.toLowerCase();
+  // Always include internships / co-ops
+  if (t.includes("intern") || t.includes("co-op") || t.includes("coop")) return true;
   return TECH_ROLE_KEYWORDS.some(keyword => t.includes(keyword));
+}
+
+/** @deprecated Use isTechOrInternRole instead */
+function isTechRole(title: string): boolean {
+  return isTechOrInternRole(title);
 }
 
 // Helper to parse job type from title
 function parseJobType(title: string): JobType {
   const t = title.toLowerCase();
-  if (t.includes("intern") || t.includes("co-op")) return "INTERNSHIP";
+  if (t.includes("intern") || t.includes("co-op") || t.includes("coop")) return "INTERNSHIP";
   if (t.includes("contract") || t.includes("contractor")) return "CONTRACT";
   if (t.includes("part-time") || t.includes("part time")) return "PART_TIME";
   if (t.includes("freelance")) return "FREELANCE";
@@ -107,6 +177,10 @@ const SKILL_KEYWORDS = {
   "Next.js": ["nextjs", "next.js"],
   "TailwindCSS": ["tailwind"],
   "GraphQL": ["graphql"],
+  "Java": ["java", "spring", "jvm"],
+  "Scala": ["scala"],
+  "Ruby": ["ruby", "rails"],
+  "C++": ["c++", "cpp"],
 };
 
 function extractSkills(title: string, desc: string): string[] {
@@ -123,7 +197,7 @@ function extractSkills(title: string, desc: string): string[] {
   return skills;
 }
 
-// Helper to generate realistic tech descriptions
+// Helper to generate realistic tech descriptions (used as fallback for mock companies only)
 function getJobDescription(title: string, companyName: string): { description: string, requirements: string, responsibilities: string } {
   const isLead = title.toLowerCase().includes("senior") || title.toLowerCase().includes("lead") || title.toLowerCase().includes("staff");
   
@@ -168,7 +242,7 @@ const MOCK_JOBS_TEMPLATES = [
 // PER-COMPANY PROCESSOR
 // ---------------------------------------------------------------------------
 
-interface CompanyRow {
+export interface CompanyRow {
   id: string;
   name: string;
   slug: string;
@@ -185,17 +259,18 @@ interface ProcessResult {
 }
 
 /**
- * Processes all jobs for a single company (Greenhouse / Ashby / mock fallback).
+ * Processes all jobs for a single company (Greenhouse / Lever / Ashby / mock fallback).
  * Returns counts and the IDs of every upserted job for downstream Elastic sync.
  *
  * Inner try/catch absorbs network and Prisma errors so a single company failure
  * never breaks the surrounding batch.
  */
-async function processCompany(company: CompanyRow): Promise<ProcessResult> {
+export async function processCompany(company: CompanyRow): Promise<ProcessResult> {
   const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
   const activeSlugs: string[] = [];
   const greenhouseToken = GREENHOUSE_TOKENS[company.slug];
   const ashbyToken = ASHBY_TOKENS[company.slug];
+  const leverToken = LEVER_TOKENS[company.slug];
 
   try {
     if (greenhouseToken) {
@@ -207,7 +282,7 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
         { timeout: 10000 }
       );
       const rawJobs = response.data.jobs || [];
-      const techJobs = rawJobs.filter((job: any) => isTechRole(job.title)).slice(0, 12);
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
 
       for (const job of techJobs) {
         const jobTitle = job.title;
@@ -215,7 +290,14 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
         const slug = slugify(`${company.slug}-${jobTitle}-${job.id}`, { lower: true, strict: true }) || `job-${job.id}`;
         activeSlugs.push(slug);
 
-        const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
+        // Use real description from Greenhouse if available; fall back to generated
+        let rawDescription = "";
+        if (job.content) {
+          rawDescription = stripHtml(job.content);
+        }
+        const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
+        const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
+
         const type = parseJobType(jobTitle);
         const locationName = job.location?.name || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
@@ -236,7 +318,8 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
             skillsRequired,
             status: "OPEN",
-            externalJobId: externalId
+            externalJobId: externalId,
+            atsSource: "greenhouse",
           },
           update: {
             title: jobTitle,
@@ -248,7 +331,101 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             workMode,
             applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
             skillsRequired,
-            status: "OPEN"
+            status: "OPEN",
+            atsSource: "greenhouse",
+          }
+        });
+
+        result.processedJobIds.push(upserted.id);
+        if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
+          result.created++;
+        } else {
+          result.updated++;
+        }
+      }
+
+    } else if (leverToken) {
+      // ------------------------------------------------------------------
+      // Lever ATS
+      // ------------------------------------------------------------------
+      const response = await axios.get(
+        `https://api.lever.co/v0/postings/${leverToken}?mode=json`,
+        { timeout: 10000 }
+      );
+      const rawJobs: any[] = Array.isArray(response.data) ? response.data : [];
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.text)).slice(0, 12);
+
+      for (const job of techJobs) {
+        const jobTitle = job.text;
+        const externalId = `lever-${job.id}`;
+        const slug = slugify(`${company.slug}-${jobTitle}-${job.id}`, { lower: true, strict: true }) || `job-${job.id}`;
+        activeSlugs.push(slug);
+
+        // Lever provides structured description in job.descriptionPlain or job.description (HTML)
+        let rawDescription = "";
+        if (job.descriptionPlain) {
+          rawDescription = job.descriptionPlain.trim();
+        } else if (job.description) {
+          rawDescription = stripHtml(job.description);
+        }
+
+        // Extract requirements and responsibilities from Lever's 'lists' array
+        let requirements = "";
+        let responsibilities = "";
+        if (Array.isArray(job.lists)) {
+          for (const section of job.lists) {
+            const heading = (section.text || "").toLowerCase();
+            const content = stripHtml(section.content || "");
+            if (heading.includes("requirement") || heading.includes("qualif")) {
+              requirements = content;
+            } else if (heading.includes("responsib") || heading.includes("what you") || heading.includes("role")) {
+              responsibilities = content;
+            }
+          }
+        }
+
+        const { description: generatedDesc, requirements: generatedReq, responsibilities: generatedResp } = getJobDescription(jobTitle, company.name);
+        const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
+        const finalRequirements = requirements || generatedReq;
+        const finalResponsibilities = responsibilities || generatedResp;
+
+        const type = parseJobType(jobTitle);
+        // Lever location is in job.categories.location
+        const locationName = job.categories?.location || job.workplaceType || company.headquarters || "Remote";
+        const workMode = parseWorkMode(locationName);
+        const skillsRequired = extractSkills(jobTitle, description);
+        const applyUrl = job.hostedUrl || `https://jobs.lever.co/${leverToken}/${job.id}`;
+
+        const upserted = await prisma.job.upsert({
+          where: { slug },
+          create: {
+            companyId: company.id,
+            title: jobTitle,
+            slug,
+            description,
+            requirements: finalRequirements || null,
+            responsibilities: finalResponsibilities || null,
+            location: locationName,
+            type,
+            workMode,
+            applyUrl,
+            skillsRequired,
+            status: "OPEN",
+            externalJobId: externalId,
+            atsSource: "lever",
+          },
+          update: {
+            title: jobTitle,
+            description,
+            requirements: finalRequirements || null,
+            responsibilities: finalResponsibilities || null,
+            location: locationName,
+            type,
+            workMode,
+            applyUrl,
+            skillsRequired,
+            status: "OPEN",
+            atsSource: "lever",
           }
         });
 
@@ -270,7 +447,7 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
         { timeout: 10000 }
       );
       const rawJobs = response.data.jobs || [];
-      const techJobs = rawJobs.filter((job: any) => isTechRole(job.title)).slice(0, 12);
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
 
       for (const job of techJobs) {
         const jobTitle = job.title;
@@ -301,7 +478,8 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
             skillsRequired,
             status: "OPEN",
-            externalJobId: externalId
+            externalJobId: externalId,
+            atsSource: "ashby",
           },
           update: {
             title: jobTitle,
@@ -313,7 +491,8 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             workMode,
             applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
             skillsRequired,
-            status: "OPEN"
+            status: "OPEN",
+            atsSource: "ashby",
           }
         });
 
@@ -356,7 +535,8 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
             skillsRequired,
             status: "OPEN",
-            externalJobId: externalId
+            externalJobId: externalId,
+            atsSource: "mock",
           },
           update: {
             title: jobTitle,
@@ -368,7 +548,8 @@ async function processCompany(company: CompanyRow): Promise<ProcessResult> {
             workMode: template.workMode as WorkMode,
             applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
             skillsRequired,
-            status: "OPEN"
+            status: "OPEN",
+            atsSource: "mock",
           }
         });
 

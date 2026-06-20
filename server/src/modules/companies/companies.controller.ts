@@ -20,6 +20,8 @@ import {
   listCompanyRecruiters,
   assignCompanyRecruiter,
   removeCompanyRecruiter,
+  listDiscoveredCompanies,
+  bulkReviewDiscoveredCompanies,
 } from "./companies.service";
 
 import {
@@ -209,4 +211,38 @@ export const removeCompanyRecruiterHandler = asyncHandler(
   }
 );
 
+// ---------------------------------------------------------------------------
+// DISCOVERED COMPANY MODERATION (Admin)
+// ---------------------------------------------------------------------------
 
+export const listDiscoveredCompaniesHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Math.max(1, Number.parseInt((req.query.page as string) || "1", 10) || 1);
+    const rawLimit = Number.parseInt((req.query.limit as string) || "30", 10) || 30;
+    const limit = Math.min(100, Math.max(1, rawLimit));
+
+    const result = await listDiscoveredCompanies(page, limit);
+    res.json(successResponse(result));
+  }
+);
+
+export const bulkReviewDiscoveredCompaniesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyIds, action } = req.body as {
+      companyIds: string[];
+      action: "VERIFY" | "REJECT";
+    };
+
+    if (!action || !(["VERIFY", "REJECT"].includes(action))) {
+      res.status(400).json({ error: 'action must be "VERIFY" or "REJECT"' });
+      return;
+    }
+
+    const result = await bulkReviewDiscoveredCompanies(req.user.id, companyIds, action);
+    const message =
+      action === "VERIFY"
+        ? `Successfully verified ${result.processed} company/companies.`
+        : `Successfully rejected and removed ${result.processed} company/companies.`;
+    res.json(successResponse(result, message));
+  }
+);

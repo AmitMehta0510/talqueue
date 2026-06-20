@@ -913,3 +913,112 @@ export const removeCompanyRecruiter = async (companyId: string, userId: string) 
 
   return { message: "Recruiter removed successfully" };
 };
+
+// ---------------------------------------------------------------------------
+// DISCOVERED COMPANY MODERATION (Admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lists companies that were auto-created by the aggregate discovery pipeline
+ * (verified=false AND discoveredVia IS NOT NULL), paginated for the admin UI.
+ */
+export const listDiscoveredCompanies = async (page = 1, limit = 30) => {
+  const skip = (page - 1) * limit;
+
+  const where = {
+    verified: false,
+    discoveredVia: { not: null as string | null },
+  };
+
+  const [total, companies] = await Promise.all([
+    prisma.company.count({ where }),
+    prisma.company.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        websiteUrl: true,
+        industry: true,
+        discoveredVia: true,
+        createdAt: true,
+        _count: {
+          select: { jobs: true },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    companies,
+  };
+};
+
+/**
+ * Bulk verify or reject auto-discovered companies.
+ *
+ * VERIFY — marks company as verified=true so it appears on the platform.
+ * REJECT  — soft-deletes all external jobs for the company, then hard-deletes
+ *            the company record (it was auto-created with no user data).
+ */
+export const bulkReviewDiscoveredCompanies = async (
+  adminUserId: string,
+  companyIds: string[],
+  action: "VERIFY" | "REJECT"
+): Promise<{ processed: number; action: string }> => {
+  await assertIsPlatformAdmin(adminUserId);
+
+  if (!companyIds || companyIds.length === 0) {
+    throw new AppError("No company IDs provided", 400);
+  }
+
+  // Only allow operating on discovered (unverified) companies
+  const targets = await prisma.company.findMany({
+    where: {
+      id: { in: companyIds },
+      verified: false,
+      discoveredVia: { not: null },
+    },
+    select: { id: true, name: true },
+  });
+
+  if (targets.length === 0) {
+    throw new AppError("No eligible discovered companies found for the given IDs", 404);
+  }
+
+  const targetIds = targets.map((c) => c.id);
+
+  if (action === "VERIFY") {
+    await prisma.company.updateMany({
+      where: { id: { in: targetIds } },
+      data: { verified: true },
+    });
+    console.log(
+      `[Admin] ${adminUserId} verified ${targetIds.length} discovered companies: ${targets.map((c) => c.name).join(", ")}`
+    );
+  } else {
+    // REJECT: delete external jobs first, then delete company
+    await prisma.job.deleteMany({
+      where: {
+        companyId: { in: targetIds },
+        externalJobId: { not: null },
+      },
+    });
+    await prisma.company.deleteMany({
+      where: { id: { in: targetIds } },
+    });
+    console.log(
+      `[Admin] ${adminUserId} rejected and deleted ${targetIds.length} discovered companies: ${targets.map((c) => c.name).join(", ")}`
+    );
+  }
+
+  return { processed: targetIds.length, action };
+};

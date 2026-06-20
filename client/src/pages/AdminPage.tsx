@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
-  Calendar,
+  Calendar, Globe,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -30,8 +30,9 @@ import { ReferralsPanel } from "./AdminPages/ReferralsPanel";
 import { CompanyRequestsPanel } from "./AdminPages/CompanyRequestsPanel";
 import { JobsPanel } from "./AdminPages/JobsPanel";
 import { EventsPanel } from "./AdminPages/EventsPanel";
+import { DiscoveredCompaniesPanel } from "./AdminPages/DiscoveredCompaniesPanel";
 
-type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "jobs" | "events";
+type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "jobs" | "events" | "discovered_companies";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -44,7 +45,8 @@ const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "communities", label: "Communities", icon: Hash },
   { id: "referrals", label: "Referrals", icon: GitBranch },
   { id: "company_requests", label: "Co. Requests", icon: ClipboardList },
-  { id: "events", label: "Events", icon: Calendar },
+  { id: "events",           label: "Events",       icon: Calendar },
+  { id: "discovered_companies", label: "Discovered",  icon: Globe },
 ];
 
 export function AdminPage() {
@@ -224,6 +226,7 @@ export function AdminPage() {
             {activeTab === "company_requests" && <CompanyRequestsPanel />}
             {activeTab === "jobs" && <JobsPanel />}
             {activeTab === "events" && <EventsPanel />}
+            {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
           </div>
         </div>
       </div>
