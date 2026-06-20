@@ -268,9 +268,10 @@ interface ProcessResult {
 export async function processCompany(company: CompanyRow): Promise<ProcessResult> {
   const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
   const activeSlugs: string[] = [];
-  const greenhouseToken = GREENHOUSE_TOKENS[company.slug];
-  const ashbyToken = ASHBY_TOKENS[company.slug];
-  const leverToken = LEVER_TOKENS[company.slug];
+  const lookupKey = company.slug.replace(/-[a-z0-9]{5}$/i, "");
+  const greenhouseToken = GREENHOUSE_TOKENS[lookupKey];
+  const ashbyToken = ASHBY_TOKENS[lookupKey];
+  const leverToken = LEVER_TOKENS[lookupKey];
 
   try {
     if (greenhouseToken) {
