@@ -1349,3 +1349,233 @@ export const reviewBusinessRequest = async (
   });
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLEGE REQUEST MANAGEMENT (INSTITUTIONAL B2B ONBOARDING REVIEW)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const normalizeCollegeKey = (name: string) =>
+  slugify(name.normalize("NFKC").trim().replace(/\s+/g, " "), {
+    lower: true,
+    strict: true,
+    trim: true,
+  });
+
+/**
+ * List college onboarding requests for the admin dashboard.
+ * Optionally filtered by status. Returns newest-first, cursor-paginated.
+ */
+export const listCollegeRequests = async (params: {
+  status?: string;
+  limit?: number;
+  cursor?: string;
+}) => {
+  const { status, limit = 20, cursor } = params;
+
+  const where: any = status ? { status } : {};
+  const take = limit + 1;
+
+  const requests = await prisma.collegeRequest.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+    },
+  });
+
+  const hasNextPage = requests.length > limit;
+  const page = hasNextPage ? requests.slice(0, limit) : requests;
+  return {
+    requests: page,
+    nextCursor: hasNextPage ? page[page.length - 1].id : null,
+    hasNextPage,
+  };
+};
+
+/**
+ * Get a single college onboarding request by ID.
+ */
+export const getCollegeRequest = async (requestId: string) => {
+  const request = await prisma.collegeRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+    },
+  });
+
+  if (!request) throw new AppError("College request not found", 404);
+  return request;
+};
+
+/**
+ * Super-admin review of a college onboarding request.
+ *
+ * action "APPROVE":
+ *   1. Load request — must be PENDING
+ *   2. Upsert College catalog record (by normalizedKey)
+ *   3. Set college.masterAdminUserId = request.userId
+ *   4. Upsert CollegeAdmin row for the requesting user
+ *   5. Mark CollegeRequest as VERIFIED
+ *   6. Notify the requesting user
+ *
+ * action "REJECT":
+ *   - Mark as REJECTED, store adminNote, notify user
+ *
+ * action "DUPLICATE":
+ *   - Mark as DUPLICATE, store adminNote
+ *
+ * STRICT: No automatic role grants (TPO/HOD/CDCR) are performed here.
+ * The master CollegeAdmin must assign those roles manually.
+ */
+export const reviewCollegeRequest = async (
+  actorId: string,
+  requestId: string,
+  action: "APPROVE" | "REJECT" | "DUPLICATE",
+  adminNote?: string,
+) => {
+  const request = await prisma.collegeRequest.findUnique({
+    where: { id: requestId },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      city: true,
+      state: true,
+      country: true,
+      website: true,
+      status: true,
+    },
+  });
+
+  if (!request) throw new AppError("College request not found", 404);
+
+  if (request.status !== "PENDING") {
+    throw new AppError(
+      `This request has already been processed (status: ${request.status})`,
+      409,
+    );
+  }
+
+  if (action === "APPROVE") {
+    const normalizedName = request.name.normalize("NFKC").trim().replace(/\s+/g, " ");
+    const normalizedKey = normalizeCollegeKey(normalizedName);
+
+    if (!normalizedKey) {
+      throw new AppError("College name is invalid and cannot be normalised", 400);
+    }
+
+    // ── Atomic approval block ──────────────────────────────────────────────
+    const result = await prisma.$transaction(async (tx) => {
+      // Step 1: Upsert or find the College catalog record
+      const college = await tx.college.upsert({
+        where: { normalizedKey },
+        update: {
+          // Enrich existing catalog record with any new data from request
+          city: request.city ?? undefined,
+          state: request.state ?? undefined,
+          country: request.country ?? undefined,
+          website: request.website ?? undefined,
+          // Set master admin on the existing record
+          masterAdminUserId: request.userId,
+        },
+        create: {
+          name: normalizedName,
+          normalizedKey,
+          city: request.city ?? undefined,
+          state: request.state ?? undefined,
+          country: request.country ?? undefined,
+          website: request.website ?? undefined,
+          masterAdminUserId: request.userId,
+        },
+        select: { id: true, name: true, masterAdminUserId: true },
+      });
+
+      // Step 2: Upsert CollegeAdmin row for the requesting user
+      const existingAdmin = await tx.collegeAdmin.findFirst({
+        where: { userId: request.userId, collegeId: college.id },
+      });
+
+      if (!existingAdmin) {
+        await tx.collegeAdmin.create({
+          data: {
+            userId: request.userId,
+            collegeId: college.id,
+            grantedById: actorId,
+          },
+        });
+      }
+
+      // Step 3: Mark request as VERIFIED
+      await tx.collegeRequest.update({
+        where: { id: requestId },
+        data: { status: "VERIFIED", adminNote: adminNote ?? null },
+      });
+
+      return college;
+    });
+
+    // ── Side-effect: notification outside transaction ───────────────────────
+    setImmediate(() => {
+      createNotification({
+        userId: request.userId,
+        actorId,
+        type: "SYSTEM",
+        title: "Institutional Onboarding Approved",
+        message: `Your college onboarding request for "${result.name}" has been approved. You are now the master administrator for this college.`,
+        entityType: "COLLEGE",
+        entityId: result.id,
+      }).catch((err) => {
+        console.error("Failed to send college approval notification:", err);
+      });
+    });
+
+    return {
+      message: "College onboarding request approved",
+      college: result,
+    };
+  }
+
+  if (action === "REJECT") {
+    await prisma.collegeRequest.update({
+      where: { id: requestId },
+      data: { status: "REJECTED", adminNote: adminNote ?? null },
+    });
+
+    setImmediate(() => {
+      createNotification({
+        userId: request.userId,
+        actorId,
+        type: "SYSTEM",
+        title: "Institutional Onboarding Rejected",
+        message: `Your college onboarding request for "${request.name}" was not approved.${adminNote ? ` Reason: ${adminNote}` : ""}`,
+      }).catch((err) => {
+        console.error("Failed to send college rejection notification:", err);
+      });
+    });
+
+    return { message: "College onboarding request rejected" };
+  }
+
+  // action === "DUPLICATE"
+  await prisma.collegeRequest.update({
+    where: { id: requestId },
+    data: { status: "DUPLICATE", adminNote: adminNote ?? null },
+  });
+
+  return { message: "College onboarding request marked as duplicate" };
+};

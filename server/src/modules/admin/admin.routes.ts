@@ -38,6 +38,10 @@ import {
   adminTriggerScraperHandler,
   adminTriggerJobScraperHandler,
   reviewBusinessRequestHandler,
+  // College Request B2B
+  listCollegeRequestsHandler,
+  getCollegeRequestHandler,
+  reviewCollegeRequestHandler,
 } from "./admin.controller";
 
 import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
@@ -135,5 +139,13 @@ router.get("/company-requests", adminListCompanyRequestsHandler);
 router.post("/company-requests/:requestId/approve", adminApproveCompanyRequestHandler);
 router.post("/company-requests/:requestId/reject", adminRejectCompanyRequestHandler);
 router.post("/company-requests/:requestId/review", reviewBusinessRequestHandler);
+
+// ============================================================
+// COLLEGE REQUESTS (institutional B2B onboarding, pending admin review)
+// ============================================================
+
+router.get("/college-requests", listCollegeRequestsHandler);
+router.get("/college-requests/:requestId", getCollegeRequestHandler);
+router.post("/college-requests/:requestId/review", reviewCollegeRequestHandler);
 
 export default router;

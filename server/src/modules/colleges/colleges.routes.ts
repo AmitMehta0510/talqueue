@@ -21,6 +21,10 @@ import {
   getPendingAlumniClaimsHandler,
   approveAlumniClaimHandler,
   rejectAlumniClaimHandler,
+  // Institutional B2B
+  submitCollegeOnboardingHandler,
+  assignOrRemoveInstitutionalStaffHandler,
+  assignCellRepresentativesHandler,
 } from "./colleges.controller";
 import prisma from "shared/database/prisma";
 
@@ -137,6 +141,68 @@ router.post(
   protect,
   requireCollegeAdmin,
   rejectAlumniClaimHandler
+);
+
+// ============================================================
+// INSTITUTIONAL B2B — ONBOARDING
+// ============================================================
+
+/**
+ * POST /colleges/onboarding
+ * Submit an institutional college onboarding request.
+ * Auth: any authenticated user. Token-verified.
+ */
+router.post(
+  "/onboarding",
+  protect,
+  submitCollegeOnboardingHandler
+);
+
+// ============================================================
+// INSTITUTIONAL B2B — STAFF GOVERNANCE
+// ============================================================
+
+/**
+ * POST   /colleges/:collegeId/staff  — assign TPO or HOD
+ * DELETE /colleges/:collegeId/staff  — remove TPO or HOD
+ * Auth: must be the verified master CollegeAdmin (college.masterAdminUserId).
+ */
+router.post(
+  "/:collegeId/staff",
+  protect,
+  assignOrRemoveInstitutionalStaffHandler
+);
+
+router.delete(
+  "/:collegeId/staff",
+  protect,
+  assignOrRemoveInstitutionalStaffHandler
+);
+
+// ============================================================
+// INSTITUTIONAL B2B — CDCR MANAGEMENT (SCOPED)
+// ============================================================
+
+/**
+ * POST   /colleges/:collegeId/cdcr         — assign CDCR representative
+ * DELETE /colleges/:collegeId/cdcr/:userId — remove CDCR representative
+ *
+ * Auth: TPO (college-wide) or HOD (dept-scoped) or master CollegeAdmin.
+ * Optional query param `departmentId` on DELETE to scope the removal.
+ *
+ * Note: The legacy /:collegeId/tpo/cdcr routes (using requireCollegeAdmin) are
+ * preserved below for backward compatibility with existing clients.
+ */
+router.post(
+  "/:collegeId/cdcr",
+  protect,
+  assignCellRepresentativesHandler
+);
+
+router.delete(
+  "/:collegeId/cdcr/:userId",
+  protect,
+  assignCellRepresentativesHandler
 );
 
 export default router;

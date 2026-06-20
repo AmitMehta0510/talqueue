@@ -624,6 +624,10 @@ model User {
   createdCommunities   Community[]        @relation("CommunityCreator")
   companyRequests      CompanyRequest[]
   collegeRequests      CollegeRequest[]
+  // Institutional governance back-relations
+  masterAdminColleges  College[]          @relation("CollegeMasterAdmin")
+  tpoColleges          College[]          @relation("CollegeTpo")
+  hodDepartments       Department[]       @relation("DepartmentHod")
   followedCompanies        Company[]                   @relation("CompanyFollowers")
   createdEvents            Event[]
   eventRSVPs               EventRSVP[]
@@ -765,6 +769,17 @@ model College {
   offerPolicy      CollegeOfferPolicy @default(OPEN)
   allowBacklogsUpTo Int               @default(0) // Max allowed active backlogs (0 = zero tolerance)
 
+  // ── Institutional governance ─────────────────────────────────────────────
+  // masterAdminUserId: set when a CollegeRequest is APPROVED by a super-admin.
+  // This is the single source of truth for who owns the college dashboard.
+  // tpoUserId: Training & Placement Officer — assigned by the master admin.
+  // Both are nullable so colleges seeded via catalog import remain unaffected.
+  masterAdminUserId String?
+  tpoUserId         String?
+
+  masterAdmin User? @relation("CollegeMasterAdmin", fields: [masterAdminUserId], references: [id])
+  tpo         User? @relation("CollegeTpo", fields: [tpoUserId], references: [id])
+
   createdAt       DateTime         @default(now())
   posts           Post[]
   conversations   Conversation[]
@@ -777,6 +792,7 @@ model College {
   @@index([city])
   @@index([state])
   @@index([country])
+  @@index([masterAdminUserId])
 }
 
 model Department {
@@ -787,6 +803,13 @@ model Department {
   // Head of Department (display name, not necessarily a platform user)
   hod String?
 
+  // ── Institutional governance ─────────────────────────────────────────────
+  // hodUserId: platform user FK for the HOD role — assigned by the master
+  // CollegeAdmin. The @@unique([collegeId, name]) constraint already ensures
+  // one HOD per (college, department) combination.
+  hodUserId String?
+  hodUser   User? @relation("DepartmentHod", fields: [hodUserId], references: [id])
+
   collegeId String
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
 
@@ -795,6 +818,7 @@ model Department {
 
   profiles   Profile[]
   educations Education[]
+  cdcrMembers CdcrMember[]
 
   createdAt     DateTime       @default(now())
   posts         Post[]
@@ -805,6 +829,7 @@ model Department {
   @@unique([collegeId, standardDepartmentId])
   @@index([collegeId])
   @@index([standardDepartmentId])
+  @@index([hodUserId])
 }
 
 model Skill {
@@ -970,6 +995,7 @@ enum CollegeRequestStatus {
   APPROVED
   REJECTED
   DUPLICATE
+  VERIFIED // set when a super-admin approves an institutional onboarding request
 }
 
 model CollegeRequest {
@@ -980,6 +1006,16 @@ model CollegeRequest {
   state   String?
   country String?
   website String?
+
+  // ── Institutional B2B onboarding fields ───────────────────────────────────
+  // All fields are optional at the DB level so existing catalog-add requests
+  // (which predate this feature) remain valid. The service layer enforces
+  // these fields for new institutional onboarding submissions.
+  aisheCode              String?  // All India Survey on Higher Education code
+  officialEmail          String?  // Primary institutional contact email
+  bankAccountNumber      String?  // For placement fee processing
+  bankIfscCode           String?  // IFSC code of institutional bank account
+  authorityLetterheadDoc String?  // S3 URL of authority letterhead upload
 
   status    CollegeRequestStatus @default(PENDING)
   adminNote String?
@@ -992,6 +1028,7 @@ model CollegeRequest {
   @@index([userId])
   @@index([status])
   @@index([name])
+  @@index([aisheCode])
 }
 
 model Post {
@@ -2899,13 +2936,21 @@ model CdcrMember {
   assignedById String
   createdAt    DateTime @default(now())
 
-  user       User    @relation("CdcrMemberUser", fields: [userId], references: [id], onDelete: Cascade)
-  college    College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  assignedBy User    @relation("CdcrMemberAssignedBy", fields: [assignedById], references: [id])
+  // ── Scope field ──────────────────────────────────────────────────────────
+  // departmentId is optional: null = college-wide CDCR (assigned by TPO),
+  // set = department-scoped CDCR (assigned by HOD of that department).
+  departmentId String?
 
-  @@unique([userId, collegeId])
+  user       User       @relation("CdcrMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  college    College    @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  assignedBy User       @relation("CdcrMemberAssignedBy", fields: [assignedById], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  // A user can be a CDCR in the same college but in different departments
+  @@unique([userId, collegeId, departmentId])
   @@index([collegeId])
   @@index([userId])
+  @@index([departmentId])
 }
 
 model CompanyAdmin {

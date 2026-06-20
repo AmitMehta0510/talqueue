@@ -624,9 +624,12 @@ export const assignCdcrMember = async (
   if (!targetUser) throw new AppError("User not found", 404);
   if (!college) throw new AppError("College not found", 404);
 
-  const existing = await prisma.cdcrMember.findUnique({
+  const existing = await prisma.cdcrMember.findFirst({
     where: {
-      userId_collegeId: { userId, collegeId },
+      userId,
+      collegeId,
+      // Legacy assignments have no departmentId scope
+      departmentId: null,
     },
   });
 
@@ -668,9 +671,12 @@ export const removeCdcrMember = async (
   userId: string,
   collegeId: string,
 ) => {
-  const record = await prisma.cdcrMember.findUnique({
+  const record = await prisma.cdcrMember.findFirst({
     where: {
-      userId_collegeId: { userId, collegeId },
+      userId,
+      collegeId,
+      // Legacy removals target the college-wide (null-dept) assignment
+      departmentId: null,
     },
   });
 
@@ -877,4 +883,276 @@ export const rejectAlumniClaim = async (user: AuthUser, collegeId: string, educa
   });
 
   return updated;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTITUTIONAL B2B ONBOARDING
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SubmitCollegeOnboardingData {
+  collegeName: string;
+  aisheCode: string;
+  officialEmail: string;
+  bankAccountNumber: string;
+  bankIfscCode: string;
+  authorityLetterheadDoc: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  website?: string;
+}
+
+/**
+ * Submit an institutional college onboarding request.
+ *
+ * ANTI-SPAM RULE: If a request with the same aisheCode OR bankAccountNumber
+ * is already in PENDING or VERIFIED state, the operation is blocked immediately.
+ * Requests that are REJECTED or DUPLICATE may be resubmitted.
+ *
+ * STUDENT FLOW SAFEGUARD: This function only creates a CollegeRequest record.
+ * It does NOT affect Profile.collegeId, Education records, or any existing
+ * student verification flows.
+ */
+export const submitCollegeOnboarding = async (
+  userId: string,
+  data: SubmitCollegeOnboardingData,
+) => {
+  const duplicate = await prisma.collegeRequest.findFirst({
+    where: {
+      OR: [
+        { aisheCode: data.aisheCode.toUpperCase().trim() },
+        { bankAccountNumber: data.bankAccountNumber },
+      ],
+      // Block only if PENDING or VERIFIED — REJECTED/DUPLICATE may resubmit
+      status: { in: ["PENDING" as const, "VERIFIED" as const] },
+    },
+    select: { id: true, status: true },
+  });
+
+  if (duplicate) {
+    throw new AppError(
+      `An institutional onboarding request for this institution is already ${duplicate.status}. ` +
+        "Contact support if you believe this is an error.",
+      409,
+    );
+  }
+
+  return prisma.collegeRequest.create({
+    data: {
+      userId,
+      name: normalizeText(data.collegeName),
+      city: data.city ? normalizeText(data.city) : undefined,
+      state: data.state ? normalizeText(data.state) : undefined,
+      country: data.country ? normalizeText(data.country) : undefined,
+      website: data.website,
+      aisheCode: data.aisheCode.toUpperCase().trim(),
+      officialEmail: data.officialEmail.toLowerCase().trim(),
+      bankAccountNumber: data.bankAccountNumber,
+      bankIfscCode: data.bankIfscCode.toUpperCase().trim(),
+      authorityLetterheadDoc: data.authorityLetterheadDoc,
+      status: "PENDING",
+    },
+    select: {
+      id: true,
+      name: true,
+      aisheCode: true,
+      officialEmail: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HIERARCHICAL STAFF GOVERNANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+const assertIsMasterCollegeAdmin = async (
+  actorId: string,
+  collegeId: string,
+) => {
+  const college = await prisma.college.findUnique({
+    where: { id: collegeId },
+    select: { id: true, masterAdminUserId: true },
+  });
+
+  if (!college) {
+    throw new AppError("College not found", 404);
+  }
+
+  if (college.masterAdminUserId !== actorId) {
+    throw new AppError(
+      "Only the verified master CollegeAdmin can manage institutional staff",
+      403,
+    );
+  }
+
+  return college;
+};
+
+/**
+ * Assign or remove a TPO or HOD for a college.
+ *
+ * - role "TPO": sets / nullifies college.tpoUserId
+ * - role "HOD": requires departmentId; sets / nullifies department.hodUserId
+ *
+ * Only the verified master CollegeAdmin may call this.
+ * STRICT ANTI-SPAM: No automatic role promotion is performed.
+ */
+export const assignOrRemoveInstitutionalStaff = async (
+  actorId: string,
+  collegeId: string,
+  targetUserId: string,
+  role: "TPO" | "HOD",
+  action: "ASSIGN" | "REMOVE",
+  departmentId?: string,
+) => {
+  await assertIsMasterCollegeAdmin(actorId, collegeId);
+
+  if (role === "TPO") {
+    const updated = await prisma.college.update({
+      where: { id: collegeId },
+      data: { tpoUserId: action === "ASSIGN" ? targetUserId : null },
+      select: { id: true, name: true, tpoUserId: true },
+    });
+
+    return {
+      message: action === "ASSIGN" ? "TPO assigned successfully" : "TPO removed successfully",
+      college: updated,
+    };
+  }
+
+  // role === "HOD"
+  if (!departmentId) {
+    throw new AppError("departmentId is required when assigning / removing a HOD", 400);
+  }
+
+  const department = await prisma.department.findFirst({
+    where: { id: departmentId, collegeId },
+    select: { id: true, name: true },
+  });
+
+  if (!department) {
+    throw new AppError("Department not found or does not belong to this college", 404);
+  }
+
+  const updated = await prisma.department.update({
+    where: { id: departmentId },
+    data: { hodUserId: action === "ASSIGN" ? targetUserId : null },
+    select: { id: true, name: true, collegeId: true, hodUserId: true },
+  });
+
+  return {
+    message: action === "ASSIGN" ? "HOD assigned successfully" : "HOD removed successfully",
+    department: updated,
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CDCR MANAGEMENT (INSTITUTIONAL — SCOPED BY TPO / HOD)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const assertCanManageCdcr = async (
+  actorId: string,
+  collegeId: string,
+  departmentId?: string,
+) => {
+  const college = await prisma.college.findUnique({
+    where: { id: collegeId },
+    select: { id: true, name: true, masterAdminUserId: true, tpoUserId: true },
+  });
+
+  if (!college) throw new AppError("College not found", 404);
+
+  if (college.masterAdminUserId === actorId) return college;
+  if (college.tpoUserId === actorId) return college;
+
+  if (departmentId) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, collegeId, hodUserId: actorId },
+      select: { id: true },
+    });
+    if (dept) return college;
+  }
+
+  throw new AppError(
+    "Only the college TPO, HOD of the target department, or master CollegeAdmin can manage CDCRs",
+    403,
+  );
+};
+
+/**
+ * Assign a student as a CDCR (Career Development & Cell Representative).
+ *
+ * - TPO: college-wide (departmentId optional) or dept-scoped
+ * - HOD: only their own department (departmentId required and validated)
+ *
+ * STUDENT FLOW SAFEGUARD: does NOT affect Profile, Education, or domain
+ * verification flows.
+ */
+export const assignCellRepresentative = async (
+  actorId: string,
+  targetUserId: string,
+  collegeId: string,
+  departmentId?: string,
+) => {
+  const college = await assertCanManageCdcr(actorId, collegeId, departmentId);
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, username: true },
+  });
+
+  if (!targetUser) throw new AppError("User not found", 404);
+
+  const existing = await prisma.cdcrMember.findFirst({
+    where: { userId: targetUserId, collegeId, departmentId: departmentId ?? null },
+  });
+
+  if (existing) {
+    throw new AppError("User is already a CDCR representative for this scope", 409);
+  }
+
+  const assignment = await prisma.cdcrMember.create({
+    data: {
+      userId: targetUserId,
+      collegeId,
+      assignedById: actorId,
+      departmentId: departmentId ?? null,
+    },
+    include: {
+      user: { select: { id: true, username: true, email: true } },
+    },
+  });
+
+  await createNotification({
+    userId: targetUserId,
+    actorId,
+    type: "SYSTEM",
+    title: "CDCR Representative Assigned",
+    message: `You have been assigned as a Career Development & Cell Representative for ${college.name}.`,
+    entityType: "COLLEGE",
+    entityId: collegeId,
+  });
+
+  return assignment;
+};
+
+/** Remove a CDCR representative from the college or department scope. */
+export const removeCellRepresentative = async (
+  actorId: string,
+  targetUserId: string,
+  collegeId: string,
+  departmentId?: string,
+) => {
+  await assertCanManageCdcr(actorId, collegeId, departmentId);
+
+  const record = await prisma.cdcrMember.findFirst({
+    where: { userId: targetUserId, collegeId, departmentId: departmentId ?? null },
+  });
+
+  if (!record) throw new AppError("CDCR assignment not found", 404);
+
+  await prisma.cdcrMember.delete({ where: { id: record.id } });
+
+  return { success: true, message: "CDCR representative removed successfully" };
 };

@@ -23,11 +23,19 @@ import {
   getPendingAlumniClaims,
   approveAlumniClaim,
   rejectAlumniClaim,
+  // Institutional B2B
+  submitCollegeOnboarding,
+  assignOrRemoveInstitutionalStaff,
+  assignCellRepresentative,
+  removeCellRepresentative,
 } from "./colleges.service";
 
 import {
   createCollegeSchema,
   createDepartmentSchema,
+  submitCollegeRegistrationSchema,
+  assignStaffSchema,
+  assignCdcrSchema,
 } from "./colleges.validation";
 
 export const createCollegeHandler =
@@ -251,3 +259,88 @@ export const rejectAlumniClaimHandler = asyncHandler(
 );
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTITUTIONAL B2B ONBOARDING HANDLERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /colleges/onboarding
+ * Submit an institutional college onboarding request.
+ * Auth: any authenticated user.
+ */
+export const submitCollegeOnboardingHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const validatedData = submitCollegeRegistrationSchema.parse(req.body);
+    const result = await submitCollegeOnboarding(req.user.id, validatedData);
+    res.status(201).json(
+      successResponse(result, "Institutional onboarding request submitted successfully."),
+    );
+  },
+);
+
+/**
+ * POST  /colleges/:collegeId/staff  (action: ASSIGN)
+ * DELETE /colleges/:collegeId/staff (action: REMOVE)
+ *
+ * Assign or remove a TPO or HOD.
+ * Auth: must be the verified master CollegeAdmin of the target college.
+ */
+export const assignOrRemoveInstitutionalStaffHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId } = req.params;
+    const validatedData = assignStaffSchema.parse(req.body);
+
+    const result = await assignOrRemoveInstitutionalStaff(
+      req.user.id,
+      collegeId as string,
+      validatedData.targetUserId,
+      validatedData.role,
+      validatedData.action,
+      validatedData.departmentId,
+    );
+
+    res.json(successResponse(result));
+  },
+);
+
+/**
+ * POST   /colleges/:collegeId/cdcr          → assign CDCR
+ * DELETE /colleges/:collegeId/cdcr/:userId  → remove CDCR
+ *
+ * Auth: college TPO (college-wide) or HOD (department-scoped) or master CollegeAdmin.
+ */
+export const assignCellRepresentativesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { collegeId, userId: targetUserIdParam } = req.params;
+
+    if (req.method === "DELETE") {
+      // For DELETE, targetUserId comes from URL param, departmentId from query
+      const targetUserId = targetUserIdParam as string;
+      const departmentId = req.query.departmentId as string | undefined;
+
+      const result = await removeCellRepresentative(
+        req.user.id,
+        targetUserId,
+        collegeId as string,
+        departmentId,
+      );
+
+      return res.json(successResponse(result));
+    }
+
+    // POST — assign
+    const validatedData = assignCdcrSchema.parse(req.body);
+
+    const result = await assignCellRepresentative(
+      req.user.id,
+      validatedData.targetUserId,
+      collegeId as string,
+      validatedData.departmentId,
+    );
+
+    return res.status(201).json(
+      successResponse(result, "CDCR representative assigned successfully!"),
+    );
+  },
+);

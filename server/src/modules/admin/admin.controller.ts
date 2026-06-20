@@ -42,6 +42,10 @@ import {
   adminApproveCompanyRequest,
   adminRejectCompanyRequest,
   reviewBusinessRequest,
+  // College Request B2B
+  listCollegeRequests,
+  getCollegeRequest,
+  reviewCollegeRequest,
 } from "./admin.service";
 
 import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
@@ -410,4 +414,78 @@ export const reviewBusinessRequestHandler = asyncHandler(
 
     res.json(successResponse(result, `Request was successfully ${action.toLowerCase()}d.`));
   }
+);
+
+// ============================================================
+// COLLEGE REQUEST HANDLERS (INSTITUTIONAL B2B ONBOARDING)
+// ============================================================
+
+/**
+ * GET /admin/college-requests
+ * List institutional college onboarding requests, optionally filtered by status.
+ */
+export const listCollegeRequestsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { status, limit, cursor } = req.query as {
+      status?: string;
+      limit?: string;
+      cursor?: string;
+    };
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
+    const result = await listCollegeRequests({
+      status,
+      limit: Math.min(parsedLimit, 100),
+      cursor,
+    });
+    res.json(successResponse(result));
+  },
+);
+
+/**
+ * GET /admin/college-requests/:requestId
+ * Get a single college onboarding request by ID.
+ */
+export const getCollegeRequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { requestId } = req.params as { requestId: string };
+    const result = await getCollegeRequest(requestId);
+    res.json(successResponse(result));
+  },
+);
+
+/**
+ * POST /admin/college-requests/:requestId/review
+ * Body: { action: "APPROVE" | "REJECT" | "DUPLICATE", adminNote?: string }
+ *
+ * On APPROVE:
+ *   - Upsert College catalog record
+ *   - Set college.masterAdminUserId to the requesting user
+ *   - Insert CollegeAdmin row
+ *   - Mark request VERIFIED
+ *   - Notify requesting user
+ *
+ * STRICT: No auto role-grants for TPO/HOD/CDCR are made here.
+ */
+export const reviewCollegeRequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { requestId } = req.params as { requestId: string };
+    const { action, adminNote } = req.body as {
+      action: "APPROVE" | "REJECT" | "DUPLICATE";
+      adminNote?: string;
+    };
+
+    if (!action || !["APPROVE", "REJECT", "DUPLICATE"].includes(action)) {
+      res.status(400).json({ success: false, message: "action must be APPROVE, REJECT, or DUPLICATE" });
+      return;
+    }
+
+    const result = await reviewCollegeRequest(
+      req.user!.id,
+      requestId,
+      action,
+      adminNote,
+    );
+
+    res.json(successResponse(result, result.message));
+  },
 );
