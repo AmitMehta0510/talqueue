@@ -83,6 +83,7 @@ import {
   useVerifyWorkEmailMutation,
   useStandardDepartmentsQuery,
 } from "../hooks/usePlatformQueries";
+import { useFileUpload } from "../hooks/useFileUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1840,6 +1841,47 @@ function SettingsTab({
   onSave: (e: FormEvent) => void;
   isSavePending: boolean;
 }) {
+  const { showToast } = useToast();
+  const avatarUpload = useFileUpload();
+  const bannerUpload = useFileUpload();
+  const resumeUpload = useFileUpload();
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { fileUrl } = await avatarUpload.upload(file, "avatar");
+      onProfileFormChange({ ...profileForm, avatarUrl: fileUrl });
+      showToast("success", "Avatar uploaded successfully");
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Failed to upload avatar");
+    }
+  };
+
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { fileUrl } = await bannerUpload.upload(file, "avatar");
+      onProfileFormChange({ ...profileForm, bannerUrl: fileUrl });
+      showToast("success", "Banner uploaded successfully");
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Failed to upload banner");
+    }
+  };
+
+  const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { fileUrl } = await resumeUpload.upload(file, "attachment");
+      onProfileFormChange({ ...profileForm, resumeUrl: fileUrl });
+      showToast("success", "Resume uploaded successfully");
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Failed to upload resume");
+    }
+  };
+
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     onProfileFormChange({ ...profileForm, [key]: e.target.value });
 
@@ -1907,12 +1949,48 @@ function SettingsTab({
       {/* Links */}
       <SettingsSection title="Links & media" icon={LinkIcon}>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Avatar URL">
-            <input className="field" value={profileForm.avatarUrl} onChange={set("avatarUrl")} placeholder="https://..." type="url" />
+          <Field label="Avatar">
+            <div className="mt-1 flex flex-col gap-2">
+              {profileForm.avatarUrl && (
+                <div className="flex items-center gap-2">
+                  <img src={profileForm.avatarUrl} alt="Avatar Preview" className="h-12 w-12 rounded-full object-cover ring-2 ring-emerald-500/20" />
+                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.avatarUrl}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={avatarUpload.uploading}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                />
+                {avatarUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+              </div>
+            </div>
           </Field>
-          <Field label="Banner URL">
-            <input className="field" value={profileForm.bannerUrl} onChange={set("bannerUrl")} placeholder="https://..." type="url" />
+
+          <Field label="Banner Image">
+            <div className="mt-1 flex flex-col gap-2">
+              {profileForm.bannerUrl && (
+                <div className="flex flex-col gap-1">
+                  <img src={profileForm.bannerUrl} alt="Banner Preview" className="h-20 w-full rounded-xl object-cover ring-2 ring-emerald-500/20" />
+                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.bannerUrl}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerChange}
+                  disabled={bannerUpload.uploading}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                />
+                {bannerUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+              </div>
+            </div>
           </Field>
+
           <Field label="GitHub URL">
             <div className="relative">
               <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
@@ -1943,10 +2021,32 @@ function SettingsTab({
               <input className="field pl-8" value={profileForm.gfgUrl} onChange={set("gfgUrl")} placeholder="https://geeksforgeeks.org/user/username" type="url" />
             </div>
           </Field>
-          <Field label="Resume URL">
-            <div className="relative">
-              <Mail size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-              <input className="field pl-8" value={profileForm.resumeUrl} onChange={set("resumeUrl")} placeholder="https://..." type="url" />
+
+          <Field label="Resume (PDF)">
+            <div className="mt-1 flex flex-col gap-2">
+              {profileForm.resumeUrl && (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={profileForm.resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline"
+                  >
+                    <ExternalLink size={12} /> View current resume
+                  </a>
+                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.resumeUrl}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleResumeChange}
+                  disabled={resumeUpload.uploading}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                />
+                {resumeUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+              </div>
             </div>
           </Field>
         </div>
