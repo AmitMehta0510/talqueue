@@ -79,3 +79,37 @@ export const createCompanyDepartmentSchema = z.object({
   name: z.string().trim().min(1, "Department name is required").max(150),
   code: z.string().trim().max(30).optional(),
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V-07: requestCompanyRegistration — raw req.body previously unguarded
+// ─────────────────────────────────────────────────────────────────────────────
+export const requestCompanyRegistrationSchema = z.object({
+  name: z.string().trim().min(1, "Company name is required").max(150),
+  tagline: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(5000).optional(),
+  headquarters: z.string().trim().max(150).optional(),
+  industry: z.string().trim().max(100).optional(),
+  foundedYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  type: z.enum(["STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "ENTERPRISE", "MNC", "OTHER"]).optional(),
+  size: z.enum(["SOLO", "SMALL", "MEDIUM", "LARGE", "ENTERPRISE"]).optional(),
+  websiteUrl: z.string().url().max(512).optional(),
+  careersPageUrl: z.string().url().max(512).optional(),
+  logoUrl: z.string().url().max(512).optional(),
+  githubUrl: z.string().url().max(512).optional(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V-08: assignCompanyAdmin — raw req.body previously unguarded
+// ─────────────────────────────────────────────────────────────────────────────
+export const assignCompanyAdminSchema = z.object({
+  userId: z.string().uuid("userId must be a valid UUID"),
+  officeCity: z.string().trim().max(100).optional(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V-10: assignCompanyRecruiter — raw req.body previously unguarded
+// ─────────────────────────────────────────────────────────────────────────────
+export const assignRecruiterBodySchema = z.object({
+  userId: z.string().uuid("userId must be a valid UUID"),
+  title: z.string().trim().max(150).optional(),
+});

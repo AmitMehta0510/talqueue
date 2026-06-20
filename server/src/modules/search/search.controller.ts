@@ -20,13 +20,24 @@ import {
   searchCommunities,
 } from "./search.service";
 
+// Safety caps — prevent ILIKE full-table scans and oversized IN clauses
+const MAX_QUERY_LEN = 200;
+const MAX_FILTER_ITEMS = 50;
+
+const sanitizeQuery = (val: string | undefined): string | undefined => {
+  if (!val) return undefined;
+  const trimmed = val.trim().slice(0, MAX_QUERY_LEN);
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 const parseQueryArray = (val: any): string[] | undefined => {
   if (!val) return undefined;
   const arr = val
     .toString()
     .split(",")
-    .map((s: string) => s.trim())
-    .filter(Boolean);
+    .map((s: string) => s.trim().slice(0, MAX_QUERY_LEN))
+    .filter(Boolean)
+    .slice(0, MAX_FILTER_ITEMS);
   return arr.length > 0 ? arr : undefined;
 };
 
@@ -36,8 +47,7 @@ export const globalSearchHandler =  asyncHandler(
       res: Response
     ) => {
 
-      const query =
-        req.query.q?.toString() || "";
+      const query = sanitizeQuery(req.query.q?.toString()) ?? "";
 
       const results =
         await globalSearch(
@@ -65,7 +75,7 @@ export const searchUsersHandler =asyncHandler(
         await searchUsers({
 
           query:
-            req.query.q?.toString(),
+            sanitizeQuery(req.query.q?.toString()),
 
           collegeIds:
             parseQueryArray(req.query.collegeIds),
@@ -130,7 +140,7 @@ export const searchUsersHandler =asyncHandler(
 export const searchProjectsHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const projects = await searchProjects({
-      query: req.query.q?.toString(),
+      query: sanitizeQuery(req.query.q?.toString()),
       techStack: parseQueryArray(req.query.techStack),
       domains: parseQueryArray(req.query.domains),
       difficultyLevels: parseQueryArray(req.query.difficultyLevels),
@@ -156,7 +166,7 @@ export const searchHackathonsHandler =  asyncHandler(
       const hackathons =  await searchHackathons({
 
           query:
-            req.query.q?.toString(),
+            sanitizeQuery(req.query.q?.toString()),
 
           tags:
             parseQueryArray(req.query.tags),
@@ -197,8 +207,8 @@ export const searchHackathonsHandler =  asyncHandler(
 export const searchJobsHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const jobs = await searchJobs({
-      query: req.query.q?.toString(),
-      companyName: req.query.companyName?.toString(),
+      query: sanitizeQuery(req.query.q?.toString()),
+      companyName: sanitizeQuery(req.query.companyName?.toString()),
       skills: parseQueryArray(req.query.skills),
       workMode: req.query.workMode?.toString(),
       experienceLevel: req.query.experienceLevel?.toString(),
@@ -219,7 +229,7 @@ export const searchJobsHandler = asyncHandler(
 export const searchCompaniesHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const companies = await searchCompanies({
-      query: req.query.q?.toString(),
+      query: sanitizeQuery(req.query.q?.toString()),
       industry: req.query.industry?.toString(),
       size: req.query.size?.toString(),
       location: req.query.location?.toString(),
@@ -238,7 +248,7 @@ export const searchCompaniesHandler = asyncHandler(
 export const searchCommunitiesHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const communities = await searchCommunities({
-      query: req.query.q?.toString(),
+      query: sanitizeQuery(req.query.q?.toString()),
       type: req.query.type?.toString(),
       category: req.query.category?.toString(),
       limit: req.query.limit ? Math.min(Number(req.query.limit), 50) : 20,

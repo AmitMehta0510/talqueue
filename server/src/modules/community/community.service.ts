@@ -372,21 +372,10 @@ export const createCommunity = async (
 ) => {
   await assertCanCreateOfficialCommunity(userId, data);
 
-  const slug = slugify(data.name, {
+  const baseSlug = slugify(data.name, {
     lower: true,
     strict: true,
   });
-
-  // Duplicate slug
-  const existing = await prisma.community.findUnique({
-    where: {
-      slug,
-    },
-  });
-
-  if (existing) {
-    throw new AppError("Community slug already exists", 400);
-  }
 
   // TYPE VALIDATION
   if (!Object.values(CommunityType).includes(data.type)) {
@@ -447,54 +436,88 @@ export const createCommunity = async (
     }
   }
 
-  // CREATE
-  const community = await prisma.community.create({
-    data: {
-      name: data.name,
+  // V-05 FIX: Optimistic insert with P2002 catch-retry loop
+  // Replaces the previous TOCTOU check-then-insert pattern where two concurrent
+  // requests could both pass the findUnique check and then one would crash with
+  // an unhandled P2002 unique-constraint violation.
+  const MAX_SLUG_ATTEMPTS = 5;
+  let community: Awaited<ReturnType<typeof prisma.community.create>> | null = null;
 
-      slug,
+  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
 
-      description: data.description,
+    try {
+      community = await prisma.community.create({
+        data: {
+          name: data.name,
 
-      type: data.type,
+          slug,
 
-      visibility: data.type === "COMPANY" ? "PRIVATE" : "PUBLIC",
+          description: data.description,
 
-      autoJoinEligible:
-        data.autoJoinEligible ??
-        data.type !== "GENERAL",
+          type: data.type,
 
-      category: data.category,
+          visibility: data.type === "COMPANY" ? "PRIVATE" : "PUBLIC",
 
-      tags: data.tags || [],
+          autoJoinEligible:
+            data.autoJoinEligible ??
+            data.type !== "GENERAL",
 
-      searchKeywords: data.searchKeywords || [],
+          category: data.category,
 
-      companyId: data.companyId,
+          tags: data.tags || [],
 
-      collegeId: data.collegeId,
+          searchKeywords: data.searchKeywords || [],
 
-      departmentId: data.departmentId,
+          companyId: data.companyId,
 
-      city: data.city,
+          collegeId: data.collegeId,
 
-      createdById: userId,
+          departmentId: data.departmentId,
 
-      members: {
-        create: {
-          userId,
+          city: data.city,
 
-          role: "OWNER",
+          createdById: userId,
+
+          members: {
+            create: {
+              userId,
+
+              role: "OWNER",
+            },
+          },
+
+          memberCount: 1,
         },
-      },
 
-      memberCount: 1,
-    },
+        include: {
+          members: true,
+        },
+      });
 
-    include: {
-      members: true,
-    },
-  });
+      break; // success — exit retry loop
+    } catch (err: unknown) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002" &&
+        Array.isArray(err.meta?.target) &&
+        (err.meta.target as string[]).includes("slug")
+      ) {
+        // Slug collision (race condition or suffix clash) — retry with next suffix
+        await new Promise<void>((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+        continue;
+      }
+      // Any other DB error — rethrow
+      throw err;
+    }
+  }
+
+  if (!community) {
+    throw new AppError(
+      "Could not generate a unique community slug. Please try a different name.",
+      500,
+    );
+  }
 
   // DEFAULT CONVERSATION — creator is immediately added as a participant
   // so they can send/read messages right away.
@@ -525,9 +548,9 @@ export const createCommunity = async (
       userId,
       "COMMUNITY_CREATED",
       "Created community",
-      `Created ${community.name}`,
+      `Created ${community!.name}`,
       {
-        communityId: community.id,
+        communityId: community!.id,
       },
     ).catch(console.error);
 
@@ -538,7 +561,7 @@ export const createCommunity = async (
       3,
       "Created a community",
       {
-        communityId: community.id,
+        communityId: community!.id,
       },
     ).catch(console.error);
 

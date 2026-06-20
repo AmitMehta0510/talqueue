@@ -38,6 +38,9 @@ import {
   assignCdcrSchema,
 } from "./colleges.validation";
 
+// V-03: Safety cap — prevent unbounded ILIKE scans
+const MAX_QUERY_LEN = 200;
+
 export const createCollegeHandler =
   asyncHandler(
     async (req: any, res: Response) => {
@@ -100,8 +103,9 @@ export const getCollegeHandler =
 export const searchCollegesHandler =
   asyncHandler(
     async (req: Request, res: Response) => {
+      // V-03: cap query length to prevent unbounded ILIKE full-table scans
       const query =
-        req.query.q?.toString() || "";
+        (req.query.q?.toString() || "").slice(0, MAX_QUERY_LEN);
 
       const colleges =
         await searchColleges(query);
@@ -156,7 +160,7 @@ export const getDepartmentsHandler =
 export const importCollegesHandler =
   asyncHandler(
     async (req: any, res: Response) => {
-      const colleges = Array.isArray(req.body.colleges) ? req.body.colleges : 
+      const colleges = Array.isArray(req.body.colleges) ? req.body.colleges :
                        Array.isArray(req.body) ? req.body : [req.body];
       const results = await importColleges(req.user, colleges);
 
@@ -178,6 +182,7 @@ export const getStandardDepartmentsHandler =
       );
     }
   );
+
 export const deleteCollegeHandler =
   asyncHandler(
     async (req: any, res: Response) => {
@@ -220,7 +225,8 @@ export const removeCdcrMemberHandler = asyncHandler(
 export const searchCollegeStudentsHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { collegeId } = req.params;
-    const query = req.query.q?.toString() || "";
+    // V-03: cap query length to prevent unbounded ILIKE full-table scans
+    const query = (req.query.q?.toString() || "").slice(0, MAX_QUERY_LEN);
     const students = await searchCollegeStudents(collegeId as string, query);
     res.json(successResponse(students));
   }

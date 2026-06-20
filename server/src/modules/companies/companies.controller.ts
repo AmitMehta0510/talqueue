@@ -41,7 +41,13 @@ import {
   submitRecruiterOnboardingSchema,
   createCompanyOfficeSchema,
   createCompanyDepartmentSchema,
+  requestCompanyRegistrationSchema,
+  assignCompanyAdminSchema,
+  assignRecruiterBodySchema,
 } from "./companies.validation";
+
+// V-04: Safety cap — prevent unbounded ILIKE scans on filter strings
+const MAX_FILTER_LEN = 200;
 
 export const createCompanyHandler = asyncHandler(
   async (req: any, res: Response) => {
@@ -71,9 +77,9 @@ export const getCompaniesHandler = asyncHandler(
     };
 
     const search =
-      (req.query.q as string) || (req.query.search as string) || undefined;
-    const industry = (req.query.industry as string) || undefined;
-    const location = (req.query.location as string) || undefined;
+      ((req.query.q as string) || (req.query.search as string) || "").slice(0, MAX_FILTER_LEN) || undefined;
+    const industry = ((req.query.industry as string) || "").slice(0, MAX_FILTER_LEN) || undefined;
+    const location = ((req.query.location as string) || "").slice(0, MAX_FILTER_LEN) || undefined;
     const type = (req.query.type as CompanyType) || undefined;
     const size = (req.query.size as CompanySize) || undefined;
     const verified = parseBoolean(req.query.verified as string | undefined);
@@ -142,7 +148,9 @@ export const getCompanyReferrersHandler = asyncHandler(
 
 export const requestCompanyRegistrationHandler = asyncHandler(
   async (req: any, res: Response) => {
-    const result = await requestCompanyRegistration(req.user.id, req.body);
+    // V-07: validate req.body — previously passed raw, crashing on null/missing keys
+    const validatedData = requestCompanyRegistrationSchema.parse(req.body);
+    const result = await requestCompanyRegistration(req.user.id, validatedData);
     res.status(202).json(successResponse(result, result.message));
   },
 );
@@ -190,7 +198,8 @@ export const listCompanyAdminsForDashboardHandler = asyncHandler(
 export const assignCompanyAdminFromDashboardHandler = asyncHandler(
   async (req: any, res: Response) => {
     const { companyId } = req.params;
-    const { userId, officeCity } = req.body;
+    // V-08: validate req.body — raw destructure crashed on null body
+    const { userId, officeCity } = assignCompanyAdminSchema.parse(req.body);
     const result = await assignCompanyAdmin(req.user.id, userId, companyId, officeCity);
     res.json(successResponse(result, "Company admin assigned successfully"));
   }
@@ -216,7 +225,8 @@ export const listCompanyRecruitersHandler = asyncHandler(
 export const assignCompanyRecruiterHandler = asyncHandler(
   async (req: any, res: Response) => {
     const { companyId } = req.params;
-    const { userId, title } = req.body;
+    // V-10: validate req.body — raw destructure crashed on null body
+    const { userId, title } = assignRecruiterBodySchema.parse(req.body);
     const result = await assignCompanyRecruiter(req.user.id, companyId, userId, title);
     res.json(successResponse(result, "Recruiter assigned successfully"));
   }
@@ -247,17 +257,32 @@ export const listDiscoveredCompaniesHandler = asyncHandler(
 
 export const bulkReviewDiscoveredCompaniesHandler = asyncHandler(
   async (req: any, res: Response) => {
-    const { companyIds, action } = req.body as {
-      companyIds: string[];
-      action: "VERIFY" | "REJECT";
-    };
+    // V-09: runtime guard — TypeScript cast alone gives no runtime safety
+    const body = req.body as { companyIds?: unknown; action?: unknown };
+    const action = body.action;
+    const companyIds = body.companyIds;
 
-    if (!action || !(["VERIFY", "REJECT"].includes(action))) {
+    if (!action || !(["VERIFY", "REJECT"].includes(action as string))) {
       res.status(400).json({ error: 'action must be "VERIFY" or "REJECT"' });
       return;
     }
 
-    const result = await bulkReviewDiscoveredCompanies(req.user.id, companyIds, action);
+    if (!Array.isArray(companyIds) || companyIds.length === 0) {
+      res.status(400).json({ error: 'companyIds must be a non-empty array of strings' });
+      return;
+    }
+
+    // Ensure every element is a non-empty string (basic UUID shape check)
+    const validIds = (companyIds as unknown[]).filter(
+      (id): id is string => typeof id === "string" && id.trim().length > 0,
+    );
+
+    if (validIds.length === 0) {
+      res.status(400).json({ error: 'companyIds must contain at least one valid string ID' });
+      return;
+    }
+
+    const result = await bulkReviewDiscoveredCompanies(req.user.id, validIds, action as "VERIFY" | "REJECT");
     const message =
       action === "VERIFY"
         ? `Successfully verified ${result.processed} company/companies.`
