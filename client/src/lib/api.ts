@@ -2937,5 +2937,16 @@ export const api = {
     request<any>(`/companies/${companyId}/departments`, { method: "POST", body }),
   adminReviewBusinessRequest: (requestId: string, action: "APPROVE" | "REJECT") =>
     request<any>(`/admin/company-requests/${requestId}/review`, { method: "POST", body: { action } }),
+
+  // Storage — S3 Presigned Upload
+  getPresignedUrl: (body: {
+    filename: string;
+    contentType: string;
+    purpose: "avatar" | "letterhead" | "attachment";
+  }) =>
+    request<{ key: string; uploadUrl: string; fileUrl: string }>(
+      "/storage/presigned-url",
+      { method: "POST", body }
+    ),
 };
 

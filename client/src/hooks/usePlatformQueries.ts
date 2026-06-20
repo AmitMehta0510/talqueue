@@ -5005,4 +5005,18 @@ export const useCollegePlacementStatsQuery = (collegeId?: string | null, year?: 
     enabled: Boolean(collegeId),
   });
 };
+
+export const useGetPresignedUrlMutation = () => {
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: {
+      filename: string;
+      contentType: string;
+      purpose: "avatar" | "letterhead" | "attachment";
+    }) => api.getPresignedUrl(payload),
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 
