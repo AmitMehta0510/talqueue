@@ -29,6 +29,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { useChatSocket } from "../hooks/useChatSocket";
+import { useToast } from "../contexts/ToastContext";
+import { useFileUpload } from "../hooks/useFileUpload";
 import {
   useChatMessageActionMutation,
   useConversationMessagesQuery,
@@ -68,31 +70,7 @@ const attachmentType = (file: globalThis.File): ChatAttachment["type"] => {
   return "FILE";
 };
 
-const readAsDataUrl = (file: globalThis.File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-
-const toChatAttachments = async (files: FileList | null): Promise<ChatAttachment[]> => {
-  if (!files) return [];
-
-  const selected = Array.from(files).slice(0, 5);
-  const attachments = await Promise.all(
-    selected.map(async (file) => ({
-      id: `${file.name}-${file.lastModified}`,
-      name: file.name,
-      dataUrl: await readAsDataUrl(file),
-      mimeType: file.type || "application/octet-stream",
-      size: file.size,
-      type: attachmentType(file),
-    })),
-  );
-
-  return attachments;
-};
+// Base64 file reader has been deprecated in favor of useFileUpload hook uploading to S3
 
 const participantForUser = (conversation?: Conversation, userId?: string) =>
   conversation?.participants?.find((participant) => participant.userId === userId);
@@ -650,6 +628,8 @@ function Composer({
   onStopTyping: () => void;
 }) {
   const sendMessage = useSendMessageMutation(conversationId);
+  const { showToast } = useToast();
+  const fileUpload = useFileUpload();
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const typingTimer = useRef<number | undefined>(undefined);
@@ -673,9 +653,31 @@ function Composer({
   };
 
   const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
-    const nextAttachments = await toChatAttachments(event.target.files);
-    setAttachments((current) => [...current, ...nextAttachments].slice(0, 5));
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const selected = Array.from(files).slice(0, 5);
     event.target.value = "";
+
+    try {
+      const uploaded = await Promise.all(
+        selected.map(async (file) => {
+          const result = await fileUpload.upload(file, "attachment");
+          return {
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            url: result.fileUrl,
+            mimeType: file.type || "application/octet-stream",
+            size: file.size,
+            type: attachmentType(file),
+          } as ChatAttachment;
+        })
+      );
+      setAttachments((current) => [...current, ...uploaded].slice(0, 5));
+      showToast("success", "Files uploaded successfully");
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Failed to upload attachments");
+    }
   };
 
   const updateContent = (value: string) => {
@@ -716,9 +718,9 @@ function Composer({
       {/* LinkedIn-style pill input row */}
       <div className="flex items-end gap-2">
         {/* Attach */}
-        <label className="shrink-0 cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600" title="Attach files">
-          <Paperclip size={18} />
-          <input className="hidden" type="file" multiple onChange={handleFiles} />
+        <label className={`shrink-0 cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 ${fileUpload.uploading ? "pointer-events-none" : ""}`} title="Attach files">
+          {fileUpload.uploading ? <Loader2 className="animate-spin text-blue-600" size={18} /> : <Paperclip size={18} />}
+          <input className="hidden" type="file" multiple onChange={handleFiles} disabled={fileUpload.uploading} />
         </label>
 
         {/* Textarea pill */}
@@ -735,12 +737,12 @@ function Composer({
         {/* Send button */}
         <button
           className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition ${
-            content.trim() || attachments.length
+            (content.trim() || attachments.length) && !fileUpload.uploading
               ? "bg-blue-600 text-white hover:bg-blue-700"
               : "bg-slate-100 text-slate-400 cursor-not-allowed"
           }`}
           type="submit"
-          disabled={sendMessage.isPending || (!content.trim() && !attachments.length)}
+          disabled={sendMessage.isPending || fileUpload.uploading || (!content.trim() && !attachments.length)}
         >
           {sendMessage.isPending ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
         </button>

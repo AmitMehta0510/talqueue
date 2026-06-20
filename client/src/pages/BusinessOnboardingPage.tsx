@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useToast } from "../contexts/ToastContext";
+import { useFileUpload } from "../hooks/useFileUpload";
 
 // --- VALIDATION SCHEMAS (Client-side mirror of server schemas) ---
 const recruiterSchema = z.object({
@@ -39,6 +40,7 @@ type ClaimFormValues = z.infer<typeof claimSchema>;
 
 export function BusinessOnboardingPage() {
   const { showToast } = useToast();
+  const { upload, uploading } = useFileUpload();
   const [activeFunnel, setActiveFunnel] = useState<"recruiter" | "claim" | null>(null);
   
   // Autocomplete / Company list state
@@ -178,8 +180,8 @@ export function BusinessOnboardingPage() {
     }
   };
 
-  // Simulated S3/Cloudinary file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // KYC Document S3 Upload Handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -189,22 +191,19 @@ export function BusinessOnboardingPage() {
     }
 
     setUploadedFileName(file.name);
-    setUploadProgress(0);
+    setUploadProgress(10);
 
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev === null) return null;
-        if (prev >= 100) {
-          clearInterval(interval);
-          // Set mock uploaded URL
-          const mockUrl = `https://s3.amazonaws.com/engineering-platform/corporate-docs/${Date.now()}-${file.name}`;
-          setClaimValue("corporateDoc", mockUrl, { shouldValidate: true });
-          showToast("success", "Document uploaded successfully");
-          return 100;
-        }
-        return prev + 20;
-      });
-    }, 200);
+    try {
+      setUploadProgress(40);
+      const result = await upload(file, "letterhead");
+      setUploadProgress(100);
+      setClaimValue("corporateDoc", result.fileUrl, { shouldValidate: true });
+      showToast("success", "Document uploaded successfully");
+    } catch (err) {
+      setUploadProgress(null);
+      setUploadedFileName(null);
+      showToast("error", err instanceof Error ? err.message : "Failed to upload document");
+    }
   };
 
   return (
@@ -570,11 +569,11 @@ export function BusinessOnboardingPage() {
                           accept="application/pdf"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           onChange={handleFileUpload}
-                          disabled={uploadProgress !== null && uploadProgress < 100}
+                          disabled={uploading}
                         />
                         <div className="space-y-2">
                           <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-400">
-                            <Upload size={18} />
+                            {uploading ? <Loader2 size={18} className="animate-spin text-indigo-400" /> : <Upload size={18} />}
                           </div>
                           <p className="text-xs text-zinc-300 font-semibold">
                             {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click or drag to select PDF Document"}
@@ -587,7 +586,7 @@ export function BusinessOnboardingPage() {
                       {uploadProgress !== null && (
                         <div className="space-y-1.5">
                           <div className="flex justify-between text-[10px] text-zinc-500 font-semibold">
-                            <span>{uploadProgress < 100 ? "Uploading to Cloud..." : "Upload Completed"}</span>
+                            <span>{uploadProgress < 105 ? "Uploading to Cloud..." : "Upload Completed"}</span>
                             <span>{uploadProgress}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
@@ -612,7 +611,7 @@ export function BusinessOnboardingPage() {
                     {/* Submit Claim */}
                     <button
                       type="submit"
-                      disabled={claimSubmitting || (uploadProgress !== null && uploadProgress < 100)}
+                      disabled={claimSubmitting || uploading}
                       className="btn-primary bg-indigo-600 hover:bg-indigo-500 text-white w-full py-2.5 mt-4 text-xs font-bold flex items-center justify-center gap-2 transition"
                     >
                       {claimSubmitting ? (
