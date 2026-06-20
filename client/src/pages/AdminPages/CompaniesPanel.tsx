@@ -5,6 +5,7 @@ import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery 
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { Avatar } from "../../components/ui";
 import { SearchBar, UserSearchAutocomplete } from "./shared";
+import { useFileUpload } from "../../hooks/useFileUpload";
 
 export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin, onAssignAdmin }: {
   selectedCompany: Company | null;
@@ -21,6 +22,17 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
   const [logoUrl, setLogoUrl] = useState("");
   const [description, setDescription] = useState("");
   const [showForm, setShowForm] = useState(false);
+
+  const { upload: uploadLogo, uploading: uploadingLogo } = useFileUpload();
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadLogo(file, "avatar");
+      setLogoUrl(res.fileUrl);
+    } catch {}
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -61,17 +73,33 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
                 <span className="mb-1 block text-[11px] font-bold uppercase text-zinc-500">Website URL</span>
                 <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
               </label>
-              <label className="block">
-                <span className="mb-1 block text-[11px] font-bold uppercase text-zinc-500">Logo URL</span>
-                <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." type="url" />
-              </label>
+              <div className="block">
+                <span className="mb-1 block text-[11px] font-bold uppercase text-zinc-500">Company Logo</span>
+                <div className="flex items-center gap-3">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="h-9 w-9 rounded-lg object-contain bg-zinc-800 border border-zinc-700 p-0.5" />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-500">
+                      <Building2 size={14} />
+                    </div>
+                  )}
+                  <label className="relative cursor-pointer rounded-lg bg-zinc-800 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/50 px-3 py-1.5 text-xs font-bold text-zinc-300 shadow-sm transition select-none flex-1 text-center">
+                    {uploadingLogo ? (
+                      <span className="flex items-center justify-center gap-1"><Loader2 size={12} className="animate-spin text-emerald-400" /> Uploading...</span>
+                    ) : (
+                      "Choose Logo"
+                    )}
+                    <input type="file" accept="image/*" onChange={handleLogoChange} disabled={uploadingLogo || createCompany.isPending} className="hidden" />
+                  </label>
+                </div>
+              </div>
             </div>
             <label className="block">
               <span className="mb-1 block text-[11px] font-bold uppercase text-zinc-500">Description</span>
               <textarea className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition min-h-16 resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief company description..." />
             </label>
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={createCompany.isPending}>
+              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={createCompany.isPending || uploadingLogo}>
                 {createCompany.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
                 Add Company
               </button>

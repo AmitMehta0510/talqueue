@@ -1289,4 +1289,23 @@ export const createCompanyDepartment = async (
       code: data.code || null,
     },
   });
+};
+
+// UPDATE COMPANY DETAILS
+export const updateCompany = async (
+  companyId: string,
+  data: any
+) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+  });
+
+  if (!company) {
+    throw new AppError("Company not found", 404);
+  }
+
+  return prisma.company.update({
+    where: { id: companyId },
+    data,
+  });
 };

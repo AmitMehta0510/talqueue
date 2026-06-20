@@ -27,6 +27,7 @@ import {
   submitRecruiterOnboarding,
   createCompanyOffice,
   createCompanyDepartment,
+  updateCompany,
 } from "./companies.service";
 
 import {
@@ -332,5 +333,14 @@ export const createCompanyDepartmentHandler = asyncHandler(
     const validatedData = createCompanyDepartmentSchema.parse(payload);
     const department = await createCompanyDepartment(req.user.id, validatedData);
     res.status(201).json(successResponse(department, "Company department created successfully"));
+  }
+);
+
+export const updateCompanyHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { companyId } = req.params;
+    const validatedData = createCompanySchema.partial().parse(req.body);
+    const company = await updateCompany(companyId, validatedData);
+    res.json(successResponse(company, "Company profile updated successfully"));
   }
 );

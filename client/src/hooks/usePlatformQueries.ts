@@ -783,6 +783,22 @@ export const useCreateCompanyMutation = () => {
   });
 };
 
+export const useUpdateCompanyMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ companyId, payload }: { companyId: string; payload: CompanyMutationPayload }) =>
+      api.updateCompany(companyId, payload),
+    onSuccess: (res) => {
+      showToast("success", "Company profile updated successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.detail(res.data.slug) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 export const useRequestCompanyRegistrationMutation = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();

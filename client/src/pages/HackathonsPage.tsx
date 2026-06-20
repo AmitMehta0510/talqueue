@@ -20,6 +20,7 @@ import { Link, useParams } from "react-router-dom";
 import { HackathonCard } from "../components/cards/HackathonCard";
 import { Avatar, EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
+import { useFileUpload } from "../hooks/useFileUpload";
 import {
   useAssignHackathonJudgeMutation,
   useCreateHackathonMutation,
@@ -141,6 +142,17 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
     location: "",
     tags: "",
   });
+
+  const { upload: uploadBanner, uploading: uploadingBanner } = useFileUpload();
+
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadBanner(file, "avatar");
+      setForm((current) => ({ ...current, bannerUrl: res.fileUrl }));
+    } catch {}
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -265,12 +277,26 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
             placeholder="Description"
             required
           />
-          <input
-            className="field"
-            value={form.bannerUrl}
-            onChange={(event) => setForm((current) => ({ ...current, bannerUrl: event.target.value }))}
-            placeholder="Banner URL"
-          />
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Hackathon Banner Image</label>
+            <div className="flex items-center gap-4">
+              {form.bannerUrl ? (
+                <img src={form.bannerUrl} alt="Banner" className="h-16 w-32 rounded-lg object-cover bg-white border border-slate-200" />
+              ) : (
+                <div className="flex h-16 w-32 items-center justify-center rounded-lg bg-slate-100 border border-slate-200 text-slate-400 text-xs font-medium">
+                  No Banner Image
+                </div>
+              )}
+              <label className="relative cursor-pointer rounded-lg bg-white border border-slate-300 hover:border-slate-400 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm transition select-none flex-1 text-center">
+                {uploadingBanner ? (
+                  <span className="flex items-center justify-center gap-1.5"><Loader2 size={13} className="animate-spin text-blue-600" /> Uploading...</span>
+                ) : (
+                  "Choose Banner File"
+                )}
+                <input type="file" accept="image/*" onChange={handleBannerChange} disabled={uploadingBanner || createHackathon.isPending} className="hidden" />
+              </label>
+            </div>
+          </div>
 
           <div className="flex items-center gap-2 py-1">
             <input
@@ -401,7 +427,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
               />
             </label>
           </div>
-          <button className="btn-primary" type="submit" disabled={createHackathon.isPending}>
+          <button className="btn-primary" type="submit" disabled={createHackathon.isPending || uploadingBanner}>
             {createHackathon.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
             Publish
           </button>

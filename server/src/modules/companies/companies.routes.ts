@@ -31,6 +31,7 @@ import {
   submitRecruiterOnboardingHandler,
   createCompanyOfficeHandler,
   createCompanyDepartmentHandler,
+  updateCompanyHandler,
 } from "./companies.controller";
 
 const router = Router();
@@ -181,6 +182,13 @@ router.post(
   "/:companyId/departments",
   protect,
   createCompanyDepartmentHandler
+);
+
+router.patch(
+  "/:companyId",
+  protect,
+  requireCompanyGlobalAdmin,
+  updateCompanyHandler
 );
 
 export default router;

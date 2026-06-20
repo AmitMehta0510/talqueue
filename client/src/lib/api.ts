@@ -2937,6 +2937,8 @@ export const api = {
     request<any>(`/companies/${companyId}/departments`, { method: "POST", body }),
   adminReviewBusinessRequest: (requestId: string, action: "APPROVE" | "REJECT") =>
     request<any>(`/admin/company-requests/${requestId}/review`, { method: "POST", body: { action } }),
+  updateCompany: (companyId: string, body: CompanyMutationPayload) =>
+    request<Company>(`/companies/${companyId}`, { method: "PATCH", body }),
 
   // Storage — S3 Presigned Upload
   getPresignedUrl: (body: {

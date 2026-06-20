@@ -35,6 +35,7 @@ import {
 } from "../hooks/usePlatformQueries";
 import { Company, CompanySize, CompanyType, User } from "../lib/api";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
+import { useFileUpload } from "../hooks/useFileUpload";
 import {
   compactPayload,
   formatCount,
@@ -170,12 +171,33 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
   const createCompany = useCreateCompanyMutation();
   const [form, setForm] = useState({
     name: "", tagline: "", description: "", headquarters: "", industry: "",
-    websiteUrl: "", careersPageUrl: "", logoUrl: "", githubUrl: "",
+    websiteUrl: "", careersPageUrl: "", logoUrl: "", coverImageUrl: "", githubUrl: "",
     foundedYear: "", type: "" as "" | CompanyType, size: "" as "" | CompanySize,
     hiringEnabled: true, referralEnabled: true,
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  const { upload: uploadLogo, uploading: uploadingLogo } = useFileUpload();
+  const { upload: uploadCover, uploading: uploadingCover } = useFileUpload();
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadLogo(file, "avatar");
+      set("logoUrl", res.fileUrl);
+    } catch {}
+  };
+
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadCover(file, "avatar");
+      set("coverImageUrl", res.fileUrl);
+    } catch {}
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -185,7 +207,7 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
         ...compactPayload({
           tagline: form.tagline, description: form.description, headquarters: form.headquarters,
           industry: form.industry, websiteUrl: form.websiteUrl, careersPageUrl: form.careersPageUrl,
-          logoUrl: form.logoUrl, githubUrl: form.githubUrl,
+          logoUrl: form.logoUrl, coverImageUrl: form.coverImageUrl, githubUrl: form.githubUrl,
           type: form.type || undefined, size: form.size || undefined,
         }),
         foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
@@ -195,6 +217,8 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
       onClose();
     } catch { return; }
   };
+
+  const isUploading = uploadingLogo || uploadingCover;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -223,12 +247,56 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
               {companySizes.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </select>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <input className="field" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="Website URL" />
             <input className="field" value={form.careersPageUrl} onChange={(e) => set("careersPageUrl", e.target.value)} placeholder="Careers URL" />
-            <input className="field" value={form.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="Logo URL" />
             <input className="field" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
           </div>
+
+          <div className="grid gap-4 md:grid-cols-2 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Company Logo</label>
+              <div className="flex items-center gap-3">
+                {form.logoUrl ? (
+                  <img src={form.logoUrl} alt="Logo" className="h-12 w-12 rounded-lg object-contain bg-white border border-slate-200 p-0.5" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 border border-slate-300 text-slate-400">
+                    <Building2 size={16} />
+                  </div>
+                )}
+                <label className="relative cursor-pointer rounded-lg bg-white border border-slate-300 hover:border-slate-400 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition select-none">
+                  {uploadingLogo ? (
+                    <span className="flex items-center gap-1"><Loader2 size={12} className="animate-spin text-blue-600" /> Uploading...</span>
+                  ) : (
+                    "Choose Logo"
+                  )}
+                  <input type="file" accept="image/*" onChange={handleLogoChange} disabled={isUploading || createCompany.isPending} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Cover Banner</label>
+              <div className="flex items-center gap-3">
+                {form.coverImageUrl ? (
+                  <img src={form.coverImageUrl} alt="Cover" className="h-12 w-24 rounded-lg object-cover bg-white border border-slate-200" />
+                ) : (
+                  <div className="flex h-12 w-24 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-slate-200 text-[10px] text-indigo-400 font-semibold">
+                    No Cover
+                  </div>
+                )}
+                <label className="relative cursor-pointer rounded-lg bg-white border border-slate-300 hover:border-slate-400 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition select-none">
+                  {uploadingCover ? (
+                    <span className="flex items-center gap-1"><Loader2 size={12} className="animate-spin text-blue-600" /> Uploading...</span>
+                  ) : (
+                    "Choose Cover"
+                  )}
+                  <input type="file" accept="image/*" onChange={handleCoverChange} disabled={isUploading || createCompany.isPending} className="hidden" />
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-6 text-sm text-slate-600">
             <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" checked={form.hiringEnabled} onChange={(e) => set("hiringEnabled", e.target.checked)} className="accent-blue-600" />
@@ -241,7 +309,7 @@ function CreateCompanyModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-3">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={createCompany.isPending}>
+            <button type="submit" className="btn-primary" disabled={createCompany.isPending || isUploading}>
               {createCompany.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
               Save Company
             </button>
@@ -264,6 +332,17 @@ function RequestCompanyModal({ onClose }: { onClose: () => void }) {
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
+
+  const { upload, uploading } = useFileUpload();
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await upload(file, "avatar");
+      set("logoUrl", res.fileUrl);
+    } catch {}
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -312,15 +391,36 @@ function RequestCompanyModal({ onClose }: { onClose: () => void }) {
               {companySizes.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
             </select>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <input className="field" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="Website URL" />
             <input className="field" value={form.careersPageUrl} onChange={(e) => set("careersPageUrl", e.target.value)} placeholder="Careers Page URL" />
-            <input className="field" value={form.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="Logo Image URL" />
             <input className="field" value={form.githubUrl} onChange={(e) => set("githubUrl", e.target.value)} placeholder="GitHub URL" />
           </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Company Logo</label>
+            <div className="flex items-center gap-3">
+              {form.logoUrl ? (
+                <img src={form.logoUrl} alt="Logo" className="h-12 w-12 rounded-lg object-contain bg-white border border-slate-200 p-0.5" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 border border-slate-300 text-slate-400">
+                  <Building2 size={16} />
+                </div>
+              )}
+              <label className="relative cursor-pointer rounded-lg bg-white border border-slate-300 hover:border-slate-400 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition select-none">
+                {uploading ? (
+                  <span className="flex items-center gap-1"><Loader2 size={12} className="animate-spin text-blue-600" /> Uploading...</span>
+                ) : (
+                  "Choose Logo"
+                )}
+                <input type="file" accept="image/*" onChange={handleLogoChange} disabled={uploading || requestCompany.isPending} className="hidden" />
+              </label>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={requestCompany.isPending}>
+            <button type="submit" className="btn-primary" disabled={requestCompany.isPending || uploading}>
               {requestCompany.isPending ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
               Submit Request
             </button>

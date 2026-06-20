@@ -1,8 +1,8 @@
-import { useState, useMemo, FormEvent } from "react";
+import { useState, useMemo, FormEvent, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Building2, Users, Briefcase, Shield, ShieldCheck, Plus, Trash2, MapPin, Loader2,
-  TrendingUp, ArrowLeft, RefreshCw, Sparkles, UserPlus, Info, CheckCircle2, ChevronRight, X
+  TrendingUp, ArrowLeft, RefreshCw, Sparkles, UserPlus, Info, CheckCircle2, ChevronRight, X, Settings
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
@@ -12,6 +12,7 @@ import { Avatar } from "../components/ui";
 import { userName } from "../lib/format";
 import { UserSearchAutocomplete } from "./AdminPages/shared";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
+import { useFileUpload } from "../hooks/useFileUpload";
 import {
   useCompanyQuery,
   useCompanyJobsQuery,
@@ -21,10 +22,11 @@ import {
   useAssignCompanyAdminFromDashboardMutation,
   useRemoveCompanyAdminFromDashboardMutation,
   useAssignCompanyRecruiterMutation,
-  useRemoveCompanyRecruiterMutation
+  useRemoveCompanyRecruiterMutation,
+  useUpdateCompanyMutation
 } from "../hooks/usePlatformQueries";
 
-type Tab = "overview" | "managers" | "recruiters" | "jobs" | "offices" | "departments";
+type Tab = "overview" | "managers" | "recruiters" | "jobs" | "offices" | "departments" | "settings";
 
 export function CompanyAdminPage() {
   const { companySlug } = useParams<{ companySlug: string }>();
@@ -37,6 +39,90 @@ export function CompanyAdminPage() {
   const companyQuery = useCompanyQuery(companySlug);
   const company = companyQuery.data;
   const companyId = company?.id;
+
+  const { upload: uploadLogo, uploading: uploadingLogo } = useFileUpload();
+  const { upload: uploadCover, uploading: uploadingCover } = useFileUpload();
+  const updateCompanyMutation = useUpdateCompanyMutation();
+
+  const [settingsForm, setSettingsForm] = useState({
+    name: "", tagline: "", description: "", headquarters: "", industry: "",
+    websiteUrl: "", careersPageUrl: "", logoUrl: "", coverImageUrl: "", githubUrl: "",
+    foundedYear: "", type: "" as "" | any, size: "" as "" | any,
+    hiringEnabled: true, referralEnabled: true,
+  });
+
+  const [hasInitializedSettings, setHasInitializedSettings] = useState(false);
+  useEffect(() => {
+    if (company && !hasInitializedSettings) {
+      setSettingsForm({
+        name: company.name || "",
+        tagline: company.tagline || "",
+        description: company.description || "",
+        headquarters: company.headquarters || "",
+        industry: company.industry || "",
+        websiteUrl: company.websiteUrl || "",
+        careersPageUrl: company.careersPageUrl || "",
+        logoUrl: company.logoUrl || "",
+        coverImageUrl: company.coverImageUrl || "",
+        githubUrl: company.githubUrl || "",
+        foundedYear: company.foundedYear ? String(company.foundedYear) : "",
+        type: company.type || "",
+        size: company.size || "",
+        hiringEnabled: company.hiringEnabled !== false,
+        referralEnabled: company.referralEnabled !== false,
+      });
+      setHasInitializedSettings(true);
+    }
+  }, [company, hasInitializedSettings]);
+
+  const updateSetting = (key: string, value: any) => {
+    setSettingsForm((p) => ({ ...p, [key]: value }));
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadLogo(file, "avatar");
+      updateSetting("logoUrl", res.fileUrl);
+    } catch {}
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadCover(file, "avatar");
+      updateSetting("coverImageUrl", res.fileUrl);
+    } catch {}
+  };
+
+  const handleSettingsSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!companyId) return;
+    try {
+      await updateCompanyMutation.mutateAsync({
+        companyId,
+        payload: {
+          name: settingsForm.name,
+          tagline: settingsForm.tagline || undefined,
+          description: settingsForm.description || undefined,
+          headquarters: settingsForm.headquarters || undefined,
+          industry: settingsForm.industry || undefined,
+          websiteUrl: settingsForm.websiteUrl || undefined,
+          careersPageUrl: settingsForm.careersPageUrl || undefined,
+          logoUrl: settingsForm.logoUrl || undefined,
+          coverImageUrl: settingsForm.coverImageUrl || undefined,
+          githubUrl: settingsForm.githubUrl || undefined,
+          foundedYear: settingsForm.foundedYear ? Number(settingsForm.foundedYear) : undefined,
+          type: settingsForm.type || undefined,
+          size: settingsForm.size || undefined,
+          hiringEnabled: settingsForm.hiringEnabled,
+          referralEnabled: settingsForm.referralEnabled,
+        }
+      });
+    } catch {}
+  };
 
   // Queries
   const statsQuery = useCompanyAdminStatsQuery(companyId || "");
@@ -104,7 +190,8 @@ export function CompanyAdminPage() {
     if (isGlobalAdmin) {
       list.push(
         { id: "offices" as Tab, label: "Manage Offices", icon: MapPin },
-        { id: "departments" as Tab, label: "Departments", icon: Building2 }
+        { id: "departments" as Tab, label: "Departments", icon: Building2 },
+        { id: "settings" as Tab, label: "Profile Settings", icon: Settings }
       );
     }
     return list;
@@ -115,7 +202,8 @@ export function CompanyAdminPage() {
     assignAdmin.isPending ||
     removeAdmin.isPending ||
     assignRecruiter.isPending ||
-    removeRecruiter.isPending;
+    removeRecruiter.isPending ||
+    updateCompanyMutation.isPending;
 
   const handleConfirmAction = async () => {
     if (!confirmAction || !companyId) return;
@@ -1038,6 +1126,164 @@ export function CompanyAdminPage() {
                     ))
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === "settings" && isGlobalAdmin && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-sm font-bold text-white flex items-center gap-1.5 uppercase tracking-wider text-zinc-400">
+                    <Settings size={14} className="text-emerald-500" />
+                    Company Profile Settings
+                  </h2>
+                  <p className="text-[11px] text-zinc-550 mt-0.5">Update branding details, media covers, and recruitment coordinates.</p>
+                </div>
+
+                <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                  {/* Media Uploads Section */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Logo Picker */}
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
+                      <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Company Logo</label>
+                      <div className="flex items-center gap-4">
+                        {settingsForm.logoUrl ? (
+                          <img src={settingsForm.logoUrl} alt="Logo" className="h-16 w-16 rounded-xl object-contain bg-zinc-950 border border-zinc-800 p-1" />
+                        ) : (
+                          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-blue-600/20 border border-indigo-600/30">
+                            <Building2 size={24} className="text-indigo-400" />
+                          </div>
+                        )}
+                        <label className="relative cursor-pointer rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition">
+                          {uploadingLogo ? (
+                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-emerald-400" /> Uploading...</span>
+                          ) : (
+                            "Choose Logo"
+                          )}
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo || isPending} className="hidden" />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">Supported formats: JPG, PNG, GIF. Max file size: 2MB.</p>
+                    </div>
+
+                    {/* Cover Image Picker */}
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-3">
+                      <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Cover Banner</label>
+                      <div className="flex flex-col gap-3">
+                        {settingsForm.coverImageUrl ? (
+                          <img src={settingsForm.coverImageUrl} alt="Cover" className="h-16 w-full rounded-xl object-cover border border-zinc-800" />
+                        ) : (
+                          <div className="h-16 w-full rounded-xl bg-gradient-to-br from-blue-600/20 to-indigo-700/20 border border-indigo-600/30 flex items-center justify-center text-xs text-indigo-400 font-semibold">
+                            No Cover Banner Uploaded
+                          </div>
+                        )}
+                        <label className="self-start relative cursor-pointer rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition">
+                          {uploadingCover ? (
+                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-emerald-400" /> Uploading...</span>
+                          ) : (
+                            "Choose Cover Banner"
+                          )}
+                          <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={uploadingCover || isPending} className="hidden" />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-zinc-500">Aspect ratio: 4:1 recommended. Supported formats: JPG, PNG.</p>
+                    </div>
+                  </div>
+
+                  {/* Details Form Grid */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Company Name *</span>
+                        <input className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.name} onChange={(e) => updateSetting("name", e.target.value)} required />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tagline</span>
+                        <input className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.tagline} onChange={(e) => updateSetting("tagline", e.target.value)} placeholder="e.g. Elevating engineering collaboration" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Founded Year</span>
+                        <input type="number" min={1800} max={new Date().getFullYear()} className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.foundedYear} onChange={(e) => updateSetting("foundedYear", e.target.value)} placeholder="e.g. 2015" />
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Description</span>
+                      <textarea className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition min-h-24 resize-none" value={settingsForm.description} onChange={(e) => updateSetting("description", e.target.value)} placeholder="Tell candidates about your company's mission and engineering culture..." />
+                    </label>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Industry</span>
+                        <input className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.industry} onChange={(e) => updateSetting("industry", e.target.value)} placeholder="e.g. Fintech, Healthcare" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Headquarters City</span>
+                        <input className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.headquarters} onChange={(e) => updateSetting("headquarters", e.target.value)} placeholder="e.g. Bangalore, SF" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Company Type</span>
+                        <select className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-400 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.type} onChange={(e) => updateSetting("type", e.target.value)}>
+                          <option value="">Select Type</option>
+                          <option value="STARTUP">Startup</option>
+                          <option value="PRODUCT_BASED">Product Based</option>
+                          <option value="SERVICE_BASED">Service Based</option>
+                          <option value="ENTERPRISE">Enterprise</option>
+                          <option value="MNC">MNC</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Company Size</span>
+                        <select className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-400 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.size} onChange={(e) => updateSetting("size", e.target.value)}>
+                          <option value="">Select Size</option>
+                          <option value="SOLO">Solo (1)</option>
+                          <option value="SMALL">Small (2-49)</option>
+                          <option value="MEDIUM">Medium (50-249)</option>
+                          <option value="LARGE">Large (250-999)</option>
+                          <option value="ENTERPRISE">Enterprise (1000+)</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Website Link</span>
+                        <input type="url" className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.websiteUrl} onChange={(e) => updateSetting("websiteUrl", e.target.value)} placeholder="https://company.com" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Careers Page Link</span>
+                        <input type="url" className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.careersPageUrl} onChange={(e) => updateSetting("careersPageUrl", e.target.value)} placeholder="https://company.com/careers" />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">GitHub Org Link</span>
+                        <input type="url" className="w-full rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition" value={settingsForm.githubUrl} onChange={(e) => updateSetting("githubUrl", e.target.value)} placeholder="https://github.com/org" />
+                      </label>
+                    </div>
+
+                    <div className="flex gap-6 text-xs text-zinc-400 pt-2 border-t border-zinc-850">
+                      <label className="flex cursor-pointer items-center gap-2 select-none">
+                        <input type="checkbox" checked={settingsForm.hiringEnabled} onChange={(e) => updateSetting("hiringEnabled", e.target.checked)} className="accent-emerald-600 h-3.5 w-3.5 rounded bg-zinc-950 border-zinc-800" />
+                        Hiring active
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 select-none">
+                        <input type="checkbox" checked={settingsForm.referralEnabled} onChange={(e) => updateSetting("referralEnabled", e.target.checked)} className="accent-emerald-600 h-3.5 w-3.5 rounded bg-zinc-950 border-zinc-800" />
+                        Referral coordinates open
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Actions Submit */}
+                  <div className="flex gap-2 justify-end border-t border-zinc-850 pt-4">
+                    <button
+                      type="submit"
+                      disabled={isPending || uploadingLogo || uploadingCover}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-white px-5 py-2.5 text-xs transition duration-200 shadow-md disabled:opacity-50 disabled:pointer-events-none hover:scale-102"
+                    >
+                      {updateCompanyMutation.isPending && <Loader2 size={13} className="animate-spin" />}
+                      Save Profile Changes
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
