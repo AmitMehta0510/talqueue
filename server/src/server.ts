@@ -68,3 +68,13 @@ const gracefulShutdown = (signal: string) => {
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
+
+process.on("uncaughtException", (err) => {
+  console.error("\n[CRITICAL] UNCAUGHT EXCEPTION: Shutting down server gracefully...", err);
+  gracefulShutdown("UNCAUGHT_EXCEPTION");
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("\n[CRITICAL] UNHANDLED REJECTION: Shutting down server gracefully...", reason);
+  gracefulShutdown("UNHANDLED_REJECTION");
+});

@@ -24,9 +24,9 @@ export const fetchGithubRepository = async (
     };
 
     const [repoResponse, languagesResponse, contributorsResponse] = await Promise.all([
-      axios.get(`https://api.github.com/repos/${owner}/${repo}`, { headers }),
-      axios.get(`https://api.github.com/repos/${owner}/${repo}/languages`, { headers }),
-      axios.get(`https://api.github.com/repos/${owner}/${repo}/contributors`, { headers }),
+      axios.get(`https://api.github.com/repos/${owner}/${repo}`, { headers, timeout: 5000 }),
+      axios.get(`https://api.github.com/repos/${owner}/${repo}/languages`, { headers, timeout: 5000 }),
+      axios.get(`https://api.github.com/repos/${owner}/${repo}/contributors`, { headers, timeout: 5000 }),
     ]);
 
     return {

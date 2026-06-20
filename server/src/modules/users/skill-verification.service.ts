@@ -354,54 +354,87 @@ export const verifyUserSkills = async (userId: string) => {
             }
           }
 
-          // 2. Framework/Tools parsing with Commit Verification (Anti-Cheat)
-          const repoPromises = reposResponse.data.slice(0, 10).map(async (repo: any) => {
-            const isContributor = await verifyUserCommitContribution(
-              username,
-              repo.name,
-              authorizedEmails,
-              authorizedUsernames,
-              headers
+          // 2. Framework/Tools parsing with Commit Verification (Anti-Cheat) - Chunked & Rate-Limit Safeguarded
+          const verifiedReposSkills: any[] = [];
+          const sliceRepos = reposResponse.data.slice(0, 10);
+
+          const chunkItems = <T>(items: T[], size: number): T[][] => {
+            const chunks: T[][] = [];
+            for (let i = 0; i < items.length; i += size) {
+              chunks.push(items.slice(i, i + size));
+            }
+            return chunks;
+          };
+
+          const chunksOfRepos = chunkItems(sliceRepos, 3);
+          let rateLimitExceeded = false;
+
+          for (const chunk of chunksOfRepos) {
+            if (rateLimitExceeded) {
+              break;
+            }
+
+            const chunkResults = await Promise.all(
+              chunk.map(async (repo: any) => {
+                try {
+                  const isContributor = await verifyUserCommitContribution(
+                    username,
+                    repo.name,
+                    authorizedEmails,
+                    authorizedUsernames,
+                    headers
+                  );
+
+                  if (!isContributor) {
+                    return null;
+                  }
+
+                  // Fetch package.json, pom.xml, and Dockerfile concurrently
+                  const [packageJson, pomXml, dockerfile] = await Promise.all([
+                    fetchRepoFileContent(username, repo.name, "package.json", headers),
+                    fetchRepoFileContent(username, repo.name, "pom.xml", headers),
+                    fetchRepoFileContent(username, repo.name, "Dockerfile", headers),
+                  ]);
+
+                  const repoSkills = new Set<string>();
+                  if (packageJson) {
+                    try {
+                      const parsed = JSON.parse(packageJson);
+                      const deps = [
+                        ...Object.keys(parsed.dependencies || {}),
+                        ...Object.keys(parsed.devDependencies || {}),
+                      ];
+                      matchPackageDependencies(deps, repoSkills);
+                    } catch (e) {
+                      // Invalid JSON, skip
+                    }
+                  }
+                  if (pomXml) {
+                    matchPomDependencies(pomXml, repoSkills);
+                  }
+                  if (dockerfile) {
+                    matchDockerfile(dockerfile, repoSkills);
+                  }
+
+                  return {
+                    repoName: repo.name,
+                    skills: Array.from(repoSkills),
+                  };
+                } catch (err: any) {
+                  if (axios.isAxiosError(err) && (err.response?.status === 403 || err.response?.status === 429)) {
+                    rateLimitExceeded = true;
+                  }
+                  return null;
+                }
+              })
             );
 
-            if (!isContributor) {
-              return null;
-            }
-
-            // Fetch package.json, pom.xml, and Dockerfile concurrently
-            const [packageJson, pomXml, dockerfile] = await Promise.all([
-              fetchRepoFileContent(username, repo.name, "package.json", headers),
-              fetchRepoFileContent(username, repo.name, "pom.xml", headers),
-              fetchRepoFileContent(username, repo.name, "Dockerfile", headers),
-            ]);
-
-            const repoSkills = new Set<string>();
-            if (packageJson) {
-              try {
-                const parsed = JSON.parse(packageJson);
-                const deps = [
-                  ...Object.keys(parsed.dependencies || {}),
-                  ...Object.keys(parsed.devDependencies || {}),
-                ];
-                matchPackageDependencies(deps, repoSkills);
-              } catch (e) {
-                // Invalid JSON, skip
+            for (const res of chunkResults) {
+              if (res) {
+                verifiedReposSkills.push(res);
               }
             }
-            if (pomXml) {
-              matchPomDependencies(pomXml, repoSkills);
-            }
-            if (dockerfile) {
-              matchDockerfile(dockerfile, repoSkills);
-            }
-
-            return {
-              repoName: repo.name,
-              skills: Array.from(repoSkills),
-            };
-          });
-
-          const verifiedReposSkills = await Promise.all(repoPromises);
+          }
 
           for (const item of verifiedReposSkills) {
             if (item && item.skills.length > 0) {
