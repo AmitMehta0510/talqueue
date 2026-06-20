@@ -16,6 +16,7 @@ import {
   requestCompanyRegistration,
   followCompany,
   unfollowCompany,
+  getCompanyFollowStatus,
   getCompanyAdminStats,
   listCompanyRecruiters,
   assignCompanyRecruiter,
@@ -159,6 +160,14 @@ export const unfollowCompanyHandler = asyncHandler(
     const companyId = req.params.companyId as string;
     const result = await unfollowCompany(req.user.id, companyId);
     res.json(successResponse(result, result.message));
+  },
+);
+
+export const getCompanyFollowStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const companyId = req.params.companyId as string;
+    const result = await getCompanyFollowStatus(req.user.id, companyId);
+    res.json(successResponse(result));
   },
 );
 

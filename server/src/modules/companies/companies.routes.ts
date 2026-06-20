@@ -17,6 +17,7 @@ import {
   requestCompanyRegistrationHandler,
   followCompanyHandler,
   unfollowCompanyHandler,
+  getCompanyFollowStatusHandler,
   getCompanyAdminStatsHandler,
   listCompanyAdminsForDashboardHandler,
   assignCompanyAdminFromDashboardHandler,
@@ -84,6 +85,13 @@ router.get(
   "/:companyId/referrers",
   protect,
   getCompanyReferrersHandler
+);
+
+// Lightweight dedicated endpoint — avoids sequential double query in GET /:slug (F-02)
+router.get(
+  "/:companyId/follow-status",
+  protect,
+  getCompanyFollowStatusHandler
 );
 
 // ── Company Global Admin Dashboard Routes ──

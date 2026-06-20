@@ -91,17 +91,12 @@ export const getRecruiterDashboard = async (recruiterId: string) => {
     jobCountsMap.set(g.jobId, existing);
   }
 
-  // Candidate ranking — chunked Promise.all (3 jobs at a time)
-  const rankedCandidates: Awaited<ReturnType<typeof rankJobCandidates>>= [];
-  const chunkSize = 3;
-
-  for (let i = 0; i < jobs.length; i += chunkSize) {
-    const chunk = jobs.slice(i, i + chunkSize);
-    const results = await Promise.all(
-      chunk.map((job) => rankJobCandidates(recruiterId, job.id)),
-    );
-    results.forEach((ranked) => rankedCandidates.push(...ranked));
-  }
+  // Candidate ranking — all jobs run concurrently in a single Promise.all()
+  // Chunking added no DB benefit since each call makes its own query.
+  const rankedResults = await Promise.all(
+    jobs.map((job) => rankJobCandidates(recruiterId, job.id)),
+  );
+  const rankedCandidates: Awaited<ReturnType<typeof rankJobCandidates>> = rankedResults.flat();
 
   // Remove duplicates — keep highest overallScore per candidate
   const uniqueCandidates = new Map();
@@ -239,18 +234,38 @@ export const getJobPipeline = async (recruiterId: string, jobId: string) => {
     where: {
       jobId,
     },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      resumeUrl: true,
+      coverLetter: true,
+      recruiterNotes: true,
+      applicantId: true,
       applicant: {
-        include: {
-          profile: true,
+        select: {
+          id: true,
+          username: true,
+          engineeringScore: true,
+          trustLevel: true,
+          reputationScore: true,
+          verifiedEngineer: true,
+          profile: {
+            select: { fullName: true, avatarUrl: true, headline: true },
+          },
+          // Capped at 15: sufficient for skill-match computation, avoids O(N*20) row explosion
           skills: {
-            include: {
-              skill: true,
+            take: 15,
+            orderBy: [{ level: "desc" }, { createdAt: "desc" }],
+            select: {
+              skill: { select: { name: true } },
             },
           },
+          // Capped at 10: only top badges needed for trust signal display
           badges: {
-            include: {
-              badge: true,
+            take: 10,
+            select: {
+              badge: { select: { name: true, rarity: true, category: true } },
             },
           },
         },

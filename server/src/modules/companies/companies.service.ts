@@ -155,12 +155,8 @@ export const getCompanies = async (
           mode: "insensitive",
         },
       },
-      {
-        description: {
-          contains: filters.q,
-          mode: "insensitive",
-        },
-      },
+      // NOTE: description intentionally excluded — TEXT column ILIKE is a full sequential
+      // scan. Route description search through full-text search (tsvector) or Elasticsearch.
       {
         industry: {
           contains: filters.q,
@@ -450,23 +446,9 @@ export const getCompanyBySlug = async (
     }).catch(console.error);
   }
 
-  let isFollowing = false;
-  if (userId && company) {
-    const followCount = await prisma.company.count({
-      where: {
-        id: company.id,
-        followers: {
-          some: { id: userId }
-        }
-      }
-    });
-    isFollowing = followCount > 0;
-  }
-
-  return {
-    ...company,
-    isFollowing
-  };
+  // isFollowing is served by a dedicated lightweight endpoint (GET /:companyId/follow-status)
+  // to avoid a sequential DB round-trip on every company profile view.
+  return company;
 };
 
 // GET COMPANY EMPLOYEES
@@ -707,6 +689,18 @@ export const unfollowCompany = async (userId: string, companyId: string) => {
   }
 };
 
+// GET COMPANY FOLLOW STATUS (dedicated lightweight endpoint \u2014 avoids sequential double query in getCompanyBySlug)
+export const getCompanyFollowStatus = async (userId: string, companyId: string) => {
+  const result = await prisma.company.findFirst({
+    where: {
+      id: companyId,
+      followers: { some: { id: userId } },
+    },
+    select: { id: true },
+  });
+  return { isFollowing: result !== null };
+};
+
 export const getCompanyAdminStats = async (companyId: string) => {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
@@ -714,9 +708,13 @@ export const getCompanyAdminStats = async (companyId: string) => {
   });
   if (!company) throw new AppError("Company not found", 404);
 
+  // Fetch all jobIds for this company once — avoids repeated multi-join through job table
+  const companyJobIds = await prisma.job
+    .findMany({ where: { companyId, deletedAt: null }, select: { id: true } })
+    .then((jobs) => jobs.map((j) => j.id));
+
   const [
     jobsCount,
-    applicantsCount,
     officeManagersCount,
     recruitersCount,
     pipelineBreakdown,
@@ -725,9 +723,6 @@ export const getCompanyAdminStats = async (companyId: string) => {
   ] = await Promise.all([
     prisma.job.count({
       where: { companyId, deletedAt: null }
-    }),
-    prisma.jobApplication.count({
-      where: { job: { companyId } }
     }),
     prisma.companyAdmin.count({
       where: { companyId, officeCity: { not: null } }
@@ -747,16 +742,26 @@ export const getCompanyAdminStats = async (companyId: string) => {
         }
       }
     }),
-    prisma.jobApplication.groupBy({
-      by: ["status"],
-      where: { job: { companyId } },
-      _count: true
-    }),
+    // Single groupBy replaces both applicantsCount + old pipelineBreakdown.
+    // Uses direct jobId FK (no join through job table) for maximum performance.
+    companyJobIds.length > 0
+      ? prisma.jobApplication.groupBy({
+          by: ["status"],
+          where: { jobId: { in: companyJobIds } },
+          _count: true
+        })
+      : Promise.resolve([]),
+    // Fixed: explicit select instead of include — pulls only required fields
     prisma.jobApplication.findMany({
-      where: { job: { companyId } },
+      where: companyJobIds.length > 0
+        ? { jobId: { in: companyJobIds } }
+        : { id: "__none__" },
       orderBy: { createdAt: "desc" },
       take: 5,
-      include: {
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
         job: { select: { title: true } },
         applicant: {
           select: {
@@ -771,12 +776,17 @@ export const getCompanyAdminStats = async (companyId: string) => {
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 5,
-      include: {
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        createdAt: true,
         _count: { select: { applications: true } }
       }
     })
   ]);
 
+  const applicantsCount = pipelineBreakdown.reduce((sum, g) => sum + g._count, 0);
   const pipeline = pipelineBreakdown.map((g) => ({
     status: g.status,
     count: g._count
@@ -885,33 +895,28 @@ export const assignCompanyRecruiter = async (actorId: string, companyId: string,
 
 export const removeCompanyRecruiter = async (companyId: string, userId: string) => {
   await prisma.$transaction(async (tx) => {
+    // Step 1: End the experience record at this company atomically
     await tx.experience.updateMany({
       where: { userId, companyId, isCurrent: true },
       data: { isCurrent: false, endDate: new Date() }
     });
-  });
 
-  setImmediate(() => {
-    prisma.$transaction(async (tx) => {
-      const otherRecruiterJobs = await tx.experience.count({
-        where: {
-          userId,
-          isCurrent: true,
-          companyId: { not: companyId }
-        }
-      });
-
-      if (otherRecruiterJobs === 0) {
-        const role = await tx.role.findUnique({ where: { name: "RECRUITER" } });
-        if (role) {
-          await tx.userRole.deleteMany({
-            where: { userId, roleId: role.id }
-          });
-        }
-      }
-    }).catch((err) => {
-      console.error("Failed in removeCompanyRecruiter background role cleanup:", err);
+    // Step 2: Check if user still has active recruiter experience elsewhere
+    const otherActiveExperiences = await tx.experience.count({
+      where: {
+        userId,
+        isCurrent: true,
+        companyId: { not: companyId },
+      },
     });
+
+    // Step 3: If no other active positions, revoke RECRUITER role in the same transaction
+    if (otherActiveExperiences === 0) {
+      const role = await tx.role.findUnique({ where: { name: "RECRUITER" } });
+      if (role) {
+        await tx.userRole.deleteMany({ where: { userId, roleId: role.id } });
+      }
+    }
   });
 
   return { message: "Recruiter removed successfully" };
@@ -1037,44 +1042,53 @@ export const submitCompanyClaim = async (
     corporateDoc: string;
   }
 ) => {
-  const company = await prisma.company.findUnique({
-    where: { id: data.companyId },
+  return await prisma.$transaction(async (tx) => {
+    // Atomic guard: only update if the company exists AND is not already claimed/verified.
+    // This prevents concurrent double-claim — only one writer will see count === 1.
+    const updateResult = await tx.company.updateMany({
+      where: {
+        id: data.companyId,
+        verificationStatus: { notIn: ["PENDING", "VERIFIED"] },
+      },
+      data: {
+        verificationStatus: "PENDING",
+        gstin: data.gstin,
+        cin: data.cin,
+        verificationDoc: data.corporateDoc,
+        claimedAt: new Date(),
+      },
+    });
+
+    if (updateResult.count === 0) {
+      // Either company doesn’t exist or is already in a non-updatable state
+      const existing = await tx.company.findUnique({
+        where: { id: data.companyId },
+        select: { id: true, verificationStatus: true },
+      });
+      if (!existing) throw new AppError("Company not found", 404);
+      throw new AppError(
+        `Company claim already ${existing.verificationStatus === "PENDING" ? "in review" : "verified"}`,
+        409,
+      );
+    }
+
+    const company = await tx.company.findUnique({ where: { id: data.companyId } });
+
+    const request = await tx.companyRequest.create({
+      data: {
+        requestedById: userId,
+        companyName: company!.name,
+        companyId: company!.id,
+        status: "PENDING",
+        requestType: "COMPANY_CLAIM",
+        businessEmail: data.businessEmail,
+        corporateDoc: data.corporateDoc,
+        pendingJobData: {},
+      },
+    });
+
+    return { company, request };
   });
-
-  if (!company) {
-    throw new AppError("Company not found", 404);
-  }
-
-  // Update target company verification status & fields
-  const updatedCompany = await prisma.company.update({
-    where: { id: data.companyId },
-    data: {
-      verificationStatus: "PENDING",
-      gstin: data.gstin,
-      cin: data.cin,
-      verificationDoc: data.corporateDoc,
-      claimedAt: new Date(),
-    },
-  });
-
-  // Create claim log entry in CompanyRequest
-  const request = await prisma.companyRequest.create({
-    data: {
-      requestedById: userId,
-      companyName: company.name,
-      companyId: company.id,
-      status: "PENDING",
-      requestType: "COMPANY_CLAIM",
-      businessEmail: data.businessEmail,
-      corporateDoc: data.corporateDoc,
-      pendingJobData: {},
-    },
-  });
-
-  return {
-    company: updatedCompany,
-    request,
-  };
 };
 
 // SUBMIT RECRUITER ONBOARDING
@@ -1154,33 +1168,47 @@ export const submitRecruiterOnboarding = async (
       };
     }
   } else {
-    // Flow 2: New Shadow Company
+    // Flow 2: New Shadow Company — optimistic create with P2002 retry
     const baseSlug = generateCompanySlug(data.companyName);
-    let attempt = 0;
-    let finalSlug = baseSlug;
+    const MAX_SLUG_ATTEMPTS = 5;
+    let shadowCompany: Awaited<ReturnType<typeof prisma.company.create>> | null = null;
 
-    while (attempt < 5) {
-      const testSlug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
-      const existing = await prisma.company.findUnique({
-        where: { slug: testSlug },
-      });
-      if (!existing) {
-        finalSlug = testSlug;
-        break;
+    for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt++) {
+      const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
+      try {
+        shadowCompany = await prisma.company.create({
+          data: {
+            name: data.companyName,
+            slug,
+            verified: false,
+            discoveredVia: "user-profile",
+          },
+        });
+        break; // success
+      } catch (err: unknown) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          const target = Array.isArray(err.meta?.target) ? (err.meta.target as string[]) : [];
+          if (target.includes("slug")) {
+            // Slug collision — retry with next suffix
+            continue;
+          }
+          if (target.includes("name")) {
+            // Concurrent request already created this company — look it up and continue
+            throw new AppError(
+              "Company registration is already in progress for this name. Please try again.",
+              409,
+            );
+          }
+        }
+        throw err;
       }
-      attempt++;
     }
 
-    const shadowCompany = await prisma.company.create({
-      data: {
-        name: data.companyName,
-        slug: finalSlug,
-        verified: false,
-        discoveredVia: "user-profile",
-      },
-    });
+    if (!shadowCompany) {
+      throw new AppError("Could not generate a unique company slug. Please try with a different name.", 500);
+    }
 
-    // Route the recruiter profile link under it
+    // Route the recruiter profile link under the new shadow company
     await assignCompanyRecruiter(userId, shadowCompany.id, userId, "Recruiter");
 
     return {

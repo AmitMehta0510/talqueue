@@ -15,9 +15,33 @@ import { generateSlug } from "shared/utils/slugify";
 
 import redis from "shared/database/redis";
 
-// ─── Redis key for the global jobs listing cache ──────────────────────────────
-const JOBS_LISTING_CACHE_KEY = "jobs:listing:all";
+// ─── Per-page Redis cache for jobs listing ────────────────────────────────────
+const JOBS_PAGE_CACHE_PREFIX = "jobs:page";
 const JOBS_LISTING_TTL_SECONDS = 60;
+
+const getJobsPageCacheKey = (page: number, limit: number) =>
+  `${JOBS_PAGE_CACHE_PREFIX}:${page}:${limit}`;
+
+// Invalidates ALL page-keyed cache entries for the jobs listing.
+// Called after any mutation (create / archive / delete).
+const invalidateJobsListingCache = async (): Promise<void> => {
+  try {
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await redis.scan(
+        cursor,
+        "MATCH",
+        `${JOBS_PAGE_CACHE_PREFIX}:*`,
+        "COUNT",
+        100,
+      );
+      if (keys.length > 0) await redis.del(...keys);
+      cursor = nextCursor;
+    } while (cursor !== "0");
+  } catch (err: any) {
+    console.warn("[Jobs Cache] Cache invalidation failed:", err?.message || err);
+  }
+};
 
 //
 // HELPERS
@@ -198,10 +222,8 @@ export const createJob = async (userId: string, data: any) => {
   // Sync to Elasticsearch
   syncJobsToElasticBulk([job.id]);
 
-  // Invalidate the global job listing cache so the new job appears immediately
-  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
-    console.error("[Jobs Cache] Failed to invalidate listing cache after createJob:", err?.message || err);
-  });
+  // Invalidate all per-page job listing cache entries so the new job appears immediately
+  invalidateJobsListingCache().catch(console.warn);
 
   //
   // ACTIVITY
@@ -310,100 +332,68 @@ export const createJob = async (userId: string, data: any) => {
 //
 export const getJobs = async (page = 1, limit = 20) => {
   const safeLimit = Math.min(limit, 50);
-
   const skip = (page - 1) * safeLimit;
+  const cacheKey = getJobsPageCacheKey(page, safeLimit);
 
-  // ── Cache-aside: check Redis first ──────────────────────────────────────────
-  // We use a single global key because any mutation (create/archive/delete)
-  // invalidates the entire listing. Pagination offsets are applied post-cache.
+  // ── Cache-aside: per-page key ─────────────────────────────────────────────
   try {
-    const cached = await redis.get(JOBS_LISTING_CACHE_KEY);
-    if (cached) {
-      const allJobs: any[] = JSON.parse(cached);
-      // Slice the in-memory result to honour the requested page/limit
-      return allJobs.slice(skip, skip + safeLimit);
-    }
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
   } catch (cacheErr: any) {
-    // Cache read failure is non-fatal — fall through to Prisma
     console.warn("[Jobs Cache] Redis read failed, falling back to Prisma:", cacheErr?.message || cacheErr);
   }
 
-  // ── Cache miss: query Prisma, then populate cache ────────────────────────────
-  const allJobs = await prisma.job.findMany({
-    where: {
-      status: "OPEN",
-
-      deletedAt: null,
-    },
-
-    select: {
-      id: true,
-
-      title: true,
-
-      slug: true,
-
-      location: true,
-
-      workMode: true,
-
-      type: true,
-
-      experienceLevel: true,
-
-      salaryMin: true,
-
-      salaryMax: true,
-
-      createdAt: true,
-
-      featured: true,
-
-      description: true,
-
-      requirements: true,
-
-      responsibilities: true,
-
-      perks: true,
-
-      skillsRequired: true,
-
-      applyUrl: true,
-
-      currency: true,
-
-      openings: true,
-
-      company: {
-        select: {
-          id: true,
-
-          name: true,
-
-          logoUrl: true,
-
-          verified: true,
-
-          slug: true,
+  // ── Cache miss: DB-level pagination (LIMIT/OFFSET pushed to Postgres) ─────
+  const [total, jobs] = await Promise.all([
+    prisma.job.count({ where: { status: "OPEN", deletedAt: null } }),
+    prisma.job.findMany({
+      where: { status: "OPEN", deletedAt: null },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        location: true,
+        workMode: true,
+        type: true,
+        experienceLevel: true,
+        salaryMin: true,
+        salaryMax: true,
+        createdAt: true,
+        featured: true,
+        description: true,
+        requirements: true,
+        responsibilities: true,
+        perks: true,
+        skillsRequired: true,
+        applyUrl: true,
+        currency: true,
+        openings: true,
+        company: {
+          select: { id: true, name: true, logoUrl: true, verified: true, slug: true },
         },
       },
-    },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: safeLimit,
+    }),
+  ]);
 
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  const result = {
+    jobs,
+    total,
+    page,
+    limit: safeLimit,
+    totalPages: Math.ceil(total / safeLimit),
+  };
 
-  // Populate cache in the background — do not block the HTTP response
+  // Populate this page's cache entry — do not block the HTTP response
   redis
-    .setex(JOBS_LISTING_CACHE_KEY, JOBS_LISTING_TTL_SECONDS, JSON.stringify(allJobs))
+    .setex(cacheKey, JOBS_LISTING_TTL_SECONDS, JSON.stringify(result))
     .catch((err: any) => {
       console.warn("[Jobs Cache] Failed to populate listing cache:", err?.message || err);
     });
 
-  // Return the paginated slice from the freshly fetched full list
-  return allJobs.slice(skip, skip + safeLimit);
+  return result;
 };
 
 //
@@ -658,10 +648,8 @@ export const archiveJob = async (
     },
   });
 
-  // Invalidate job listing cache — archived job must no longer appear
-  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
-    console.error("[Jobs Cache] Failed to invalidate listing cache after archiveJob:", err?.message || err);
-  });
+  // Invalidate all per-page job listing cache entries
+  invalidateJobsListingCache().catch(console.warn);
 
   //
   // ACTIVITY
@@ -705,10 +693,8 @@ export const deleteJob = async (
     },
   });
 
-  // Invalidate job listing cache — deleted job must no longer appear
-  redis.del(JOBS_LISTING_CACHE_KEY).catch((err) => {
-    console.error("[Jobs Cache] Failed to invalidate listing cache after deleteJob:", err?.message || err);
-  });
+  // Invalidate all per-page job listing cache entries
+  invalidateJobsListingCache().catch(console.warn);
 
   //
   // REPUTATION

@@ -1,33 +1,38 @@
 import { z } from "zod";
 
 export const createCompanySchema = z.object({
-  name: z.string().trim().min(2),
+  name: z.string().trim().min(2).max(150),
 
-  logoUrl: z.string().url().optional(),
+  logoUrl: z.string().url().max(512).optional(),
 
-  coverImageUrl: z.string().url().optional(),
+  coverImageUrl: z.string().url().max(512).optional(),
 
-  websiteUrl: z.string().url().optional(),
+  websiteUrl: z.string().url().max(512).optional(),
 
-  linkedinUrl: z.string().url().optional(),
+  linkedinUrl: z.string().url().max(512).optional(),
 
-  twitterUrl: z.string().url().optional(),
+  twitterUrl: z.string().url().max(512).optional(),
 
-  githubUrl: z.string().url().optional(),
+  githubUrl: z.string().url().max(512).optional(),
 
-  careersPageUrl: z.string().url().optional(),
+  careersPageUrl: z.string().url().max(512).optional(),
 
-  description: z.string().optional(),
+  description: z.string().max(5000).optional(),
 
-  tagline: z.string().optional(),
+  tagline: z.string().max(200).optional(),
 
-  headquarters: z.string().optional(),
+  headquarters: z.string().max(150).optional(),
 
   country: z.string().max(120).optional(),
 
-  industry: z.string().optional(),
+  industry: z.string().max(100).optional(),
 
-  foundedYear: z.number().int().optional(),
+  foundedYear: z
+    .number()
+    .int()
+    .min(1800)
+    .max(new Date().getFullYear())
+    .optional(),
 
   type: z
     .enum([
@@ -49,28 +54,28 @@ export const createCompanySchema = z.object({
 
 export const submitCompanyClaimSchema = z.object({
   companyId: z.string().uuid("companyId must be a valid UUID"),
-  gstin: z.string().trim().min(1, "GSTIN is required"),
-  cin: z.string().trim().min(1, "CIN is required"),
-  businessEmail: z.string().email("Invalid business email"),
-  corporateDoc: z.string().url("corporateDoc must be a valid URL"),
+  gstin: z.string().trim().min(1, "GSTIN is required").max(15, "GSTIN must be at most 15 characters"),
+  cin: z.string().trim().min(1, "CIN is required").max(21, "CIN must be at most 21 characters"),
+  businessEmail: z.string().email("Invalid business email").max(254),
+  corporateDoc: z.string().url("corporateDoc must be a valid URL").max(512),
 });
 
 export const submitRecruiterOnboardingSchema = z.object({
   companyId: z.string().uuid("companyId must be a valid UUID").optional().nullable(),
-  companyName: z.string().trim().min(1, "Company name is required"),
-  businessEmail: z.string().email("Invalid business email"),
+  companyName: z.string().trim().min(1, "Company name is required").max(150),
+  businessEmail: z.string().email("Invalid business email").max(254),
 });
 
 export const createCompanyOfficeSchema = z.object({
   companyId: z.string().uuid("companyId must be a valid UUID"),
-  name: z.string().trim().min(1, "Office name is required"),
-  address: z.string().trim().optional(),
-  city: z.string().trim().min(1, "City is required"),
+  name: z.string().trim().min(1, "Office name is required").max(150),
+  address: z.string().trim().max(300).optional(),
+  city: z.string().trim().min(1, "City is required").max(100),
   managerId: z.string().uuid("managerId must be a valid UUID").optional().nullable(),
 });
 
 export const createCompanyDepartmentSchema = z.object({
   companyId: z.string().uuid("companyId must be a valid UUID"),
-  name: z.string().trim().min(1, "Department name is required"),
-  code: z.string().trim().optional(),
+  name: z.string().trim().min(1, "Department name is required").max(150),
+  code: z.string().trim().max(30).optional(),
 });
