@@ -3771,7 +3771,7 @@ export const useHackathonSearchQuery = (query: string) =>
 
 export const useAdminStatsQuery = () => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
 
   return useQuery({
     queryKey: queryKeys.admin.stats,
@@ -3785,7 +3785,7 @@ export const useAdminStatsQuery = () => {
 
 export const useAdminUsersQuery = (search: string, limit = 50) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
 
   return useInfiniteQuery({
     queryKey: queryKeys.admin.users(search),
@@ -3967,7 +3967,7 @@ export const useListCompanyAdminsQuery = (companyId: string) => {
 
 export const useAdminPostsQuery = (q: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
   return useInfiniteQuery({
     queryKey: ["admin", "content", "posts", q],
     queryFn: async ({ pageParam, signal }) => {
@@ -3995,7 +3995,7 @@ export const useAdminDeletePostMutation = () => {
 
 export const useAdminHackathonsQuery = (q: string, cursor?: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
   return useQuery({
     queryKey: ["admin", "content", "hackathons", q, cursor],
     queryFn: async ({ signal }) => {
@@ -4070,7 +4070,7 @@ export const useAdminTriggerJobScraperMutation = () => {
 
 export const useAdminProjectsQuery = (q: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
   return useInfiniteQuery({
     queryKey: ["admin", "content", "projects", q],
     queryFn: async ({ pageParam, signal }) => {
@@ -4151,7 +4151,7 @@ export const useAdminCreateJobMutation = () => {
 
 export const useAdminCommunitiesQuery = (q: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
   return useInfiniteQuery({
     queryKey: ["admin", "content", "communities", q],
     queryFn: async ({ pageParam, signal }) => {
@@ -4180,7 +4180,7 @@ export const useAdminUpdateCommunityMutation = () => {
 
 export const useAdminReferralsQuery = (q: string) => {
   const { user } = useAuth();
-  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN");
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
   return useInfiniteQuery({
     queryKey: ["admin", "content", "referrals", q],
     queryFn: async ({ pageParam, signal }) => {
