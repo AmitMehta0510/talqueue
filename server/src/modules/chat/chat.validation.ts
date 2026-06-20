@@ -23,16 +23,13 @@ export const muteConversationSchema = z.object({
 export const attachmentSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1).max(255),
-  url: z.string().trim().min(1).optional(),
-  dataUrl: z.string().trim().min(1).optional(),
+  url: z.string().trim().url("Must be a valid URL"),
   mimeType: z.string().trim().min(1).max(150),
   size: z.number().int().nonnegative().max(25 * 1024 * 1024),
   type: z.enum(["IMAGE", "VIDEO", "FILE"]).optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
   duration: z.number().nonnegative().optional(),
-}).refine((attachment) => attachment.url || attachment.dataUrl, {
-  message: "Attachment requires url or dataUrl",
 });
 
 export const uploadAttachmentsSchema = z.object({

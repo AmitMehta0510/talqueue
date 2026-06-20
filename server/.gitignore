@@ -69,7 +69,7 @@ temp/
 # UPLOADS
 # =========================
 uploads/
-storage/
+/storage/
 
 # =========================
 # CACHE

@@ -15,6 +15,12 @@ const envSchema = z.object({
 
   // GitHub scraper token (optional — scraper degrades gracefully if absent)
   GITHUB_TOKEN: z.string().optional(),
+
+  // AWS S3 (optional, fallback to mock S3 in development/test if keys/bucket name are missing)
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().default("us-east-1"),
+  AWS_S3_BUCKET_NAME: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

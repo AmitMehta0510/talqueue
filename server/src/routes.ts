@@ -36,6 +36,7 @@ import driveInviteRoutes from "modules/driveInvites/driveInvites.routes";
 import resumeRoutes from "modules/resume/resume.routes";
 import resdexRoutes from "modules/resdex/resdex.routes";
 import forumRoutes from "routes/forum.routes";
+import storageRoutes from "modules/storage/storage.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 
@@ -88,6 +89,7 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "resume", path: "/resume", router: resumeRoutes },
   { key: "resdex", path: "/resdex", router: resdexRoutes },
   { key: "forum", path: "/forum", router: forumRoutes },
+  { key: "storage", path: "/storage", router: storageRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(

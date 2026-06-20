@@ -88,7 +88,6 @@ const normalizeAttachments = (attachments?: any[]) =>
     id: attachment.id,
     name: attachment.name,
     url: attachment.url,
-    dataUrl: attachment.dataUrl,
     mimeType: attachment.mimeType,
     size: attachment.size,
     type: attachment.type,

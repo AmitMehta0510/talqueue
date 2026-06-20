@@ -1,5 +1,6 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
+import { getPresignedDownloadUrl } from "shared/services/s3";
 import { JobStatus, Prisma } from "@prisma/client";
 import { createNotification } from "modules/notificatios/notifications.service";
 import slugify from "slugify";
@@ -1391,8 +1392,17 @@ export const listCollegeRequests = async (params: {
     },
   });
 
+  const requestsWithUrls = await Promise.all(
+    requests.map(async (req) => {
+      if (req.authorityLetterheadDoc) {
+        req.authorityLetterheadDoc = await getPresignedDownloadUrl(req.authorityLetterheadDoc);
+      }
+      return req;
+    })
+  );
+
   const hasNextPage = requests.length > limit;
-  const page = hasNextPage ? requests.slice(0, limit) : requests;
+  const page = hasNextPage ? requestsWithUrls.slice(0, limit) : requestsWithUrls;
   return {
     requests: page,
     nextCursor: hasNextPage ? page[page.length - 1].id : null,
@@ -1419,6 +1429,11 @@ export const getCollegeRequest = async (requestId: string) => {
   });
 
   if (!request) throw new AppError("College request not found", 404);
+
+  if (request.authorityLetterheadDoc) {
+    request.authorityLetterheadDoc = await getPresignedDownloadUrl(request.authorityLetterheadDoc);
+  }
+
   return request;
 };
 
