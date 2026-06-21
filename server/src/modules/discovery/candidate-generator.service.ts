@@ -361,7 +361,7 @@ export const generateFeedCandidates = async (
         salaryMin: true,
         salaryMax: true,
         currency: true,
-        jobType: true,
+        type: true,
         workMode: true,
         createdAt: true,
         company: {
