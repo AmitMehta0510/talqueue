@@ -195,6 +195,7 @@ export const queryKeys = {
   },
   admin: {
     stats: ["admin", "stats"] as const,
+    analytics: (range: number) => ["admin", "analytics", range] as const,
     users: (search: string) => ["admin", "users", search] as const,
     collegeAdmins: (collegeId: string) => ["admin", "colleges", collegeId, "admins"] as const,
     companyAdmins: (companyId: string) => ["admin", "companies", companyId, "admins"] as const,

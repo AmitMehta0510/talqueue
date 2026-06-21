@@ -3783,6 +3783,20 @@ export const useAdminStatsQuery = () => {
   });
 };
 
+export const useAdminAnalyticsQuery = (range: number) => {
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");
+
+  return useQuery({
+    queryKey: queryKeys.admin.analytics(range),
+    queryFn: async ({ signal }) => {
+      const result = await api.getAdminAnalytics({ range }, { signal });
+      return result.data;
+    },
+    enabled: Boolean(user && isPlatformAdmin),
+  });
+};
+
 export const useAdminUsersQuery = (search: string, limit = 50) => {
   const { user } = useAuth();
   const isPlatformAdmin = user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN");

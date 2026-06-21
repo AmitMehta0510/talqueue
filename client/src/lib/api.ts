@@ -1947,6 +1947,13 @@ export const api = {
       userRoleDistribution: Array<{ role: string; count: number }>;
       platformRoleDistribution: Array<{ roleName: string; count: number }>;
     }>("/admin/stats", options),
+  getAdminAnalytics: (params: { range?: number }, options?: EndpointOptions) =>
+    request<{
+      range: number;
+      generatedAt: string;
+      userRegistrations: Array<{ date: string; count: number }>;
+      userFootprint: Array<{ date: string; count: number }>;
+    }>(`/admin/analytics/dashboard${toQuery(params)}`, options),
   listAdminUsers: (params: { search?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{
       users: User[];
