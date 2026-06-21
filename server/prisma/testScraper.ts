@@ -1,25 +1,23 @@
-/**
- * testScraper.ts — one-off manual scraper test
- * Run: npx ts-node -r tsconfig-paths/register prisma/testScraper.ts
- */
+/// <reference types="node" />
 
-import "shared/config/loadEnv";
-import { runDevpostScraper } from "../src/modules/hackathons/scraper/hackathon-scraper.service";
-import prisma from "shared/database/prisma";
+import "../src/shared/config/loadEnv";
+import { runAllScrapers } from "../src/modules/hackathons/scraper/hackathon-scraper.service";
+import prisma from "../src/shared/database/prisma";
+
 
 async function main() {
-  console.log("Running Devpost scraper (test run)...\n");
+  console.log("Running all hackathon scrapers...\n");
 
-  const result = await runDevpostScraper();
+  const result = await runAllScrapers();
 
   console.log("\n--- Scraper Result ---");
-  console.log(`Total fetched from Devpost: ${result.totalFetched}`);
-  console.log(`Created (new):             ${result.created}`);
-  console.log(`Updated (existing):        ${result.updated}`);
-  console.log(`Errors:                    ${result.errors}`);
+  console.log(`Total fetched:      ${result.totalFetched}`);
+  console.log(`Created (new):     ${result.created}`);
+  console.log(`Updated (existing):${result.updated}`);
+  console.log(`Errors:            ${result.errors}`);
 
-  const count = await prisma.hackathon.count({ where: { sourcePlatform: "Devpost" } });
-  console.log(`\nTotal Devpost hackathons in DB: ${count}`);
+  const count = await prisma.hackathon.count();
+  console.log(`\nTotal hackathons in DB: ${count}`);
 }
 
 main()
@@ -28,3 +26,4 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+

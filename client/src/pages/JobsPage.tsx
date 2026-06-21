@@ -703,7 +703,7 @@ export function JobsPage() {
 
   const getSource = () => {
     switch (activeTab) {
-      case "explore":       return { list: jobsQuery.data || [], loading: jobsQuery.isLoading, error: jobsQuery.isError, refetch: jobsQuery.refetch };
+      case "explore":       return { list: jobsQuery.data?.jobs || [], loading: jobsQuery.isLoading, error: jobsQuery.isError, refetch: jobsQuery.refetch };
       case "recommended":   return { list: recommendedQuery.data || [], loading: recommendedQuery.isLoading, error: recommendedQuery.isError, refetch: recommendedQuery.refetch };
       case "saved":         return { list: savedQuery.data || [], loading: savedQuery.isLoading, error: savedQuery.isError, refetch: savedQuery.refetch };
       case "applications":  return { list: (applicationsQuery.data || []).map((a) => a.job).filter(Boolean) as Job[], loading: applicationsQuery.isLoading, error: applicationsQuery.isError, refetch: applicationsQuery.refetch };

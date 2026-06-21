@@ -1,15 +1,8 @@
-/**
- * seedScraper.ts
- *
- * Creates the system bot user used by the hackathon scraper
- * as the `createdById` for automatically imported hackathons.
- *
- * Run once:
- *   npx ts-node -r tsconfig-paths/register prisma/seedScraper.ts
- */
+/// <reference types="node" />
 
-import "shared/config/loadEnv";
-import prisma from "shared/database/prisma";
+import "../src/shared/config/loadEnv";
+import prisma from "../src/shared/database/prisma";
+
 
 async function main() {
   const email = "scraper@platform.internal";
