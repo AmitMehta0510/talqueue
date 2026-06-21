@@ -120,7 +120,7 @@ export const createProject = async (
     // BACKGROUND SIDE EFFECTS
     //
     Promise.all([
-      addReputation(userId, "PROJECT_CREATED", 5, "Created a project", {
+      addReputation(userId, "PROJECT_CREATED", 0, "Created a project", {
         projectId: project.id,
       }),
 

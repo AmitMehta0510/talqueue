@@ -247,7 +247,7 @@ export const createPost = async (userId: string, data: any) => {
   //
   // Lightweight reputation
   //
-  addReputation(userId, "POST_CREATED", 1, "Created a post", {
+  addReputation(userId, "POST_CREATED", 0, "Created a post", {
     postId: post.id,
   }).catch(console.error);
 
@@ -799,7 +799,7 @@ export const createComment = async (
   //
   // Reputation
   //
-  addReputation(userId, "COMMENT_CREATED", 1, "Commented on a post", {
+  addReputation(userId, "COMMENT_CREATED", 0, "Commented on a post", {
     postId,
   }).catch(console.error);
 
@@ -1178,7 +1178,7 @@ export const repostPost = async (
   //
   // Reputation
   //
-  addReputation(userId, "POST_SHARED", 1, "Reposted a post", {
+  addReputation(userId, "POST_SHARED", 0, "Reposted a post", {
     postId,
   }).catch(console.error);
 

@@ -1492,7 +1492,7 @@ export const addExperience = async (
         await addReputation(
           userId,
           "EXPERIENCE_ADDED",
-          verified ? 20 : 5,
+          verified ? 20 : 0,
           verified ? "Added verified experience" : "Added experience",
           { experienceId: experience.id }
         );

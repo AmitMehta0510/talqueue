@@ -303,7 +303,7 @@ export const applyToJob = async (
 
         "JOB_APPLIED",
 
-        3,
+        0,
 
         "Applied to a job",
 

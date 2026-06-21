@@ -398,7 +398,7 @@ export const reviewReferralRequest = async (
 
       "SUCCESSFUL_REFERRAL",
 
-      25,
+      75,
 
       "Successfully referred a candidate",
 
