@@ -962,7 +962,7 @@ export function JobsPage() {
             <div>
               <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Job Type</p>
               <div className="space-y-2">
-                {["FULL_TIME", "PART_TIME", "INTERNSHIP", "CONTRACT"].map((t) => (
+                {["FULL_TIME", "PART_TIME", "INTERNSHIP", "ENTRY_LEVEL", "CONTRACT"].map((t) => (
                   <label key={t} className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-600 font-medium hover:text-slate-900">
                     <input
                       type="checkbox"

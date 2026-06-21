@@ -491,41 +491,46 @@ export const searchJobs = async (filters: SearchJobsFilters) => {
     : undefined;
 
   // ── Prisma fallback query (reused on ES failure) ────────────────────────────
-  const prismaFallback = async () => {
-    return prisma.job.findMany({
-      where: {
-        status: "OPEN",
-        deletedAt: null,
-        ...(filters.query && {
-          OR: [
-            { title: { contains: filters.query, mode: "insensitive" } },
-            { description: { contains: filters.query, mode: "insensitive" } },
-            { company: { name: { contains: filters.query, mode: "insensitive" } } },
-          ],
-        }),
-        ...(filters.companyName && {
-          company: { name: { contains: filters.companyName, mode: "insensitive" } },
-        }),
-        ...(filters.workMode && { workMode: filters.workMode as any }),
-        ...(filters.experienceLevel && { experienceLevel: filters.experienceLevel as any }),
-        ...(filters.type && { type: filters.type as any }),
-        ...(filters.location && {
-          location: { contains: filters.location, mode: "insensitive" },
-        }),
-        ...(filters.salaryMin !== undefined && { salaryMin: { gte: filters.salaryMin } }),
-        ...(filters.salaryMax !== undefined && { salaryMax: { lte: filters.salaryMax } }),
-        ...(postedAfter && { createdAt: { gte: postedAfter } }),
-        ...(filters.skills?.length && { skillsRequired: { hasSome: filters.skills } }),
-      },
-      select: {
-        id: true, title: true, slug: true, location: true, workMode: true,
-        type: true, experienceLevel: true, salaryMin: true, salaryMax: true,
-        createdAt: true, featured: true, skillsRequired: true,
-        company: { select: { id: true, name: true, logoUrl: true, verified: true } },
-      },
-      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
-      take: safeLimit,
-    });
+  const prismaFallback = async (): Promise<{ jobs: any[]; total: number }> => {
+    const where = {
+      status: "OPEN" as const,
+      deletedAt: null,
+      ...(filters.query && {
+        OR: [
+          { title: { contains: filters.query, mode: "insensitive" as const } },
+          { description: { contains: filters.query, mode: "insensitive" as const } },
+          { company: { name: { contains: filters.query, mode: "insensitive" as const } } },
+        ],
+      }),
+      ...(filters.companyName && {
+        company: { name: { contains: filters.companyName, mode: "insensitive" as const } },
+      }),
+      ...(filters.workMode && { workMode: filters.workMode as any }),
+      ...(filters.experienceLevel && { experienceLevel: filters.experienceLevel as any }),
+      ...(filters.type && { type: filters.type as any }),
+      ...(filters.location && {
+        location: { contains: filters.location, mode: "insensitive" as const },
+      }),
+      ...(filters.salaryMin !== undefined && { salaryMin: { gte: filters.salaryMin } }),
+      ...(filters.salaryMax !== undefined && { salaryMax: { lte: filters.salaryMax } }),
+      ...(postedAfter && { createdAt: { gte: postedAfter } }),
+      ...(filters.skills?.length && { skillsRequired: { hasSome: filters.skills } }),
+    };
+    const [jobs, total] = await Promise.all([
+      prisma.job.findMany({
+        where,
+        select: {
+          id: true, title: true, slug: true, location: true, workMode: true,
+          type: true, experienceLevel: true, salaryMin: true, salaryMax: true,
+          createdAt: true, featured: true, skillsRequired: true,
+          company: { select: { id: true, name: true, logoUrl: true, verified: true } },
+        },
+        orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+        take: safeLimit,
+      }),
+      prisma.job.count({ where }),
+    ]);
+    return { jobs, total };
   };
 
   // ── Build Elasticsearch bool query ─────────────────────────────────────────
@@ -606,7 +611,12 @@ export const searchJobs = async (filters: SearchJobsFilters) => {
     });
 
     const hits = esResponse.hits?.hits ?? [];
-    if (hits.length === 0) return [];
+    // Extract the filtered total count from ES (hits.total can be a number or { value, relation })
+    const total = typeof esResponse.hits.total === "number"
+      ? esResponse.hits.total
+      : ((esResponse.hits.total as any)?.value ?? hits.length);
+
+    if (hits.length === 0) return { jobs: [], total };
 
     const esIds = hits.map((h) => h._id as string);
 
@@ -623,9 +633,10 @@ export const searchJobs = async (filters: SearchJobsFilters) => {
 
     // Re-order Prisma results to match ES relevance ranking
     const jobMap = new Map(jobs.map((j) => [j.id, j]));
-    return esIds
-      .map((id) => jobMap.get(id))
-      .filter((j): j is NonNullable<typeof j> => j !== undefined);
+    return {
+      jobs: esIds.map((id) => jobMap.get(id)).filter((j): j is NonNullable<typeof j> => j !== undefined),
+      total,
+    };
   } catch (esErr: any) {
     // ── Fail-soft: ES unavailable → fall back to Prisma ──────────────────────
     console.warn(
@@ -730,7 +741,7 @@ export const globalSearch = async (query: string) => {
     ...users.map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),
     ...projects.map((p) => ({ type: "PROJECT", score: p.relevanceScore, data: p.project })),
     ...hackathons.map((h) => ({ type: "HACKATHON", score: h.relevanceScore, data: h.hackathon })),
-    ...jobs.map((j) => ({ type: "JOB", score: j.featured ? 200 : 100, data: j })),
+    ...jobs.jobs.map((j) => ({ type: "JOB", score: j.featured ? 200 : 100, data: j })),
     ...companies.map((c) => ({ type: "COMPANY", score: c.verified ? 200 : 100, data: c })),
     ...communities.map((c) => ({ type: "COMMUNITY", score: Math.round((c.trendingScore || 0) * 10), data: c })),
   ];
@@ -741,9 +752,10 @@ export const globalSearch = async (query: string) => {
     users,
     projects,
     hackathons,
-    jobs,
+    jobs: jobs.jobs,
+    jobsTotal: jobs.total,
     companies,
     communities,
     topResults: topResults.slice(0, 15),
   };
-};
+};

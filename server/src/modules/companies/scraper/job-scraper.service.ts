@@ -145,20 +145,35 @@ function isTechRole(title: string): boolean {
 // Helper to parse job type from title
 function parseJobType(title: string): JobType {
   const t = title.toLowerCase();
+  // Internship / Co-op patterns
   if (t.includes("intern") || t.includes("co-op") || t.includes("coop")) return "INTERNSHIP";
+  // Entry-level / Fresher / New Grad / Campus patterns
+  if (
+    t.includes("fresher") ||
+    t.includes("new grad") ||
+    t.includes("new graduate") ||
+    t.includes("graduate trainee") ||
+    t.includes("campus hire") ||
+    t.includes("entry level") ||
+    t.includes("entry-level") ||
+    t.includes("associate engineer") ||
+    t.includes("junior engineer")
+  ) return "ENTRY_LEVEL";
   if (t.includes("contract") || t.includes("contractor")) return "CONTRACT";
   if (t.includes("part-time") || t.includes("part time")) return "PART_TIME";
   if (t.includes("freelance")) return "FREELANCE";
   return "FULL_TIME";
 }
 
-// Helper to parse work mode from location
+// Helper to parse work mode from location.
+// Allow-list approach: only explicit 'remote'/'hybrid' keywords get those modes.
+// Any city name, office address, or unrecognised string defaults to ONSITE.
 function parseWorkMode(location: string): WorkMode {
   const l = location.toLowerCase();
-  if (l.includes("remote")) return "REMOTE";
+  if (l.includes("remote") || l.includes("anywhere") || l.includes("distributed")) return "REMOTE";
   if (l.includes("hybrid")) return "HYBRID";
-  if (l.includes("onsite") || l.includes("on-site") || l.includes("office")) return "ONSITE";
-  return "HYBRID"; // default fallback
+  // City names, office addresses, and anything else → ONSITE
+  return "ONSITE";
 }
 
 // Helper to extract skills from title and description
@@ -249,6 +264,7 @@ export interface CompanyRow {
   headquarters: string | null;
   country: string | null;
   websiteUrl: string | null;
+  careersPageUrl?: string | null;
 }
 
 interface ProcessResult {
@@ -524,6 +540,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
         const locationName = company.headquarters || "Remote";
         const skillsRequired = extractSkills(jobTitle, description);
+        // Use the company's dedicated careers page URL if available; fall back to
+        // websiteUrl + /careers; null if neither is set (frontend shows generic CTA).
+        const mockApplyUrl = company.careersPageUrl || (company.websiteUrl ? `${company.websiteUrl}/careers` : null);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -537,7 +556,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             location: locationName,
             type: template.type as JobType,
             workMode: template.workMode as WorkMode,
-            applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
+            applyUrl: mockApplyUrl,
             skillsRequired,
             status: "OPEN",
             externalJobId: externalId,
@@ -551,7 +570,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             location: locationName,
             type: template.type as JobType,
             workMode: template.workMode as WorkMode,
-            applyUrl: company.websiteUrl ? `${company.websiteUrl}/careers` : "https://google.com/careers",
+            applyUrl: mockApplyUrl,
             skillsRequired,
             status: "OPEN",
             atsSource: "mock",
@@ -609,7 +628,7 @@ export async function runJobScrape() {
 
   // Fetch all companies from database
   const companies = await prisma.company.findMany({
-    select: { id: true, name: true, slug: true, headquarters: true, country: true, websiteUrl: true }
+    select: { id: true, name: true, slug: true, headquarters: true, country: true, websiteUrl: true, careersPageUrl: true }
   });
 
   let created = 0;

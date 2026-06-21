@@ -257,8 +257,9 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
                 onChange={(e) => setForm((c) => ({ ...c, type: e.target.value }))}
               >
                 <option value="FULL_TIME">Full Time</option>
-                <option value="PART_TIME">Part Time</option>
                 <option value="INTERNSHIP">Internship</option>
+                <option value="ENTRY_LEVEL">Entry Level</option>
+                <option value="PART_TIME">Part Time</option>
                 <option value="CONTRACT">Contract</option>
                 <option value="FREELANCE">Freelance</option>
               </select>

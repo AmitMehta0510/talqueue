@@ -2509,7 +2509,13 @@ export const api = {
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
   jobs: (params?: { page?: number; limit?: number }, options?: EndpointOptions) =>
-    request<Job[]>(`/jobs${toQuery(params || {})}`, options),
+    request<{
+      jobs: Job[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/jobs${toQuery(params || {})}`, options),
   createJob: (body: {
     companyId?: string;
     companyName?: string;
@@ -2612,7 +2618,7 @@ export const api = {
   searchHackathons: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
     request<Hackathon[]>(`/search/hackathons${toQuery({ ...params, limit: params.limit || 12 })}`, options),
   searchJobs: (params: { q?: string; companyName?: string; skills?: string; workMode?: string; experienceLevel?: string; location?: string; type?: string; salaryMin?: number; salaryMax?: number; postedWithinDays?: number; limit?: number }, options?: EndpointOptions) =>
-    request<Job[]>(`/search/jobs${toQuery({ ...params, limit: params.limit || 20 })}`, options),
+    request<{ jobs: Job[]; total: number }>(`/search/jobs${toQuery({ ...params, limit: params.limit || 20 })}`, options),
   searchCompanies: (params: { q?: string; industry?: string; size?: string; location?: string; hiringEnabled?: string; referralEnabled?: string; limit?: number }, options?: EndpointOptions) =>
     request<Company[]>(`/search/companies${toQuery({ ...params, limit: params.limit || 20 })}`, options),
   searchCommunities: (params: { q?: string; type?: string; category?: string; limit?: number }, options?: EndpointOptions) =>

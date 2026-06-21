@@ -64,7 +64,7 @@ export function FeedPage() {
 
   const feed = useMemo(() => feedQuery.data || [], [feedQuery.data]);
   const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
-  const jobs = useMemo(() => jobsQuery.data || [], [jobsQuery.data]);
+  const jobs = useMemo(() => jobsQuery.data?.jobs || [], [jobsQuery.data]);
   const leaders = useMemo(() => leaderboardQuery.data || [], [leaderboardQuery.data]);
   const featuredHackathons = useMemo(() => hackathonsQuery.data || [], [hackathonsQuery.data]);
 

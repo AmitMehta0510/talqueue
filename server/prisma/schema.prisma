@@ -242,6 +242,7 @@ enum JobType {
   PART_TIME
   CONTRACT
   FREELANCE
+  ENTRY_LEVEL
 }
 
 enum WorkMode {

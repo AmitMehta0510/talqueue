@@ -29,6 +29,7 @@ export const createJobSchema = z.object({
     "PART_TIME",
     "CONTRACT",
     "FREELANCE",
+    "ENTRY_LEVEL",
   ]),
 
   experienceLevel: z.string().optional(),

@@ -185,6 +185,7 @@ export function JobsPanel() {
             <option value="">All Job Types</option>
             <option value="FULL_TIME">FULL_TIME</option>
             <option value="INTERNSHIP">INTERNSHIP</option>
+            <option value="ENTRY_LEVEL">ENTRY_LEVEL</option>
             <option value="PART_TIME">PART_TIME</option>
             <option value="CONTRACT">CONTRACT</option>
             <option value="FREELANCE">FREELANCE</option>
@@ -483,6 +484,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               >
                 <option value="FULL_TIME">Full Time</option>
                 <option value="INTERNSHIP">Internship</option>
+                <option value="ENTRY_LEVEL">Entry Level</option>
                 <option value="PART_TIME">Part Time</option>
                 <option value="CONTRACT">Contract</option>
                 <option value="FREELANCE">Freelance</option>
@@ -878,6 +880,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               >
                 <option value="FULL_TIME">Full Time</option>
                 <option value="INTERNSHIP">Internship</option>
+                <option value="ENTRY_LEVEL">Entry Level</option>
                 <option value="PART_TIME">Part Time</option>
                 <option value="CONTRACT">Contract</option>
                 <option value="FREELANCE">Freelance</option>

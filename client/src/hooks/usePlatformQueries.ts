@@ -1523,7 +1523,7 @@ export const useJobsQuery = (params?: { page?: number; limit?: number }) =>
     queryKey: [...queryKeys.jobs.list(), params],
     queryFn: async ({ signal }) => {
       const result = await api.jobs(params, { signal });
-      return result.data || [];
+      return result.data || { jobs: [], total: 0, page: 1, limit: 20, totalPages: 0 };
     },
   });
 
@@ -2678,7 +2678,7 @@ export const usePlatformSearchMutation = () => {
           ...(f.salaryMax && { salaryMax: Number(f.salaryMax) }),
           ...(f.freshness && { postedWithinDays: Number(f.freshness) }),
         });
-        return { jobs: result.data };
+        return { jobs: result.data.jobs, jobsTotal: result.data.total };
       }
 
       // ── Hackathons ────────────────────────────────────────────────────────
@@ -2731,7 +2731,8 @@ export const usePlatformSearchMutation = () => {
         ...(searchQuery ? globalResult.data : {}),
         users: flattenUsers(userResult.data as any),
         projects: flattenProjects(projectResult.data as any),
-        jobs: jobResult.data,
+        jobs: jobResult.data.jobs,
+        jobsTotal: jobResult.data.total,
         companies: companyResult.data,
         communities: communityResult.data,
       };
