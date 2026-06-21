@@ -8,7 +8,7 @@ vi.mock("shared/database/redis", () => {
   const store = new Map<string, string>();
   return {
     default: {
-      setex: vi.fn().mockImplementation(async (key, ttl, value) => {
+      setex: vi.fn().mockImplementation(async (key, _ttl, value) => {
         store.set(key, value);
       }),
       get: vi.fn().mockImplementation(async (key) => {
@@ -17,6 +17,8 @@ vi.mock("shared/database/redis", () => {
       del: vi.fn().mockImplementation(async (key) => {
         store.delete(key);
       }),
+      // Required by getMyProfile's sliding-window cache refresh
+      expire: vi.fn().mockResolvedValue(1),
     },
   };
 });
@@ -248,4 +250,460 @@ describe("Users Controller & Service - Whitelist and Prefix Search", () => {
     expect(queryArgs.where.name.startsWith).toBe("rea");
     expect(queryArgs.where.name.contains).toBeUndefined();
   });
+});
+
+// ---------------------------------------------------------------------------
+// Reusable typed fixtures — defined once, shared across all new suites below.
+// Keeping them module-scoped avoids allocating fresh objects on every test run
+// while still being safe because each test resets relevant mocks via beforeEach.
+// ---------------------------------------------------------------------------
+
+/** Minimal shape that satisfies the `userProfileSelect` Prisma projection. */
+const MOCK_USER_PROFILE = {
+  id: "user-abc-123",
+  email: "alice@example.com",
+  username: "alice_dev",
+  status: "ACTIVE",
+  followersCount: 42,
+  followingCount: 18,
+  connectionCount: 5,
+  postCount: 7,
+  profileCompleteness: 65,
+  verifiedEngineer: false,
+  availabilityStatus: null,
+  reputationScore: 120,
+  engineeringScore: 8,
+  trustLevel: "INTERMEDIATE" as const,
+  primaryRole: "STUDENT" as const,
+  openToWork: true,
+  openToInternship: false,
+  acceptingCollaborators: true,
+  acceptingReferrals: false,
+  acceptingMentorship: false,
+  createdAt: new Date("2025-01-01T00:00:00Z"),
+  updatedAt: new Date("2025-06-01T00:00:00Z"),
+  profile: {
+    fullName: "Alice Developer",
+    collegeId: "college-xyz",
+    departmentId: "dept-cs-001",
+    college: { id: "college-xyz", name: "Tech University" },
+    department: { id: "dept-cs-001", name: "Computer Science" },
+  },
+  _count: { skills: 4, experiences: 2, educations: 1, roles: 1 },
+} as const;
+
+/** Snapshot of the user row as stored inside the transaction for updateProfile. */
+const MOCK_TX_USER = {
+  id: MOCK_USER_PROFILE.id,
+  username: MOCK_USER_PROFILE.username,
+  profile: {
+    fullName: "Alice Developer",
+    collegeId: "college-xyz" as string | null,
+    departmentId: "dept-cs-001" as string | null,
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Suite 1: getMyProfile
+// ---------------------------------------------------------------------------
+describe("Users Service - getMyProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks(); // ensure no vi.spyOn() from prior suites intercepts
+    // Reset prisma.$transaction to a safe default so no prior test stub bleeds in
+    (prisma.$transaction as any) = async (cb: any) => cb(prisma);
+  });
+
+  // ------------------------------------------------------------------
+  // Test 1 — Cache-Miss Path (cold start)
+  //
+  // Verifies that when Redis has no cached entry (returns null), the
+  // service correctly falls through to Prisma, returns all required
+  // profile fields, and then writes the result into Redis with a 180-second
+  // TTL so subsequent calls are served from cache.
+  // ------------------------------------------------------------------
+  test(
+    "cache-miss: falls through to Prisma, returns correct profile fields, " +
+      "and writes result to Redis with 180 s TTL",
+    async () => {
+      // Redis cache is empty for this user.
+      vi.mocked(redis.get).mockResolvedValueOnce(null);
+
+      // Prisma returns the full profile projection.
+      (prisma.user.findUnique as any) = vi
+        .fn()
+        .mockResolvedValue(MOCK_USER_PROFILE);
+
+      const result = await usersService.getMyProfile(MOCK_USER_PROFILE.id);
+
+      // ── Assertions on returned shape ──────────────────────────────────
+      expect(result.id).toBe(MOCK_USER_PROFILE.id);
+      expect(result.email).toBe(MOCK_USER_PROFILE.email);
+      expect(result.username).toBe(MOCK_USER_PROFILE.username);
+      expect(result.followersCount).toBe(MOCK_USER_PROFILE.followersCount);
+      expect(result.profileCompleteness).toBe(
+        MOCK_USER_PROFILE.profileCompleteness
+      );
+      expect(result.profile?.college?.name).toBe("Tech University");
+      expect(result._count.skills).toBe(4);
+
+      // ── Assertions on Prisma call ─────────────────────────────────────
+      expect(prisma.user.findUnique).toHaveBeenCalledOnce();
+      expect(prisma.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: MOCK_USER_PROFILE.id },
+        })
+      );
+
+      // ── Assertions on Redis write-back ────────────────────────────────
+      // The service must cache the result so subsequent hits skip DB.
+      expect(redis.setex).toHaveBeenCalledWith(
+        `profile:${MOCK_USER_PROFILE.id}`,
+        180,
+        JSON.stringify(MOCK_USER_PROFILE)
+      );
+    }
+  );
+
+  // ------------------------------------------------------------------
+  // Test 2 — Cache-Hit Path (warm cache)
+  //
+  // Ensures that when Redis has a valid JSON entry, getMyProfile returns
+  // data directly from cache WITHOUT touching Prisma. The service also
+  // calls redis.expire internally to implement a sliding-window strategy.
+  // ------------------------------------------------------------------
+  test(
+    "cache-hit: returns deserialized data from Redis without querying Prisma",
+    async () => {
+      // Seed the Redis mock with a pre-serialized profile.
+      vi.mocked(redis.get).mockResolvedValueOnce(
+        JSON.stringify(MOCK_USER_PROFILE)
+      );
+
+      // Attach a spy so we can assert Prisma was NOT invoked.
+      const prismaSpy = vi.fn();
+      (prisma.user.findUnique as any) = prismaSpy;
+
+      const result = await usersService.getMyProfile(MOCK_USER_PROFILE.id);
+
+      // ── Data correctness ──────────────────────────────────────────────
+      expect(result.id).toBe(MOCK_USER_PROFILE.id);
+      expect(result.username).toBe(MOCK_USER_PROFILE.username);
+      expect(result.reputationScore).toBe(MOCK_USER_PROFILE.reputationScore);
+
+      // ── DB must not have been hit ─────────────────────────────────────
+      expect(prismaSpy).not.toHaveBeenCalled();
+
+      // ── Redis was queried with the correct cache key ───────────────────
+      expect(vi.mocked(redis.get)).toHaveBeenCalledWith(
+        `profile:${MOCK_USER_PROFILE.id}`
+      );
+    }
+  );
+
+  // ------------------------------------------------------------------
+  // Test 3 — Non-Existent User (404 AppError)
+  //
+  // When Prisma returns null (unknown userId), getMyProfile must throw
+  // an AppError with statusCode 404 and the canonical message "User not
+  // found". This guards against callers receiving undefined and avoids
+  // silent data leaks for deleted/suspended accounts.
+  // ------------------------------------------------------------------
+  test(
+    "throws AppError(404) when Prisma returns null for a non-existent userId",
+    async () => {
+      // Cache miss — force a DB lookup.
+      vi.mocked(redis.get).mockResolvedValueOnce(null);
+
+      // Prisma finds nothing.
+      (prisma.user.findUnique as any) = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        usersService.getMyProfile("non-existent-user-id")
+      ).rejects.toMatchObject({
+        message: "User not found",
+        statusCode: 404,
+      });
+
+      // Verify that no stale data was cached for the missing user.
+      expect(redis.setex).not.toHaveBeenCalled();
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Suite 2: updateProfile — Partial Update (transaction-safe)
+// ---------------------------------------------------------------------------
+describe("Users Service - updateProfile (partial fields, transaction-safe)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks(); // remove vi.spyOn(usersService,'updateProfile') from updateMe test
+    // Guarantee a clean $transaction base between tests — prevents stub bleed-through
+    (prisma.$transaction as any) = async (_cb: any) => { throw new Error("$transaction not stubbed in this test"); };
+    vi.mocked(redis.del).mockResolvedValue(1 as any);
+  });
+
+  // ------------------------------------------------------------------
+  // Test 1 — Partial field update: only changed fields enter the DB
+  //
+  // updateProfile is designed so that `stripUndefined` removes any key
+  // whose value is `undefined`, meaning the Prisma upsert only carries
+  // the fields the caller actually wants to change. This prevents
+  // accidental overwrites of unrelated columns.
+  //
+  // This test sends only `bio` and `headline`, and asserts:
+  //   a) The transaction commits successfully.
+  //   b) The profile upsert is called with exactly those two fields.
+  //   c) Fields absent from the payload (e.g. location, avatarUrl) are
+  //      NOT present in the update args.
+  //   d) Redis cache for this user is invalidated after the write.
+  //   e) The returned object matches the Prisma post-update snapshot.
+  // ------------------------------------------------------------------
+  test(
+    "passes only the supplied fields to the profile upsert and invalidates " +
+      "the Redis cache after a successful transaction",
+    async () => {
+      // ── Prisma mock setup ─────────────────────────────────────────────
+      // tx.user.findUnique — first call returns current user row,
+      // second call (at end of transaction) returns the updated snapshot.
+      const updatedSnapshot = {
+        ...MOCK_USER_PROFILE,
+        profile: { ...MOCK_USER_PROFILE.profile, bio: "Updated bio" },
+      };
+
+      const txUserFindUnique = vi
+        .fn()
+        .mockResolvedValueOnce(MOCK_TX_USER)     // 1st: current user fetch
+        .mockResolvedValueOnce(updatedSnapshot); // 2nd: post-transaction SELECT
+
+      // tx.profile.upsert — the main write we want to inspect
+      const txProfileUpsert = vi
+        .fn()
+        .mockResolvedValue({ userId: MOCK_USER_PROFILE.id });
+
+      const mockTx = {
+        user: {
+          findUnique: txUserFindUnique,
+          update: vi.fn().mockResolvedValue({}),
+        },
+        profile: { upsert: txProfileUpsert },
+        college: { findUnique: vi.fn().mockResolvedValue(null) },
+        department: { findUnique: vi.fn().mockResolvedValue(null) },
+        codingProfile: {
+          deleteMany: vi.fn().mockResolvedValue({}),
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+
+      // Capture the spy reference BEFORE assignment so we can assert on it.
+      const txSpy = vi.fn().mockImplementation(
+        async (callback: (tx: any) => Promise<any>) => callback(mockTx)
+      );
+      (prisma.$transaction as any) = txSpy;
+
+      // ── Execute ───────────────────────────────────────────────────────
+      const result = await usersService.updateProfile(
+        MOCK_USER_PROFILE.id,
+        { bio: "Updated bio", headline: "Senior Engineer @ Scale" }
+      );
+
+      // ── a) Transaction was initiated ──────────────────────────────────
+      expect(txSpy).toHaveBeenCalledOnce();
+
+      // ── b) Only supplied fields reach profile.upsert ──────────────────
+      expect(txProfileUpsert).toHaveBeenCalledOnce();
+      const upsertArgs = txProfileUpsert.mock.calls[0][0];
+
+      expect(upsertArgs.update).toMatchObject({
+        bio: "Updated bio",
+        headline: "Senior Engineer @ Scale",
+      });
+
+      // ── c) Absent fields must NOT appear in the upsert payload ────────
+      expect(upsertArgs.update).not.toHaveProperty("location");
+      expect(upsertArgs.update).not.toHaveProperty("avatarUrl");
+      expect(upsertArgs.update).not.toHaveProperty("resumeUrl");
+
+      // ── d) Redis cache was invalidated so subsequent reads hit DB ─────
+      expect(redis.del).toHaveBeenCalledWith(
+        `profile:${MOCK_USER_PROFILE.id}`
+      );
+
+      // ── e) Return value is the post-update user snapshot ──────────────
+      expect(result).toBeDefined();
+    }
+  );
+
+  // ------------------------------------------------------------------
+  // Test 2 — Username conflict: AppError(400) when username is taken
+  //
+  // If a caller supplies `username` that already belongs to a different
+  // user, updateProfile must throw AppError("Username already taken", 400)
+  // BEFORE the profile upsert runs. This prevents silent overwrites and
+  // ensures the transaction is rolled back atomically.
+  // ------------------------------------------------------------------
+  test(
+    "throws AppError(400, 'Username already taken') when the requested " +
+      "username belongs to a different existing account",
+    async () => {
+      const CONFLICTING_USER_ID = "user-other-999";
+
+      // 1st call: fetch the current authenticated user row
+      // 2nd call: username uniqueness check → returns a DIFFERENT user (conflict)
+      const txUserFindUnique = vi
+        .fn()
+        .mockResolvedValueOnce(MOCK_TX_USER)
+        .mockResolvedValueOnce({ id: CONFLICTING_USER_ID });
+
+      const txProfileUpsert = vi.fn();
+
+      const mockTx = {
+        user: {
+          findUnique: txUserFindUnique,
+          update: vi.fn().mockResolvedValue({}),
+        },
+        profile: { upsert: txProfileUpsert },
+        college: { findUnique: vi.fn().mockResolvedValue(null) },
+        department: { findUnique: vi.fn().mockResolvedValue(null) },
+        codingProfile: {
+          deleteMany: vi.fn().mockResolvedValue({}),
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+
+      // Capture reference before assigning
+      (prisma.$transaction as any) = async (callback: (tx: any) => Promise<any>) =>
+        callback(mockTx);
+
+      // ── Execute & assert ──────────────────────────────────────────────
+      await expect(
+        usersService.updateProfile(MOCK_USER_PROFILE.id, {
+          username: "taken_username",
+        })
+      ).rejects.toMatchObject({
+        message: "Username already taken",
+        statusCode: 400,
+      });
+
+      // Profile upsert must NOT have been reached — fail-fast guarantee
+      expect(txProfileUpsert).not.toHaveBeenCalled();
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Suite 3: updateProfile — Validation Error Propagation (AppError / non-existent user)
+// ---------------------------------------------------------------------------
+describe("Users Service - updateProfile (error propagation)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks(); // remove vi.spyOn(usersService,'updateProfile') from updateMe test
+    // Reset $transaction so no prior assignment persists between error-path tests
+    (prisma.$transaction as any) = async (_cb: any) => { throw new Error("$transaction not stubbed in this test"); };
+  });
+
+  // ------------------------------------------------------------------
+  // Test — Non-existent userId inside transaction → AppError(404)
+  //
+  // If `tx.user.findUnique` returns null (e.g. user was deleted between
+  // the request being authenticated and the service being invoked),
+  // updateProfile must bubble up AppError("User not found", 404) so the
+  // controller can respond with the correct HTTP status code, rather than
+  // crashing or returning undefined to the caller.
+  // ------------------------------------------------------------------
+  test(
+    "throws AppError(404, 'User not found') when the userId does not resolve " +
+      "to any row inside the transaction",
+    async () => {
+      const mockTx = {
+        user: {
+          // Simulates a ghost user — authenticated but deleted from DB
+          findUnique: vi.fn().mockResolvedValue(null),
+          update: vi.fn(),
+        },
+        profile: { upsert: vi.fn() },
+        college: { findUnique: vi.fn() },
+        department: { findUnique: vi.fn() },
+        codingProfile: { deleteMany: vi.fn(), create: vi.fn() },
+      };
+
+      // Direct assignment — mirrors existing codebase test pattern exactly
+      (prisma.$transaction as any) = async (callback: (tx: any) => Promise<any>) =>
+        callback(mockTx);
+
+      await expect(
+        usersService.updateProfile("ghost-user-id", { bio: "Should not save" })
+      ).rejects.toMatchObject({
+        message: "User not found",
+        statusCode: 404,
+      });
+
+      // Neither a user update nor a profile upsert should have been attempted
+      expect(mockTx.user.update).not.toHaveBeenCalled();
+      expect(mockTx.profile.upsert).not.toHaveBeenCalled();
+    }
+  );
+
+  // ------------------------------------------------------------------
+  // Test — Department not belonging to college → AppError(400)
+  //
+  // The service calls `assertDepartmentBelongsToCollege` before the
+  // profile upsert. If a departmentId is submitted that belongs to a
+  // DIFFERENT college, the service must reject with AppError(400) and
+  // must NOT persist any partial changes.
+  // ------------------------------------------------------------------
+  test(
+    "throws AppError(400) when departmentId belongs to a different college " +
+      "than the one provided in the payload",
+    async () => {
+      const WRONG_COLLEGE_ID = "college-wrong-000";
+
+      // User's current profile has WRONG_COLLEGE_ID already set
+      const txUserFindUnique = vi.fn().mockResolvedValue({
+        ...MOCK_TX_USER,
+        profile: {
+          ...MOCK_TX_USER.profile,
+          collegeId: WRONG_COLLEGE_ID,
+        },
+      });
+
+      // department.findUnique returns a dept whose collegeId is "college-xyz"
+      // — mismatch with the WRONG_COLLEGE_ID passed in the payload
+      const txDepartmentFindUnique = vi.fn().mockResolvedValue({
+        collegeId: "college-xyz",
+      });
+
+      const txProfileUpsert = vi.fn();
+
+      const mockTx = {
+        user: {
+          findUnique: txUserFindUnique,
+          update: vi.fn().mockResolvedValue({}),
+        },
+        profile: { upsert: txProfileUpsert },
+        college: {
+          // college lookup succeeds (college exists)
+          findUnique: vi.fn().mockResolvedValue({ id: WRONG_COLLEGE_ID }),
+        },
+        department: { findUnique: txDepartmentFindUnique },
+        codingProfile: { deleteMany: vi.fn(), create: vi.fn() },
+      };
+
+      (prisma.$transaction as any) = async (callback: (tx: any) => Promise<any>) =>
+        callback(mockTx);
+
+      await expect(
+        usersService.updateProfile(MOCK_USER_PROFILE.id, {
+          collegeId: WRONG_COLLEGE_ID,
+          departmentId: "dept-cs-001", // belongs to college-xyz, not WRONG_COLLEGE_ID
+        })
+      ).rejects.toMatchObject({
+        message: "Department does not belong to selected college",
+        statusCode: 400,
+      });
+
+      // Profile upsert must not have executed — transaction integrity
+      expect(txProfileUpsert).not.toHaveBeenCalled();
+    }
+  );
 });
