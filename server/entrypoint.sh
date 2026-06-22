@@ -9,4 +9,4 @@ echo "[Entrypoint] Running Prisma migrations..."
 npx prisma migrate deploy
 
 echo "[Entrypoint] Starting server..."
-exec node -r tsconfig-paths/register dist/server.js
+exec node dist/server.js

@@ -65,8 +65,7 @@ services:
     volumes:
       - elasticsearch_data_prod:/usr/share/elasticsearch/data
     healthcheck:
-      # Use wget (always present in the ES alpine image) instead of curl
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
       interval: 20s
       timeout: 10s
       retries: 5

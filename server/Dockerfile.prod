@@ -41,9 +41,6 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy tsconfig for tsconfig-paths/register at runtime
-COPY tsconfig.json ./
-
 # Copy and set entrypoint script
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
