@@ -36,7 +36,7 @@ RUN npm ci --omit=dev
 # Copy compiled output from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy prisma schema + generated client (needed at runtime)
+# Copy prisma schema + migrations + generated client (needed at runtime for migrate deploy)
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
@@ -44,8 +44,12 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy tsconfig for tsconfig-paths/register at runtime
 COPY tsconfig.json ./
 
+# Copy and set entrypoint script
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 # Expose application port
 EXPOSE 5000
 
-# Run production server using compiled JS + path alias resolution
-CMD ["node", "-r", "tsconfig-paths/register", "dist/server.js"]
+# Run entrypoint: prisma migrate deploy → node dist/server.js
+ENTRYPOINT ["./entrypoint.sh"]

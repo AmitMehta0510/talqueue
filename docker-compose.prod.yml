@@ -1,61 +1,85 @@
 version: '3.8'
 
+# ─── Engineers Platform — Production Docker Compose ───────────────────────────
+# Usage:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
+#
+# Required .env.production variables:
+#   DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, CLIENT_URL
+#   (see .env.production.example for the full list)
+
 services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     container_name: engineers-platform-db-prod
     restart: always
+    env_file: .env.production
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-engineers_platform}
-    ports:
-      - "5432:5432"
+    # Ports NOT exposed to host — only accessible inside the Docker network
+    expose:
+      - "5432"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-engineers_platform}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
+  # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: engineers-platform-redis-prod
     restart: always
-    ports:
-      - "6379:6379"
+    # Ports NOT exposed to host
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
+  # ── Elasticsearch ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: engineers-platform-es-prod
     restart: always
+    env_file: .env.production
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-      - "9300:9300"
+      # ES_JAVA_OPTS from .env.production — default 256m for small droplets
+      - "ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms256m -Xmx256m}"
+    # Ports NOT exposed to host
+    expose:
+      - "9200"
+      - "9300"
     volumes:
       - elasticsearch_data_prod:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSL http://localhost:9200/_cluster/health || exit 1"]
+      # Use wget (always present in the ES alpine image) instead of curl
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
       interval: 20s
       timeout: 10s
       retries: 5
+      start_period: 60s
 
+  # ── Node.js API Server ─────────────────────────────────────────────────────
   server:
     build:
       context: ./server
       dockerfile: Dockerfile.prod
     container_name: engineers-platform-server-prod
     restart: always
+    env_file: .env.production
     environment:
       NODE_ENV: production
       PORT: 5000
@@ -69,8 +93,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
-    ports:
-      - "5000:5000"
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    # Ports NOT exposed to host — Nginx proxies to this container
+    expose:
+      - "5000"
     depends_on:
       db:
         condition: service_healthy
@@ -78,18 +104,69 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ | grep -q 'ok' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
+  # ── React Client (Nginx serving Vite bundle) ────────────────────────────────
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        # Bake the API URL into the Vite bundle at build time.
+        # In production this should point to your domain's /api path.
+        VITE_API_URL: ${CLIENT_URL:-https://yourdomain.com}/api/v1
     container_name: engineers-platform-client-prod
     restart: always
-    ports:
-      - "80:5173"
+    # Ports NOT exposed to host — Nginx proxies to this container
+    expose:
+      - "80"
     depends_on:
+      server:
+        condition: service_healthy
+
+  # ── Nginx Reverse Proxy + SSL Termination ─────────────────────────────────
+  nginx:
+    image: nginx:stable-alpine
+    container_name: engineers-platform-nginx-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Reverse proxy config (uses envsubst to inject DOMAIN)
+      - ./nginx/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      # Let's Encrypt certificates (populated by certbot service)
+      - letsencrypt_certs:/etc/letsencrypt:ro
+      # Certbot webroot for ACME challenge
+      - certbot_webroot:/var/www/certbot:ro
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    depends_on:
+      - client
       - server
+
+  # ── Certbot (Let's Encrypt SSL) ────────────────────────────────────────────
+  # Run once to issue cert:
+  #   docker compose --env-file .env.production -f docker-compose.prod.yml run --rm certbot \
+  #     certonly --webroot --webroot-path /var/www/certbot -d yourdomain.com --email you@email.com --agree-tos
+  # Renewal (run by CI/CD or a cron on the droplet):
+  #   docker compose -f docker-compose.prod.yml exec certbot certbot renew --quiet
+  certbot:
+    image: certbot/certbot:latest
+    container_name: engineers-platform-certbot-prod
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    # No CMD — certbot is invoked manually / by CI for issuance and renewal
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done"
 
 volumes:
   postgres_data_prod:
   elasticsearch_data_prod:
+  letsencrypt_certs:
+  certbot_webroot:

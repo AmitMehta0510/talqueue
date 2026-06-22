@@ -10,7 +10,17 @@ import { registerApiRoutes } from "./routes";
 
 const app = express();
 
-app.use(cors());
+// In production restrict CORS to the client origin declared in CLIENT_URL.
+// In development/test allow all origins (origin: true) for convenience.
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CLIENT_URL
+        : true,
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 

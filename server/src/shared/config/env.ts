@@ -3,9 +3,13 @@ import { z } from "zod";
 const envSchema = z.object({
   // Core
   PORT: z.string().default("5000"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
   JWT_EXPIRES_IN: z.string().default("7d"),
+
+  // Client (required in production for CORS — optional in dev/test)
+  CLIENT_URL: z.string().optional(),
 
   // Redis
   REDIS_URL: z.string().default("redis://localhost:6379"),
