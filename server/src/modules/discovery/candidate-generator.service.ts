@@ -64,6 +64,9 @@ export const generateFeedCandidates = async (
         select: {
           followingId: true,
         },
+
+        // Cap at DB level — prevents loading unbounded follow lists into Node memory
+        take: 500,
       }),
       prisma.userAffinity.findMany({
         where: {
@@ -266,8 +269,7 @@ export const generateFeedCandidates = async (
       select: {
         id: true,
         title: true,
-        description: true,
-        shortDescription: true,
+        // description and shortDescription excluded — not used in feed scoring or ranking
         githubUrl: true,
         liveUrl: true,
         techStack: true,
@@ -313,8 +315,7 @@ export const generateFeedCandidates = async (
       select: {
         id: true,
         title: true,
-        description: true,
-        shortDescription: true,
+        // description and shortDescription excluded — not used in feed scoring or ranking
         bannerUrl: true,
         logoUrl: true,
         startDate: true,
@@ -356,7 +357,7 @@ export const generateFeedCandidates = async (
       select: {
         id: true,
         title: true,
-        description: true,
+        // description excluded — not used in feed scoring or ranking
         location: true,
         salaryMin: true,
         salaryMax: true,

@@ -1,0 +1,51 @@
+# ─── Stage 1: Builder ────────────────────────────────────────────────────────
+# Installs ALL dependencies (including devDeps) and compiles TypeScript to dist/
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependency manifests first for better layer caching
+COPY package*.json ./
+
+# Install all dependencies (dev + prod needed for tsc compile)
+RUN npm ci
+
+# Copy source code, tsconfig, and prisma schema
+COPY . .
+
+# Generate Prisma client (required before tsc so @prisma/client types resolve)
+RUN npx prisma generate
+
+# Compile TypeScript → dist/
+RUN npm run build
+
+# ─── Stage 2: Runner ─────────────────────────────────────────────────────────
+# Clean production image — only compiled JS + production deps
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy package manifests for production install
+COPY package*.json ./
+
+# Install only production dependencies (no ts-node-dev, typescript, vitest, etc.)
+RUN npm ci --omit=dev
+
+# Copy compiled output from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy prisma schema + generated client (needed at runtime)
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy tsconfig for tsconfig-paths/register at runtime
+COPY tsconfig.json ./
+
+# Expose application port
+EXPOSE 5000
+
+# Run production server using compiled JS + path alias resolution
+CMD ["node", "-r", "tsconfig-paths/register", "dist/server.js"]

@@ -14,5 +14,6 @@ export default defineConfig({
       services: path.resolve(__dirname, "./src/services"),
       controllers: path.resolve(__dirname, "./src/controllers"),
     },
+    exclude: ["**/node_modules/**", "**/dist/**"],
   },
 });

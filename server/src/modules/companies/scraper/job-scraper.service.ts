@@ -298,7 +298,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         `https://boards-api.greenhouse.io/v1/boards/${greenhouseToken}/jobs`,
         { timeout: 10000 }
       );
-      const rawJobs = response.data.jobs || [];
+      // Destructure immediately so the full response object (headers, config, etc.) can be GC'd
+      // before the sequential DB upsert loop holds the stack frame open.
+      const rawJobs: any[] = response.data?.jobs ?? [];
       const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
 
       for (const job of techJobs) {
@@ -371,6 +373,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         `https://api.lever.co/v0/postings/${leverToken}?mode=json`,
         { timeout: 10000 }
       );
+      // Destructure immediately to release full response payload before sequential DB writes.
       const rawJobs: any[] = Array.isArray(response.data) ? response.data : [];
       const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.text)).slice(0, 12);
 
@@ -467,7 +470,8 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         {},
         { timeout: 10000 }
       );
-      const rawJobs = response.data.jobs || [];
+      // Destructure immediately to release full response payload before sequential DB writes.
+      const rawJobs: any[] = response.data?.jobs ?? [];
       const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
 
       for (const job of techJobs) {
@@ -635,7 +639,6 @@ export async function runJobScrape() {
   let updated = 0;
   let staleArchived = 0;
   let totalProcessed = 0;
-  const allProcessedJobIds: string[] = [];
 
   const batches = chunkArray(companies, BATCH_SIZE);
 
@@ -658,7 +661,6 @@ export async function runJobScrape() {
         updated += r.updated;
         staleArchived += r.staleArchived;
         batchJobIds.push(...r.processedJobIds);
-        allProcessedJobIds.push(...r.processedJobIds);
         totalProcessed++;
       } else {
         // Outer catch: unexpected rejection that bypassed the inner try/catch.

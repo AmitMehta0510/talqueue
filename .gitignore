@@ -7,3 +7,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Test results
+client/test-results/
