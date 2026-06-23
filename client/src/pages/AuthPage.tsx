@@ -3,11 +3,19 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
   Code2,
+  Eye,
+  EyeOff,
+  Gavel,
+  GraduationCap,
   Loader2,
   Lock,
+  MessageSquare,
   ShieldCheck,
   Sparkles,
+  Star,
+  Trophy,
   Users,
+  Zap,
 } from "lucide-react";
 import { RoleName } from "../lib/api";
 import { getErrorMessage, titleCase, userName } from "../lib/format";
@@ -16,27 +24,83 @@ import { useToast } from "../contexts/ToastContext";
 
 type AuthMode = "login" | "register";
 
-const roleOptions: RoleName[] = [
-  "STUDENT",
-  "PROFESSOR",
-  "PROFESSIONAL",
+const roleOptions: { value: RoleName; label: string; desc: string; icon: React.ReactNode }[] = [
+  {
+    value: "STUDENT",
+    label: "Student",
+    desc: "Currently enrolled in a college or university",
+    icon: <GraduationCap size={18} />,
+  },
+  {
+    value: "PROFESSOR",
+    label: "Professor",
+    desc: "Teaching or researching at an institution",
+    icon: <Star size={18} />,
+  },
+  {
+    value: "PROFESSIONAL",
+    label: "Professional",
+    desc: "Working in the tech industry",
+    icon: <BriefcaseBusiness size={18} />,
+  },
+];
+
+const features = [
+  {
+    icon: <Sparkles size={20} />,
+    title: "AI-Ranked Feed",
+    desc: "Personalized content based on your skills and interests",
+  },
+  {
+    icon: <ShieldCheck size={20} />,
+    title: "Trust Scores",
+    desc: "Verified profiles with reputation-backed credibility",
+  },
+  {
+    icon: <Users size={20} />,
+    title: "Teams & Networks",
+    desc: "Collaborate with engineers across colleges and companies",
+  },
+  {
+    icon: <BriefcaseBusiness size={20} />,
+    title: "Job Opportunities",
+    desc: "Curated roles matched to your engineering profile",
+  },
+  {
+    icon: <Gavel size={20} />,
+    title: "Hackathons",
+    desc: "Find and register for live competitions",
+  },
+  {
+    icon: <MessageSquare size={20} />,
+    title: "Real-time Chat",
+    desc: "Connect and collaborate in instant messaging",
+  },
+];
+
+const stats = [
+  { value: "10K+", label: "Engineers" },
+  { value: "500+", label: "Companies" },
+  { value: "2K+", label: "Opportunities" },
 ];
 
 export function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [form, setForm] = useState({
-    email: "",
+  const [mode, setMode]       = useState<AuthMode>("login");
+  const [showPass, setShowPass] = useState(false);
+  const [form, setForm]       = useState({
+    email:    "",
     username: "",
     fullName: "",
     password: "",
-    role: "STUDENT" as RoleName,
+    role:     "STUDENT" as RoleName,
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
   const { login, register, user } = useAuth();
-  const { showToast } = useToast();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { showToast }             = useToast();
+  const navigate                  = useNavigate();
+  const location                  = useLocation();
 
   const redirectTarget =
     (location.state as { from?: { pathname?: string; search?: string } } | null)
@@ -44,24 +108,32 @@ export function AuthPage() {
   const redirectTo = `${redirectTarget.pathname || "/feed"}${redirectTarget.search || ""}`;
 
   useEffect(() => {
-    if (user) {
-      navigate(redirectTo, { replace: true });
-    }
+    if (user) navigate(redirectTo, { replace: true });
   }, [navigate, redirectTo, user]);
+
+  const patch = (key: string, value: string) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setMessage(null);
+    setShowPass(false);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setMessage(null);
-
     try {
       if (mode === "login") {
         await login({ email: form.email, password: form.password });
       } else {
         await register(form);
       }
-
-      showToast("success", `Welcome, ${userName({ username: form.username, email: form.email, id: "" })}`);
+      showToast(
+        "success",
+        `Welcome, ${userName({ username: form.username, email: form.email, id: "" })} 🎉`
+      );
       navigate(redirectTo, { replace: true });
     } catch (error) {
       setMessage(getErrorMessage(error));
@@ -71,154 +143,385 @@ export function AuthPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-8">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-panel md:grid-cols-[0.9fr_1.1fr]">
-        <section className="bg-[#18332d] p-8 text-white sm:p-10">
-          <div className="flex h-full flex-col justify-between gap-12">
-            <div>
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-400 text-emerald-950">
-                <Code2 size={24} />
+    <main
+      className="min-h-screen flex items-stretch page-enter"
+      style={{ background: "var(--bg-base)" }}
+    >
+      {/* ============================================================
+          LEFT — Branding panel (hidden on small screens, shown md+)
+          ============================================================ */}
+      <aside className="hidden md:flex md:w-[48%] xl:w-[45%] relative flex-col overflow-hidden">
+        {/* Dark emerald gradient background */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(145deg, #052e1a 0%, #0d3d26 40%, #113d28 70%, #0a2e1c 100%)",
+          }}
+        />
+
+        {/* Animated glow orbs */}
+        <div
+          className="absolute top-[-80px] left-[-60px] h-72 w-72 rounded-full opacity-25 blur-3xl"
+          style={{ background: "radial-gradient(circle, #34d399, transparent)" }}
+        />
+        <div
+          className="absolute bottom-[-60px] right-[-40px] h-64 w-64 rounded-full opacity-20 blur-3xl"
+          style={{ background: "radial-gradient(circle, #059669, transparent)" }}
+        />
+        <div
+          className="absolute top-[40%] right-[10%] h-48 w-48 rounded-full opacity-10 blur-2xl"
+          style={{ background: "radial-gradient(circle, #6ee7b7, transparent)" }}
+        />
+
+        {/* Content */}
+        <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-12 text-white">
+          {/* Logo */}
+          <div>
+            <div className="inline-flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 text-emerald-950 shadow-glow">
+                <Code2 size={22} />
               </div>
-              <h1 className="mt-6 max-w-sm text-3xl font-bold leading-tight sm:text-4xl">
-                Engineering Platform
-              </h1>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-emerald-50/80">
-                Build your engineering profile, collaborate on projects, find
-                communities, and keep your work visible to the right people.
-              </p>
+              <div>
+                <div className="text-base font-black tracking-tight leading-none">
+                  Engineering
+                </div>
+                <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-emerald-300/80 leading-none mt-0.5">
+                  Hub
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="rounded-lg border border-white/10 bg-white/8 p-4">
-                <Sparkles size={18} />
-                <div className="mt-3 font-semibold">AI-ranked feed</div>
+            <h1 className="mt-8 text-3xl xl:text-4xl font-bold leading-tight tracking-tight">
+              Build your engineering{" "}
+              <span className="text-emerald-400">legacy</span>
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-emerald-50/70 max-w-xs">
+              The professional network built exclusively for engineers — from
+              college to career and beyond.
+            </p>
+
+            {/* Stats bar */}
+            <div className="mt-6 flex items-center gap-6">
+              {stats.map((s) => (
+                <div key={s.label}>
+                  <div className="text-lg font-black text-emerald-400 leading-none">
+                    {s.value}
+                  </div>
+                  <div className="text-[10px] font-semibold text-emerald-100/60 uppercase tracking-wider mt-0.5">
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature grid */}
+          <div className="grid grid-cols-2 gap-3 my-6">
+            {features.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-xl border border-white/8 p-3.5 transition-all duration-200 hover:border-emerald-400/30 hover:bg-white/5 group"
+                style={{ background: "rgba(255,255,255,0.04)" }}
+              >
+                <div className="text-emerald-400 group-hover:scale-110 transition-transform duration-200 inline-block">
+                  {f.icon}
+                </div>
+                <div className="mt-2 text-xs font-bold text-white/90 leading-tight">
+                  {f.title}
+                </div>
+                <div className="mt-0.5 text-[10px] text-emerald-100/50 leading-snug">
+                  {f.desc}
+                </div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-white/8 p-4">
-                <ShieldCheck size={18} />
-                <div className="mt-3 font-semibold">Trust scores</div>
+            ))}
+          </div>
+
+          {/* Social proof */}
+          <div
+            className="flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            {/* Stacked avatar circles */}
+            <div className="flex -space-x-2">
+              {["#34d399", "#10b981", "#059669", "#047857"].map((c, i) => (
+                <div
+                  key={i}
+                  className="h-7 w-7 rounded-full border-2 border-[#0d3d26] flex items-center justify-center text-[9px] font-black text-white"
+                  style={{ background: c }}
+                >
+                  {["AK", "SR", "PM", "NK"][i]}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Trophy key={i} size={10} className="text-amber-400 fill-amber-400" />
+                ))}
               </div>
-              <div className="rounded-lg border border-white/10 bg-white/8 p-4">
-                <Users size={18} />
-                <div className="mt-3 font-semibold">Teams</div>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/8 p-4">
-                <BriefcaseBusiness size={18} />
-                <div className="mt-3 font-semibold">Jobs</div>
+              <div className="text-[10px] text-emerald-100/60 mt-0.5">
+                Trusted by engineers at IITs, NITs & top companies
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </aside>
 
-        <section className="p-6 sm:p-10">
-          <div className="mb-8 flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-            {(["login", "register"] as AuthMode[]).map((authMode) => (
+      {/* ============================================================
+          RIGHT — Auth form panel
+          ============================================================ */}
+      <section
+        className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8"
+        style={{ background: "var(--bg-base)" }}
+      >
+        <div className="w-full max-w-md">
+          {/* Mobile-only logo */}
+          <div className="md:hidden flex items-center gap-2.5 mb-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-glow-sm">
+              <Code2 size={20} />
+            </div>
+            <div>
+              <div className="text-sm font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+                Engineering Hub
+              </div>
+              <div className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>
+                Professional Network
+              </div>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-7">
+            <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              {mode === "login" ? "Welcome back" : "Create your account"}
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+              {mode === "login"
+                ? "Sign in to continue to your engineering profile"
+                : "Join thousands of engineers building their careers"}
+            </p>
+          </div>
+
+          {/* Mode switcher — pill tabs */}
+          <div
+            className="flex p-1 rounded-xl mb-7 border"
+            style={{
+              background: "var(--bg-surface-2)",
+              borderColor: "var(--border)",
+            }}
+          >
+            {(["login", "register"] as AuthMode[]).map((m) => (
               <button
-                key={authMode}
-                className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition ${
-                  mode === authMode
-                    ? "bg-white text-emerald-800 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900"
-                }`}
+                key={m}
                 type="button"
-                onClick={() => {
-                  setMode(authMode);
-                  setMessage(null);
-                }}
+                onClick={() => switchMode(m)}
+                className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200"
+                style={
+                  mode === m
+                    ? {
+                        background: "var(--bg-surface)",
+                        color: "var(--brand)",
+                        boxShadow: "var(--glass-shadow)",
+                        border: "1px solid var(--border)",
+                      }
+                    : { color: "var(--text-muted)", border: "1px solid transparent" }
+                }
               >
-                {authMode === "login" ? "Login" : "Create account"}
+                {m === "login" ? "Sign In" : "Create Account"}
               </button>
             ))}
           </div>
 
+          {/* Form */}
           <form className="space-y-4" onSubmit={submit}>
+            {/* Register-only: name + username */}
             {mode === "register" && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  Full name
+              <div className="grid grid-cols-2 gap-3 animate-fade-up">
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1.5"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Full Name
+                  </label>
                   <input
-                    className="field mt-1.5"
+                    className="field"
+                    placeholder="John Doe"
                     value={form.fullName}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, fullName: event.target.value }))
-                    }
+                    onChange={(e) => patch("fullName", e.target.value)}
                     minLength={2}
                     required
                   />
-                </label>
-                <label className="block text-sm font-medium text-slate-700">
-                  Username
+                </div>
+                <div>
+                  <label
+                    className="block text-xs font-semibold mb-1.5"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Username
+                  </label>
                   <input
-                    className="field mt-1.5"
+                    className="field"
+                    placeholder="johndoe"
                     value={form.username}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, username: event.target.value }))
-                    }
+                    onChange={(e) => patch("username", e.target.value)}
                     minLength={3}
                     required
                   />
-                </label>
+                </div>
               </div>
             )}
 
-            <label className="block text-sm font-medium text-slate-700">
-              Email
-              <input
-                className="field mt-1.5"
-                type="email"
-                value={form.email}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, email: event.target.value }))
-                }
-                required
-              />
-            </label>
-
-            <label className="block text-sm font-medium text-slate-700">
-              Password
-              <input
-                className="field mt-1.5"
-                type="password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, password: event.target.value }))
-                }
-                minLength={mode === "register" ? 8 : 1}
-                required
-              />
-            </label>
-
-            {mode === "register" && (
-              <label className="block text-sm font-medium text-slate-700">
-                Role
-                <select
-                  className="field mt-1.5"
-                  value={form.role}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, role: event.target.value as RoleName }))
-                  }
-                >
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {titleCase(role)}
-                    </option>
-                  ))}
-                </select>
+            {/* Email */}
+            <div>
+              <label
+                className="block text-xs font-semibold mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Email Address
               </label>
-            )}
+              <input
+                className="field"
+                type="email"
+                placeholder="you@college.edu"
+                value={form.email}
+                onChange={(e) => patch("email", e.target.value)}
+                required
+              />
+            </div>
 
-            {message && (
-              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 whitespace-pre-line">
-                {message}
+            {/* Password with show/hide toggle */}
+            <div>
+              <label
+                className="block text-xs font-semibold mb-1.5"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  className="field pr-10"
+                  type={showPass ? "text" : "password"}
+                  placeholder={mode === "register" ? "Min 8 characters" : "Your password"}
+                  value={form.password}
+                  onChange={(e) => patch("password", e.target.value)}
+                  minLength={mode === "register" ? 8 : 1}
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPass((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-150"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Role selector — card grid (register only) */}
+            {mode === "register" && (
+              <div className="animate-fade-up">
+                <label
+                  className="block text-xs font-semibold mb-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  I am a…
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {roleOptions.map((opt) => {
+                    const active = form.role === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => patch("role", opt.value)}
+                        className="flex flex-col items-center text-center gap-1.5 rounded-xl border p-3 transition-all duration-200 hover:scale-[1.02]"
+                        style={{
+                          borderColor: active ? "var(--brand)" : "var(--border-strong)",
+                          background: active ? "var(--brand-light)" : "var(--bg-surface-2)",
+                          color: active ? "var(--brand)" : "var(--text-secondary)",
+                          boxShadow: active ? "0 0 0 2px var(--brand-glow)" : "none",
+                        }}
+                      >
+                        <span className="opacity-80">{opt.icon}</span>
+                        <span className="text-[11px] font-bold leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Role description */}
+                <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  <Zap size={10} className="inline mr-1" />
+                  {roleOptions.find((o) => o.value === form.role)?.desc}
+                </p>
               </div>
             )}
 
-            <button className="btn-primary w-full" disabled={loading} type="submit">
-              {loading ? <Loader2 className="animate-spin" size={17} /> : <Lock size={17} />}
-              {mode === "login" ? "Login" : "Create account"}
+            {/* Error message */}
+            {message && (
+              <div
+                className="flex items-start gap-2 rounded-xl border px-3.5 py-3 text-sm animate-fade-up"
+                style={{
+                  background: "rgba(239, 68, 68, 0.08)",
+                  borderColor: "rgba(239, 68, 68, 0.25)",
+                  color: "#ef4444",
+                }}
+              >
+                <ShieldCheck size={15} className="mt-0.5 shrink-0 opacity-80" />
+                <span className="whitespace-pre-line">{message}</span>
+              </div>
+            )}
+
+            {/* Submit button */}
+            <button
+              className="btn-primary w-full py-2.5 text-sm font-bold mt-2 shadow-glow-sm"
+              disabled={loading}
+              type="submit"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={17} />
+              ) : (
+                <Lock size={17} />
+              )}
+              {loading
+                ? mode === "login" ? "Signing in…" : "Creating account…"
+                : mode === "login" ? "Sign In" : "Create Account"}
             </button>
+
+            {/* Mode switch hint */}
+            <p className="text-center text-xs pt-1" style={{ color: "var(--text-muted)" }}>
+              {mode === "login" ? (
+                <>
+                  Don't have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => switchMode("register")}
+                    className="font-semibold hover:underline"
+                    style={{ color: "var(--brand)" }}
+                  >
+                    Sign up free
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => switchMode("login")}
+                    className="font-semibold hover:underline"
+                    style={{ color: "var(--brand)" }}
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
           </form>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
