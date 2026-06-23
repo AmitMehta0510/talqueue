@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -34,6 +34,32 @@ import { EventsPage } from "./pages/EventsPage";
 import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
 import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
 
+
+/** Syncs dark/light class to <html> based on OS preference. */
+function DarkModeSync() {
+  useEffect(() => {
+    const apply = (dark: boolean) => {
+      document.documentElement.classList.toggle("dark", dark);
+    };
+
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    apply(mq.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return null;
+}
+
+/** Wraps page content in an animation key so the fade-in fires on each route change. */
+function PageTransitionWrapper({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="page-enter">
+      {children}
+    </div>
+  );
+}
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -106,18 +132,20 @@ function AppRoutes() {
           path="/auth"
           element={
             <PublicOnly>
-              <AuthPage />
+              <PageTransitionWrapper>
+                <AuthPage />
+              </PageTransitionWrapper>
             </PublicOnly>
           }
         />
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/feed" replace />} />
-          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/feed" element={<PageTransitionWrapper><FeedPage /></PageTransitionWrapper>} />
           <Route
             path="/profile"
             element={
               <RequireAuth>
-                <ProfilePage />
+                <PageTransitionWrapper><ProfilePage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -125,21 +153,21 @@ function AppRoutes() {
             path="/users/:username"
             element={
               <RequireAuth>
-                <UserProfilePage />
+                <PageTransitionWrapper><UserProfilePage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
-          <Route path="/discover" element={<DiscoverPage />} />
-          <Route path="/colleges" element={<CollegesPage />} />
-          <Route path="/colleges/:collegeSlug" element={<CollegesPage />} />
-          <Route path="/companies" element={<CompaniesPage />} />
-          <Route path="/companies/:companySlug" element={<CompaniesPage />} />
-          <Route path="/communities" element={<CommunitiesPage />} />
+          <Route path="/discover" element={<PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>} />
+          <Route path="/colleges" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
+          <Route path="/colleges/:collegeSlug" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
+          <Route path="/companies" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
+          <Route path="/companies/:companySlug" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
+          <Route path="/communities" element={<PageTransitionWrapper><CommunitiesPage /></PageTransitionWrapper>} />
           <Route
             path="/communities/:communitySlug"
             element={
               <RequireAuth>
-                <CommunitiesPage />
+                <PageTransitionWrapper><CommunitiesPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -147,7 +175,7 @@ function AppRoutes() {
             path="/chat"
             element={
               <RequireAuth>
-                <ChatPage />
+                <PageTransitionWrapper><ChatPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -155,17 +183,17 @@ function AppRoutes() {
             path="/chat/:conversationId"
             element={
               <RequireAuth>
-                <ChatPage />
+                <PageTransitionWrapper><ChatPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:projectSlug" element={<ProjectsPage />} />
+          <Route path="/projects" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
+          <Route path="/projects/:projectSlug" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
           <Route
             path="/teams"
             element={
               <RequireAuth>
-                <TeamsPage />
+                <PageTransitionWrapper><TeamsPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -173,7 +201,7 @@ function AppRoutes() {
             path="/teams/:teamId"
             element={
               <RequireAuth>
-                <TeamsPage />
+                <PageTransitionWrapper><TeamsPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -181,18 +209,18 @@ function AppRoutes() {
             path="/social"
             element={
               <RequireAuth>
-                <SocialPage />
+                <PageTransitionWrapper><SocialPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
-          <Route path="/hackathons" element={<HackathonsPage />} />
-          <Route path="/hackathons/:hackathonSlug" element={<HackathonsPage />} />
-          <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/hackathons" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
+          <Route path="/hackathons/:hackathonSlug" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
+          <Route path="/jobs" element={<PageTransitionWrapper><JobsPage /></PageTransitionWrapper>} />
           <Route
             path="/placements"
             element={
               <RequireAuth>
-                <PlacementDashboardPage />
+                <PageTransitionWrapper><PlacementDashboardPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -200,7 +228,7 @@ function AppRoutes() {
             path="/events"
             element={
               <RequireAuth>
-                <EventsPage />
+                <PageTransitionWrapper><EventsPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -208,7 +236,7 @@ function AppRoutes() {
             path="/notifications"
             element={
               <RequireAuth>
-                <NotificationsPage />
+                <PageTransitionWrapper><NotificationsPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -216,7 +244,7 @@ function AppRoutes() {
             path="/referrals"
             element={
               <RequireAuth>
-                <ReferralsPage />
+                <PageTransitionWrapper><ReferralsPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -224,7 +252,7 @@ function AppRoutes() {
             path="/reputation"
             element={
               <RequireAuth>
-                <ReputationPage />
+                <PageTransitionWrapper><ReputationPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -232,7 +260,7 @@ function AppRoutes() {
             path="/recruiter"
             element={
               <RequireAuth>
-                <RecruiterPage />
+                <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -240,7 +268,7 @@ function AppRoutes() {
             path="/business"
             element={
               <RequireAuth>
-                <BusinessOnboardingPage />
+                <PageTransitionWrapper><BusinessOnboardingPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -249,7 +277,7 @@ function AppRoutes() {
             path="/companies/:companySlug/admin"
             element={
               <RequireAuth>
-                <CompanyAdminPage />
+                <PageTransitionWrapper><CompanyAdminPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />
@@ -257,7 +285,7 @@ function AppRoutes() {
             path="/admin"
             element={
               <RequirePlatformAdmin>
-                <AdminPage />
+                <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
               </RequirePlatformAdmin>
             }
           />
@@ -271,6 +299,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <DarkModeSync />
       <ToastProvider>
         <AuthProvider>
           <AppRoutes />

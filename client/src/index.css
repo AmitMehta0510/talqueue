@@ -2,13 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKEN SYSTEM — Light + Dark
+   ============================================================ */
+
 :root {
+  /* Surfaces */
+  --bg-base:          #f0f4f2;
+  --bg-surface:       #ffffff;
+  --bg-surface-2:     #f8fafb;
+  --bg-surface-3:     #f1f5f3;
+  --bg-overlay:       rgba(0, 0, 0, 0.45);
+
+  /* Borders */
+  --border:           rgba(0, 0, 0, 0.08);
+  --border-strong:    rgba(0, 0, 0, 0.14);
+  --border-focus:     #059669;
+
+  /* Text */
+  --text-primary:     #0f1f18;
+  --text-secondary:   #4a6358;
+  --text-muted:       #7a9589;
+  --text-inverse:     #ffffff;
+
+  /* Brand */
+  --brand:            #047857;
+  --brand-light:      #d1fae5;
+  --brand-glow:       rgba(4, 120, 87, 0.18);
+
+  /* Glass */
+  --glass-bg:         rgba(255, 255, 255, 0.72);
+  --glass-border:     rgba(255, 255, 255, 0.6);
+  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  /* Shimmer */
+  --shimmer-base:     #e8eeed;
+  --shimmer-shine:    #f4f7f6;
+
+  /* Scrollbar */
+  --scrollbar-track:  #f0f4f2;
+  --scrollbar-thumb:  #c5d5ce;
+
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+.dark {
+  /* Surfaces */
+  --bg-base:          #0c1410;
+  --bg-surface:       #111a16;
+  --bg-surface-2:     #172218;
+  --bg-surface-3:     #1d2b21;
+  --bg-overlay:       rgba(0, 0, 0, 0.7);
+
+  /* Borders */
+  --border:           rgba(255, 255, 255, 0.07);
+  --border-strong:    rgba(255, 255, 255, 0.12);
+  --border-focus:     #34d399;
+
+  /* Text */
+  --text-primary:     #e8f5ef;
+  --text-secondary:   #8ab89e;
+  --text-muted:       #5a7d6a;
+  --text-inverse:     #0f1f18;
+
+  /* Brand */
+  --brand:            #34d399;
+  --brand-light:      rgba(52, 211, 153, 0.12);
+  --brand-glow:       rgba(52, 211, 153, 0.2);
+
+  /* Glass */
+  --glass-bg:         rgba(17, 26, 22, 0.75);
+  --glass-border:     rgba(255, 255, 255, 0.08);
+  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* Shimmer */
+  --shimmer-base:     #1d2b21;
+  --shimmer-shine:    #253323;
+
+  /* Scrollbar */
+  --scrollbar-track:  #0c1410;
+  --scrollbar-thumb:  #2a3d30;
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   BASE RESETS
+   ============================================================ */
 
 * {
   box-sizing: border-box;
@@ -16,72 +101,181 @@
 
 html {
   min-width: 320px;
-  background: #eef4f3;
+  background: var(--bg-base);
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  color: #17221f;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Light mode body gradient */
+:root body {
   background:
-    radial-gradient(circle at 10% 0%, rgba(220, 252, 231, 0.55), transparent 32rem),
-    linear-gradient(135deg, #f8faf8 0%, #eef4f3 46%, #f6f0e8 100%);
+    radial-gradient(ellipse at 0% 0%, rgba(167, 243, 208, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(209, 250, 229, 0.2) 0%, transparent 50%),
+    linear-gradient(160deg, #f0f8f4 0%, #eef4f1 50%, #f3f0eb 100%);
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+/* Dark mode body gradient */
+.dark body {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(4, 120, 87, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 100%, rgba(6, 78, 59, 0.06) 0%, transparent 40%),
+    linear-gradient(160deg, #0c1410 0%, #0e1812 50%, #0c1410 100%);
 }
 
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
 
 ::selection {
-  background: #b7ead4;
-  color: #12201b;
+  background: #6ee7b7;
+  color: #022c22;
 }
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ============================================================
+   COMPONENT LAYER — Design System
+   ============================================================ */
 
 @layer components {
+
+  /* --- PANELS / CARDS --- */
   .panel {
-    @apply rounded-lg border border-slate-200/80 bg-white/90 shadow-panel;
+    @apply rounded-xl border bg-white/90 shadow-card;
+    border-color: var(--border);
   }
 
+  .dark .panel {
+    @apply bg-[#111a16]/90;
+  }
+
+  /* Glass panel — premium frosted glass */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 1rem;
+  }
+
+  /* --- FORM FIELDS --- */
   .field {
-    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100;
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all duration-150;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
   }
+  .field:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--brand-glow);
+  }
+  .field::placeholder { color: var(--text-muted); }
 
+  /* --- BUTTONS --- */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:bg-slate-300;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97];
+    background: var(--brand);
+    color: var(--text-inverse);
   }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; filter: none; }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800 disabled:text-slate-300;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97];
+    border-color: var(--border-strong);
+    color: var(--text-secondary);
+    background: var(--bg-surface);
   }
+  .btn-secondary:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-light);
+  }
+  .btn-secondary:disabled { @apply opacity-50 cursor-not-allowed; }
 
   .icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-300 hover:text-emerald-800 disabled:text-slate-300;
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150 active:scale-95;
+    border-color: var(--border);
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+  }
+  .icon-btn:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: var(--brand-light);
   }
 
+  /* --- CHIPS / BADGES --- */
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600;
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--bg-surface-2);
+  }
+
+  /* --- SHIMMER SKELETON --- */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--shimmer-base) 25%,
+      var(--shimmer-shine) 50%,
+      var(--shimmer-base) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+    border-radius: 0.375rem;
+  }
+
+  /* --- PAGE TRANSITION WRAPPER --- */
+  .page-enter {
+    animation: fadeUp 0.22s ease-out both;
   }
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+/* ============================================================
+   UTILITY LAYER EXTENSIONS
+   ============================================================ */
 
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+@layer utilities {
+  .text-xxs { font-size: 0.65rem; line-height: 1rem; }
+
+  /* Glow effect for brand elements */
+  .glow-brand {
+    box-shadow: 0 0 16px var(--brand-glow);
+  }
+
+  /* Surface backgrounds using tokens */
+  .bg-surface   { background: var(--bg-surface); }
+  .bg-surface-2 { background: var(--bg-surface-2); }
+  .bg-surface-3 { background: var(--bg-surface-3); }
+
+  /* Text using tokens */
+  .text-primary   { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-muted-fg  { color: var(--text-muted); }
+
+  /* Border using token */
+  .border-base   { border-color: var(--border); }
+  .border-strong { border-color: var(--border-strong); }
 }
