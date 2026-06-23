@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import asyncHandler from "shared/utils/asyncHandler";
-import { successResponse } from "shared/utils/apiResponse";
+import { successResponse, errorResponse } from "shared/utils/apiResponse";
 
 import {
   assignCollegeAdminSchema,
@@ -51,6 +51,11 @@ import {
 import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
 import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 import { runCompanyDiscovery } from "modules/companies/scraper/company-discovery.service";
+
+// Background Scraper Locks
+let isScraperRunning = false;
+let isJobScraperRunning = false;
+let isCompanyDiscoveryRunning = false;
 
 // ============================================================
 // COLLEGE ADMIN HANDLERS
@@ -394,22 +399,70 @@ export const adminUpdateHackathonHandler = asyncHandler(
 
 export const adminTriggerScraperHandler = asyncHandler(
   async (_req: Request, res: Response) => {
-    const result = await runAllScrapers();
-    res.json(successResponse(result, "Scraper run completed successfully"));
+    if (isScraperRunning) {
+      res.status(409).json(errorResponse("Scraper is already running in the background. Please wait for it to complete."));
+      return;
+    }
+    isScraperRunning = true;
+    
+    runAllScrapers()
+      .then((result) => {
+        console.log("[Scraper] Background hackathon scraper completed successfully:", result);
+      })
+      .catch((err) => {
+        console.error("[Scraper] Background hackathon scraper failed:", err);
+      })
+      .finally(() => {
+        isScraperRunning = false;
+      });
+
+    res.status(202).json(successResponse({ status: "started" }, "Scraper run started in the background"));
   },
 );
 
 export const adminTriggerJobScraperHandler = asyncHandler(
   async (_req: Request, res: Response) => {
-    const result = await runJobScrape();
-    res.json(successResponse(result, "Job scraper run completed successfully"));
+    if (isJobScraperRunning) {
+      res.status(409).json(errorResponse("Job scraper is already running in the background. Please wait for it to complete."));
+      return;
+    }
+    isJobScraperRunning = true;
+
+    runJobScrape()
+      .then((result) => {
+        console.log("[Job Scraper] Background job scraper completed successfully:", result);
+      })
+      .catch((err) => {
+        console.error("[Job Scraper] Background job scraper failed:", err);
+      })
+      .finally(() => {
+        isJobScraperRunning = false;
+      });
+
+    res.status(202).json(successResponse({ status: "started" }, "Job scraper run started in the background"));
   },
 );
 
 export const adminTriggerCompanyDiscoveryHandler = asyncHandler(
   async (_req: Request, res: Response) => {
-    const result = await runCompanyDiscovery();
-    res.json(successResponse(result, "Company discovery run completed successfully"));
+    if (isCompanyDiscoveryRunning) {
+      res.status(409).json(errorResponse("Company discovery is already running in the background. Please wait for it to complete."));
+      return;
+    }
+    isCompanyDiscoveryRunning = true;
+
+    runCompanyDiscovery()
+      .then((result) => {
+        console.log("[Discovery] Background company discovery completed successfully:", result);
+      })
+      .catch((err) => {
+        console.error("[Discovery] Background company discovery failed:", err);
+      })
+      .finally(() => {
+        isCompanyDiscoveryRunning = false;
+      });
+
+    res.status(202).json(successResponse({ status: "started" }, "Company discovery run started in the background"));
   },
 );
 

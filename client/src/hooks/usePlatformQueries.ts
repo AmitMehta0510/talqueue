@@ -4066,11 +4066,10 @@ export const useAdminTriggerScraperMutation = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: () => api.adminTriggerScraper({ timeoutMs: 120000 }),
-    onSuccess: (result) => {
-      const stats = result.data;
+    onSuccess: () => {
       showToast(
         "success",
-        `Scraper run complete! Fetched: ${stats.totalFetched}, Created: ${stats.created}, Updated: ${stats.updated}, Errors: ${stats.errors}`
+        "Hackathon scraper run started in the background. Refresh the list in a few minutes to see updates."
       );
       queryClient.invalidateQueries({ queryKey: ["admin", "content", "hackathons"] });
     },
@@ -4083,11 +4082,10 @@ export const useAdminTriggerJobScraperMutation = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: () => api.adminTriggerJobScraper({ timeoutMs: 120000 }),
-    onSuccess: (result) => {
-      const stats = result.data;
+    onSuccess: () => {
       showToast(
         "success",
-        `Job scraper complete! Processed: ${stats.totalProcessed} companies. Created: ${stats.created}, Updated: ${stats.updated}, Stale Cleaned: ${stats.staleArchived}`
+        "Job scraper run started in the background. Refresh the list in a few minutes to see updates."
       );
       queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
     },
@@ -4100,11 +4098,10 @@ export const useAdminTriggerCompanyDiscoveryMutation = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: () => api.adminTriggerCompanyDiscovery({ timeoutMs: 120000 }),
-    onSuccess: (result) => {
-      const stats = result.data;
+    onSuccess: () => {
       showToast(
         "success",
-        `Company discovery complete! Discovered: ${stats.discovered}, Skipped: ${stats.skipped}, Jobs Created: ${stats.jobsCreated}`
+        "Company discovery started in the background. Refresh in a few minutes to see updates."
       );
       queryClient.invalidateQueries({ queryKey: ["companies", "discovered"] });
       queryClient.invalidateQueries({ queryKey: ["companies"] });
