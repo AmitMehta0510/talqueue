@@ -217,8 +217,8 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
     <div className="panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">Hackathons</h2>
-          <p className="mt-1 text-sm text-slate-500">Build, review, and ship with engineering-grade judging.</p>
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Hackathons</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>Build, review, and ship with engineering-grade judging.</p>
         </div>
         <button
           className="btn-primary"
@@ -232,7 +232,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
       </div>
 
       {open && (
-        <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={submit}>
+        <form className="mt-5 space-y-3 border-t pt-5" style={{ borderColor: "var(--border)" }} onSubmit={submit}>
           <div className="grid gap-3 md:grid-cols-[1fr_12rem]">
             <input
               className="field"
@@ -277,17 +277,17 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
             placeholder="Description"
             required
           />
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Hackathon Banner Image</label>
+          <div className="rounded-xl border p-4 space-y-2" style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}>
+            <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Hackathon Banner Image</label>
             <div className="flex items-center gap-4">
               {form.bannerUrl ? (
-                <img src={form.bannerUrl} alt="Banner" className="h-16 w-32 rounded-lg object-cover bg-white border border-slate-200" />
+                <img src={form.bannerUrl} alt="Banner" className="h-16 w-32 rounded-lg object-cover" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }} />
               ) : (
-                <div className="flex h-16 w-32 items-center justify-center rounded-lg bg-slate-100 border border-slate-200 text-slate-400 text-xs font-medium">
+                <div className="flex h-16 w-32 items-center justify-center rounded-lg text-xs font-medium" style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                   No Banner Image
                 </div>
               )}
-              <label className="relative cursor-pointer rounded-lg bg-white border border-slate-300 hover:border-slate-400 px-4 py-2 text-xs font-bold text-slate-700 shadow-sm transition select-none flex-1 text-center">
+              <label className="relative cursor-pointer rounded-lg border px-4 py-2 text-xs font-bold shadow-sm transition select-none flex-1 text-center" style={{ background: "var(--bg-surface)", borderColor: "var(--border-strong)", color: "var(--text-primary)" }}>
                 {uploadingBanner ? (
                   <span className="flex items-center justify-center gap-1.5"><Loader2 size={13} className="animate-spin text-blue-600" /> Uploading...</span>
                 ) : (
@@ -310,14 +310,14 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                 }))
               }
             />
-            <label htmlFor="isExternal" className="text-sm font-semibold text-slate-700 select-none cursor-pointer">
+            <label htmlFor="isExternal" className="text-sm font-semibold select-none cursor-pointer" style={{ color: "var(--text-secondary)" }}>
               This is an external hackathon (hosted on another site)
             </label>
           </div>
 
           {form.isExternal && (
-            <div className="grid gap-3 md:grid-cols-2 border border-slate-100 rounded-md p-4 bg-slate-50/50">
-              <label className="text-xs font-semibold text-slate-500">
+            <div className="grid gap-3 md:grid-cols-2 border rounded-md p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 External Registration URL *
                 <input
                   className="field mt-1"
@@ -327,7 +327,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                   required={form.isExternal}
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-500">
+              <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 Organizer Name
                 <input
                   className="field mt-1"
@@ -336,7 +336,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                   placeholder="e.g. MLH, Google, Devpost"
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-500">
+              <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 Organizer Website
                 <input
                   className="field mt-1"
@@ -346,7 +346,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                 />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="text-xs font-semibold text-slate-500">
+                <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                   Mode
                   <select
                     className="field mt-1"
@@ -364,7 +364,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                   </select>
                 </label>
                 {form.mode !== "ONLINE" ? (
-                  <label className="text-xs font-semibold text-slate-500">
+                  <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                     Location
                     <input
                       className="field mt-1"
@@ -381,7 +381,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
             </div>
           )}
 
-          <label className="text-xs font-semibold text-slate-500 block">
+          <label className="text-xs font-semibold block" style={{ color: "var(--text-muted)" }}>
             Tags (comma-separated)
             <input
               className="field mt-1"
@@ -392,7 +392,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
           </label>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="text-xs font-semibold text-slate-500">
+            <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               Registration deadline
               <input
                 className="field mt-1"
@@ -404,7 +404,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-slate-500">
+            <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               Start
               <input
                 className="field mt-1"
@@ -416,7 +416,7 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-slate-500">
+            <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               End
               <input
                 className="field mt-1"
@@ -504,19 +504,19 @@ function RegistrationPanel({ hackathon }: { hackathon: Hackathon }) {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Team registration</h3>
-        {teamsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Team registration</h3>
+        {teamsQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
 
       {currentRegistrations.length > 0 && (
         <div className="mt-4 space-y-2">
           {currentRegistrations.map((registration) => (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={registration.id}>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={registration.id}>
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">
+                <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   {registration.team?.name || "Registered team"}
                 </div>
-                <div className="text-xs text-slate-500">{formatDate(registration.createdAt)}</div>
+                <div className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(registration.createdAt)}</div>
               </div>
               <StatusBadge value={registration.status} />
             </div>
@@ -588,9 +588,9 @@ function SubmissionPanel({ hackathon }: { hackathon: Hackathon }) {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Submit project</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Submit project</h3>
         {(teamsQuery.isFetching || projectsQuery.isFetching) && (
-          <Loader2 className="animate-spin text-slate-400" size={15} />
+          <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />
         )}
       </div>
 
@@ -664,17 +664,17 @@ function RegistrationsPanel({ hackathon }: { hackathon: Hackathon }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Registrations</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Registrations</h3>
       <div className="mt-4 space-y-3">
         {registrations.length ? (
           registrations.map((registration) => (
-            <div className="rounded-md border border-slate-100 p-3" key={registration.id}>
+            <div className="rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={registration.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {registration.team?.name || "Team"}
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                     {formatCount(registration.team?.reputationScore)} rep - {formatDate(registration.createdAt)}
                   </div>
                 </div>
@@ -712,7 +712,7 @@ function RegistrationsPanel({ hackathon }: { hackathon: Hackathon }) {
             </div>
           ))
         ) : (
-          <p className="text-sm text-slate-500">No registrations yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No registrations yet.</p>
         )}
       </div>
     </div>
@@ -733,7 +733,7 @@ function JudgeAssignmentPanel({ hackathon }: { hackathon: Hackathon }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Judges</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Judges</h3>
       <form className="mt-4 flex gap-2" onSubmit={submit}>
         <input
           className="field"
@@ -747,12 +747,12 @@ function JudgeAssignmentPanel({ hackathon }: { hackathon: Hackathon }) {
       </form>
       <div className="mt-4 space-y-2">
         {users.slice(0, 5).map((foundUser: User) => (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={foundUser.id}>
             <div className="flex min-w-0 items-center gap-3">
               <Avatar user={foundUser} size="sm" />
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">{userName(foundUser)}</div>
-                <div className="truncate text-xs text-slate-500">
+                <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(foundUser)}</div>
+                <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                   {userHeadline(foundUser) || `@${foundUser.username}`}
                 </div>
               </div>
@@ -821,13 +821,13 @@ function EvaluationForm({
   ];
 
   return (
-    <div className="rounded-md border border-slate-100 p-3">
+    <div className="rounded-md border p-3" style={{ borderColor: "var(--border)" }}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-900">
+          <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {submission.project?.title || "Submission"}
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs" style={{ color: "var(--text-muted)" }}>
             {submission.team?.name || "Team"} - {formatDate(submission.submittedAt)}
           </div>
         </div>
@@ -841,7 +841,7 @@ function EvaluationForm({
         <form className="mt-4 space-y-3" onSubmit={submit}>
           <div className="grid gap-3 sm:grid-cols-2">
             {fields.map(([key, label]) => (
-              <label className="text-xs font-semibold text-slate-500" key={key}>
+              <label className="text-xs font-semibold" style={{ color: "var(--text-muted)" }} key={key}>
                 {label}
                 <input
                   className="field mt-1"
@@ -878,14 +878,14 @@ function JudgingPanel({ hackathon }: { hackathon: Hackathon }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Judging queue</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Judging queue</h3>
       <div className="mt-4 space-y-3">
         {submissions.length ? (
           submissions.map((submission) => (
             <EvaluationForm hackathonId={hackathon.id} key={submission.id} submission={submission} />
           ))
         ) : (
-          <p className="text-sm text-slate-500">No submissions yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No submissions yet.</p>
         )}
       </div>
     </div>
@@ -900,48 +900,48 @@ function LeaderboardPanel({ hackathon }: { hackathon: Hackathon }) {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Leaderboard</h3>
-        {leaderboardQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Leaderboard</h3>
+        {leaderboardQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
       <div className="mt-4 space-y-3">
         {(leaderboard.length ? leaderboard : hackathon.submissions || []).slice(0, 8).map((submission, index) => (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={submission.id}>
+          <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={submission.id}>
             <div className="flex min-w-0 items-center gap-3">
-              <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-sm font-bold text-emerald-800">
+              <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-bold" style={{ background: "var(--brand-light)", color: "var(--brand)" }}>
                 {submission.rank || index + 1}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-900">
+                <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   {submission.project?.title || "Submission"}
                 </div>
-                <div className="truncate text-xs text-slate-500">{submission.team?.name || "Team"}</div>
+                <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{submission.team?.name || "Team"}</div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-semibold text-slate-950">
+              <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {Math.round((submission.finalScore || submission.rankingScore || 0) * 10) / 10}
               </div>
-              <div className="text-xs text-slate-500">Score</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>Score</div>
             </div>
           </div>
         ))}
         {!leaderboard.length && !(hackathon.submissions || []).length && (
-          <p className="text-sm text-slate-500">No scored submissions yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No scored submissions yet.</p>
         )}
       </div>
 
       {winners.length > 0 && (
-        <div className="mt-5 border-t border-slate-100 pt-4">
-          <h4 className="text-xs font-semibold uppercase text-slate-500">Winners</h4>
+        <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          <h4 className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>Winners</h4>
           <div className="mt-3 space-y-2">
             {winners.map((winner) => (
-              <div className="flex items-center gap-3 rounded-md bg-emerald-50/70 p-3" key={winner.id}>
-                <Medal className="text-emerald-700" size={17} />
+              <div className="flex items-center gap-3 rounded-md p-3" style={{ background: "rgba(16,185,129,0.08)" }} key={winner.id}>
+                <Medal className="text-emerald-600 dark:text-emerald-400" size={17} />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     #{winner.position} {winner.submission?.project?.title || winner.team?.name}
                   </div>
-                  <div className="text-xs text-slate-500">{Math.round(winner.score * 10) / 10} score</div>
+                  <div className="text-xs" style={{ color: "var(--text-muted)" }}>{Math.round(winner.score * 10) / 10} score</div>
                 </div>
               </div>
             ))}
@@ -958,7 +958,7 @@ function OwnerActions({ hackathon }: { hackathon: Hackathon }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Organizer actions</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Organizer actions</h3>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button
           className="btn-secondary justify-start"
@@ -979,7 +979,7 @@ function OwnerActions({ hackathon }: { hackathon: Hackathon }) {
           Archive
         </button>
         <button
-          className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
+          className="justify-start rounded-md border border-rose-200 dark:border-rose-800 px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-40"
           type="button"
           disabled={lifecycle.isPending}
           onClick={() => {
@@ -1005,7 +1005,7 @@ function DetailLists({ hackathon }: { hackathon: Hackathon }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Program details</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Program details</h3>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         {[
           ["Tracks", tracks],
@@ -1013,7 +1013,7 @@ function DetailLists({ hackathon }: { hackathon: Hackathon }) {
           ["Criteria", criteria],
         ].map(([title, items]) => (
           <div key={String(title)}>
-            <h4 className="text-xs font-semibold uppercase text-slate-500">{String(title)}</h4>
+            <h4 className="text-xs font-semibold uppercase" style={{ color: "var(--text-muted)" }}>{String(title)}</h4>
             <div className="mt-3 flex flex-wrap gap-2">
               {(items as string[]).map((item) => (
                 <span className="chip" key={item}>
@@ -1038,7 +1038,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 
   if (hackathonQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <Loader2 className="animate-spin" size={16} />
         Loading hackathon
       </div>
@@ -1051,13 +1051,13 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/hackathons">
+      <Link className="text-sm font-semibold hover:underline" style={{ color: "var(--brand)" }} to="/hackathons">
         Back to hackathons
       </Link>
 
       <div className="panel overflow-hidden">
         {hackathon.bannerUrl && (
-          <div className="relative h-48 w-full overflow-hidden bg-slate-950 sm:h-64 flex items-center justify-center border-b border-slate-100">
+          <div className="relative h-48 w-full overflow-hidden bg-slate-950 sm:h-64 flex items-center justify-center border-b" style={{ borderColor: "var(--border)" }}>
             {/* Blurred ambient background copy */}
             <div 
               className="absolute inset-0 bg-cover bg-center blur-lg scale-110 opacity-30 pointer-events-none"
@@ -1075,7 +1075,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-bold text-slate-950">{hackathon.title}</h2>
+                <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{hackathon.title}</h2>
                 {hackathon.verified && hackathon.status !== "DRAFT" && (
                   <span className="chip text-emerald-700">
                     <ShieldCheck size={13} />
@@ -1083,13 +1083,13 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
                   </span>
                 )}
                 {hackathon.isExternal && (
-                  <span className="chip bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="chip bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                     External
                   </span>
                 )}
                 <StatusBadge value={hackathon.status} />
               </div>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
                 {hackathon.shortDescription || hackathon.description}
               </p>
             </div>
@@ -1146,7 +1146,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
       <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
         <div className="space-y-5">
           <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Schedule</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Schedule</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <Metric label="Registration closes" value={formatDate(hackathon.registrationDeadline)} />
               <Metric label="Starts" value={formatDate(hackathon.startDate)} />
@@ -1162,14 +1162,14 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
 
         <aside className="space-y-5">
           <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Organizer</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Organizer</h3>
             <div className="mt-4 flex items-center gap-3">
               <Avatar user={hackathon.createdBy} />
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-955">
+                <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   {hackathon.organizerName || userName(hackathon.createdBy)}
                 </div>
-                <div className="truncate text-xs text-slate-500">
+                <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                   {hackathon.organizerType ? titleCase(hackathon.organizerType) : userHeadline(hackathon.createdBy)}
                 </div>
               </div>
@@ -1182,9 +1182,9 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
           </div>
 
           {hackathon.isExternal && hackathon.externalUrl && (
-            <div className="panel p-5 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 border border-blue-100/60">
-              <h3 className="text-sm font-semibold text-slate-950">External registration</h3>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+            <div className="panel p-5" style={{ background: "var(--bg-surface-2)", borderColor: "rgba(59,130,246,0.25)" }}>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>External registration</h3>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
                 This hackathon is hosted externally on <strong>{hackathon.sourcePlatform || "another site"}</strong>. 
                 Register directly on their platform to participate.
               </p>
@@ -1238,11 +1238,11 @@ export function HackathonsPage() {
       <CreateHackathonPanel disabled={!user} />
 
       {/* Premium Search and Filter Bar */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="panel p-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Input */}
           <div className="relative min-w-[240px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={15} style={{ color: "var(--text-muted)" }} />
             <input
               className="field pl-9"
               value={query}
@@ -1271,8 +1271,9 @@ export function HackathonsPage() {
             className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
               externalOnly
                 ? "border-blue-400 bg-blue-600 text-white"
-                : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+                : "hover:border-blue-400"
             }`}
+            style={!externalOnly ? { borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" } : {}}
           >
             External Only
           </button>
@@ -1286,7 +1287,8 @@ export function HackathonsPage() {
                 setStatus("ALL");
                 setExternalOnly(false);
               }}
-              className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition flex items-center gap-1 ml-auto"
+              className="text-xs font-semibold hover:text-rose-500 transition flex items-center gap-1 ml-auto"
+              style={{ color: "var(--text-muted)" }}
             >
               <X size={12} /> Clear
             </button>
@@ -1295,8 +1297,8 @@ export function HackathonsPage() {
       </div>
 
       {hackathonsQuery.isFetching && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="animate-spin text-emerald-700" size={16} />
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
+          <Loader2 className="animate-spin" size={16} style={{ color: "var(--brand)" }} />
           Loading hackathons...
         </div>
       )}
