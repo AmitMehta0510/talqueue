@@ -53,35 +53,35 @@ function NotificationGlyph({ type }: { type: PlatformNotification["type"] }) {
   const t = type.toUpperCase();
   if (t.includes("PROJECT") || t.includes("TEAM") || t.includes("COMMUNITY")) {
     return (
-      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100">
+      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 transition group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50">
         <Rocket size={17} />
       </div>
     );
   }
   if (t.includes("INVITE") || t.includes("CONNECTION") || t.includes("FOLLOW") || t.includes("MENTORSHIP")) {
     return (
-      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition group-hover:bg-blue-100">
+      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50">
         <UserPlus size={17} />
       </div>
     );
   }
   if (t.includes("MESSAGE") || t.includes("COMMENT") || t.includes("MENTION")) {
     return (
-      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 transition group-hover:bg-amber-100">
+      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 transition group-hover:bg-amber-100 dark:group-hover:bg-amber-900/50">
         <MessageSquare size={17} />
       </div>
     );
   }
   if (t.includes("JOB") || t.includes("HACKATHON") || t.includes("REFERRAL")) {
     return (
-      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-100">
+      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50">
         <ShieldCheck size={17} />
       </div>
     );
   }
 
   return (
-    <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition group-hover:bg-slate-200">
+    <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition" style={{ background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
       <Bell size={17} />
     </div>
   );
@@ -105,8 +105,8 @@ const ToggleSwitch = ({
 }) => (
   <div className="flex items-start justify-between gap-4 py-2">
     <div className="flex-1">
-      <span className="text-sm font-semibold text-slate-800 transition">{label}</span>
-      {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+      <span className="text-sm font-semibold transition" style={{ color: "var(--text-primary)" }}>{label}</span>
+      {description && <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{description}</p>}
     </div>
     <button
       type="button"
@@ -114,7 +114,7 @@ const ToggleSwitch = ({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-        checked ? "bg-emerald-600" : "bg-slate-200"
+        checked ? "bg-emerald-600" : "bg-slate-200 dark:bg-slate-600"
       }`}
     >
       <span
@@ -233,11 +233,11 @@ export function NotificationsPage() {
               <Bell size={20} className="animate-pulse" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Notifications</h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Track your projects, team communications, social connection requests, jobs, and system statuses.
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Notifications</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+              Track your projects, team communications, social connection requests, jobs, and system statuses.
+            </p>
+          </div>
           </div>
         </div>
 
@@ -285,9 +285,10 @@ export function NotificationsPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`relative rounded-md px-3.5 py-2 text-xs font-semibold transition-all duration-150 shrink-0 ${
                       isActive
-                        ? "bg-slate-950 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm"
+                        : "hover:text-slate-900 dark:hover:text-slate-100"
                     }`}
+                    style={!isActive ? { color: "var(--text-secondary)" } : {}}
                   >
                     {tab.label}
                     {tab.id === "unread" && serverUnreadCount > 0 && (
@@ -314,10 +315,10 @@ export function NotificationsPage() {
                 return (
                   <article
                     key={notification.id}
-                    className={`panel group overflow-hidden transition-all duration-200 hover:border-emerald-200/80 hover:shadow-md ${
+                    className={`panel group overflow-hidden transition-all duration-200 hover:shadow-md ${
                       isItemRead
-                        ? "border-slate-100 bg-white/70"
-                        : "border-emerald-100 bg-emerald-50/20 shadow-[inset_4px_0_0_0_#059669]"
+                        ? "hover:border-emerald-200/80"
+                        : "border-emerald-200 dark:border-emerald-700 shadow-[inset_4px_0_0_0_#059669]"
                     }`}
                   >
                     <div className="p-4 flex gap-4">
@@ -342,11 +343,11 @@ export function NotificationsPage() {
                               onClick={() => handleMarkAsRead(notification.id, isItemRead)}
                               className="group-hover:text-emerald-700 transition"
                             >
-                              <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-800 line-clamp-1 transition">
+                              <h4 className="text-sm font-bold group-hover:text-emerald-700 dark:group-hover:text-emerald-400 line-clamp-1 transition" style={{ color: "var(--text-primary)" }}>
                                 {notification.title}
                               </h4>
                             </Link>
-                            <p className="mt-1 text-sm leading-relaxed text-slate-600 line-clamp-2">
+                            <p className="mt-1 text-sm leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
                               {notification.message}
                             </p>
                           </div>
@@ -356,8 +357,8 @@ export function NotificationsPage() {
                         </div>
 
                         {/* Metadata & Actions footer */}
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100/60 pt-3">
-                          <div className="text-xs text-slate-500 font-medium">
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                          <div className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
                             {notification.actor ? `${userName(notification.actor)} • ` : ""}
                             {formatDate(notification.createdAt)}
                           </div>
@@ -422,11 +423,11 @@ export function NotificationsPage() {
             <div className="panel p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Limit selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">Page limit:</span>
+                <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Page limit:</span>
                 <select
                   value={limit}
                   onChange={(e) => setLimit(Number(e.target.value))}
-                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-emerald-500 outline-none"
+                  className="field py-1 text-xs w-auto"
                 >
                   <option value="10">10 per page</option>
                   <option value="20">20 per page</option>
@@ -445,7 +446,7 @@ export function NotificationsPage() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="text-xs font-semibold text-slate-700">
+                <span className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                   Page {page}
                 </span>
                 <button
@@ -466,25 +467,25 @@ export function NotificationsPage() {
         <div className="lg:col-span-4 space-y-6">
           {/* Preferences Card */}
           <section className="panel p-5 relative overflow-hidden" aria-labelledby="preferences-title">
-            <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
+            <div className="flex items-center gap-2 pb-4 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
               <Sliders size={18} className="text-emerald-600" />
-              <h2 id="preferences-title" className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              <h2 id="preferences-title" className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
                 Preferences
               </h2>
             </div>
 
             {/* Local storage sync confirmation banner */}
             {savedMessage && (
-              <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-50 border border-emerald-100 p-2 text-xs font-semibold text-emerald-800 transition duration-150 animate-fade-in">
+              <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-700 p-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 transition duration-150 animate-fade-in">
                 <CheckCircle size={14} />
                 <span>{savedMessage}</span>
               </div>
             )}
 
-            <div className="space-y-5 divide-y divide-slate-100">
+            <div className="space-y-5 divide-y" style={{ borderColor: "var(--border)" }}>
               {/* Delivery Channels */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
                   Channels
                 </h3>
                 <ToggleSwitch
@@ -503,7 +504,7 @@ export function NotificationsPage() {
 
               {/* Subscription Filters */}
               <div className="space-y-3 pt-4">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
                   Subscriptions
                 </h3>
                 <ToggleSwitch

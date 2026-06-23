@@ -142,7 +142,7 @@ export function UserProfilePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-0">
       {/* ── Hero Banner ──────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-t-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-t-xl shadow-sm" style={{ border: "1px solid var(--border)", background: "var(--bg-surface)" }}>
         {/* Banner */}
         <div
           className="relative h-40 bg-cover bg-center"
@@ -160,22 +160,22 @@ export function UserProfilePage() {
             {/* Avatar + name */}
             <div className="-mt-10 flex items-end gap-4">
               <div className="relative">
-                <div className="rounded-full p-1 ring-4 ring-white bg-white shadow-lg">
+                <div className="rounded-full p-1 ring-4 ring-white dark:ring-slate-800 shadow-lg" style={{ background: "var(--bg-surface)" }}>
                   <Avatar user={profile} size="lg" />
                 </div>
                 {profile.verifiedEngineer && (
-                  <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white">
+                  <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white dark:ring-slate-800">
                     <ShieldCheck size={13} className="text-white" />
                   </div>
                 )}
               </div>
               <div className="mb-1">
-                <h1 className="text-xl font-bold text-slate-900">{userName(profile)}</h1>
-                <p className="text-sm text-slate-500">
+                <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{userName(profile)}</h1>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                   {userHeadline(profile) || `@${profile.username}`}
                 </p>
                 {profile.profile?.location && (
-                  <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                  <p className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
                     <MapPin size={11} />
                     {profile.profile.location}
                   </p>
@@ -187,7 +187,7 @@ export function UserProfilePage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 id="user-profile-message-btn"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:bg-slate-300"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
                 disabled={createDirectConversation.isPending}
                 onClick={startConversation}
               >
@@ -202,7 +202,7 @@ export function UserProfilePage() {
                 profile.acceptingReferrals === true && (
                 <button
                   id="user-profile-referral-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm font-semibold text-amber-800 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-900/50"
                   onClick={() => setShowReferralModal(true)}
                 >
                   <Gift size={15} />
@@ -212,7 +212,7 @@ export function UserProfilePage() {
               {isFollowing ? (
                 <button
                   id="user-profile-following-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
                   disabled
                 >
                   <ShieldCheck size={15} />
@@ -221,7 +221,8 @@ export function UserProfilePage() {
               ) : (
                 <button
                   id="user-profile-follow-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:text-slate-400"
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50"
+                  style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
                   disabled={followUser.isPending}
                   onClick={() => followUser.mutate(profile.id)}
                 >
@@ -238,14 +239,14 @@ export function UserProfilePage() {
 
           {/* Trust badge */}
           <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              <ShieldCheck size={12} className="text-emerald-700" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
+              <ShieldCheck size={12} className="text-emerald-600" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
             {availability.map((a) => (
               <span
                 key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
               >
                 <Zap size={11} />
                 {a}
@@ -254,7 +255,7 @@ export function UserProfilePage() {
           </div>
 
           {/* Quick stats */}
-          <div className="mt-5 flex flex-wrap gap-6 border-t border-slate-100 pt-5">
+          <div className="mt-5 flex flex-wrap gap-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
             <QStat label="Reputation" value={formatCount(profile.reputationScore)} accent />
             <QStat label="Engineering" value={Math.round(profile.engineeringScore || 0)} />
             <QStat label="Followers" value={formatCount(profile.followersCount)} />
@@ -271,7 +272,8 @@ export function UserProfilePage() {
                   href={href!}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                  style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
                 >
                   <Icon size={13} />
                   {label}
@@ -284,7 +286,7 @@ export function UserProfilePage() {
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div className="sticky top-0 z-20 border-b backdrop-blur-sm shadow-sm" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--bg-surface) 95%, transparent)" }}>
         <div className="flex overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -292,15 +294,16 @@ export function UserProfilePage() {
               id={`user-profile-tab-${id}`}
               className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
                 ${activeTab === id
-                  ? "text-emerald-700"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
+              style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
               onClick={() => setActiveTab(id)}
             >
               <Icon size={15} />
               {label}
               {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
               )}
             </button>
           ))}
@@ -315,15 +318,15 @@ export function UserProfilePage() {
             <div className="space-y-5">
               <InfoPanel title="About" icon={User}>
                 {profile.profile?.bio ? (
-                  <p className="text-sm leading-relaxed text-slate-600">{profile.profile.bio}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{profile.profile.bio}</p>
                 ) : (
-                  <p className="text-sm italic text-slate-400">No bio added.</p>
+                  <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>No bio added.</p>
                 )}
               </InfoPanel>
 
               {profile.profile?.availabilityText && (
                 <InfoPanel title="Availability" icon={Zap}>
-                  <p className="text-sm leading-relaxed text-slate-600">
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     {profile.profile.availabilityText}
                   </p>
                 </InfoPanel>
@@ -333,7 +336,7 @@ export function UserProfilePage() {
             {/* Sidebar */}
             <div className="space-y-4">
               <InfoPanel title="Profile signals" icon={MapPin}>
-                <div className="space-y-2.5 text-sm text-slate-600">
+                <div className="space-y-2.5 text-sm">
                   <SigRow icon={MapPin}>{profile.profile?.location || "No location"}</SigRow>
                   <SigRow icon={Building2}>
                     {profile.profile?.college?.name || "No college"}
@@ -359,7 +362,7 @@ export function UserProfilePage() {
         {/* PROJECTS */}
         {activeTab === "projects" && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-900">Projects</h2>
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Projects</h2>
             {(profile.ownedProjects || []).length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {(profile.ownedProjects || []).map((proj) => (
@@ -384,7 +387,7 @@ export function UserProfilePage() {
         {/* EXPERIENCE */}
         {activeTab === "experience" && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-900">Work Experience</h2>
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Work Experience</h2>
             {(profile.experiences || []).length > 0 ? (
               <div className="space-y-3">
                 {(profile.experiences || []).map((exp) => (
@@ -400,7 +403,7 @@ export function UserProfilePage() {
         {/* SKILLS */}
         {activeTab === "skills" && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-900">Skills</h2>
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Skills</h2>
             {(profile.skills || []).length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {(profile.skills || []).map((skill) => (
@@ -425,7 +428,7 @@ export function UserProfilePage() {
         {/* EDUCATION */}
         {activeTab === "education" && (
           <div className="space-y-4">
-            <h2 className="text-base font-semibold text-slate-900">Education</h2>
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Education</h2>
             {(profile.educations || []).length > 0 ? (
               <div className="space-y-3">
                 {(profile.educations || []).map((edu) => (
@@ -444,16 +447,16 @@ export function UserProfilePage() {
           const mutuals = mutualPages.flatMap((p: any) => p.connections || p.users || []);
           return (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
                 Mutual Connections
                 {mutuals.length > 0 && (
-                  <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                  <span className="ml-2 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                     {mutuals.length}{mutualQuery.hasNextPage ? "+" : ""}
                   </span>
                 )}
               </h2>
               {mutualQuery.isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
                   <Loader2 className="animate-spin" size={15} />
                   Loading mutual connections…
                 </div>
@@ -466,15 +469,16 @@ export function UserProfilePage() {
                       return (
                         <button
                           key={u.id}
-                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                          className="flex items-center gap-3 rounded-xl border p-4 text-left shadow-sm transition hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
+                          style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
                           onClick={() => navigate(`/users/${u.username || u.id}`)}
                         >
                           <Avatar user={u} />
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900">
+                            <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                               {u.profile?.fullName || u.username}
                             </div>
-                            <div className="truncate text-xs text-slate-500">
+                            <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                               {u.profile?.headline || u.primaryRole || `@${u.username}`}
                             </div>
                           </div>
@@ -531,8 +535,8 @@ export function UserProfilePage() {
 function QStat({ label, value, accent = false }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div>
-      <div className={`text-lg font-bold ${accent ? "text-emerald-700" : "text-slate-800"}`}>{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`text-lg font-bold ${accent ? "text-emerald-600 dark:text-emerald-400" : ""}`} style={!accent ? { color: "var(--text-primary)" } : {}}>{value}</div>
+      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
     </div>
   );
 }
@@ -547,10 +551,10 @@ function InfoPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="panel p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Icon size={14} className="text-emerald-700" />
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <Icon size={14} className="text-emerald-600 dark:text-emerald-400" />
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
       </div>
       {children}
     </div>
@@ -565,8 +569,8 @@ function SigRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon size={13} className="mt-0.5 shrink-0 text-slate-400" />
+    <div className="flex items-start gap-2" style={{ color: "var(--text-secondary)" }}>
+      <Icon size={13} className="mt-0.5 shrink-0 text-slate-400 dark:text-slate-500" />
       <span className="text-sm">{children}</span>
     </div>
   );
@@ -574,9 +578,9 @@ function SigRow({
 
 function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-2.5">
-      <div className="text-base font-bold text-slate-800">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+    <div className="rounded-lg p-2.5" style={{ background: "var(--bg-surface-2)" }}>
+      <div className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{value}</div>
+      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
     </div>
   );
 }
@@ -591,13 +595,13 @@ function BlankSection({
   text: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50">
-        <Icon size={22} className="text-slate-400" />
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: "var(--bg-surface-2)" }}>
+        <Icon size={22} className="text-slate-400 dark:text-slate-500" />
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <p className="mt-1 max-w-xs text-xs text-slate-500">{text}</p>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{title}</h3>
+        <p className="mt-1 max-w-xs text-xs" style={{ color: "var(--text-muted)" }}>{text}</p>
       </div>
     </div>
   );
@@ -624,18 +628,18 @@ function SkillVerificationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+        <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
           <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-emerald-700" />
-            <h3 className="font-bold text-slate-900">
+            <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <h3 className="font-bold" style={{ color: "var(--text-primary)" }}>
               {skill.skill?.name || "Skill"} Verification
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-150 hover:text-slate-700 transition"
+            className="icon-btn"
           >
             <X size={16} />
           </button>
@@ -645,12 +649,12 @@ function SkillVerificationModal({
         <div className="p-6">
           {isLocked ? (
             <div className="text-center space-y-4">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-4 ring-amber-100">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 ring-4 ring-amber-100 dark:ring-amber-900/50">
                 <ShieldCheck size={24} />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-base font-bold text-slate-900">Unlock Verification Proof</h4>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                <h4 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Unlock Verification Proof</h4>
+                <p className="text-xs max-w-xs mx-auto leading-relaxed" style={{ color: "var(--text-muted)" }}>
                   Unlock Recruiter Premium to inspect detailed repository statistics, code byte counts, and platform activity data that validated this skill.
                 </p>
               </div>
@@ -667,10 +671,10 @@ function SkillVerificationModal({
               </button>
             </div>
           ) : (
-            <div className="space-y-4 text-sm text-slate-600">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="font-semibold text-slate-700">Verification Source:</span>
-                <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+            <div className="space-y-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+              <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+                <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Verification Source:</span>
+                <span className="rounded bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700">
                   {skill.verificationSource || "External Profiles"}
                 </span>
               </div>
@@ -678,17 +682,17 @@ function SkillVerificationModal({
               {/* GitHub Proof Details */}
               {proof?.repositories && (
                 <div className="space-y-2">
-                  <span className="font-semibold text-slate-700 block">Verified GitHub repositories:</span>
-                  <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+                  <span className="font-semibold block" style={{ color: "var(--text-primary)" }}>Verified GitHub repositories:</span>
+                  <div className="space-y-2 rounded-xl border p-3.5" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                     {proof.repositories.map((repo: any) => (
                       <div key={repo.name} className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-emerald-800 break-all">{repo.name}</span>
-                        <span className="text-slate-400 shrink-0">{(repo.bytes / 1024).toFixed(1)} KB code</span>
+                        <span className="font-medium text-emerald-700 dark:text-emerald-400 break-all">{repo.name}</span>
+                        <span className="shrink-0" style={{ color: "var(--text-muted)" }}>{(repo.bytes / 1024).toFixed(1)} KB code</span>
                       </div>
                     ))}
-                    <div className="border-t border-slate-200 pt-2 flex justify-between text-xs text-slate-400">
+                    <div className="border-t pt-2 flex justify-between text-xs" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
                       <span>Total analyzed size:</span>
-                      <span className="font-bold text-slate-600">{(proof.totalBytes / 1024).toFixed(1)} KB</span>
+                      <span className="font-bold" style={{ color: "var(--text-secondary)" }}>{(proof.totalBytes / 1024).toFixed(1)} KB</span>
                     </div>
                   </div>
                 </div>
@@ -697,15 +701,15 @@ function SkillVerificationModal({
               {/* LeetCode Proof Details */}
               {proof?.leetcode && (
                 <div className="space-y-2">
-                  <span className="font-semibold text-slate-700 block">LeetCode metrics:</span>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 space-y-1.5 text-xs">
+                  <span className="font-semibold block" style={{ color: "var(--text-primary)" }}>LeetCode metrics:</span>
+                  <div className="rounded-xl border p-3.5 space-y-1.5 text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">LeetCode Username:</span>
-                      <span className="font-semibold text-slate-700">@{proof.leetcode.username}</span>
+                      <span style={{ color: "var(--text-muted)" }}>LeetCode Username:</span>
+                      <span className="font-semibold" style={{ color: "var(--text-primary)" }}>@{proof.leetcode.username}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Problems Solved in language:</span>
-                      <span className="font-bold text-slate-700">{proof.leetcode.problemsSolved} questions</span>
+                      <span style={{ color: "var(--text-muted)" }}>Problems Solved in language:</span>
+                      <span className="font-bold" style={{ color: "var(--text-primary)" }}>{proof.leetcode.problemsSolved} questions</span>
                     </div>
                   </div>
                 </div>
@@ -714,27 +718,27 @@ function SkillVerificationModal({
               {/* HackerRank/GFG Proof Details */}
               {(proof?.hackerrank || proof?.geeksforgeeks || proof?.codingninjas) && (
                 <div className="space-y-2">
-                  <span className="font-semibold text-slate-700 block">Coding Platform Profile:</span>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 space-y-1.5 text-xs">
+                  <span className="font-semibold block" style={{ color: "var(--text-primary)" }}>Coding Platform Profile:</span>
+                  <div className="rounded-xl border p-3.5 space-y-1.5 text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                     {proof.hackerrank && (
                       <div className="flex justify-between">
-                        <span className="text-slate-400">HackerRank Username:</span>
-                        <span className="font-semibold text-slate-700">@{proof.hackerrank.username}</span>
+                        <span style={{ color: "var(--text-muted)" }}>HackerRank Username:</span>
+                        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>@{proof.hackerrank.username}</span>
                       </div>
                     )}
                     {proof.geeksforgeeks && (
                       <div className="flex justify-between">
-                        <span className="text-slate-400">GeeksforGeeks Username:</span>
-                        <span className="font-semibold text-slate-700">@{proof.geeksforgeeks.username}</span>
+                        <span style={{ color: "var(--text-muted)" }}>GeeksforGeeks Username:</span>
+                        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>@{proof.geeksforgeeks.username}</span>
                       </div>
                     )}
                     {proof.codingninjas && (
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Coding Ninjas Username:</span>
-                        <span className="font-semibold text-slate-700">@{proof.codingninjas.username}</span>
+                        <span style={{ color: "var(--text-muted)" }}>Coding Ninjas Username:</span>
+                        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>@{proof.codingninjas.username}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-emerald-700 font-semibold">
+                    <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
                       <span>Verification Status:</span>
                       <span>{proof.hackerrank?.status || proof.geeksforgeeks?.status || proof.codingninjas?.status}</span>
                     </div>
@@ -742,7 +746,7 @@ function SkillVerificationModal({
                 </div>
               )}
 
-              <div className="text-[10px] text-slate-400 leading-normal">
+              <div className="text-[10px] leading-normal" style={{ color: "var(--text-muted)" }}>
                 This verification is based on public source code repositories and profile analytics fetched from connected accounts.
               </div>
             </div>
