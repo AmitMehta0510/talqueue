@@ -136,27 +136,27 @@ const getProfileCompletionTasks = (
   profile: UserType,
   counts: { skills: number; experiences: number; educations: number },
 ) => [
-  {
-    label: "Add name and headline",
-    complete: hasValue(profile.profile?.fullName) && hasValue(profile.profile?.headline),
-  },
-  { label: "Write a short bio", complete: hasValue(profile.profile?.bio) },
-  {
-    label: "Select college and department",
-    complete: Boolean(profile.profile?.collegeId && profile.profile?.departmentId),
-  },
-  { label: "Add at least 3 skills", complete: counts.skills >= 3 },
-  { label: "Add experience", complete: counts.experiences > 0 },
-  { label: "Add education", complete: counts.educations > 0 },
-  {
-    label: "Add GitHub, LinkedIn, or portfolio",
-    complete: Boolean(
-      profile.profile?.githubUrl ||
-      profile.profile?.linkedinUrl ||
-      profile.profile?.portfolioUrl,
-    ),
-  },
-];
+    {
+      label: "Add name and headline",
+      complete: hasValue(profile.profile?.fullName) && hasValue(profile.profile?.headline),
+    },
+    { label: "Write a short bio", complete: hasValue(profile.profile?.bio) },
+    {
+      label: "Select college and department",
+      complete: Boolean(profile.profile?.collegeId && profile.profile?.departmentId),
+    },
+    { label: "Add at least 3 skills", complete: counts.skills >= 3 },
+    { label: "Add experience", complete: counts.experiences > 0 },
+    { label: "Add education", complete: counts.educations > 0 },
+    {
+      label: "Add GitHub, LinkedIn, or portfolio",
+      complete: Boolean(
+        profile.profile?.githubUrl ||
+        profile.profile?.linkedinUrl ||
+        profile.profile?.portfolioUrl,
+      ),
+    },
+  ];
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -472,11 +472,11 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       return;
     }
 
-    const deptIdToSend = educationForm.isOtherDepartment 
+    const deptIdToSend = educationForm.isOtherDepartment
       ? educationForm.customDepartmentName.trim()
       : educationForm.departmentId;
 
-    const fieldOfStudyToSend = educationForm.isOtherDepartment 
+    const fieldOfStudyToSend = educationForm.isOtherDepartment
       ? educationForm.customDepartmentName.trim()
       : educationForm.fieldOfStudy;
 
@@ -608,12 +608,12 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   }
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about",      label: "About",      icon: User },
+    { id: "about", label: "About", icon: User },
     { id: "experience", label: "Experience", icon: Briefcase },
-    { id: "skills",     label: "Skills",     icon: Code2 },
-    { id: "education",  label: "Education",  icon: GraduationCap },
-    { id: "projects",   label: "Projects",   icon: FolderKanban },
-    { id: "settings",   label: "Settings",   icon: Settings },
+    { id: "skills", label: "Skills", icon: Code2 },
+    { id: "education", label: "Education", icon: GraduationCap },
+    { id: "projects", label: "Projects", icon: FolderKanban },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
   return (
@@ -627,7 +627,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       />
 
       {/* ── Tab Navigation ──────────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b backdrop-blur-sm shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-surface-blur, rgba(255,255,255,0.95))" }}>
         <div className="flex overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -635,15 +635,16 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
               id={`profile-tab-${id}`}
               className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
                 ${activeTab === id
-                  ? "text-emerald-700"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
+              style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
               onClick={() => setActiveTab(id)}
             >
               <Icon size={16} />
               {label}
               {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
               )}
             </button>
           ))}
@@ -800,7 +801,7 @@ function ProfileHero({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="overflow-hidden rounded-t-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-t-xl border shadow-sm" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
       {/* Banner */}
       <div
         className="relative h-40 bg-cover bg-center"
@@ -818,7 +819,7 @@ function ProfileHero({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="-mt-10 flex items-end gap-4">
             <div className="relative">
-              <div className="rounded-full p-1 ring-4 ring-white bg-white shadow-lg">
+              <div className="rounded-full p-1 shadow-lg" style={{ outline: "4px solid var(--bg-surface)", background: "var(--bg-surface)" }}>
                 <Avatar user={profile} size="lg" />
               </div>
               {profile.verifiedEngineer && (
@@ -829,14 +830,14 @@ function ProfileHero({
             </div>
             <div className="mb-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">{userName(profile)}</h1>
-                {loading && <Loader2 className="animate-spin text-slate-400" size={15} />}
+                <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{userName(profile)}</h1>
+                {loading && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 {userHeadline(profile) || `@${profile.username}`}
               </p>
               {profile.profile?.location && (
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                <p className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
                   <MapPin size={11} />
                   {profile.profile.location}
                 </p>
@@ -847,15 +848,15 @@ function ProfileHero({
           {/* Trust + completion */}
           <div className="flex items-center gap-3">
             <CompletionRing pct={completePct} />
-            <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
-              <ShieldCheck size={13} className="text-emerald-700" />
+            <span className="chip flex items-center gap-1.5">
+              <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
           </div>
         </div>
 
         {/* Quick stats */}
-        <div className="mt-5 flex flex-wrap gap-6 border-t border-slate-100 pt-5 text-center">
+        <div className="mt-5 flex flex-wrap gap-6 border-t pt-5 text-center" style={{ borderColor: "var(--border)" }}>
           <QuickStat label="Reputation" value={formatCount(profile.reputationScore)} accent="emerald" />
           <QuickStat label="Engineering" value={Math.round(profile.engineeringScore || 0)} accent="teal" />
           <QuickStat label="Followers" value={formatCount(profile.followersCount)} accent="slate" />
@@ -872,7 +873,7 @@ function ProfileHero({
                 href={href!}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
+                className="chip inline-flex items-center gap-1.5 transition hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400"
               >
                 <Icon size={13} />
                 {label}
@@ -888,7 +889,7 @@ function ProfileHero({
             {availability.map((a) => (
               <span
                 key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
               >
                 <Zap size={11} />
                 {a}
@@ -926,9 +927,9 @@ function CompletionRing({ pct }: { pct: number }) {
             className="transition-all duration-700"
           />
         </svg>
-        <span className="absolute text-xs font-bold text-slate-800">{pct}%</span>
+        <span className="absolute text-xs font-bold" style={{ color: "var(--text-primary)" }}>{pct}%</span>
       </div>
-      <span className="text-[10px] font-medium text-slate-500">Profile</span>
+      <span className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Profile</span>
     </div>
   );
 }
@@ -944,15 +945,15 @@ function QuickStat({
 }) {
   const textClass =
     accent === "emerald"
-      ? "text-emerald-700"
+      ? "text-emerald-600 dark:text-emerald-400"
       : accent === "teal"
-      ? "text-teal-700"
-      : "text-slate-800";
+        ? "text-teal-600 dark:text-teal-400"
+        : "";
 
   return (
     <div>
-      <div className={`text-lg font-bold ${textClass}`}>{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`text-lg font-bold ${textClass}`} style={!textClass ? { color: "var(--text-primary)" } : {}}>{value}</div>
+      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
     </div>
   );
 }
@@ -974,11 +975,11 @@ function AboutTab({
         {/* Bio */}
         {profile.profile?.bio ? (
           <SectionCard title="About" icon={User}>
-            <p className="text-sm leading-relaxed text-slate-600">{profile.profile.bio}</p>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{profile.profile.bio}</p>
           </SectionCard>
         ) : (
           <SectionCard title="About" icon={User}>
-            <p className="text-sm text-slate-400 italic">
+            <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
               No bio added yet — share your story in the Settings tab.
             </p>
           </SectionCard>
@@ -987,7 +988,7 @@ function AboutTab({
         {/* Availability text */}
         {profile.profile?.availabilityText && (
           <SectionCard title="Availability" icon={Zap}>
-            <p className="text-sm leading-relaxed text-slate-600">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               {profile.profile.availabilityText}
             </p>
           </SectionCard>
@@ -997,17 +998,17 @@ function AboutTab({
       {/* Right sidebar */}
       <div className="space-y-5">
         {/* Profile foundation */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="panel p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-amber-500" />
-              <h3 className="text-sm font-semibold text-slate-900">Profile foundation</h3>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Profile foundation</h3>
             </div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               {completedTasks}/{tasks.length}
             </span>
           </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--bg-surface-2)" }}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700"
               style={{ width: `${tasks.length ? (completedTasks / tasks.length) * 100 : 0}%` }}
@@ -1019,11 +1020,11 @@ function AboutTab({
               return (
                 <div
                   key={task.label}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs
-                    ${task.complete
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-slate-50 text-slate-500"
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${task.complete
+                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                      : ""
                     }`}
+                  style={!task.complete ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}
                 >
                   <Icon size={13} />
                   {task.label}
@@ -1034,9 +1035,9 @@ function AboutTab({
         </div>
 
         {/* Signals */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Profile signals</h3>
-          <div className="space-y-2.5 text-sm text-slate-600">
+        <div className="panel p-5">
+          <h3 className="mb-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Profile signals</h3>
+          <div className="space-y-2.5 text-sm" style={{ color: "var(--text-secondary)" }}>
             <InfoRow icon={MapPin}>{profile.profile?.location || "No location"}</InfoRow>
             <InfoRow icon={Building2}>
               {profile.profile?.college?.name || "No college selected"}
@@ -1044,7 +1045,7 @@ function AboutTab({
             <InfoRow icon={GraduationCap}>
               {profile.profile?.department?.name || "No department"}
             </InfoRow>
-{profile.profile?.githubUrl && (
+            {profile.profile?.githubUrl && (
               <InfoRow icon={Github}>
                 <a
                   href={profile.profile.githubUrl}
@@ -1072,8 +1073,8 @@ function AboutTab({
         </div>
 
         {/* Stats */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Activity</h3>
+        <div className="panel p-5">
+          <h3 className="mb-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Activity</h3>
           <div className="grid grid-cols-2 gap-3">
             <MiniStat label="Skills" value={profile._count?.skills ?? 0} />
             <MiniStat label="Experiences" value={profile._count?.experiences ?? 0} />
@@ -1140,8 +1141,8 @@ function ExperienceTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-900">Work Experience</h2>
-          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Work Experience</h2>
+          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
         </div>
         <button
           id="profile-add-experience-btn"
@@ -1155,9 +1156,9 @@ function ExperienceTab({
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <Briefcase size={15} className="text-emerald-700" />
+        <div className="panel p-5" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <Briefcase size={15} className="text-emerald-600 dark:text-emerald-400" />
             {editingId ? "Edit Experience" : "New Experience"}
           </h3>
           <form onSubmit={onSubmit}>
@@ -1253,7 +1254,7 @@ function ExperienceTab({
                 />
               </Field>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 transition hover:border-emerald-200">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-400 dark:hover:border-emerald-500" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}>
                   <input
                     type="checkbox"
                     checked={form.isCurrent}
@@ -1402,11 +1403,11 @@ function SkillsTab({
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-900">Skills</h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Skills</h2>
+          <span className="chip rounded-full px-2.5 py-0.5 text-xs font-semibold">
             {skills.length} / {MAX_SKILLS}
           </span>
-          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
         </div>
         <button
           onClick={onVerify}
@@ -1518,8 +1519,8 @@ function EducationTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-900">Education</h2>
-          {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Education</h2>
+          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
         </div>
         <button
           id="profile-add-education-btn"
@@ -1533,9 +1534,9 @@ function EducationTab({
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            <GraduationCap size={15} className="text-emerald-700" />
+        <div className="panel p-5" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <GraduationCap size={15} className="text-emerald-600 dark:text-emerald-400" />
             {editingId ? "Edit Education" : "New Education"}
           </h3>
           <form onSubmit={onSubmit}>
@@ -1553,17 +1554,17 @@ function EducationTab({
                       />
                     </Field>
                     {collegeResults.length > 0 && (
-                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border shadow-lg" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
                         {collegeResults.map((college) => (
                           <button
                             key={college.id}
-                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                             type="button"
                             onClick={() => onSelectCollege(college)}
                           >
-                            <span className="font-medium text-slate-800">{college.name}</span>
+                            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{college.name}</span>
                             {college.city && (
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                                 {college.city}, {college.state}
                               </span>
                             )}
@@ -1574,7 +1575,7 @@ function EducationTab({
                     {/* "Not listed" trigger */}
                     <button
                       type="button"
-                      className="mt-1.5 text-xs text-slate-500 underline underline-offset-2 hover:text-emerald-700 transition"
+                      className="mt-1.5 text-xs underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition" style={{ color: "var(--text-muted)" }}
                       onClick={onSelectOtherCollege}
                     >
                       My college isn't listed
@@ -1594,7 +1595,7 @@ function EducationTab({
                     </Field>
                     <button
                       type="button"
-                      className="text-xs text-slate-500 underline underline-offset-2 hover:text-emerald-700 transition"
+                      className="text-xs underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition" style={{ color: "var(--text-muted)" }}
                       onClick={onCancelOtherCollege}
                     >
                       ← Search from listed colleges instead
@@ -1644,8 +1645,8 @@ function EducationTab({
                         {!form.collegeId
                           ? "Select a college first"
                           : departmentsLoading
-                          ? "Loading departments..."
-                          : "Select Department/Branch (optional)"}
+                            ? "Loading departments..."
+                            : "Select Department/Branch (optional)"}
                       </option>
                       {departments.map((dept) => (
                         <option key={dept.id} value={dept.id}>
@@ -1715,7 +1716,7 @@ function EducationTab({
                 </Field>
               </div>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 hover:border-emerald-200">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-400 dark:hover:border-emerald-500" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}>
                   <input
                     type="checkbox"
                     checked={form.current}
@@ -1799,8 +1800,8 @@ function ProjectsTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold text-slate-900">Projects</h2>
-        {isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Projects</h2>
+        {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
 
       {projects.length === 0 && !isFetching ? (
@@ -1821,7 +1822,7 @@ function ProjectsTab({
               key={proj.id}
               project={proj}
               currentUserId={currentUserId}
-              onJoin={() => {}}
+              onJoin={() => { }}
             />
           ))}
         </div>
@@ -1954,7 +1955,7 @@ function SettingsTab({
               {profileForm.avatarUrl && (
                 <div className="flex items-center gap-2">
                   <img src={profileForm.avatarUrl} alt="Avatar Preview" className="h-12 w-12 rounded-full object-cover ring-2 ring-emerald-500/20" />
-                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.avatarUrl}</span>
+                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.avatarUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -1963,7 +1964,7 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleAvatarChange}
                   disabled={avatarUpload.uploading}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
                 />
                 {avatarUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -1975,7 +1976,7 @@ function SettingsTab({
               {profileForm.bannerUrl && (
                 <div className="flex flex-col gap-1">
                   <img src={profileForm.bannerUrl} alt="Banner Preview" className="h-20 w-full rounded-xl object-cover ring-2 ring-emerald-500/20" />
-                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.bannerUrl}</span>
+                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.bannerUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -1984,7 +1985,7 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleBannerChange}
                   disabled={bannerUpload.uploading}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
                 />
                 {bannerUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -1993,31 +1994,31 @@ function SettingsTab({
 
           <Field label="GitHub URL">
             <div className="relative">
-              <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <Github size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
               <input className="field pl-8" value={profileForm.githubUrl} onChange={set("githubUrl")} placeholder="https://github.com/..." type="url" />
             </div>
           </Field>
           <Field label="Portfolio URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
               <input className="field pl-8" value={profileForm.portfolioUrl} onChange={set("portfolioUrl")} placeholder="https://yoursite.com" type="url" />
             </div>
           </Field>
           <Field label="LeetCode Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
               <input className="field pl-8" value={profileForm.leetcodeUrl} onChange={set("leetcodeUrl")} placeholder="https://leetcode.com/username" type="url" />
             </div>
           </Field>
           <Field label="HackerRank Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
               <input className="field pl-8" value={profileForm.hackerrankUrl} onChange={set("hackerrankUrl")} placeholder="https://hackerrank.com/username" type="url" />
             </div>
           </Field>
           <Field label="GeeksforGeeks Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
               <input className="field pl-8" value={profileForm.gfgUrl} onChange={set("gfgUrl")} placeholder="https://geeksforgeeks.org/user/username" type="url" />
             </div>
           </Field>
@@ -2034,7 +2035,7 @@ function SettingsTab({
                   >
                     <ExternalLink size={12} /> View current resume
                   </a>
-                  <span className="text-xs text-slate-400 truncate max-w-xs">{profileForm.resumeUrl}</span>
+                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.resumeUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -2043,7 +2044,7 @@ function SettingsTab({
                   accept="application/pdf"
                   onChange={handleResumeChange}
                   disabled={resumeUpload.uploading}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
                 />
                 {resumeUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -2115,10 +2116,10 @@ function SkillManager({
     (!skillSearch.data || skillSearch.data.length === 0);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="panel p-5">
       <div className="mb-4 flex items-center gap-2">
         <Sparkles size={16} className="text-amber-500" />
-        <h3 className="text-sm font-semibold text-slate-900">Add a skill</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Add a skill</h3>
       </div>
       {disabled ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -2128,7 +2129,7 @@ function SkillManager({
         <div className="space-y-4">
           {!selectedSkill ? (
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={15} />
+              <Search className="pointer-events-none absolute left-3 top-2.5" size={15} style={{ color: "var(--text-muted)" }} />
               <input
                 className="field pl-9"
                 value={query}
@@ -2136,20 +2137,20 @@ function SkillManager({
                 placeholder="Search skill (e.g. React, Python)..."
               />
               {query.length >= 2 && (
-                <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="absolute z-10 mt-1 w-full rounded-xl border shadow-lg" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
                   {skillSearch.isFetching ? (
                     <div className="p-3"><InlineLoader label="Searching..." /></div>
                   ) : skillSearch.data && skillSearch.data.length > 0 ? (
                     skillSearch.data.slice(0, 8).map((skill) => (
                       <button
                         key={skill.id}
-                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50"
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                         type="button"
                         onClick={() => selectSkill(skill)}
                       >
-                        <span className="font-medium text-slate-800">{skill.name}</span>
+                        <span className="font-medium" style={{ color: "var(--text-primary)" }}>{skill.name}</span>
                         {skill.verified && (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                          <span className="rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700">
                             Verified
                           </span>
                         )}
@@ -2157,9 +2158,9 @@ function SkillManager({
                     ))
                   ) : noResults ? (
                     <div className="p-3">
-                      <p className="text-sm text-slate-500">No matching skills found.</p>
+                      <p className="text-sm" style={{ color: "var(--text-muted)" }}>No matching skills found.</p>
                       <button
-                        className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                        className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
                         type="button"
                         disabled={creatingCustom}
                         onClick={handleCreateCustomSkill}
@@ -2173,9 +2174,9 @@ function SkillManager({
               )}
             </div>
           ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/25 p-4 transition-all">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 p-4 transition-all" style={{ background: "rgba(16,185,129,0.06)" }}>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">Selected Skill:</span>
+                <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Selected Skill:</span>
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
                   {selectedSkill.name}
                   <button
@@ -2230,10 +2231,10 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="panel p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Icon size={15} className="text-emerald-700" />
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <Icon size={15} className="text-emerald-600 dark:text-emerald-400" />
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
       </div>
       {children}
     </div>
@@ -2250,10 +2251,10 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
-        <Icon size={16} className="text-emerald-700" />
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+    <div className="panel p-5">
+      <div className="mb-4 flex items-center gap-2 border-b pb-3" style={{ borderColor: "var(--border)" }}>
+        <Icon size={16} className="text-emerald-600 dark:text-emerald-400" />
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
       </div>
       {children}
     </div>
@@ -2271,7 +2272,7 @@ function Field({
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-xs font-semibold text-slate-500">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{label}</span>
       {children}
     </label>
   );
@@ -2281,12 +2282,12 @@ function InfoRow({
   icon: Icon,
   children,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: React.ComponentType<any>;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon size={14} className="mt-0.5 shrink-0 text-slate-400" />
+      <Icon size={14} className="mt-0.5 shrink-0" style={{ color: "var(--text-muted)" }} />
       <span className="break-all">{children}</span>
     </div>
   );
@@ -2294,9 +2295,9 @@ function InfoRow({
 
 function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-lg font-bold text-slate-800">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+    <div className="rounded-lg p-3" style={{ background: "var(--bg-surface-2)" }}>
+      <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{value}</div>
+      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
     </div>
   );
 }
@@ -2307,19 +2308,19 @@ function EmptySection({
   text,
   action,
 }: {
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: React.ComponentType<any>;
   title: string;
   text: string;
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center">
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50">
-        <Icon size={22} className="text-slate-400" />
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface-2)" }}>
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: "var(--bg-surface-3)" }}>
+        <Icon size={22} style={{ color: "var(--text-muted)" }} />
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <p className="mt-1 max-w-xs text-xs text-slate-500">{text}</p>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{title}</h3>
+        <p className="mt-1 max-w-xs text-xs" style={{ color: "var(--text-muted)" }}>{text}</p>
       </div>
       {action}
     </div>
