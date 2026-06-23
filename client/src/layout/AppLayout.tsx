@@ -11,7 +11,6 @@ import {
   Hash,
   LogIn,
   LogOut,
-  LockKeyhole,
   ShieldCheck,
   MessageSquare,
   Rocket,
@@ -31,7 +30,7 @@ import {
 } from "../components/notifications/NotificationCenter";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCount, userHeadline, userName } from "../lib/format";
-import { Avatar, Metric } from "../components/ui";
+import { Avatar } from "../components/ui";
 
 type NavSection = {
   to: string;
@@ -41,44 +40,62 @@ type NavSection = {
 };
 
 const sections: NavSection[] = [
-  { to: "/feed", label: "Home", icon: Compass },
-  { to: "/discover", label: "Discover", icon: Search },
-  { to: "/chat", label: "Chats", icon: MessageSquare, requiresAuth: true },
-  { to: "/social", label: "My Network", icon: UserRound, requiresAuth: true },
-  { to: "/referrals", label: "Referrals", icon: Send, requiresAuth: true },
-  { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
-  { to: "/events", label: "Events", icon: Calendar },
-  { to: "/projects", label: "Projects", icon: Rocket },
-  { to: "/communities", label: "Communities", icon: Hash },
-  { to: "/teams", label: "Teams", icon: Users, requiresAuth: true },
-  { to: "/colleges", label: "Colleges", icon: GraduationCap },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/reputation", label: "Reputation", icon: Award, requiresAuth: true },
+  { to: "/feed",        label: "Home",       icon: Compass },
+  { to: "/discover",   label: "Discover",   icon: Search },
+  { to: "/chat",       label: "Chats",      icon: MessageSquare, requiresAuth: true },
+  { to: "/social",     label: "My Network", icon: UserRound,     requiresAuth: true },
+  { to: "/referrals",  label: "Referrals",  icon: Send,          requiresAuth: true },
+  { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
+  { to: "/events",     label: "Events",     icon: Calendar },
+  { to: "/projects",   label: "Projects",   icon: Rocket },
+  { to: "/communities",label: "Communities",icon: Hash },
+  { to: "/teams",      label: "Teams",      icon: Users,         requiresAuth: true },
+  { to: "/colleges",   label: "Colleges",   icon: GraduationCap },
+  { to: "/companies",  label: "Companies",  icon: Building2 },
+  { to: "/reputation", label: "Reputation", icon: Award,         requiresAuth: true },
   { to: "/hackathons", label: "Hackathons", icon: Gavel },
-  { to: "/recruiter", label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
+  { to: "/recruiter",  label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
 ];
+
+/** Fixed bottom tab bar — 5 key routes shown on mobile (<lg) */
+const bottomTabs: NavSection[] = [
+  { to: "/feed",       label: "Home",       icon: Compass },
+  { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
+  { to: "/hackathons", label: "Hackathons", icon: Gavel },
+  { to: "/chat",       label: "Chat",       icon: MessageSquare, requiresAuth: true },
+  { to: "/profile",    label: "Me",         icon: UserRound,     requiresAuth: true },
+];
+
+const glassStyle: React.CSSProperties = {
+  background: "var(--glass-bg)",
+  borderColor: "var(--border)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+};
 
 export function AppLayout() {
   const { user, apiOnline, apiStatus, logout } = useAuth();
 
   const isUserAdmin =
-    user && (
+    user &&
+    (
       user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN") ||
       user.primaryRole === "PLATFORM_ADMIN" ||
       user.primaryRole === "SUPER_ADMIN"
     );
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  const location = useLocation();
-  const navigate = useNavigate();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen,     setMobileMenuOpen]     = useState(false);
+  const [profileDropdownOpen,setProfileDropdownOpen] = useState(false);
+  const [notificationsOpen,  setNotificationsOpen]   = useState(false);
+  const [moreMenuOpen,       setMoreMenuOpen]        = useState(false);
+
+  const location        = useLocation();
+  const navigate        = useNavigate();
+  const dropdownRef     = useRef<HTMLDivElement>(null);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  // Close overlays on navigation
+  // Close overlays on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setProfileDropdownOpen(false);
@@ -86,18 +103,15 @@ export function AppLayout() {
     setMoreMenuOpen(false);
   }, [location.pathname]);
 
-  // Click outside profile dropdown handler
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node))
         setProfileDropdownOpen(false);
-      }
-      if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node))
         setMoreMenuOpen(false);
-      }
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node))
         setNotificationsOpen(false);
-      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -109,36 +123,46 @@ export function AppLayout() {
   };
 
   const visibleSections = sections.filter((section) => {
-    if (section.to === "/recruiter" && user?.primaryRole !== "RECRUITER") {
-      return false;
-    }
+    if (section.to === "/recruiter" && user?.primaryRole !== "RECRUITER") return false;
     return true;
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50">
-      {/* 1. STICKY TOP NAVIGATION BAR */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
+
+      {/* ============================================================
+          STICKY HEADER — glassmorphism, dark-mode aware
+          ============================================================ */}
+      <header className="sticky top-0 z-40 border-b" style={glassStyle}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
 
-          {/* Logo & Global Search */}
+          {/* Logo & Search */}
           <div className="flex items-center gap-3 flex-1 md:flex-initial">
-            <Link to="/feed" className="flex items-center gap-2">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 transition">
+            <Link to="/feed" className="flex items-center gap-2 shrink-0">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-glow-sm hover:bg-emerald-600 transition-all duration-200 hover:scale-105">
                 <Code2 size={20} />
               </div>
               <div className="hidden sm:block">
-                <span className="text-sm font-black text-slate-900 tracking-tight block leading-none">Engineering</span>
-                <span className="text-[10px] font-bold text-slate-500 block mt-0.5 uppercase tracking-wider leading-none">Hub</span>
+                <span className="text-sm font-black tracking-tight block leading-none" style={{ color: "var(--text-primary)" }}>
+                  Engineering
+                </span>
+                <span className="text-[10px] font-bold block mt-0.5 uppercase tracking-wider leading-none" style={{ color: "var(--text-muted)" }}>
+                  Hub
+                </span>
               </div>
             </Link>
 
-            {/* Global Search Bar */}
+            {/* Global Search */}
             <div className="relative hidden md:block w-64 max-w-xs ml-2">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                size={15}
+                style={{ color: "var(--text-muted)" }}
+              />
               <input
                 type="text"
-                className="field pl-9 py-1.5 text-xs bg-slate-100/75 border-transparent focus:bg-white focus:border-emerald-500 transition-all duration-150"
+                className="field pl-9 py-1.5 text-xs"
+                style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}
                 placeholder="Search engineers, skills, jobs..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -149,31 +173,32 @@ export function AppLayout() {
             </div>
           </div>
 
-          {/* Desktop Navigation Items */}
+          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full">
             {visibleSections.slice(0, 10).map((section, index) => {
               const Icon = section.icon;
               const locked = section.requiresAuth && !user;
 
-              // Responsive visibility class based on index
               const visibilityClass =
-                index >= 6
-                  ? "hidden"
-                  : index >= 4
-                    ? "hidden xl:flex"
-                    : "flex";
+                index >= 6 ? "hidden"
+                : index >= 4 ? "hidden xl:flex"
+                : "flex";
 
               return (
                 <NavLink
                   key={section.to}
-                  className={({ isActive }) =>
-                    `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none ${isActive
-                      ? "border-emerald-700 text-emerald-800"
-                      : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
-                    }`
-                  }
                   to={locked ? "/auth" : section.to}
                   state={locked ? { from: { pathname: section.to } } : undefined}
+                  className={({ isActive }) =>
+                    `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none ${
+                      isActive
+                        ? "border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400"
+                        : "border-transparent hover:border-[color:var(--border-strong)]"
+                    }`
+                  }
+                  style={({ isActive }) => ({
+                    color: isActive ? undefined : "var(--text-muted)",
+                  })}
                 >
                   <Icon size={19} className="stroke-[2px]" />
                   <span className="mt-1">{section.label}</span>
@@ -181,46 +206,49 @@ export function AppLayout() {
               );
             })}
 
-            {/* "More" Dropdown Menu */}
+            {/* "More" overflow dropdown */}
             <div className="relative h-full flex items-center" ref={moreDropdownRef}>
               <button
-                onClick={() => setMoreMenuOpen((open) => !open)}
-                className={`flex flex-col items-center justify-center gap-1 px-3.5 h-full text-[10px] font-bold tracking-wide transition border-b-2 uppercase leading-none focus:outline-none ${moreMenuOpen
-                  ? "border-emerald-700 text-emerald-800"
-                  : "border-transparent text-slate-500 hover:text-slate-950 hover:border-slate-300"
-                  }`}
+                onClick={() => setMoreMenuOpen((o) => !o)}
                 type="button"
+                className={`flex flex-col items-center justify-center gap-1 px-3.5 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none focus:outline-none ${
+                  moreMenuOpen
+                    ? "border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400"
+                    : "border-transparent"
+                }`}
+                style={{ color: moreMenuOpen ? undefined : "var(--text-muted)" }}
               >
                 <Menu size={19} className="stroke-[2px]" />
                 <span className="mt-1">More</span>
               </button>
 
               {moreMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl z-50 text-slate-950 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="glass absolute right-0 top-full mt-2 w-56 p-2 z-50 animate-scale-in">
                   <div className="space-y-0.5 text-xs font-semibold">
                     {visibleSections.map((section, index) => {
                       const Icon = section.icon;
                       const locked = section.requiresAuth && !user;
 
-                      // Inverse responsive visibility inside the dropdown
                       const dropdownVisibilityClass =
-                        index < 4
-                          ? "hidden"
-                          : index < 6
-                            ? "block xl:hidden"
-                            : "block";
+                        index < 4 ? "hidden"
+                        : index < 6 ? "block xl:hidden"
+                        : "block";
 
                       return (
                         <NavLink
                           key={section.to}
-                          className={({ isActive }) =>
-                            `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${isActive
-                              ? "bg-emerald-50 text-emerald-900 font-bold"
-                              : "text-slate-650 hover:bg-slate-50 hover:text-slate-950"
-                            }`
-                          }
                           to={locked ? "/auth" : section.to}
                           state={locked ? { from: { pathname: section.to } } : undefined}
+                          className={({ isActive }) =>
+                            `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 ${
+                              isActive ? "text-emerald-700 dark:text-emerald-400 font-bold" : ""
+                            }`
+                          }
+                          style={({ isActive }) => ({
+                            color: isActive ? undefined : "var(--text-secondary)",
+                          })}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
                           <Icon size={16} />
                           <span>{section.label}</span>
@@ -233,72 +261,97 @@ export function AppLayout() {
             </div>
           </nav>
 
-          {/* Right Area: Actions, Notification Center, Profile Dropdown */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* API Health Monitor widget — only visible to PLATFORM_ADMIN / SUPER_ADMIN */}
+          {/* Right Actions */}
+          <div className="flex items-center gap-2.5 shrink-0">
+
+            {/* API Health pill — admin only */}
             {isUserAdmin && (
-              <div className="hidden xl:flex items-center gap-1.5 bg-slate-50 border border-slate-150 rounded-full px-2.5 py-1 text-xxs font-medium text-slate-500">
-                <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-500" : "bg-rose-500 animate-ping"}`} />
-                <span>{apiStatus === "checking" ? "Ping" : apiOnline ? "API OK" : "API Offline"}</span>
+              <div
+                className="hidden xl:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xxs font-medium border"
+                style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${apiOnline ? "bg-emerald-500" : "bg-rose-500 animate-ping"}`} />
+                <span>{apiStatus === "checking" ? "Ping…" : apiOnline ? "API OK" : "API Offline"}</span>
               </div>
             )}
 
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
-                className="icon-btn rounded-full border-slate-100 hover:bg-slate-50 relative"
+                className="icon-btn rounded-full relative"
                 type="button"
                 title="Notifications"
                 disabled={!user}
-                onClick={() => setNotificationsOpen((open) => !open)}
+                onClick={() => setNotificationsOpen((o) => !o)}
               >
                 {user ? <NotificationBellButton /> : <Bell size={16} />}
               </button>
               {user && notificationsOpen && <NotificationPreview />}
             </div>
 
-            {/* User Profile / Login Dropdown */}
+            {/* Profile / Login */}
             {user ? (
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setProfileDropdownOpen((open) => !open)}
-                  className="flex flex-col items-center justify-center h-full focus:outline-none"
+                  onClick={() => setProfileDropdownOpen((o) => !o)}
                   type="button"
                   title="My Account"
+                  className="flex items-center justify-center ring-2 ring-transparent hover:ring-[color:var(--border-strong)] rounded-full transition-all duration-150 focus:outline-none"
                 >
                   <Avatar user={user} size="sm" />
                 </button>
 
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-xl z-50 text-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                  <div className="glass absolute right-0 mt-3 w-64 p-4 z-50 animate-scale-in">
+                    {/* User info header */}
+                    <div className="flex items-center gap-3 pb-3 border-b" style={{ borderColor: "var(--border)" }}>
                       <Avatar user={user} size="md" />
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-sm text-slate-950 truncate leading-tight">
+                        <h4 className="font-bold text-sm truncate leading-tight" style={{ color: "var(--text-primary)" }}>
                           {userName(user)}
                         </h4>
-                        <p className="text-xxs text-slate-500 truncate mt-0.5">@{user.username}</p>
-                        <p className="text-xxs text-emerald-800 font-semibold truncate mt-1">
+                        <p className="text-xxs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>
+                          @{user.username}
+                        </p>
+                        <p className="text-xxs font-semibold truncate mt-1 text-emerald-600 dark:text-emerald-400">
                           {userHeadline(user) || "Developer"}
                         </p>
                       </div>
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 gap-2 text-center py-3 border-b border-slate-100 text-xxs font-bold uppercase tracking-wider text-slate-500">
-                      <Link to="/reputation" className="hover:bg-slate-50 p-1 rounded transition block">
-                        <span className="block text-slate-950 text-xs font-black">{formatCount(user.reputationScore)}</span>
+                    <div
+                      className="grid grid-cols-2 gap-2 text-center py-3 border-b text-xxs font-bold uppercase tracking-wider"
+                      style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+                    >
+                      <Link
+                        to="/reputation"
+                        className="p-1 rounded-lg transition-all duration-150 block"
+                        style={{ color: "inherit" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        <span className="block text-xs font-black" style={{ color: "var(--text-primary)" }}>
+                          {formatCount(user.reputationScore)}
+                        </span>
                         <span>Reputation</span>
                       </Link>
-                      <div className="p-1 rounded">
-                        <span className="block text-slate-950 text-xs font-black">{Math.round(user.engineeringScore || 0)}</span>
+                      <div className="p-1 rounded-lg">
+                        <span className="block text-xs font-black" style={{ color: "var(--text-primary)" }}>
+                          {Math.round(user.engineeringScore || 0)}
+                        </span>
                         <span>Eng Score</span>
                       </div>
                     </div>
 
                     {/* Quick navigation links */}
-                    <div className="space-y-1 py-3 text-xs font-semibold text-slate-700">
-                      <Link to="/profile" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition">
+                    <div className="space-y-0.5 py-3 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      <Link
+                        to="/profile"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
                         {user.primaryRole === "STUDENT"
                           ? "View Student Profile"
                           : user.primaryRole === "RECRUITER"
@@ -308,18 +361,38 @@ export function AppLayout() {
                           : "View Developer Profile"}
                       </Link>
                       {user.primaryRole === "STUDENT" && (
-                        <Link to="/placements" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800">
+                        <Link
+                          to="/placements"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
                           Placements Dashboard
                         </Link>
                       )}
-                      <Link to="/referrals" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition">
+                      <Link
+                        to="/referrals"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
                         Referrals Dashboard
                       </Link>
-                      <Link to="/reputation" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition">
+                      <Link
+                        to="/reputation"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
                         Unlocked Badges Catalog
                       </Link>
                       {user.primaryRole === "RECRUITER" && (
-                        <Link to="/recruiter" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold">
+                        <Link
+                          to="/recruiter"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold hover:text-emerald-700 dark:hover:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
                           Recruiter Console
                         </Link>
                       )}
@@ -327,7 +400,9 @@ export function AppLayout() {
                         <Link
                           key={adminship.id}
                           to={`/companies/${adminship.company?.slug || adminship.companyId}/admin`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />
                           {adminship.company?.name || "Company"} Console
@@ -337,7 +412,9 @@ export function AppLayout() {
                         <Link
                           key={adminship.id}
                           to={`/colleges/${adminship.college?.normalizedKey || adminship.collegeId}`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />
                           {adminship.college?.name || "College"} Admin Console
@@ -347,28 +424,38 @@ export function AppLayout() {
                         <Link
                           key={membership.id}
                           to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
                           <ShieldCheck size={13} className="text-emerald-600" />
                           {membership.college?.name || "College"} CDCR Console
                         </Link>
                       ))}
                       {user.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN") ? (
-                        <Link to="/admin" className="block px-2 py-1.5 rounded hover:bg-purple-50 hover:text-purple-900 transition font-bold text-purple-800">
+                        <Link
+                          to="/admin"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                        >
                           Super Admin Console
                         </Link>
                       ) : user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN") ? (
-                        <Link to="/admin" className="block px-2 py-1.5 rounded hover:bg-emerald-50 hover:text-emerald-900 transition font-bold text-emerald-800">
+                        <Link
+                          to="/admin"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
                           Platform Admin Console
                         </Link>
                       ) : null}
                     </div>
 
-                    <div className="border-t border-slate-100 pt-3 flex justify-end">
+                    <div className="border-t pt-3" style={{ borderColor: "var(--border)" }}>
                       <button
                         onClick={handleLogout}
-                        className="btn-secondary w-full text-xs font-semibold py-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 hover:border-rose-200"
                         type="button"
+                        className="btn-secondary w-full text-xs font-semibold py-1.5 text-rose-600 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/20"
                       >
                         <LogOut size={13} />
                         Sign Out
@@ -378,34 +465,40 @@ export function AppLayout() {
                 )}
               </div>
             ) : (
-              <Link className="btn-primary py-1.5 px-4 text-xs shadow-sm font-semibold" to="/auth">
+              <Link className="btn-primary py-1.5 px-4 text-xs shadow-glow-sm font-semibold" to="/auth">
                 <LogIn size={14} />
                 Login
               </Link>
             )}
 
-            {/* Mobile Hamburger toggle */}
+            {/* Mobile hamburger (overflow menu) */}
             <button
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              className="lg:hidden icon-btn border-slate-150 hover:bg-slate-50 relative rounded-full"
+              onClick={() => setMobileMenuOpen((o) => !o)}
               type="button"
               title="Toggle Menu"
+              className="lg:hidden icon-btn rounded-full"
             >
               {mobileMenuOpen ? <X size={17} /> : <Menu size={17} />}
             </button>
           </div>
-
         </div>
 
-        {/* Mobile slide-down navigation drawer overlay */}
+        {/* Mobile slide-down drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-200 bg-white/95 px-4 py-4 space-y-2.5 max-h-[70vh] overflow-y-auto shadow-inner animate-in slide-in-from-top-3 duration-200">
-            {/* Mobile search bar */}
+          <div
+            className="lg:hidden border-t px-4 py-4 space-y-2.5 max-h-[70vh] overflow-y-auto animate-fade-up"
+            style={glassStyle}
+          >
+            {/* Mobile search */}
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                size={15}
+                style={{ color: "var(--text-muted)" }}
+              />
               <input
                 type="text"
-                className="field pl-9 py-1.5 text-xs bg-slate-100"
+                className="field pl-9 py-1.5 text-xs"
                 placeholder="Search engineers, skills..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -415,22 +508,27 @@ export function AppLayout() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold py-2 border-b border-slate-100">
+            <div className="grid grid-cols-2 gap-2 text-xs font-bold py-2 border-b" style={{ borderColor: "var(--border)" }}>
               {visibleSections.map((section) => {
                 const Icon = section.icon;
                 const locked = section.requiresAuth && !user;
-
                 return (
                   <NavLink
                     key={section.to}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 p-2.5 rounded-lg border transition ${isActive
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-extrabold"
-                        : "border-slate-100 text-slate-600 hover:bg-slate-50"
-                      }`
-                    }
                     to={locked ? "/auth" : section.to}
                     state={locked ? { from: { pathname: section.to } } : undefined}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-150 ${
+                        isActive
+                          ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 font-extrabold"
+                          : ""
+                      }`
+                    }
+                    style={({ isActive }) => ({
+                      background: isActive ? "var(--brand-light)" : "var(--bg-surface-2)",
+                      borderColor: isActive ? undefined : "var(--border)",
+                      color: isActive ? undefined : "var(--text-secondary)",
+                    })}
                   >
                     <Icon size={16} />
                     <span>{section.label}</span>
@@ -442,10 +540,61 @@ export function AppLayout() {
         )}
       </header>
 
-      {/* 2. MAIN WORKSPACE CONTENT CONTAINER */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      {/* ============================================================
+          MAIN CONTENT — extra bottom padding for mobile tab bar
+          ============================================================ */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
         <Outlet />
       </main>
+
+      {/* ============================================================
+          MOBILE BOTTOM TAB BAR — fixed, glassmorphism, lg:hidden
+          ============================================================ */}
+      <nav
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t"
+        style={{
+          background: "var(--glass-bg)",
+          borderColor: "var(--border)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+        }}
+      >
+        <div className="flex items-center justify-around h-16 px-1 safe-area-inset-bottom">
+          {bottomTabs.map((tab) => {
+            const Icon = tab.icon;
+            const locked = tab.requiresAuth && !user;
+            return (
+              <NavLink
+                key={tab.to}
+                to={locked ? "/auth" : tab.to}
+                state={locked ? { from: { pathname: tab.to } } : undefined}
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 min-w-0"
+              >
+                {({ isActive }) => (
+                  <>
+                    <div
+                      className="p-1.5 rounded-xl transition-all duration-200"
+                      style={{
+                        background: isActive ? "var(--brand-light)" : "transparent",
+                        color: isActive ? "var(--brand)" : "var(--text-muted)",
+                      }}
+                    >
+                      <Icon size={20} className="stroke-[2px]" />
+                    </div>
+                    <span
+                      className="text-[9px] font-bold tracking-wide leading-none mt-0.5 truncate w-full text-center"
+                      style={{ color: isActive ? "var(--brand)" : "var(--text-muted)" }}
+                    >
+                      {tab.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+
     </div>
   );
 }
