@@ -50,6 +50,7 @@ import {
 
 import { runAllScrapers } from "modules/hackathons/scraper/hackathon-scraper.service";
 import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
+import { runCompanyDiscovery } from "modules/companies/scraper/company-discovery.service";
 
 // ============================================================
 // COLLEGE ADMIN HANDLERS
@@ -402,6 +403,13 @@ export const adminTriggerJobScraperHandler = asyncHandler(
   async (_req: Request, res: Response) => {
     const result = await runJobScrape();
     res.json(successResponse(result, "Job scraper run completed successfully"));
+  },
+);
+
+export const adminTriggerCompanyDiscoveryHandler = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const result = await runCompanyDiscovery();
+    res.json(successResponse(result, "Company discovery run completed successfully"));
   },
 );
 

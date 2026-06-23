@@ -1,0 +1,75 @@
+version: '3.8'
+
+# ─── Engineers Platform — Local Development Infrastructure ─────────────────────
+# Starts ONLY the stateful backing services (Postgres, Redis, Elasticsearch)
+# with ports mapped to localhost so the Node.js server can reach them natively.
+#
+# Usage:
+#   docker compose -f docker-compose.local-infra.yml up -d
+#   docker compose -f docker-compose.local-infra.yml down
+#
+# Then run the server and client outside Docker:
+#   cd server && npm run dev      → http://localhost:5000
+#   cd client && npm run dev      → http://localhost:5173
+#
+# NEVER use this file in production. The production stack is docker-compose.prod.yml.
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: engineers-platform-db-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_postgres_password_123
+      POSTGRES_DB: engineers_platform
+    ports:
+      - "5433:5432"       # Exposed to host: localhost:5433 (5432 is used by local Windows PostgreSQL)
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d engineers_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: engineers-platform-redis-local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"       # Exposed to host: localhost:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # ── Elasticsearch ─────────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: engineers-platform-es-local
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"    # Low memory for dev machine
+    ports:
+      - "9200:9200"       # HTTP API: localhost:9200
+    volumes:
+      - elasticsearch_data_local:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_data_local:
+  elasticsearch_data_local:

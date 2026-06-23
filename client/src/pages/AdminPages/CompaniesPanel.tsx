@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
-import { Building2, Plus, Loader2, ExternalLink, ChevronRight, X, Trash2 } from "lucide-react";
+import { Building2, Plus, Loader2, ExternalLink, ChevronRight, X, Trash2, RefreshCw } from "lucide-react";
 import { Company } from "../../lib/api";
-import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery } from "../../hooks/usePlatformQueries";
+import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery, useAdminTriggerCompanyDiscoveryMutation } from "../../hooks/usePlatformQueries";
 import { cleanLogoUrl, userName } from "../../lib/format";
 import { Avatar } from "../../components/ui";
 import { SearchBar, UserSearchAutocomplete } from "./shared";
@@ -16,6 +16,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
   const [search, setSearch] = useState("");
   const companiesQuery = useCompaniesQuery({ q: search, limit: 100 });
   const createCompany = useCreateCompanyMutation();
+  const triggerDiscovery = useAdminTriggerCompanyDiscoveryMutation();
 
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
@@ -48,6 +49,33 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
 
   return (
     <div className="space-y-4">
+      {/* Scraper Control Panel */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-zinc-700/50 bg-zinc-900/40 p-4">
+        <div>
+          <h2 className="text-sm font-black uppercase tracking-wider text-zinc-350">Scraper Control Panel</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">Discover and import new companies and their job boards from Greenhouse & Lever.</p>
+        </div>
+        <button
+          id="run-company-scraper"
+          type="button"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50 whitespace-nowrap"
+          onClick={() => triggerDiscovery.mutate()}
+          disabled={triggerDiscovery.isPending}
+        >
+          {triggerDiscovery.isPending ? (
+            <>
+              <Loader2 size={13} className="animate-spin text-white" />
+              Discovering...
+            </>
+          ) : (
+            <>
+              <RefreshCw size={13} />
+              Run Company Scraper
+            </>
+          )}
+        </button>
+      </div>
+
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">Company Management</h2>
         <button

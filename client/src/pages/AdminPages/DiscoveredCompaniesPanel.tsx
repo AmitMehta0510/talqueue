@@ -3,7 +3,7 @@ import {
   Building2, CheckCircle, XCircle, Loader2, ExternalLink,
   RefreshCw, Globe, Layers, AlertTriangle, Search
 } from "lucide-react";
-import { useDiscoveredCompaniesQuery, useReviewDiscoveredCompaniesMutation } from "../../hooks/usePlatformQueries";
+import { useDiscoveredCompaniesQuery, useReviewDiscoveredCompaniesMutation, useAdminTriggerCompanyDiscoveryMutation } from "../../hooks/usePlatformQueries";
 import { cleanLogoUrl } from "../../lib/format";
 
 type Action = "VERIFY" | "REJECT";
@@ -21,6 +21,7 @@ export function DiscoveredCompaniesPanel() {
 
   const query = useDiscoveredCompaniesQuery(page, 30);
   const reviewMutation = useReviewDiscoveredCompaniesMutation();
+  const triggerDiscovery = useAdminTriggerCompanyDiscoveryMutation();
 
   const data = query.data;
   const companies: any[] = data?.companies || [];
@@ -93,6 +94,24 @@ export function DiscoveredCompaniesPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            id="trigger-company-discovery"
+            disabled={triggerDiscovery.isPending}
+            onClick={() => triggerDiscovery.mutate()}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition"
+          >
+            {triggerDiscovery.isPending ? (
+              <>
+                <Loader2 size={12} className="animate-spin text-emerald-400" />
+                Discovering...
+              </>
+            ) : (
+              <>
+                <Globe size={12} />
+                Discover Companies
+              </>
+            )}
+          </button>
           <button
             id="refresh-discovered-companies"
             onClick={() => query.refetch()}

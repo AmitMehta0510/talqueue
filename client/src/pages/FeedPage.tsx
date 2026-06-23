@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import {
   Compass,
@@ -19,9 +19,9 @@ import {
   Users,
   History,
   CalendarDays,
+  AlertTriangle,
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
-import { ComposePost } from "../components/forms/ComposePost";
 import { EmptyState, Avatar } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -38,13 +38,66 @@ import {
 } from "../hooks/usePlatformQueries";
 import { titleCase, userName, formatCount, userHeadline, formatDate } from "../lib/format";
 
+// Lazy-load the compose modal — it carries react-hook-form + zod and is only
+// needed when the user actively opens it. Falls back to a spinner until ready.
+const ComposePost = lazy(() =>
+  import("../components/forms/ComposePost").then((mod) => ({
+    default: mod.ComposePost,
+  })),
+);
+
 type FeedCategory = "all" | "recommended" | "discussions" | "projects" | "jobs";
+
+// ---------------------------------------------------------------------------
+// Skeleton components
+// ---------------------------------------------------------------------------
+
+function FeedCardSkeleton() {
+  return (
+    <div className="panel p-4 animate-pulse space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-full bg-slate-200 shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-32 rounded bg-slate-200" />
+          <div className="h-2.5 w-48 rounded bg-slate-100" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 w-full rounded bg-slate-200" />
+        <div className="h-3 w-5/6 rounded bg-slate-200" />
+        <div className="h-3 w-4/6 rounded bg-slate-100" />
+      </div>
+      <div className="flex gap-4 pt-1">
+        <div className="h-7 w-16 rounded-lg bg-slate-100" />
+        <div className="h-7 w-16 rounded-lg bg-slate-100" />
+        <div className="h-7 w-16 rounded-lg bg-slate-100" />
+      </div>
+    </div>
+  );
+}
+
+function SidebarItemSkeleton() {
+  return (
+    <div className="flex items-center gap-2 animate-pulse">
+      <div className="h-6 w-6 rounded-full bg-slate-200 shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <div className="h-2.5 w-24 rounded bg-slate-200" />
+        <div className="h-2 w-16 rounded bg-slate-100" />
+      </div>
+      <div className="h-5 w-12 rounded-full bg-slate-100" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FeedPage
+// ---------------------------------------------------------------------------
 
 export function FeedPage() {
   const { user, apiOnline } = useAuth();
   const [activeCategory, setActiveCategory] = useState<FeedCategory>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
-  
+
   // Compose modal states
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [composePostType, setComposePostType] = useState("GENERAL");
@@ -62,11 +115,12 @@ export function FeedPage() {
   const commentOnPost = useCommentOnPostMutation();
   const repost = useRepostMutation();
 
-  const feed = useMemo(() => feedQuery.data || [], [feedQuery.data]);
-  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
-  const jobs = useMemo(() => jobsQuery.data?.jobs || [], [jobsQuery.data]);
-  const leaders = useMemo(() => leaderboardQuery.data || [], [leaderboardQuery.data]);
-  const featuredHackathons = useMemo(() => hackathonsQuery.data || [], [hackathonsQuery.data]);
+  // Derived data (memoized — no expensive computation, just null-safety)
+  const feed = useMemo(() => feedQuery.data ?? [], [feedQuery.data]);
+  const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
+  const jobs = useMemo(() => jobsQuery.data?.jobs ?? [], [jobsQuery.data]);
+  const leaders = useMemo(() => leaderboardQuery.data ?? [], [leaderboardQuery.data]);
+  const featuredHackathons = useMemo(() => hackathonsQuery.data ?? [], [hackathonsQuery.data]);
 
   const refreshing =
     feedQuery.isFetching ||
@@ -77,7 +131,7 @@ export function FeedPage() {
     hackathonsQuery.isFetching;
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -90,36 +144,80 @@ export function FeedPage() {
 
   const filteredFeed = useMemo(() => {
     return feed.filter((item) => {
-      if (activeCategory === "recommended") {
-        return Boolean(item.reason);
-      }
-      if (activeCategory === "discussions") {
-        return item.type === "POST";
-      }
-      if (activeCategory === "projects") {
-        return item.type === "PROJECT";
-      }
-      if (activeCategory === "jobs") {
-        return item.type === "JOB" || item.type === "HACKATHON";
-      }
+      if (activeCategory === "recommended") return Boolean(item.reason);
+      if (activeCategory === "discussions") return item.type === "POST";
+      if (activeCategory === "projects") return item.type === "PROJECT";
+      if (activeCategory === "jobs") return item.type === "JOB" || item.type === "HACKATHON";
       return true;
     });
   }, [feed, activeCategory]);
 
-  const handleRefreshAll = () => {
+  const handleRefreshAll = useCallback(() => {
     feedQuery.refetch();
     projectsQuery.refetch();
     jobsQuery.refetch();
     leaderboardQuery.refetch();
     hackathonsQuery.refetch();
-    if (user) {
-      myReputationQuery.refetch();
-    }
-  };
+    if (user) myReputationQuery.refetch();
+  }, [feedQuery, projectsQuery, jobsQuery, leaderboardQuery, hackathonsQuery, myReputationQuery, user]);
+
+  // Memoized interaction handlers — prevent re-renders on every FeedCard
+  const handleLike = useCallback(
+    (id: string) => {
+      if (postReaction.isPending) return;
+      postReaction.mutate({ id, action: "like" });
+    },
+    [postReaction],
+  );
+
+  const handleSave = useCallback(
+    (id: string) => {
+      if (postReaction.isPending) return;
+      postReaction.mutate({ id, action: "save" });
+    },
+    [postReaction],
+  );
+
+  const handleComment = useCallback(
+    async (id: string, content: string, parentCommentId?: string) => {
+      try {
+        await commentOnPost.mutateAsync({ id, content, parentCommentId });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [commentOnPost],
+  );
+
+  const handleRepost = useCallback(
+    async (id: string, caption?: string) => {
+      try {
+        await repost.mutateAsync({ id, caption });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [repost],
+  );
+
+  // Opening the compose modal is blocked if createPost is already in flight
+  const openCompose = useCallback(
+    (type: string) => {
+      if (createPost.isPending) return;
+      setComposePostType(type);
+      setShowComposeModal(true);
+    },
+    [createPost.isPending],
+  );
 
   const displayReputation = myReputationQuery.data?.reputationScore ?? user?.reputationScore ?? 0;
   const displayEngineering = myReputationQuery.data?.engineeringScore ?? user?.engineeringScore ?? 0;
   const displayBadgeCount = myReputationQuery.data?.badges?.length ?? user?.skills?.length ?? 0;
+
+  // Whether any interaction mutation is in-flight (used to disable FeedCard CTAs)
+  const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
 
   return (
     <div className="space-y-6">
@@ -148,8 +246,8 @@ export function FeedPage() {
 
       {/* THREE-COLUMN RESPONSIVE LAYOUT */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        
-        {/* LEFT COLUMN - USER CARD & QUICK LINKS */}
+
+        {/* LEFT COLUMN — USER CARD & QUICK LINKS */}
         <aside className="lg:col-span-3 space-y-6">
           {/* User Profile Snapshot Card */}
           {user ? (
@@ -159,7 +257,7 @@ export function FeedPage() {
                 <div className="absolute -top-9 left-4 rounded-full border-4 border-white shadow-md">
                   <Avatar user={user} size="md" />
                 </div>
-                
+
                 <div className="pt-7">
                   <Link to="/profile" className="block group">
                     <h2 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition line-clamp-1">
@@ -185,7 +283,7 @@ export function FeedPage() {
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Badges</span>
                     </div>
                   </div>
-                  
+
                   <Link
                     to="/profile"
                     className="mt-4 flex items-center justify-center gap-1.5 w-full rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 py-1.5 text-xxs font-bold text-slate-700 transition"
@@ -230,45 +328,49 @@ export function FeedPage() {
                 </Link>
                 <Link to="/reputation" className="flex items-center gap-2 hover:text-emerald-700 transition">
                   <History size={14} className="text-slate-400" />
-                  <span>Points & Badges Log</span>
+                  <span>Points &amp; Badges Log</span>
                 </Link>
               </div>
             </div>
           )}
         </aside>
 
-        {/* MIDDLE COLUMN - POST TRIGGER, CATEGORY TABS & FEED LIST */}
-        <section className="lg:col-span-6 space-y-6">
+        {/* MIDDLE COLUMN — POST TRIGGER, CATEGORY TABS & FEED LIST */}
+        <section className="lg:col-span-6 space-y-6 min-w-0">
           {/* Start a Post Card (LinkedIn trigger style) */}
           {user && (
             <div className="panel p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <Avatar user={user} size="sm" />
                 <button
-                  onClick={() => { setComposePostType("GENERAL"); setShowComposeModal(true); }}
-                  className="flex-1 text-left bg-slate-100 hover:bg-slate-200/80 rounded-full px-4 py-2 text-xs font-semibold text-slate-500 transition border border-slate-200/50 outline-none"
+                  onClick={() => openCompose("GENERAL")}
+                  disabled={createPost.isPending}
+                  className="flex-1 text-left bg-slate-100 hover:bg-slate-200/80 rounded-full px-4 py-2 text-xs font-semibold text-slate-500 transition border border-slate-200/50 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Start an engineering update...
                 </button>
               </div>
               <div className="flex items-center justify-around border-t border-slate-100 pt-3 text-xxs font-bold text-slate-500">
                 <button
-                  onClick={() => { setComposePostType("PROJECT_UPDATE"); setShowComposeModal(true); }}
-                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                  onClick={() => openCompose("PROJECT_UPDATE")}
+                  disabled={createPost.isPending}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Rocket className="text-indigo-650" size={15} />
                   Project Update
                 </button>
                 <button
-                  onClick={() => { setComposePostType("HACKATHON"); setShowComposeModal(true); }}
-                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                  onClick={() => openCompose("HACKATHON")}
+                  disabled={createPost.isPending}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Award className="text-amber-500" size={15} />
                   Hackathon
                 </button>
                 <button
-                  onClick={() => { setComposePostType("ACHIEVEMENT"); setShowComposeModal(true); }}
-                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition"
+                  onClick={() => openCompose("ACHIEVEMENT")}
+                  disabled={createPost.isPending}
+                  className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Sparkles className="text-emerald-600" size={15} />
                   Achievement
@@ -311,42 +413,48 @@ export function FeedPage() {
             </nav>
           </div>
 
-          {/* Loading spinner */}
-          {refreshing && (
+          {/* Background-refresh indicator (non-blocking) */}
+          {feedQuery.isFetching && !feedQuery.isLoading && (
             <div className="flex items-center gap-2 text-xs text-slate-400 bg-white/70 border border-slate-200/50 rounded-lg px-4 py-2.5 shadow-sm">
               <Loader2 className="animate-spin text-emerald-700" size={15} />
               <span>Updating platform stream feeds...</span>
             </div>
           )}
 
+          {/* Error Banner */}
+          {feedQuery.isError && (
+            <div className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2 text-xs text-rose-700 font-semibold">
+                <AlertTriangle size={15} className="shrink-0" />
+                <span>Failed to load feed. Check your connection.</span>
+              </div>
+              <button
+                onClick={() => feedQuery.refetch()}
+                type="button"
+                className="text-xxs font-bold text-rose-700 hover:text-rose-900 underline underline-offset-2 shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Feed List */}
           <div className="space-y-4">
-            {filteredFeed.length > 0 ? (
+            {feedQuery.isLoading ? (
+              // Initial load — show shimmer skeletons
+              Array.from({ length: 4 }).map((_, i) => <FeedCardSkeleton key={i} />)
+            ) : filteredFeed.length > 0 ? (
               filteredFeed.map((item, index) => (
                 <FeedCard
                   key={`${item.type}-${"id" in item.data ? item.data.id : index}`}
                   item={item}
                   position={index}
                   trackImpression={Boolean(user)}
-                  canInteract={Boolean(user)}
-                  onLike={(id) => postReaction.mutate({ id, action: "like" })}
-                  onSave={(id) => postReaction.mutate({ id, action: "save" })}
-                  onComment={async (id, content, parentCommentId) => {
-                    try {
-                      await commentOnPost.mutateAsync({ id, content, parentCommentId });
-                      return true;
-                    } catch {
-                      return false;
-                    }
-                  }}
-                  onRepost={async (id, caption) => {
-                    try {
-                      await repost.mutateAsync({ id, caption });
-                      return true;
-                    } catch {
-                      return false;
-                    }
-                  }}
+                  canInteract={Boolean(user) && !interacting}
+                  onLike={handleLike}
+                  onSave={handleSave}
+                  onComment={handleComment}
+                  onRepost={handleRepost}
                 />
               ))
             ) : (
@@ -363,7 +471,7 @@ export function FeedPage() {
           </div>
         </section>
 
-        {/* RIGHT COLUMN - TOP ENGINEERS, PROJECTS & MONITOR TELEMETRY */}
+        {/* RIGHT COLUMN — TOP ENGINEERS, PROJECTS & MONITOR TELEMETRY */}
         <aside className="hidden lg:col-span-3 space-y-6 lg:block">
           {/* Top Engineers Leaderboard */}
           <div className="panel p-4 bg-white border-slate-200">
@@ -375,15 +483,14 @@ export function FeedPage() {
             </div>
 
             {leaderboardQuery.isLoading ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
-                <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Loading rankings...</span>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
             ) : leaders.length > 0 ? (
               <div className="space-y-3">
                 {leaders.slice(0, 3).map((lead, idx) => {
                   const medalColors = ["text-amber-500", "text-slate-400", "text-amber-700"];
-                  const rankIcons = [<Trophy size={14} />, <Star size={14} />, <Award size={14} />];
+                  const rankIcons = [<Trophy size={14} key="t" />, <Star size={14} key="s" />, <Award size={14} key="a" />];
                   return (
                     <div key={lead.userId || idx} className="flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2 min-w-0">
@@ -434,9 +541,8 @@ export function FeedPage() {
             </div>
 
             {projectsQuery.isLoading ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
-                <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Loading repositories...</span>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
             ) : projects.length > 0 ? (
               <div className="space-y-3.5">
@@ -484,9 +590,8 @@ export function FeedPage() {
             </div>
 
             {hackathonsQuery.isLoading ? (
-              <div className="flex items-center gap-2 py-4 text-xs text-slate-400">
-                <Loader2 size={12} className="animate-spin text-emerald-600" />
-                <span>Loading hackathons...</span>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
             ) : featuredHackathons.length > 0 ? (
               <div className="space-y-1">
@@ -507,15 +612,17 @@ export function FeedPage() {
                     <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex flex-wrap gap-1">
                         {hackathon.sourcePlatform ? (
-                          <span className={`chip text-[8px] py-0 px-1.5 font-bold uppercase tracking-wide border ${
-                            hackathon.sourcePlatform === "Devpost"
-                              ? "bg-cyan-50 text-cyan-700 border-cyan-100"
-                              : hackathon.sourcePlatform === "Devfolio"
-                              ? "bg-blue-50 text-blue-700 border-blue-100"
-                              : hackathon.sourcePlatform === "Unstop"
-                              ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                              : "bg-slate-50 text-slate-600 border-slate-100"
-                          }`}>
+                          <span
+                            className={`chip text-[8px] py-0 px-1.5 font-bold uppercase tracking-wide border ${
+                              hackathon.sourcePlatform === "Devpost"
+                                ? "bg-cyan-50 text-cyan-700 border-cyan-100"
+                                : hackathon.sourcePlatform === "Devfolio"
+                                ? "bg-blue-50 text-blue-700 border-blue-100"
+                                : hackathon.sourcePlatform === "Unstop"
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                                : "bg-slate-50 text-slate-600 border-slate-100"
+                            }`}
+                          >
                             {hackathon.sourcePlatform}
                           </span>
                         ) : (
@@ -529,7 +636,7 @@ export function FeedPage() {
                           </span>
                         )}
                       </div>
-                      
+
                       {hackathon.startDate && (
                         <span className="text-[9px] text-slate-400 font-medium flex items-center gap-0.5">
                           <CalendarDays size={10} className="text-slate-350" />
@@ -554,13 +661,17 @@ export function FeedPage() {
                 Telemetry Monitor
               </h3>
             </div>
-            
+
             <div className="space-y-2 text-[10px] font-semibold text-slate-350">
               <div className="flex justify-between items-center">
                 <span>API MONITOR STATUS:</span>
                 <span className="flex items-center gap-1">
-                  <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-400" : "bg-rose-400 animate-ping"}`} />
-                  <span className={apiOnline ? "text-emerald-400" : "text-rose-400"}>{apiOnline ? "ONLINE" : "OFFLINE"}</span>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-400" : "bg-rose-400 animate-ping"}`}
+                  />
+                  <span className={apiOnline ? "text-emerald-400" : "text-rose-400"}>
+                    {apiOnline ? "ONLINE" : "OFFLINE"}
+                  </span>
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -581,10 +692,9 @@ export function FeedPage() {
             </div>
           </div>
         </aside>
-
       </div>
 
-      {/* COMPOSER OVERLAY MODAL */}
+      {/* COMPOSER OVERLAY MODAL — lazy loaded, only mounted when open */}
       {showComposeModal && user && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="absolute inset-0" onClick={() => setShowComposeModal(false)} />
@@ -603,20 +713,29 @@ export function FeedPage() {
                 <X size={15} />
               </button>
             </div>
-            
-            <ComposePost
-              onCreate={async (payload) => {
-                try {
-                  await createPost.mutateAsync(payload);
-                  setShowComposeModal(false);
-                  return true;
-                } catch {
-                  return false;
-                }
-              }}
-              disabled={createPost.isPending}
-              initialType={composePostType}
-            />
+
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center gap-2 py-12 text-slate-400 text-xs">
+                  <Loader2 className="animate-spin" size={18} />
+                  <span>Loading composer...</span>
+                </div>
+              }
+            >
+              <ComposePost
+                onCreate={async (payload) => {
+                  try {
+                    await createPost.mutateAsync(payload);
+                    setShowComposeModal(false);
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                }}
+                disabled={createPost.isPending}
+                initialType={composePostType}
+              />
+            </Suspense>
           </div>
         </div>
       )}

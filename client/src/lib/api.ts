@@ -2037,6 +2037,9 @@ export const api = {
     request<any>(`/admin/scraper/run`, { method: "POST", ...options }),
   adminTriggerJobScraper: (options?: EndpointOptions) =>
     request<any>(`/admin/scraper/jobs`, { method: "POST", ...options }),
+  adminTriggerCompanyDiscovery: (options?: EndpointOptions) =>
+    request<any>(`/admin/scraper/companies-discovery`, { method: "POST", ...options }),
+
   adminListProjects: (params: { q?: string; limit?: number; cursor?: string }, options?: EndpointOptions) =>
     request<{ projects: any[]; nextCursor: string | null; hasNextPage: boolean }>(`/admin/content/projects${toQuery(params)}`, options),
   adminUpdateProjectStatus: (projectId: string, body: { status: string }) =>

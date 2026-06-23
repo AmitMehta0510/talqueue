@@ -37,6 +37,7 @@ import {
   adminRejectCompanyRequestHandler,
   adminTriggerScraperHandler,
   adminTriggerJobScraperHandler,
+  adminTriggerCompanyDiscoveryHandler,
   reviewBusinessRequestHandler,
   // College Request B2B
   listCollegeRequestsHandler,
@@ -107,6 +108,7 @@ router.patch("/content/hackathons/:hackathonId/status", adminUpdateHackathonStat
 router.patch("/content/hackathons/:hackathonId", adminUpdateHackathonHandler);
 router.post("/scraper/run", adminTriggerScraperHandler);
 router.post("/scraper/jobs", adminTriggerJobScraperHandler);
+router.post("/scraper/companies-discovery", adminTriggerCompanyDiscoveryHandler);
 
 // Projects
 router.get("/content/projects", adminListProjectsHandler);

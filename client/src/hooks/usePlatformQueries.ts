@@ -141,6 +141,9 @@ export const useFeedQuery = (limit = 16) => {
       const result = await api.publicPosts(limit, { signal });
       return publicPostsToFeedItems(result.data.posts || []);
     },
+    staleTime: 30_000,       // feed feels fresh for 30s
+    gcTime: 5 * 60_000,      // keep in cache for 5min after unmount
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -1043,6 +1046,8 @@ export const useProjectsQuery = (limit = 12) =>
       const result = await api.projects(limit, { signal });
       return result.data || [];
     },
+    staleTime: 2 * 60_000,   // sidebar projects: fresh for 2min
+    gcTime: 10 * 60_000,
   });
 
 export const useProjectQuery = (idOrSlug?: string) =>
@@ -1266,6 +1271,8 @@ export const useHackathonsQuery = (params?: {
       const result = await api.hackathons(params, { signal });
       return result.data || [];
     },
+    staleTime: 2 * 60_000,   // hackathons: fresh for 2min
+    gcTime: 10 * 60_000,
   });
 
 export const useHackathonQuery = (id?: string) =>
@@ -1525,6 +1532,8 @@ export const useJobsQuery = (params?: { page?: number; limit?: number }) =>
       const result = await api.jobs(params, { signal });
       return result.data || { jobs: [], total: 0, page: 1, limit: 20, totalPages: 0 };
     },
+    staleTime: 2 * 60_000,   // job listings: fresh for 2min
+    gcTime: 10 * 60_000,
   });
 
 export const useMyFullProfileQuery = () => {
@@ -3508,6 +3517,8 @@ export const useMyReputationQuery = () => {
       return result.data;
     },
     enabled: Boolean(user),
+    staleTime: 60_000,       // reputation: fresh for 1min
+    gcTime: 5 * 60_000,
   });
 };
 
@@ -3528,7 +3539,8 @@ export const useReputationLeaderboardQuery = () =>
       const result = await api.reputationLeaderboard({ signal });
       return result.data || [];
     },
-    staleTime: 60_000,
+    staleTime: 2 * 60_000,   // leaderboard: fresh for 2min
+    gcTime: 10 * 60_000,
   });
 
 export const useMyReputationHistoryQuery = () => {
@@ -4082,6 +4094,26 @@ export const useAdminTriggerJobScraperMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
+export const useAdminTriggerCompanyDiscoveryMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: () => api.adminTriggerCompanyDiscovery({ timeoutMs: 120000 }),
+    onSuccess: (result) => {
+      const stats = result.data;
+      showToast(
+        "success",
+        `Company discovery complete! Discovered: ${stats.discovered}, Skipped: ${stats.skipped}, Jobs Created: ${stats.jobsCreated}`
+      );
+      queryClient.invalidateQueries({ queryKey: ["companies", "discovered"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 
 export const useAdminProjectsQuery = (q: string) => {
   const { user } = useAuth();
