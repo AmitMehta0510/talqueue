@@ -89,7 +89,7 @@ export function ComposePost({
   return (
     <form className="panel p-5" onSubmit={handleSubmit(onSubmit)} noValidate>
       <div className="flex gap-3">
-        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+        <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-light text-brand border border-brand-light/30">
           <Send size={18} />
         </div>
         <div className="flex-1">

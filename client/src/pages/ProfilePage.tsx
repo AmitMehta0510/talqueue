@@ -627,7 +627,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       />
 
       {/* ── Tab Navigation ──────────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b backdrop-blur-sm shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-surface-blur, rgba(255,255,255,0.95))" }}>
+      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b backdrop-blur-sm shadow-sm border-base bg-surface/90">
         <div className="flex overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
@@ -635,10 +635,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
               id={`profile-tab-${id}`}
               className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
                 ${activeTab === id
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "hover:text-slate-900 dark:hover:text-slate-100"
+                  ? "text-brand"
+                  : "text-muted-fg hover:text-primary"
                 }`}
-              style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
               onClick={() => setActiveTab(id)}
             >
               <Icon size={16} />
@@ -1141,8 +1140,8 @@ function ExperienceTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Work Experience</h2>
-          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
+          <h2 className="text-base font-semibold text-primary">Work Experience</h2>
+          {isFetching && <Loader2 className="animate-spin text-muted-fg" size={15} />}
         </div>
         <button
           id="profile-add-experience-btn"
@@ -1156,9 +1155,9 @@ function ExperienceTab({
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="panel p-5" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            <Briefcase size={15} className="text-emerald-600 dark:text-emerald-400" />
+        <div className="panel p-5 border-brand/30">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+            <Briefcase size={15} className="text-brand" />
             {editingId ? "Edit Experience" : "New Experience"}
           </h3>
           <form onSubmit={onSubmit}>
@@ -1254,7 +1253,7 @@ function ExperienceTab({
                 />
               </Field>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-400 dark:hover:border-emerald-500" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-500 border-base bg-surface text-secondary">
                   <input
                     type="checkbox"
                     checked={form.isCurrent}
@@ -1403,11 +1402,11 @@ function SkillsTab({
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Skills</h2>
+          <h2 className="text-base font-semibold text-primary">Skills</h2>
           <span className="chip rounded-full px-2.5 py-0.5 text-xs font-semibold">
             {skills.length} / {MAX_SKILLS}
           </span>
-          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
+          {isFetching && <Loader2 className="animate-spin text-muted-fg" size={15} />}
         </div>
         <button
           onClick={onVerify}
@@ -1519,8 +1518,8 @@ function EducationTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Education</h2>
-          {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
+          <h2 className="text-base font-semibold text-primary">Education</h2>
+          {isFetching && <Loader2 className="animate-spin text-muted-fg" size={15} />}
         </div>
         <button
           id="profile-add-education-btn"
@@ -1534,9 +1533,9 @@ function EducationTab({
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="panel p-5" style={{ borderColor: "rgba(16,185,129,0.35)" }}>
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            <GraduationCap size={15} className="text-emerald-600 dark:text-emerald-400" />
+        <div className="panel p-5 border-brand/30">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+            <GraduationCap size={15} className="text-brand" />
             {editingId ? "Edit Education" : "New Education"}
           </h3>
           <form onSubmit={onSubmit}>
@@ -1554,17 +1553,17 @@ function EducationTab({
                       />
                     </Field>
                     {collegeResults.length > 0 && (
-                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border shadow-lg" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border shadow-lg bg-surface border-base">
                         {collegeResults.map((college) => (
                           <button
                             key={college.id}
-                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-500/10"
                             type="button"
                             onClick={() => onSelectCollege(college)}
                           >
-                            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{college.name}</span>
+                            <span className="font-medium text-primary">{college.name}</span>
                             {college.city && (
-                              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                              <span className="text-xs text-muted-fg">
                                 {college.city}, {college.state}
                               </span>
                             )}
@@ -1575,7 +1574,7 @@ function EducationTab({
                     {/* "Not listed" trigger */}
                     <button
                       type="button"
-                      className="mt-1.5 text-xs underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition" style={{ color: "var(--text-muted)" }}
+                      className="text-muted-fg hover:text-brand transition mt-1.5 text-xs underline underline-offset-2"
                       onClick={onSelectOtherCollege}
                     >
                       My college isn't listed
@@ -1595,15 +1594,15 @@ function EducationTab({
                     </Field>
                     <button
                       type="button"
-                      className="text-xs underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-400 transition" style={{ color: "var(--text-muted)" }}
+                      className="text-muted-fg hover:text-brand transition text-xs underline underline-offset-2"
                       onClick={onCancelOtherCollege}
                     >
                       ← Search from listed colleges instead
                     </button>
                     {/* Info callout */}
-                    <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
                       <span className="mt-0.5 text-amber-500">ℹ</span>
-                      <p className="text-xs leading-relaxed text-amber-800">
+                      <p className="text-xs leading-relaxed text-amber-600 dark:text-amber-400">
                         We'll save your education immediately. Our admin team will review and officially add this college within 1–3 days, after which it will be fully linked to your profile.
                       </p>
                     </div>
@@ -1716,7 +1715,7 @@ function EducationTab({
                 </Field>
               </div>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-400 dark:hover:border-emerald-500" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-500 border-base bg-surface text-secondary">
                   <input
                     type="checkbox"
                     checked={form.current}
@@ -1800,8 +1799,8 @@ function ProjectsTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Projects</h2>
-        {isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
+        <h2 className="text-base font-semibold text-primary">Projects</h2>
+        {isFetching && <Loader2 className="animate-spin text-muted-fg" size={15} />}
       </div>
 
       {projects.length === 0 && !isFetching ? (
@@ -1955,7 +1954,7 @@ function SettingsTab({
               {profileForm.avatarUrl && (
                 <div className="flex items-center gap-2">
                   <img src={profileForm.avatarUrl} alt="Avatar Preview" className="h-12 w-12 rounded-full object-cover ring-2 ring-emerald-500/20" />
-                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.avatarUrl}</span>
+                  <span className="text-xs truncate max-w-xs text-muted-fg">{profileForm.avatarUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -1964,7 +1963,7 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleAvatarChange}
                   disabled={avatarUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
                 />
                 {avatarUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -1976,7 +1975,7 @@ function SettingsTab({
               {profileForm.bannerUrl && (
                 <div className="flex flex-col gap-1">
                   <img src={profileForm.bannerUrl} alt="Banner Preview" className="h-20 w-full rounded-xl object-cover ring-2 ring-emerald-500/20" />
-                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.bannerUrl}</span>
+                  <span className="text-xs truncate max-w-xs text-muted-fg">{profileForm.bannerUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -1985,7 +1984,7 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleBannerChange}
                   disabled={bannerUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
                 />
                 {bannerUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -1994,31 +1993,31 @@ function SettingsTab({
 
           <Field label="GitHub URL">
             <div className="relative">
-              <Github size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
+              <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.githubUrl} onChange={set("githubUrl")} placeholder="https://github.com/..." type="url" />
             </div>
           </Field>
           <Field label="Portfolio URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.portfolioUrl} onChange={set("portfolioUrl")} placeholder="https://yoursite.com" type="url" />
             </div>
           </Field>
           <Field label="LeetCode Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.leetcodeUrl} onChange={set("leetcodeUrl")} placeholder="https://leetcode.com/username" type="url" />
             </div>
           </Field>
           <Field label="HackerRank Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.hackerrankUrl} onChange={set("hackerrankUrl")} placeholder="https://hackerrank.com/username" type="url" />
             </div>
           </Field>
           <Field label="GeeksforGeeks Profile URL">
             <div className="relative">
-              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5" style={{ color: "var(--text-muted)" }} />
+              <Globe size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.gfgUrl} onChange={set("gfgUrl")} placeholder="https://geeksforgeeks.org/user/username" type="url" />
             </div>
           </Field>
@@ -2035,7 +2034,7 @@ function SettingsTab({
                   >
                     <ExternalLink size={12} /> View current resume
                   </a>
-                  <span className="text-xs truncate max-w-xs" style={{ color: "var(--text-muted)" }}>{profileForm.resumeUrl}</span>
+                  <span className="text-xs truncate max-w-xs text-muted-fg">{profileForm.resumeUrl}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -2044,7 +2043,7 @@ function SettingsTab({
                   accept="application/pdf"
                   onChange={handleResumeChange}
                   disabled={resumeUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition" style={{ color: "var(--text-muted)" }}
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
                 />
                 {resumeUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
               </div>
@@ -2119,17 +2118,17 @@ function SkillManager({
     <div className="panel p-5">
       <div className="mb-4 flex items-center gap-2">
         <Sparkles size={16} className="text-amber-500" />
-        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Add a skill</h3>
+        <h3 className="text-sm font-semibold text-primary">Add a skill</h3>
       </div>
       {disabled ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-600 dark:text-amber-400">
           <strong>Skill limit reached:</strong> You can add up to {MAX_SKILLS} skills. Remove some existing skills to add new ones.
         </div>
       ) : (
         <div className="space-y-4">
           {!selectedSkill ? (
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5" size={15} style={{ color: "var(--text-muted)" }} />
+              <Search className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" size={15} />
               <input
                 className="field pl-9"
                 value={query}
@@ -2137,18 +2136,18 @@ function SkillManager({
                 placeholder="Search skill (e.g. React, Python)..."
               />
               {query.length >= 2 && (
-                <div className="absolute z-10 mt-1 w-full rounded-xl border shadow-lg" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+                <div className="absolute z-10 mt-1 w-full rounded-xl border shadow-lg bg-surface border-base">
                   {skillSearch.isFetching ? (
                     <div className="p-3"><InlineLoader label="Searching..." /></div>
                   ) : skillSearch.data && skillSearch.data.length > 0 ? (
                     skillSearch.data.slice(0, 8).map((skill) => (
                       <button
                         key={skill.id}
-                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-500/10"
                         type="button"
                         onClick={() => selectSkill(skill)}
                       >
-                        <span className="font-medium" style={{ color: "var(--text-primary)" }}>{skill.name}</span>
+                        <span className="font-medium text-primary">{skill.name}</span>
                         {skill.verified && (
                           <span className="rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700">
                             Verified
@@ -2158,7 +2157,7 @@ function SkillManager({
                     ))
                   ) : noResults ? (
                     <div className="p-3">
-                      <p className="text-sm" style={{ color: "var(--text-muted)" }}>No matching skills found.</p>
+                      <p className="text-sm text-muted-fg">No matching skills found.</p>
                       <button
                         className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
                         type="button"
@@ -2174,9 +2173,9 @@ function SkillManager({
               )}
             </div>
           ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 p-4 transition-all" style={{ background: "rgba(16,185,129,0.06)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 p-4 transition-all bg-brand-light/20">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Selected Skill:</span>
+                <span className="text-xs font-semibold text-muted-fg">Selected Skill:</span>
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
                   {selectedSkill.name}
                   <button
@@ -2233,8 +2232,8 @@ function SectionCard({
   return (
     <div className="panel p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Icon size={15} className="text-emerald-600 dark:text-emerald-400" />
-        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
+        <Icon size={15} className="text-brand" />
+        <h3 className="text-sm font-semibold text-primary">{title}</h3>
       </div>
       {children}
     </div>
@@ -2252,9 +2251,9 @@ function SettingsSection({
 }) {
   return (
     <div className="panel p-5">
-      <div className="mb-4 flex items-center gap-2 border-b pb-3" style={{ borderColor: "var(--border)" }}>
-        <Icon size={16} className="text-emerald-600 dark:text-emerald-400" />
-        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
+      <div className="mb-4 flex items-center gap-2 border-b pb-3 border-base">
+        <Icon size={16} className="text-brand" />
+        <h3 className="text-sm font-semibold text-primary">{title}</h3>
       </div>
       {children}
     </div>
@@ -2272,7 +2271,7 @@ function Field({
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold text-muted-fg">{label}</span>
       {children}
     </label>
   );
@@ -2287,7 +2286,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon size={14} className="mt-0.5 shrink-0" style={{ color: "var(--text-muted)" }} />
+      <Icon size={14} className="mt-0.5 shrink-0 text-muted-fg" />
       <span className="break-all">{children}</span>
     </div>
   );
@@ -2295,9 +2294,9 @@ function InfoRow({
 
 function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg p-3" style={{ background: "var(--bg-surface-2)" }}>
-      <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{value}</div>
-      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
+    <div className="rounded-lg p-3 bg-surface-2">
+      <div className="text-lg font-bold text-primary">{value}</div>
+      <div className="text-xs text-muted-fg">{label}</div>
     </div>
   );
 }
@@ -2314,13 +2313,13 @@ function EmptySection({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface-2)" }}>
-      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: "var(--bg-surface-3)" }}>
-        <Icon size={22} style={{ color: "var(--text-muted)" }} />
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center border-strong bg-surface-2">
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-3">
+        <Icon size={22} className="text-muted-fg" />
       </div>
       <div>
-        <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>{title}</h3>
-        <p className="mt-1 max-w-xs text-xs" style={{ color: "var(--text-muted)" }}>{text}</p>
+        <h3 className="text-sm font-semibold text-secondary">{title}</h3>
+        <p className="mt-1 max-w-xs text-xs text-muted-fg">{text}</p>
       </div>
       {action}
     </div>

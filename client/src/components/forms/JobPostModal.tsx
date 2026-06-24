@@ -126,19 +126,19 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
   // Pending state screen
   if (pendingResult) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
         <div className="absolute inset-0" onClick={onClose} />
-        <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-2xl p-8 text-center z-10 animate-in fade-in zoom-in duration-200">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 border border-amber-200">
-            <AlertCircle size={28} className="text-amber-500" />
+        <div className="relative w-full max-w-md p-8 text-center z-10 glass animate-scale-in">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40">
+            <AlertCircle size={28} className="text-amber-500 dark:text-amber-400" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2">Company Verification Pending</h3>
-          <p className="text-sm leading-relaxed text-slate-500 mb-6">{pendingResult.message}</p>
-          <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-left mb-6">
-            <CheckCircle2 size={16} className="shrink-0 text-blue-600 mt-0.5" />
+          <h3 className="text-lg font-bold text-primary mb-2">Company Verification Pending</h3>
+          <p className="text-sm leading-relaxed text-muted-fg mb-6">{pendingResult.message}</p>
+          <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 text-left mb-6">
+            <CheckCircle2 size={16} className="shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-blue-700">What happens next?</p>
-              <p className="mt-0.5 text-xs text-blue-600">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">What happens next?</p>
+              <p className="mt-0.5 text-xs text-blue-600 dark:text-blue-300">
                 A platform admin will review your company request. Once approved, your job will automatically go live and you'll receive a notification.
               </p>
             </div>
@@ -152,19 +152,19 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
       {/* Backdrop click dismisses modal */}
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh] z-10 animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-2xl flex flex-col max-h-[90vh] z-10 glass animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-base px-6 py-4">
           <div className="flex items-center gap-2">
             <BriefcaseBusiness size={20} className="text-blue-600" />
-            <h3 className="text-base font-semibold text-slate-950">Post a New Job</h3>
+            <h3 className="text-base font-semibold text-primary">Post a New Job</h3>
           </div>
           <button
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+            className="rounded-full p-1.5 text-muted-fg hover:bg-surface-2 hover:text-primary transition"
             onClick={onClose}
             type="button"
             aria-label="Close"
@@ -178,11 +178,11 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
 
           {/* Company selector — the core fix */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-500">
+            <label className="mb-1.5 block text-xs font-semibold text-muted-fg">
               Company <span className="text-rose-500">*</span>
             </label>
             {companiesLoading ? (
-              <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+              <div className="flex items-center gap-2 text-xs text-muted-fg py-2">
                 <Loader2 size={14} className="animate-spin" /> Loading companies…
               </div>
             ) : (
@@ -205,9 +205,9 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             {/* Custom company name input (when "Other" selected) */}
             {isOtherCompany && (
               <div className="mt-3 space-y-2">
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <AlertCircle size={14} className="shrink-0 text-amber-600 mt-0.5" />
-                  <p className="text-xs text-amber-700">
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 px-3 py-2">
+                  <AlertCircle size={14} className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
                     This company will need admin approval before your job is published. You'll get a notification once it's approved.
                   </p>
                 </div>
@@ -224,7 +224,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">
                 Job Title <span className="text-rose-500">*</span>
               </span>
               <input
@@ -237,7 +237,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Work Mode</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Work Mode</span>
               <select
                 className="field"
                 value={form.workMode}
@@ -250,7 +250,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Job Type</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Job Type</span>
               <select
                 className="field"
                 value={form.type}
@@ -266,7 +266,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Location</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Location</span>
               <input
                 className="field"
                 value={form.location}
@@ -276,7 +276,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Experience Level</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Experience Level</span>
               <select
                 className="field"
                 value={form.experienceLevel}
@@ -290,7 +290,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Skills Required (Comma separated)</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Skills Required (Comma separated)</span>
               <input
                 className="field"
                 value={form.skillsRequired}
@@ -300,7 +300,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">Currency</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Currency</span>
               <input
                 className="field"
                 value={form.currency}
@@ -311,7 +311,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
 
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-slate-500">Min Salary</span>
+                <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Min Salary</span>
                 <input
                   className="field"
                   value={form.salaryMin}
@@ -321,7 +321,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold text-slate-500">Max Salary</span>
+                <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Max Salary</span>
                 <input
                   className="field"
                   value={form.salaryMax}
@@ -333,7 +333,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </div>
 
             <label className="block sm:col-span-2">
-              <span className="mb-1.5 block text-xs font-semibold text-slate-500">
+              <span className="mb-1.5 block text-xs font-semibold text-muted-fg">
                 Detailed Description <span className="text-rose-500">*</span>
               </span>
               <textarea
@@ -346,7 +346,7 @@ export function JobPostModal({ onClose, onSuccess }: JobPostModalProps) {
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-base">
             <button className="btn-secondary" type="button" onClick={onClose}>
               Cancel
             </button>

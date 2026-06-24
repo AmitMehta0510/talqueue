@@ -46,8 +46,8 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md overflow-hidden glass animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -72,17 +72,17 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
 
         {step === "confirm" ? (
           <div className="px-6 py-6 space-y-5">
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3.5">
-              <p className="text-sm font-semibold text-amber-800">
+            <div className="rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 px-4 py-3.5">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
                 You're about to apply on the company's website
               </p>
-              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
                 This job is managed externally. We can't auto-track your application status — but you can log it here and update the progress manually.
               </p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+              <label className="text-xs font-bold text-muted-fg uppercase tracking-wide">
                 Notes (optional)
               </label>
               <textarea
@@ -99,7 +99,7 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
                 type="button"
                 onClick={handleDidApply}
                 disabled={createExternal.isPending}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-60 active:scale-[0.97]"
               >
                 {createExternal.isPending ? (
                   "Tracking..."
@@ -114,7 +114,7 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
               <button
                 type="button"
                 onClick={handleJustBrowse}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                className="w-full flex items-center justify-center gap-2 btn-secondary py-3"
               >
                 <ArrowRight size={16} />
                 Just browse — don't track
@@ -123,19 +123,19 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
           </div>
         ) : (
           <div className="px-6 py-8 flex flex-col items-center gap-4 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 border-2 border-emerald-200">
-              <CheckCircle size={32} className="text-emerald-600" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-light border border-brand-light/30">
+              <CheckCircle size={32} className="text-brand" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Application tracked!</h3>
-              <p className="text-sm text-slate-500 mt-1">
+              <h3 className="text-base font-bold text-primary">Application tracked!</h3>
+              <p className="text-sm text-muted-fg mt-1">
                 It's been added to your Applications tracker. Update the status as you progress through rounds.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition"
+              className="w-full btn-primary py-2.5"
             >
               Done
             </button>

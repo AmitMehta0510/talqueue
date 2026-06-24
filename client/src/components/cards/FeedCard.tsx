@@ -108,15 +108,15 @@ export function FeedCard({
   }
 
   return (
-    <article className="panel p-5" ref={impressionRef}>
+    <article className="panel p-5 hover-lift" ref={impressionRef}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar user={author} />
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-slate-950">
+            <div className="truncate text-sm font-semibold text-primary">
               {author ? userName(author) : title || titleCase(item.type)}
             </div>
-            <div className="truncate text-xs text-slate-500">
+            <div className="truncate text-xs text-muted-fg">
               {metadata || titleCase(item.type)}
               {data.createdAt ? ` - ${formatDate(data.createdAt)}` : ""}
             </div>
@@ -126,12 +126,12 @@ export function FeedCard({
       </div>
 
       {item.reason && (
-        <div className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+        <div className="mt-4 rounded-md border border-brand-light bg-brand-light/20 px-3 py-2 text-xs font-medium text-brand">
           Recommended because {item.reason.toLowerCase()}
         </div>
       )}
 
-      <p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-700">
+      <p className="mt-4 whitespace-pre-line text-sm leading-6 text-secondary">
         {content}
       </p>
 
@@ -145,7 +145,7 @@ export function FeedCard({
         </div>
       )}
 
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+      <div className="mt-5 flex items-center justify-between border-t border-base pt-4">
         <div className="flex gap-2">
           <button
             className="icon-btn"
@@ -192,20 +192,20 @@ export function FeedCard({
         </div>
         {isProject ? (
           <Link
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900"
+            className="text-xs font-semibold text-brand hover:opacity-80 transition-opacity"
             to={`/projects/${project.slug || project.id}`}
           >
             View project
           </Link>
         ) : (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-fg">
             {formatCount(post.likesCount)} likes - {formatCount(post.commentsCount)} comments - {formatCount(post.shareCount)} reposts
           </div>
         )}
       </div>
 
       {isPost && repostOpen && (
-        <form className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3" onSubmit={submitRepost}>
+        <form className="mt-4 rounded-md border border-base bg-surface-2 p-3" onSubmit={submitRepost}>
           <textarea
             className="field min-h-20"
             value={caption}
@@ -223,9 +223,9 @@ export function FeedCard({
       )}
 
       {isPost && commentsOpen && (
-        <div className="mt-4 space-y-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+        <div className="mt-4 space-y-3 rounded-md border border-base bg-surface-2 p-3">
           {postDetail.isFetching && (
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-muted-fg">
               <Loader2 className="animate-spin" size={14} />
               Loading comments
             </div>
@@ -241,12 +241,12 @@ export function FeedCard({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No comments yet.</p>
+            <p className="text-sm text-muted-fg">No comments yet.</p>
           )}
 
           <form className="space-y-2" onSubmit={submitComment}>
             {replyTo && (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-brand-light bg-brand-light/20 px-3 py-2 text-xs text-brand">
                 Replying to {userName(replyTo.author)}
                 <button className="font-semibold" type="button" onClick={() => setReplyTo(null)}>
                   Cancel
@@ -280,25 +280,25 @@ function CommentThread({
   onReply: (comment: PostComment) => void;
 }) {
   return (
-    <div className="rounded-md border border-slate-100 bg-white p-3">
+    <div className="rounded-md border border-base bg-surface p-3">
       <div className="flex items-start gap-3">
         <Avatar user={comment.author} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-950">
+            <span className="text-sm font-semibold text-primary">
               {userName(comment.author)}
             </span>
             {comment.createdAt && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted-fg">
                 {formatDate(comment.createdAt)}
               </span>
             )}
           </div>
-          <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-600">
+          <p className="mt-1 whitespace-pre-line text-sm leading-6 text-secondary">
             {comment.content}
           </p>
           <button
-            className="mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900"
+            className="mt-2 text-xs font-semibold text-brand hover:opacity-80 transition-opacity"
             type="button"
             onClick={() => onReply(comment)}
           >
@@ -309,11 +309,11 @@ function CommentThread({
       {(comment.replies || []).length > 0 && (
         <div className="ml-10 mt-3 space-y-2">
           {(comment.replies || []).map((reply) => (
-            <div className="rounded-md bg-slate-50 p-3" key={reply.id}>
-              <div className="text-xs font-semibold text-slate-700">
+            <div className="rounded-md bg-surface-2 p-3" key={reply.id}>
+              <div className="text-xs font-semibold text-secondary">
                 {userName(reply.author)}
               </div>
-              <p className="mt-1 text-sm text-slate-600">{reply.content}</p>
+              <p className="mt-1 text-sm text-secondary">{reply.content}</p>
             </div>
           ))}
         </div>

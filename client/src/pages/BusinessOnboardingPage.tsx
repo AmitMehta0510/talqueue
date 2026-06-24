@@ -207,7 +207,7 @@ export function BusinessOnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-surface text-primary flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Dynamic Background Gradients */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0f2e24] rounded-full blur-[120px] opacity-40 pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-950 rounded-full blur-[120px] opacity-35 pointer-events-none" />
@@ -220,10 +220,10 @@ export function BusinessOnboardingPage() {
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
             <Sparkles size={12} /> B2B SaaS Enterprise Portal
           </span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+          <h1 className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">
             Engineering Platform <span className="text-emerald-400">For Business</span>
           </h1>
-          <p className="max-w-2xl mx-auto text-sm text-zinc-400">
+          <p className="max-w-2xl mx-auto text-sm text-secondary">
             Select your path to request corporate access, recruit verified engineering talent, or claim ownership of your brand.
           </p>
         </div>
@@ -235,7 +235,7 @@ export function BusinessOnboardingPage() {
             {/* Card 1: Recruiter access */}
             <button
               onClick={() => setActiveFunnel("recruiter")}
-              className="group text-left p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 hover:border-emerald-500/50 hover:bg-[#11241f]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-emerald-500/50 hover:bg-[#11241f]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <UserCheck size={120} className="text-emerald-400" />
@@ -244,10 +244,10 @@ export function BusinessOnboardingPage() {
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <UserCheck size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <h3 className="text-2xl font-bold text-primary group-hover:text-emerald-400 transition-colors">
                   Recruiter Access Console
                 </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-sm text-secondary leading-relaxed">
                   Join an existing company or create a shadow brand workspace. Post jobs, invite colleges, and evaluate candidates in a dedicated pipeline.
                 </p>
               </div>
@@ -259,7 +259,7 @@ export function BusinessOnboardingPage() {
             {/* Card 2: Company Claim */}
             <button
               onClick={() => setActiveFunnel("claim")}
-              className="group text-left p-8 rounded-2xl border border-zinc-800 bg-zinc-900/40 hover:border-indigo-500/50 hover:bg-[#161a35]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#161a35]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Building2 size={120} className="text-indigo-400" />
@@ -268,10 +268,10 @@ export function BusinessOnboardingPage() {
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <Building2 size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors">
+                <h3 className="text-2xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
                   Claim Page Ownership
                 </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-sm text-secondary leading-relaxed">
                   Verify business credentials (GSTIN/CIN) and secure global administrative authority. Manage offices, configure department scopes, and assign recruiters.
                 </p>
               </div>
@@ -296,22 +296,22 @@ export function BusinessOnboardingPage() {
                 setUploadedFileName(null);
                 setUploadProgress(null);
               }}
-              className="mb-6 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-550 hover:text-zinc-300 transition"
+              className="mb-6 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-fg hover:text-primary transition"
             >
               &larr; Back to select account path
             </button>
 
             {/* FUNNEL: RECRUITER ONBOARDING */}
             {activeFunnel === "recruiter" && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
+              <div className="rounded-2xl border border-base bg-surface-2/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
                 
-                <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
+                <div className="flex items-center gap-3 border-b border-base pb-4">
                   <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/25">
                     <UserCheck size={20} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">Recruiter License Registration</h2>
-                    <p className="text-xs text-zinc-500">Provide company credentials to request Recruiter privileges.</p>
+                    <h2 className="text-lg font-bold text-primary">Recruiter License Registration</h2>
+                    <p className="text-xs text-muted-fg">Provide company credentials to request Recruiter privileges.</p>
                   </div>
                 </div>
 
@@ -320,8 +320,8 @@ export function BusinessOnboardingPage() {
                     <div className="mx-auto h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/30 text-emerald-400 animate-bounce">
                       <CheckCircle2 size={36} />
                     </div>
-                    <h3 className="text-xl font-bold text-white">Application Received!</h3>
-                    <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                    <h3 className="text-xl font-bold text-primary">Application Received!</h3>
+                    <p className="text-xs text-secondary max-w-sm mx-auto">
                       Your request has been filed. If matching domain verification succeeds or a platform administrator approves your onboarding, you will gain access immediately.
                     </p>
                     <button
@@ -339,7 +339,7 @@ export function BusinessOnboardingPage() {
                     
                     {/* Autocomplete / Select Company */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         Target Corporate Brand
                       </label>
                       
@@ -355,14 +355,14 @@ export function BusinessOnboardingPage() {
                             setRecruiterValue("companyId", null); // Custom company input resets UUID
                           }}
                         />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-500">
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-fg">
                           {loadingCompanies ? <Loader2 size={16} className="animate-spin" /> : <Building size={16} />}
                         </div>
                       </div>
 
                       {/* Dropdown Suggestions */}
                       {searchQuery.trim().length > 0 && filteredCompanies.length > 0 && (
-                        <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl z-20 absolute w-[calc(100%-2px)] max-w-md">
+                        <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-base bg-surface-3 shadow-2xl z-20 absolute w-[calc(100%-2px)] max-w-md">
                           {filteredCompanies.map((c) => (
                             <button
                               key={c.id}
@@ -372,16 +372,16 @@ export function BusinessOnboardingPage() {
                                 setRecruiterValue("companyName", c.name, { shouldValidate: true });
                                 setSearchQuery(c.name);
                               }}
-                              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:bg-emerald-500/10 hover:text-white transition flex items-center justify-between"
+                              className="w-full text-left px-3 py-2 text-xs text-secondary hover:bg-emerald-500/10 hover:text-primary transition flex items-center justify-between"
                             >
                               <span>{c.name}</span>
-                              <span className="text-[9px] font-bold bg-zinc-800 text-zinc-500 px-1 rounded">MATCH</span>
+                              <span className="text-[9px] font-bold bg-surface-3 border border-base text-muted-fg px-1 rounded">MATCH</span>
                             </button>
                           ))}
                         </div>
                       )}
                       
-                      <p className="text-[10px] text-zinc-500 mt-1">
+                      <p className="text-[10px] text-muted-fg mt-1">
                         {watchRecruiter("companyId") 
                           ? `✓ Selected existing brand: ${watchRecruiter("companyName")}`
                           : watchedCompanyName 
@@ -392,14 +392,14 @@ export function BusinessOnboardingPage() {
                       
                       {recruiterErrors.companyName && (
                         <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
-                          <AlertCircle size={12} /> {recruiterErrors.companyName.message}
+                           <AlertCircle size={12} /> {recruiterErrors.companyName.message}
                         </p>
                       )}
                     </div>
 
                     {/* Business Email */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         Corporate Email Address
                       </label>
                       <div className="relative">
@@ -409,11 +409,11 @@ export function BusinessOnboardingPage() {
                           placeholder="you@company.com"
                           {...registerRecruiter("businessEmail")}
                         />
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-fg">
                           <Mail size={15} />
                         </div>
                       </div>
-                      <p className="text-[9px] text-zinc-650">Use your corporate domain. Matching domains will bypass admin reviews.</p>
+                      <p className="text-[9px] text-muted-fg font-medium mt-1">Use your corporate domain. Matching domains will bypass admin reviews.</p>
                       {recruiterErrors.businessEmail && (
                         <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
                           <AlertCircle size={12} /> {recruiterErrors.businessEmail.message}
@@ -444,15 +444,15 @@ export function BusinessOnboardingPage() {
 
             {/* FUNNEL: KYC CLAIM PAGE */}
             {activeFunnel === "claim" && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
+              <div className="rounded-2xl border border-base bg-surface-2/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
                 
-                <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
+                <div className="flex items-center gap-3 border-b border-base pb-4">
                   <div className="h-10 w-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/25">
                     <Building2 size={20} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">Claim Corporate Brand Page</h2>
-                    <p className="text-xs text-zinc-500">Register business identifiers and KYC documents to claim ownership.</p>
+                    <h2 className="text-lg font-bold text-primary">Claim Corporate Brand Page</h2>
+                    <p className="text-xs text-muted-fg">Register business identifiers and KYC documents to claim ownership.</p>
                   </div>
                 </div>
 
@@ -461,8 +461,8 @@ export function BusinessOnboardingPage() {
                     <div className="mx-auto h-16 w-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/30 text-indigo-400 animate-bounce">
                       <CheckCircle2 size={36} />
                     </div>
-                    <h3 className="text-xl font-bold text-white">KYC Submitted Successfully</h3>
-                    <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                    <h3 className="text-xl font-bold text-primary">KYC Submitted Successfully</h3>
+                    <p className="text-xs text-secondary max-w-sm mx-auto">
                       Our moderation team will audit the GSTIN, CIN records, and files. You'll receive a system notification once global administrative access is assigned.
                     </p>
                     <button
@@ -470,7 +470,7 @@ export function BusinessOnboardingPage() {
                         setActiveFunnel(null);
                         setClaimSuccess(false);
                       }}
-                      className="btn-primary bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 text-xs font-semibold"
+                      className="btn-primary bg-indigo-650 hover:bg-indigo-500 text-white px-6 py-2 text-xs font-semibold"
                     >
                       Return to Business Portal
                     </button>
@@ -480,7 +480,7 @@ export function BusinessOnboardingPage() {
                     
                     {/* Select Brand (Must select an existing one to claim) */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         Select Corporate Brand Page
                       </label>
                       <select
@@ -503,7 +503,7 @@ export function BusinessOnboardingPage() {
 
                     {/* GSTIN */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         GSTIN (15 Alphanumeric Characters)
                       </label>
                       <input
@@ -522,7 +522,7 @@ export function BusinessOnboardingPage() {
 
                     {/* CIN */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         CIN (21 Alphanumeric Characters)
                       </label>
                       <input
@@ -541,7 +541,7 @@ export function BusinessOnboardingPage() {
 
                     {/* Business Email */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         Brand Admin Work Email
                       </label>
                       <input
@@ -559,11 +559,11 @@ export function BusinessOnboardingPage() {
 
                     {/* KYC Document Picker (S3 Upload link simulation) */}
                     <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
                         KYC / Incorporation Document (PDF)
                       </label>
                       
-                      <div className="border-2 border-dashed border-zinc-800 hover:border-indigo-500/50 rounded-xl p-6 text-center bg-zinc-950/40 transition relative">
+                      <div className="border-2 border-dashed border-base hover:border-indigo-500/50 rounded-xl p-6 text-center bg-surface-3/30 transition relative">
                         <input
                           type="file"
                           accept="application/pdf"
@@ -572,24 +572,24 @@ export function BusinessOnboardingPage() {
                           disabled={uploading}
                         />
                         <div className="space-y-2">
-                          <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-400">
+                          <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 text-muted-fg">
                             {uploading ? <Loader2 size={18} className="animate-spin text-indigo-400" /> : <Upload size={18} />}
                           </div>
-                          <p className="text-xs text-zinc-300 font-semibold">
+                          <p className="text-xs text-primary font-semibold">
                             {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click or drag to select PDF Document"}
                           </p>
-                          <p className="text-[10px] text-zinc-550">Max file size: 10MB. Document must confirm GSTIN/CIN.</p>
+                          <p className="text-[10px] text-muted-fg">Max file size: 10MB. Document must confirm GSTIN/CIN.</p>
                         </div>
                       </div>
 
                       {/* File Upload Progress */}
                       {uploadProgress !== null && (
                         <div className="space-y-1.5">
-                          <div className="flex justify-between text-[10px] text-zinc-500 font-semibold">
+                          <div className="flex justify-between text-[10px] text-muted-fg font-semibold">
                             <span>{uploadProgress < 105 ? "Uploading to Cloud..." : "Upload Completed"}</span>
                             <span>{uploadProgress}%</span>
                           </div>
-                          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-surface-3 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-indigo-500 rounded-full transition-all duration-300"
                               style={{ width: `${uploadProgress}%` }}
@@ -635,14 +635,14 @@ export function BusinessOnboardingPage() {
 
       {/* OTP MODAL OVERLAY */}
       {showOtpModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 p-6 space-y-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-base bg-surface-3 p-6 space-y-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
             <div className="text-center space-y-2">
               <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                 <Lock size={20} className="animate-pulse" />
               </div>
-              <h3 className="text-lg font-bold text-white">Enter Verification Code</h3>
-              <p className="text-xs text-zinc-400">
+              <h3 className="text-lg font-bold text-primary">Enter Verification Code</h3>
+              <p className="text-xs text-muted-fg">
                 A 6-digit verification code was generated. Please input it to confirm access.
               </p>
             </div>
@@ -686,7 +686,7 @@ export function BusinessOnboardingPage() {
                     setOtpValue("");
                     setOtpError("");
                   }}
-                  className="rounded-lg border border-zinc-850 px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition"
+                  className="rounded-lg border border-base px-4 py-2 text-xs text-muted-fg hover:text-primary transition"
                 >
                   Cancel
                 </button>

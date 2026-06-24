@@ -60,9 +60,9 @@ const COLUMNS: KanbanColumn[] = [
     id: "applied",
     label: "Applied",
     icon: Briefcase,
-    color: "text-blue-700",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
+    color: "text-blue-700 dark:text-blue-400",
+    bgColor: "bg-blue-50 dark:bg-blue-950/40",
+    borderColor: "border-blue-200 dark:border-blue-900/40",
     platformStatuses: ["APPLIED", "VIEWED"],
     externalStatuses: ["APPLIED"],
   },
@@ -70,9 +70,9 @@ const COLUMNS: KanbanColumn[] = [
     id: "screening",
     label: "Screening",
     icon: Phone,
-    color: "text-violet-700",
-    bgColor: "bg-violet-50",
-    borderColor: "border-violet-200",
+    color: "text-violet-700 dark:text-violet-400",
+    bgColor: "bg-violet-50 dark:bg-violet-950/40",
+    borderColor: "border-violet-200 dark:border-violet-900/40",
     platformStatuses: ["SHORTLISTED"],
     externalStatuses: ["PHONE_SCREEN"],
   },
@@ -80,9 +80,9 @@ const COLUMNS: KanbanColumn[] = [
     id: "interview",
     label: "Interview",
     icon: Code2,
-    color: "text-amber-700",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-200",
+    color: "text-amber-700 dark:text-amber-400",
+    bgColor: "bg-amber-50 dark:bg-amber-950/40",
+    borderColor: "border-amber-200 dark:border-amber-900/40",
     platformStatuses: ["INTERVIEW"],
     externalStatuses: ["TECHNICAL_ROUND", "HR_ROUND"],
   },
@@ -90,9 +90,9 @@ const COLUMNS: KanbanColumn[] = [
     id: "offer",
     label: "Offer",
     icon: Trophy,
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-200",
+    color: "text-emerald-700 dark:text-emerald-400",
+    bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
+    borderColor: "border-emerald-200 dark:border-emerald-900/40",
     platformStatuses: ["HIRED"],
     externalStatuses: ["OFFER_RECEIVED"],
   },
@@ -100,9 +100,9 @@ const COLUMNS: KanbanColumn[] = [
     id: "closed",
     label: "Closed",
     icon: XCircle,
-    color: "text-slate-500",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-200",
+    color: "text-slate-500 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-800/40",
+    borderColor: "border-slate-200 dark:border-slate-700/60",
     platformStatuses: ["REJECTED"],
     externalStatuses: ["REJECTED", "WITHDRAWN"],
   },
@@ -148,7 +148,7 @@ function ExternalStatusDropdown({
   ];
 
   return (
-    <div className="absolute top-full left-0 mt-1 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+    <div className="absolute top-full left-0 mt-1 z-50 w-44 glass shadow-xl overflow-hidden py-1">
       {options.map((status) => (
         <button
           key={status}
@@ -158,8 +158,8 @@ function ExternalStatusDropdown({
             onClose();
           }}
           disabled={updateMutation.isPending}
-          className={`w-full text-left px-3 py-2 text-xs font-semibold transition hover:bg-slate-50 ${
-            app.status === status ? "text-blue-600 bg-blue-50" : "text-slate-600"
+          className={`w-full text-left px-3 py-2 text-xs font-semibold transition hover:bg-surface-2 ${
+            app.status === status ? "text-brand bg-brand-light" : "text-secondary"
           }`}
         >
           {EXTERNAL_STATUS_LABELS[status]}
@@ -190,14 +190,14 @@ function AppCard({ card }: { card: ApplicationCard }) {
     : card.app.appliedAt;
 
   return (
-    <div className="relative rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm hover:shadow-md transition-shadow space-y-2.5">
+    <div className="relative panel p-3.5 space-y-2.5 transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700">
       {/* Source badge */}
       <div className="flex items-center justify-between gap-2">
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold border ${
             isPlatform
-              ? "bg-blue-50 text-blue-700 border-blue-200"
-              : "bg-amber-50 text-amber-700 border-amber-200"
+              ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/40"
+              : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/40"
           }`}
         >
           {isPlatform ? (
@@ -210,7 +210,7 @@ function AppCard({ card }: { card: ApplicationCard }) {
           <button
             type="button"
             onClick={() => deleteMutation.mutateAsync((card as ExternalApp).app.id)}
-            className="text-slate-300 hover:text-rose-500 transition p-0.5 rounded"
+            className="text-muted-fg hover:text-rose-500 transition p-0.5 rounded"
             title="Remove tracking"
           >
             <Trash2 size={11} />
@@ -224,28 +224,28 @@ function AppCard({ card }: { card: ApplicationCard }) {
           <img
             src={logoUrl}
             alt={company}
-            className="h-9 w-9 rounded-lg border border-slate-100 object-cover shrink-0"
+            className="h-9 w-9 rounded-lg border border-base object-cover shrink-0"
           />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-400 shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 border border-base text-muted-fg shrink-0">
             <Building2 size={15} />
           </div>
         )}
         <div className="min-w-0">
-          <p className="text-xs font-bold text-slate-900 leading-snug truncate">{title}</p>
-          <p className="text-[11px] text-slate-500 truncate">{company}</p>
+          <p className="text-xs font-bold text-primary leading-snug truncate">{title}</p>
+          <p className="text-[11px] text-secondary truncate">{company}</p>
         </div>
       </div>
 
       {/* Status */}
-      <div className="text-[10px] text-slate-400 flex items-center justify-between gap-1">
+      <div className="text-[10px] text-muted-fg flex items-center justify-between gap-1">
         <span>Applied {formatDate(appliedAt)}</span>
         {!isPlatform && card.app.applyUrl && (
           <a
             href={card.app.applyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-700 transition"
+            className="text-brand hover:underline transition"
           >
             <ExternalLink size={10} />
           </a>
@@ -254,7 +254,7 @@ function AppCard({ card }: { card: ApplicationCard }) {
 
       {/* Platform status badge (read-only) or External status dropdown */}
       {isPlatform ? (
-        <div className="rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600">
+        <div className="rounded-lg bg-surface-2 border border-base px-2.5 py-1.5 text-[10px] font-semibold text-secondary">
           📋 {PLATFORM_STATUS_LABELS[(card as PlatformApp).status]}
         </div>
       ) : (
@@ -262,7 +262,7 @@ function AppCard({ card }: { card: ApplicationCard }) {
           <button
             type="button"
             onClick={() => setShowDropdown((s) => !s)}
-            className="w-full flex items-center justify-between gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition"
+            className="w-full flex items-center justify-between gap-1 rounded-lg border border-base bg-surface-2 px-2.5 py-1.5 text-[10px] font-semibold text-secondary hover:border-brand hover:bg-brand-light hover:text-brand transition"
           >
             {EXTERNAL_STATUS_LABELS[(card as ExternalApp).app.status]}
             <ChevronDown size={10} />
@@ -278,7 +278,7 @@ function AppCard({ card }: { card: ApplicationCard }) {
 
       {/* Notes for external */}
       {!isPlatform && (card as ExternalApp).app.notes && (
-        <p className="text-[10px] text-slate-400 italic truncate">
+        <p className="text-[10px] text-muted-fg italic truncate">
           "{(card as ExternalApp).app.notes}"
         </p>
       )}
@@ -325,12 +325,12 @@ export function ApplicationKanbanBoard({
   if (allCards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
-          <Briefcase size={28} className="text-slate-400" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-2 border border-base text-muted-fg">
+          <Briefcase size={28} />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-700">No applications yet</p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-sm font-bold text-primary">No applications yet</p>
+          <p className="text-xs text-muted-fg mt-1">
             Apply to jobs on the platform or click "Apply on Company Website" to start tracking.
           </p>
         </div>
@@ -339,52 +339,58 @@ export function ApplicationKanbanBoard({
   }
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex gap-4 min-w-max">
-        {COLUMNS.map((col) => {
-          const cards = allCards.filter((card) => {
-            if (card.type === "platform") {
-              return col.platformStatuses.includes((card as PlatformApp).status);
-            } else {
-              return col.externalStatuses.includes((card as ExternalApp).app.status);
-            }
-          });
+    <div className="relative">
+      {/* Scroll indicator boundary fades */}
+      <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-black/10 dark:from-black/25 to-transparent pointer-events-none z-10" />
+      <div className="absolute right-0 top-0 bottom-4 w-8 bg-gradient-to-l from-black/10 dark:from-black/25 to-transparent pointer-events-none z-10" />
 
-          return (
-            <div key={col.id} className="w-64 shrink-0 flex flex-col gap-2">
-              {/* Column header */}
-              <div
-                className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border ${col.bgColor} ${col.borderColor}`}
-              >
-                <div className={`flex items-center gap-1.5 text-xs font-bold ${col.color}`}>
-                  <col.icon size={13} />
-                  {col.label}
-                </div>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${col.bgColor} ${col.color} border ${col.borderColor}`}
+      <div className="overflow-x-auto pb-4">
+        <div className="flex gap-4 min-w-max px-2">
+          {COLUMNS.map((col) => {
+            const cards = allCards.filter((card) => {
+              if (card.type === "platform") {
+                return col.platformStatuses.includes((card as PlatformApp).status);
+              } else {
+                return col.externalStatuses.includes((card as ExternalApp).app.status);
+              }
+            });
+
+            return (
+              <div key={col.id} className="w-64 shrink-0 flex flex-col gap-2">
+                {/* Column header */}
+                <div
+                  className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border ${col.bgColor} ${col.borderColor}`}
                 >
-                  {cards.length}
-                </span>
-              </div>
-
-              {/* Cards */}
-              <div className="space-y-2.5 min-h-[80px]">
-                {cards.length > 0 ? (
-                  cards.map((card) => (
-                    <AppCard
-                      key={card.type === "platform" ? card.id : (card as ExternalApp).app.id}
-                      card={card}
-                    />
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 h-16">
-                    <p className="text-[10px] text-slate-300 font-semibold">Empty</p>
+                  <div className={`flex items-center gap-1.5 text-xs font-bold ${col.color}`}>
+                    <col.icon size={13} />
+                    {col.label}
                   </div>
-                )}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${col.bgColor} ${col.color} border ${col.borderColor}`}
+                  >
+                    {cards.length}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                <div className="space-y-2.5 min-h-[80px]">
+                  {cards.length > 0 ? (
+                    cards.map((card) => (
+                      <AppCard
+                        key={card.type === "platform" ? card.id : (card as ExternalApp).app.id}
+                        card={card}
+                      />
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-base h-16">
+                      <p className="text-[10px] text-muted-fg/50 font-semibold">Empty</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -63,12 +63,12 @@ export function RequestReferralModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="absolute inset-0" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="absolute inset-0" />
 
-      <div className="relative w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh] z-10 animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-lg flex flex-col max-h-[90vh] z-10 glass animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <button
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-fg hover:bg-surface-2 hover:text-primary transition"
           onClick={onClose}
           type="button"
           aria-label="Close"
@@ -78,13 +78,13 @@ export function RequestReferralModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
           <div className="p-6 overflow-y-auto space-y-4 flex-1">
-            <div className="flex items-center gap-1.5 text-slate-950 font-bold text-base border-b border-slate-100 pb-3">
-              <Sparkles size={18} className="text-emerald-700" />
+            <div className="flex items-center gap-1.5 text-primary font-bold text-base border-b border-base pb-3">
+              <Sparkles size={18} className="text-brand" />
               <h3>Request Referral from {userName(targetUser)}</h3>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-md bg-rose-50 border border-rose-100 p-3 text-xs text-rose-800">
+              <div className="flex items-center gap-2 rounded-md bg-rose-50 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/50 p-3 text-xs text-rose-800 dark:text-rose-400">
                 <AlertCircle size={15} />
                 <span>{error}</span>
               </div>
@@ -92,7 +92,7 @@ export function RequestReferralModal({
 
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-slate-500">
+                <span className="mb-1 block text-xs font-semibold text-muted-fg">
                   Target Company Name
                 </span>
                 <input
@@ -104,7 +104,7 @@ export function RequestReferralModal({
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-slate-500">
+                <span className="mb-1 block text-xs font-semibold text-muted-fg">
                   Target Job Role / Title <span className="text-rose-500">*</span>
                 </span>
                 <input
@@ -117,7 +117,7 @@ export function RequestReferralModal({
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-slate-500">
+                <span className="mb-1 block text-xs font-semibold text-muted-fg">
                   Job Description URL (Optional)
                 </span>
                 <input
@@ -130,7 +130,7 @@ export function RequestReferralModal({
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-slate-500">
+                <span className="mb-1 block text-xs font-semibold text-muted-fg">
                   Personal Pitch Message (Optional)
                 </span>
                 <textarea
@@ -141,15 +141,15 @@ export function RequestReferralModal({
                 />
               </label>
 
-              <div className="border-t border-slate-100 pt-3 space-y-2.5">
-                <h4 className="text-xs font-bold text-slate-700">Your Shared Profile Artifacts</h4>
-                <p className="text-[11px] text-slate-500">
+              <div className="border-t border-base pt-3 space-y-2.5">
+                <h4 className="text-xs font-bold text-secondary">Your Shared Profile Artifacts</h4>
+                <p className="text-[11px] text-muted-fg">
                   Confirm or update the links that will be shared with the referrer.
                 </p>
 
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold text-slate-500">Resume Link</span>
+                    <span className="mb-1 block text-[10px] font-semibold text-muted-fg">Resume Link</span>
                     <input
                       className="field py-1 text-xs"
                       value={form.resumeUrl}
@@ -160,7 +160,7 @@ export function RequestReferralModal({
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold text-slate-500">GitHub Link</span>
+                    <span className="mb-1 block text-[10px] font-semibold text-muted-fg">GitHub Link</span>
                     <input
                       className="field py-1 text-xs"
                       value={form.githubUrl}
@@ -171,7 +171,7 @@ export function RequestReferralModal({
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold text-slate-500">LinkedIn Link</span>
+                    <span className="mb-1 block text-[10px] font-semibold text-muted-fg">LinkedIn Link</span>
                     <input
                       className="field py-1 text-xs"
                       value={form.linkedinUrl}
@@ -182,7 +182,7 @@ export function RequestReferralModal({
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold text-slate-500">Portfolio Link</span>
+                    <span className="mb-1 block text-[10px] font-semibold text-muted-fg">Portfolio Link</span>
                     <input
                       className="field py-1 text-xs"
                       value={form.portfolioUrl}
@@ -196,7 +196,7 @@ export function RequestReferralModal({
             </div>
           </div>
 
-          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+          <div className="p-4 bg-surface-2 border-t border-base flex justify-end gap-2 shrink-0">
             <button
               className="btn-secondary py-1.5 px-4"
               type="button"
@@ -206,7 +206,7 @@ export function RequestReferralModal({
               Cancel
             </button>
             <button
-              className="btn-primary py-1.5 px-4"
+              className="btn-primary py-1.5 px-4 animate-in active:scale-[0.97]"
               type="submit"
               disabled={createReferralMutation.isPending}
             >

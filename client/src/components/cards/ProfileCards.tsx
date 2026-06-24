@@ -4,10 +4,10 @@ import { Education, Experience, UserSkill } from "../../lib/api";
 import { formatMonthYear, titleCase } from "../../lib/format";
 
 const LEVEL_COLORS: Record<string, string> = {
-  BEGINNER:     "bg-slate-100 text-slate-600 border-slate-200",
-  INTERMEDIATE: "bg-blue-50 text-blue-700 border-blue-100",
-  ADVANCED:     "bg-emerald-50 text-emerald-700 border-emerald-100",
-  EXPERT:       "bg-violet-50 text-violet-700 border-violet-100",
+  BEGINNER:     "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/60",
+  INTERMEDIATE: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40",
+  ADVANCED:     "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40",
+  EXPERT:       "bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900/40",
 };
 
 const EMPLOYMENT_LABELS: Record<string, string> = {
@@ -44,14 +44,14 @@ export function ExperienceCard({
   const isVerified = experience.verified || experience.workEmailVerified;
 
   return (
-    <article className="group relative flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md">
+    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-emerald-500/40 dark:hover:border-emerald-400/40">
       <div className="flex gap-4">
         {/* Action buttons */}
         {(onEdit || onDelete) && (
           <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             {onEdit && (
               <button
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+                className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-brand-light hover:text-brand"
                 onClick={onEdit}
                 title="Edit"
               >
@@ -60,7 +60,7 @@ export function ExperienceCard({
             )}
             {onDelete && (
               <button
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
                 onClick={onDelete}
                 title="Delete"
               >
@@ -71,31 +71,31 @@ export function ExperienceCard({
         )}
 
         {/* Company logo placeholder */}
-        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 dark:from-slate-800 dark:to-slate-900 dark:text-slate-500">
           <Briefcase size={20} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h4 className="font-semibold text-slate-900">{experience.title || "Role"}</h4>
-              <p className="mt-0.5 text-sm text-slate-600">{companyName}</p>
+              <h4 className="font-semibold text-primary">{experience.title || "Role"}</h4>
+              <p className="mt-0.5 text-sm text-secondary">{companyName}</p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-1.5 pr-12">
               {isVerified && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
                   <ShieldCheck size={11} />
                   Verified
                 </span>
               )}
               {employmentLabel && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                <span className="chip">
                   {employmentLabel}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-fg">
             <span className="flex items-center gap-1">
               <Calendar size={12} />
               {startLabel} – {endLabel}
@@ -109,24 +109,24 @@ export function ExperienceCard({
           </div>
 
           {experience.description && (
-            <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-600">
+            <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-secondary">
               {experience.description}
             </p>
           )}
 
           {stack.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              <Code2 size={13} className="mt-0.5 shrink-0 text-slate-400" />
+              <Code2 size={13} className="mt-0.5 shrink-0 text-muted-fg" />
               {stack.slice(0, 6).map((item) => (
                 <span
                   key={item}
-                  className="rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
+                  className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-secondary border border-base"
                 >
                   {item}
                 </span>
               ))}
               {stack.length > 6 && (
-                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-xs text-slate-400 ring-1 ring-slate-200">
+                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-fg border border-base">
                   +{stack.length - 6}
                 </span>
               )}
@@ -136,21 +136,21 @@ export function ExperienceCard({
       </div>
 
       {!isVerified && onVerify && (
-        <div className="border-t border-slate-100 pt-3">
+        <div className="border-t border-base pt-3">
           {!showVerifyForm ? (
             <button
               onClick={() => setShowVerifyForm(true)}
-              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline"
             >
               Verify Work Email
             </button>
           ) : (
-            <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+            <div className="space-y-2 rounded-lg bg-surface-2 border border-base p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Verify Work Email</span>
+                <span className="text-xs font-bold text-secondary">Verify Work Email</span>
                 <button
                   onClick={() => { setShowVerifyForm(false); setStep("email"); }}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-muted-fg hover:text-secondary"
                 >
                   <X size={12} />
                 </button>
@@ -162,7 +162,7 @@ export function ExperienceCard({
                     placeholder="yourname@company.com"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none text-slate-800"
+                    className="field py-1 px-2 text-xs w-full"
                   />
                   <button
                     onClick={async () => {
@@ -175,21 +175,21 @@ export function ExperienceCard({
                       finally { setIsSubmitting(false); }
                     }}
                     disabled={isSubmitting || !emailInput.trim()}
-                    className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-750 disabled:opacity-50"
+                    className="btn-primary py-1 px-3 text-xs font-semibold disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : "Send Code"}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] text-slate-500">Enter the verification code sent to {emailInput}</p>
+                  <p className="text-[10px] text-muted-fg">Enter the verification code sent to {emailInput}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Verification Code (e.g. 123456)"
                       value={codeInput}
                       onChange={(e) => setCodeInput(e.target.value)}
-                      className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none text-slate-800"
+                      className="field py-1 px-2 text-xs w-full"
                     />
                     <button
                       onClick={async () => {
@@ -202,14 +202,14 @@ export function ExperienceCard({
                         finally { setIsSubmitting(false); }
                       }}
                       disabled={isSubmitting || !codeInput.trim()}
-                      className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-750 disabled:opacity-50"
+                      className="btn-primary py-1 px-3 text-xs font-semibold disabled:opacity-50"
                     >
                       {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : "Verify"}
                     </button>
                   </div>
                   <button
                     onClick={() => setStep("email")}
-                    className="text-[10px] text-slate-400 hover:text-emerald-700 underline"
+                    className="text-[10px] text-muted-fg hover:text-brand underline"
                   >
                     Change email
                   </button>
@@ -252,14 +252,14 @@ export function EducationCard({
     .join(" · ");
 
   return (
-    <article className="group relative flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md">
+    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-emerald-500/40 dark:hover:border-emerald-400/40">
       <div className="flex gap-4">
         {/* Action buttons */}
         {(onEdit || onDelete) && (
           <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             {onEdit && (
               <button
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+                className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-brand-light hover:text-brand"
                 onClick={onEdit}
                 title="Edit"
               >
@@ -268,7 +268,7 @@ export function EducationCard({
             )}
             {onDelete && (
               <button
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
                 onClick={onDelete}
                 title="Delete"
               >
@@ -278,28 +278,28 @@ export function EducationCard({
           </div>
         )}
 
-        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-700">
+        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-900/60 dark:text-emerald-400">
           <GraduationCap size={20} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2 pr-12">
             <div>
-              <h4 className="font-semibold text-slate-900 truncate">
+              <h4 className="font-semibold text-primary truncate">
                 {education.college?.name || education.customCollegeName || "College"}
               </h4>
               {details && (
-                <p className="mt-0.5 text-sm text-slate-600">{details}</p>
+                <p className="mt-0.5 text-sm text-secondary">{details}</p>
               )}
             </div>
             {education.collegeEmailVerified && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-                <ShieldCheck size={11} className="text-emerald-600" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
+                <ShieldCheck size={11} className="text-emerald-600 dark:text-emerald-400" />
                 Verified
               </span>
             )}
           </div>
           {yearRange && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-fg">
               <Calendar size={12} />
               {yearRange}
             </p>
@@ -308,18 +308,18 @@ export function EducationCard({
       </div>
 
       {!education.collegeEmailVerified && education.collegeId && onVerify && (
-        <div className="border-t border-slate-100 pt-3">
+        <div className="border-t border-base pt-3">
           {!showVerifyForm ? (
             <button
               onClick={() => setShowVerifyForm(true)}
-              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline"
             >
               Verify Student Email
             </button>
           ) : (
-            <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+            <div className="space-y-2 rounded-lg bg-surface-2 border border-base p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Verify College Affiliation</span>
+                <span className="text-xs font-bold text-secondary">Verify College Affiliation</span>
                 <button
                   onClick={() => { setShowVerifyForm(false); setStep("email"); }}
                   className="text-slate-400 hover:text-slate-600"
@@ -334,7 +334,7 @@ export function EducationCard({
                     placeholder="yourname@college.edu"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none text-slate-800"
+                    className="field py-1 px-2 text-xs w-full"
                   />
                   <button
                     onClick={async () => {
@@ -347,21 +347,21 @@ export function EducationCard({
                       finally { setIsSubmitting(false); }
                     }}
                     disabled={isSubmitting || !emailInput.trim()}
-                    className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-750 disabled:opacity-50"
+                    className="btn-primary py-1 px-3 text-xs font-semibold disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : "Send Code"}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] text-slate-500">Enter the verification code sent to {emailInput}</p>
+                  <p className="text-[10px] text-muted-fg">Enter the verification code sent to {emailInput}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Verification Code (e.g. 123456)"
                       value={codeInput}
                       onChange={(e) => setCodeInput(e.target.value)}
-                      className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none text-slate-800"
+                      className="field py-1 px-2 text-xs w-full"
                     />
                     <button
                       onClick={async () => {
@@ -374,14 +374,14 @@ export function EducationCard({
                         finally { setIsSubmitting(false); }
                       }}
                       disabled={isSubmitting || !codeInput.trim()}
-                      className="rounded bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-750 disabled:opacity-50"
+                      className="btn-primary py-1 px-3 text-xs font-semibold disabled:opacity-50"
                     >
                       {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : "Verify"}
                     </button>
                   </div>
                   <button
                     onClick={() => setStep("email")}
-                    className="text-[10px] text-slate-400 hover:text-emerald-700 underline"
+                    className="text-[10px] text-muted-fg hover:text-brand underline"
                   >
                     Change email
                   </button>
@@ -406,18 +406,18 @@ export function SkillPill({
   onRemove?: () => void;
   onClick?: () => void;
 }) {
-  const levelClass = skill.level ? (LEVEL_COLORS[skill.level] || LEVEL_COLORS.BEGINNER) : "bg-slate-50 text-slate-600 border-slate-200";
+  const levelClass = skill.level ? (LEVEL_COLORS[skill.level] || LEVEL_COLORS.BEGINNER) : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/60";
   const levelLabel = skill.level ? titleCase(skill.level) : null;
 
   const verifiedBadge = skill.verified && (
-    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-300">
+    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-900/60">
       <ShieldCheck size={10} />
       Verified
     </span>
   );
 
   const unverifiedBadge = !skill.verified && (
-    <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-300 border-dashed">
+    <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 dark:bg-slate-800/40 px-1 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 border-dashed">
       Self-Claimed
     </span>
   );
@@ -425,14 +425,14 @@ export function SkillPill({
   if (large) {
     return (
       <div 
-        className={`group/skill relative flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300" : ""}`}
+        className={`group/skill relative flex items-center gap-2 rounded-lg border px-3 py-2 ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300 dark:hover:border-slate-600" : ""}`}
         onClick={onClick}
       >
         <span className="text-sm font-medium">
           {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
         </span>
         {levelLabel && (
-          <span className="rounded-full bg-white/60 px-1.5 py-0.5 text-xs font-medium">
+          <span className="rounded-full bg-white/60 dark:bg-black/20 px-1.5 py-0.5 text-xs font-medium">
             {levelLabel}
           </span>
         )}
@@ -440,7 +440,7 @@ export function SkillPill({
         {unverifiedBadge}
         {onRemove && (
           <button
-            className="ml-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover/skill:opacity-100"
+            className="ml-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-red-100 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 group-hover/skill:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
@@ -456,12 +456,12 @@ export function SkillPill({
 
   return (
     <span 
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300" : ""}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${levelClass} ${onClick ? "cursor-pointer hover:shadow-sm transition hover:border-slate-300 dark:hover:border-slate-600" : ""}`}
       onClick={onClick}
     >
       {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
       {levelLabel && <span className="opacity-60">· {levelLabel}</span>}
-      {skill.verified && <ShieldCheck size={11} className="text-emerald-600 shrink-0" />}
+      {skill.verified && <ShieldCheck size={11} className="text-emerald-600 dark:text-emerald-400 shrink-0" />}
     </span>
   );
 }

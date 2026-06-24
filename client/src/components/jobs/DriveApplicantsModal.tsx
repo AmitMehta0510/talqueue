@@ -56,56 +56,56 @@ const STATUS_CONFIG: Record<
 > = {
   APPLIED: {
     label: "Applied",
-    bg: "bg-blue-50 border-blue-200",
-    text: "text-blue-700",
+    bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/40",
+    text: "text-blue-700 dark:text-blue-400",
     icon: AlertCircle,
   },
   SHORTLISTED: {
     label: "Shortlisted",
-    bg: "bg-emerald-50 border-emerald-200",
-    text: "text-emerald-700",
+    bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40",
+    text: "text-emerald-700 dark:text-emerald-400",
     icon: CheckCircle,
   },
   INTERVIEW_R1: {
     label: "Round 1 Interview",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
+    bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40",
+    text: "text-amber-700 dark:text-amber-400",
     icon: Clock,
   },
   INTERVIEW_R2: {
     label: "Round 2 Interview",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
+    bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40",
+    text: "text-amber-700 dark:text-amber-400",
     icon: Clock,
   },
   INTERVIEW_R3: {
     label: "Round 3 Interview",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
+    bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40",
+    text: "text-amber-700 dark:text-amber-400",
     icon: Clock,
   },
   PPO_OFFERED: {
     label: "PPO Offered",
-    bg: "bg-indigo-50 border-indigo-200",
-    text: "text-indigo-700",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/40",
+    text: "text-indigo-700 dark:text-indigo-400",
     icon: Trophy,
   },
   SELECTED: {
     label: "Selected 🎉",
-    bg: "bg-violet-50 border-violet-200",
-    text: "text-violet-700",
+    bg: "bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-900/40",
+    text: "text-violet-700 dark:text-violet-400",
     icon: CheckCircle,
   },
   REJECTED: {
     label: "Not Selected",
-    bg: "bg-rose-50 border-rose-200",
-    text: "text-rose-700",
+    bg: "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/40",
+    text: "text-rose-700 dark:text-rose-400",
     icon: XCircle,
   },
   WITHDRAWN: {
     label: "Withdrawn",
-    bg: "bg-slate-50 border-slate-200",
-    text: "text-slate-500",
+    bg: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60",
+    text: "text-slate-500 dark:text-slate-400",
     icon: XCircle,
   },
 };
@@ -260,20 +260,20 @@ export function DriveApplicantsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl max-h-[85vh] glass shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-50 to-indigo-50 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-base bg-surface-2 shrink-0">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Placement Drive Portal</h2>
-            <p className="text-xs text-indigo-700 font-semibold mt-0.5 max-w-[500px] truncate">
+            <h2 className="text-base font-bold text-primary">Placement Drive Portal</h2>
+            <p className="text-xs text-indigo-650 dark:text-indigo-400 font-semibold mt-0.5 max-w-[500px] truncate">
               {driveTitle}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/70 text-slate-400 hover:text-slate-700 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-surface-3 text-muted-fg hover:text-primary transition"
           >
             <X size={16} />
           </button>
@@ -281,14 +281,14 @@ export function DriveApplicantsModal({
 
         {/* Tab Switcher (Only show if not in the shortlisting workflow) */}
         {!shortlistRoundId && (
-          <div className="flex px-6 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex px-6 border-b border-base bg-surface shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("applicants")}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition ${
                 activeTab === "applicants"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
+                  ? "border-brand text-brand"
+                  : "border-transparent text-muted-fg hover:text-primary"
               }`}
             >
               Applicants List
@@ -298,8 +298,8 @@ export function DriveApplicantsModal({
               onClick={() => setActiveTab("rounds")}
               className={`py-3 px-4 text-xs font-bold border-b-2 transition ${
                 activeTab === "rounds"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
+                  ? "border-brand text-brand"
+                  : "border-transparent text-muted-fg hover:text-primary"
               }`}
             >
               Round Pipeline
@@ -311,8 +311,8 @@ export function DriveApplicantsModal({
         {activeTab === "applicants" && !shortlistRoundId && (
           <>
             {/* Filters and Count bar */}
-            <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3 shrink-0">
-              <span className="text-xs font-bold text-slate-500">
+            <div className="px-6 py-3 border-b border-base bg-surface-2/50 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <span className="text-xs font-bold text-muted-fg">
                 {filteredApplicants.length} of {applicants.length} applicants
               </span>
               <div className="flex gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0">
@@ -323,8 +323,8 @@ export function DriveApplicantsModal({
                     onClick={() => setStatusFilter(status)}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition shrink-0 ${
                       statusFilter === status
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-200"
+                        ? "bg-brand text-inverse shadow-sm"
+                        : "text-secondary hover:bg-surface-3"
                     }`}
                   >
                     {status === "ALL" ? "All" : STATUS_CONFIG[status as PlacementDriveApplicationStatus]?.label || status}
@@ -337,25 +337,25 @@ export function DriveApplicantsModal({
             <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
               {applicantsQuery.isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <Loader2 className="animate-spin text-indigo-600" size={24} />
-                  <p className="text-xs text-slate-400 font-semibold">Loading applicants list…</p>
+                  <Loader2 className="animate-spin text-brand" size={24} />
+                  <p className="text-xs text-muted-fg font-semibold">Loading applicants list…</p>
                 </div>
               ) : applicantsQuery.isError ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
                   <AlertCircle className="text-rose-500" size={28} />
                   <div>
-                    <p className="text-sm font-bold text-slate-800">Failed to load applicants</p>
-                    <p className="text-xs text-slate-400 mt-1">Please try again later.</p>
+                    <p className="text-sm font-bold text-primary">Failed to load applicants</p>
+                    <p className="text-xs text-muted-fg mt-1">Please try again later.</p>
                   </div>
                 </div>
               ) : filteredApplicants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-3 text-muted-fg">
                     <User size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-700">No applicants found</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-sm font-bold text-primary">No applicants found</p>
+                    <p className="text-xs text-muted-fg mt-1">
                       {statusFilter === "ALL"
                         ? "No student applications have been received for this drive."
                         : `No applicants match the filter "${STATUS_CONFIG[statusFilter as PlacementDriveApplicationStatus]?.label}".`}
@@ -373,7 +373,7 @@ export function DriveApplicantsModal({
                     return (
                       <div
                         key={app.id}
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 bg-white hover:shadow-sm transition"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-base bg-surface hover:shadow-sm transition"
                       >
                         {/* User profile details */}
                         <div className="flex items-start gap-3 min-w-0">
@@ -381,10 +381,10 @@ export function DriveApplicantsModal({
                             <img
                               src={cleanLogoUrl(profileObj?.avatarUrl)!}
                               alt={profileObj?.fullName}
-                              className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm shrink-0"
+                              className="h-10 w-10 rounded-full object-cover border border-base shadow-sm shrink-0"
                             />
                           ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold shrink-0">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-light border border-brand-light text-brand font-bold shrink-0">
                               {profileObj?.fullName?.charAt(0) || userObj?.username?.charAt(0) || "U"}
                             </div>
                           )}
@@ -394,25 +394,25 @@ export function DriveApplicantsModal({
                                 to={`/users/${userObj?.username || userObj?.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm font-bold text-slate-900 hover:text-indigo-600 transition flex items-center gap-1"
+                                className="text-sm font-bold text-primary hover:text-brand transition flex items-center gap-1"
                               >
                                 {profileObj?.fullName || "Anonymous Student"}
                                 <ExternalLink size={12} className="opacity-50" />
                               </Link>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-muted-fg">
                                 @{userObj?.username}
                               </span>
                             </div>
                             {profileObj?.headline && (
-                              <p className="text-xs text-slate-500 truncate max-w-sm">
+                              <p className="text-xs text-secondary truncate max-w-sm">
                                 {profileObj.headline}
                               </p>
                             )}
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-[10px] text-muted-fg mt-0.5">
                               Email: {userObj?.email} · Applied {formatDate(app.appliedAt)}
                             </p>
                             {app.note && (
-                              <p className="text-xs text-slate-600 mt-1.5 italic bg-slate-50 border-l-2 border-slate-200 pl-2 py-0.5">
+                              <p className="text-xs text-secondary mt-1.5 italic bg-surface-2 border-l-2 border-base pl-2 py-0.5">
                                 "{app.note}"
                               </p>
                             )}
@@ -434,24 +434,24 @@ export function DriveApplicantsModal({
                               onClick={() =>
                                 setActiveDropdownId((id) => (id === app.id ? null : app.id))
                               }
-                              className="flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 transition"
+                              className="flex h-8 items-center gap-1 rounded-xl border border-base bg-surface px-2.5 text-xs font-semibold text-secondary hover:border-brand hover:bg-brand-light hover:text-brand transition"
                             >
                               Change Status
                               <ChevronDown size={12} className="opacity-60" />
                             </button>
 
                             {activeDropdownId === app.id && (
-                              <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full z-50 mt-1 w-44 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                              <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full z-50 mt-1 w-44 rounded-xl border border-base bg-surface shadow-xl overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                                 {ACTIONABLE_STATUSES.map((status) => (
                                   <button
                                     key={status}
                                     type="button"
                                     onClick={() => handleStatusChange(app.id, status)}
                                     disabled={updateStatusMutation.isPending}
-                                    className={`w-full text-left px-3 py-2 text-xs font-semibold transition hover:bg-slate-50 ${
+                                    className={`w-full text-left px-3 py-2 text-xs font-semibold transition hover:bg-surface-2 ${
                                       app.status === status
-                                        ? "text-indigo-600 bg-indigo-50"
-                                        : "text-slate-600"
+                                        ? "text-brand bg-brand-light"
+                                        : "text-secondary"
                                     }`}
                                   >
                                     {STATUS_CONFIG[status]?.label}
@@ -476,14 +476,14 @@ export function DriveApplicantsModal({
             
             {/* Header / Create Trigger */}
             <div className="flex justify-between items-center mb-4 shrink-0">
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-xs font-bold text-muted-fg">
                 {rounds.length} Scheduled Rounds
               </span>
               {!showRoundForm && (
                 <button
                   type="button"
                   onClick={() => setShowRoundForm(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                  className="btn-primary px-3 py-1.5 text-xs font-bold shadow-sm inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white transition"
                 >
                   <Plus size={14} />
                   Schedule Round
@@ -493,18 +493,18 @@ export function DriveApplicantsModal({
 
             {/* Inline Creation / Edit Form */}
             {showRoundForm && (
-              <form onSubmit={handleSaveRound} className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 shadow-inner">
-                <h3 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-1">
-                  <Calendar size={14} className="text-indigo-600" />
+              <form onSubmit={handleSaveRound} className="bg-surface-2 border border-base rounded-xl p-4 mb-5 shadow-inner">
+                <h3 className="text-xs font-bold text-primary mb-3 flex items-center gap-1">
+                  <Calendar size={14} className="text-brand" />
                   {editingRoundId ? "Edit Round Schedule" : "Schedule New Round"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Round Type *</label>
+                    <label className="block text-[10px] font-bold text-muted-fg mb-1">Round Type *</label>
                     <select
                       value={roundType}
                       onChange={(e) => setRoundType(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="field py-1.5 px-2.5 text-xs"
                       required
                     >
                       <option value="APTITUDE_TEST">Aptitude Test</option>
@@ -515,67 +515,67 @@ export function DriveApplicantsModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Date & Time</label>
+                    <label className="block text-[10px] font-bold text-muted-fg mb-1">Date & Time</label>
                     <input
                       type="datetime-local"
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="field py-1.5 px-2.5 text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Venue / Location</label>
+                    <label className="block text-[10px] font-bold text-muted-fg mb-1">Venue / Location</label>
                     <input
                       type="text"
                       placeholder="e.g. Seminar Hall, Placement Cell"
                       value={venue}
                       onChange={(e) => setVenue(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="field py-1.5 px-2.5 text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Meeting Link (if Online)</label>
+                    <label className="block text-[10px] font-bold text-muted-fg mb-1">Meeting Link (if Online)</label>
                     <input
                       type="url"
                       placeholder="Zoom or Google Meet url"
                       value={meetLink}
                       onChange={(e) => setMeetLink(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="field py-1.5 px-2.5 text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Duration (minutes)</label>
+                    <label className="block text-[10px] font-bold text-muted-fg mb-1">Duration (minutes)</label>
                     <input
                       type="number"
                       value={durationMin}
                       onChange={(e) => setDurationMin(Number(e.target.value))}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      className="field py-1.5 px-2.5 text-xs"
                       min={5}
                     />
                   </div>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Instructions / Notes</label>
+                  <label className="block text-[10px] font-bold text-muted-fg mb-1">Instructions / Notes</label>
                   <textarea
                     rows={2}
                     placeholder="Provide details about test syllabus, rules, guidelines..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="field py-1.5 px-2.5 text-xs"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={handleResetRoundForm}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    className="btn-secondary px-3 py-1.5 text-xs font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={createRoundMutation.isPending || updateRoundMutation.isPending}
-                    className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition"
+                    className="btn-primary px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white transition shadow-sm"
                   >
                     {createRoundMutation.isPending || updateRoundMutation.isPending ? "Saving..." : "Save Round"}
                   </button>
@@ -586,47 +586,47 @@ export function DriveApplicantsModal({
             {/* Rounds List */}
             {roundsQuery.isLoading ? (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
-                <Loader2 className="animate-spin text-indigo-600" size={20} />
-                <p className="text-xs text-slate-400">Loading pipeline...</p>
+                <Loader2 className="animate-spin text-brand" size={20} />
+                <p className="text-xs text-muted-fg">Loading pipeline...</p>
               </div>
             ) : rounds.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-3 text-muted-fg">
                   <Calendar size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-700">No rounds scheduled yet</p>
-                  <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                  <p className="text-sm font-bold text-primary">No rounds scheduled yet</p>
+                  <p className="text-xs text-muted-fg mt-1 max-w-xs">
                     Start scheduling drive rounds (Online tests, interviews, etc.) to shortlist applicants sequentially.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-6 relative border-l border-slate-200 pl-6 ml-2 my-2">
+              <div className="space-y-6 relative border-l border-base pl-6 ml-2 my-2">
                 {rounds.map((round) => (
                   <div key={round.id} className="relative group">
                     
                     {/* Timeline Node */}
-                    <div className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white ring-4 ring-white shadow">
+                    <div className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-inverse ring-4 ring-surface shadow">
                       <span className="text-[8px] font-bold">{round.roundNumber}</span>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                    <div className="bg-surface border border-base rounded-2xl p-4 shadow-sm hover:shadow transition">
                       <div className="flex justify-between items-start mb-2 gap-4">
                         <div>
-                          <h4 className="text-sm font-bold text-slate-900">
+                          <h4 className="text-sm font-bold text-primary">
                             {ROUND_TYPE_LABELS[round.roundType] || round.roundType}
                           </h4>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-slate-500 text-[10px] font-semibold mt-1">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-secondary text-[10px] font-semibold mt-1">
                             {round.scheduledAt && (
                               <span className="flex items-center gap-1">
-                                <Calendar size={12} className="text-slate-400" />
+                                <Calendar size={12} className="text-muted-fg" />
                                 {formatDate(round.scheduledAt)}
                               </span>
                             )}
                             {round.venue && (
                               <span className="flex items-center gap-1">
-                                <MapPin size={12} className="text-slate-400" />
+                                <MapPin size={12} className="text-muted-fg" />
                                 {round.venue}
                               </span>
                             )}
@@ -635,15 +635,15 @@ export function DriveApplicantsModal({
                                 href={round.meetLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-indigo-600 hover:underline"
+                                className="flex items-center gap-1 text-brand hover:underline"
                               >
-                                <Video size={12} className="text-indigo-400" />
+                                <Video size={12} className="text-brand/80" />
                                 Online Interview
                               </a>
                             )}
                             {round.durationMin && (
                               <span className="flex items-center gap-1">
-                                <Clock size={12} className="text-slate-400" />
+                                <Clock size={12} className="text-muted-fg" />
                                 {round.durationMin} mins
                               </span>
                             )}
@@ -655,14 +655,14 @@ export function DriveApplicantsModal({
                           <button
                             type="button"
                             onClick={() => handleStartEditRound(round)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-2 text-secondary hover:text-primary transition"
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteRound(round.id)}
-                            className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-600"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-secondary hover:text-rose-600 transition"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -670,15 +670,15 @@ export function DriveApplicantsModal({
                       </div>
 
                       {round.notes && (
-                        <p className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 mt-2 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-xs text-secondary bg-surface-2 border border-base rounded-lg p-2 mt-2 leading-relaxed whitespace-pre-wrap">
                           {round.notes}
                         </p>
                       )}
 
                       {/* Shortlist management row */}
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                          <Users size={14} className="text-indigo-500" />
+                      <div className="flex items-center justify-between border-t border-base pt-3 mt-3">
+                        <div className="flex items-center gap-1.5 text-xs text-secondary font-bold">
+                          <Users size={14} className="text-brand" />
                           <span>
                             {round.shortlistedApplications?.length || 0} candidates shortlisted
                           </span>
@@ -686,7 +686,7 @@ export function DriveApplicantsModal({
                         <button
                           type="button"
                           onClick={() => handleStartShortlist(round.id)}
-                          className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1 text-xs transition shadow-sm"
+                          className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-105 dark:hover:bg-indigo-950/50 text-indigo-705 dark:text-indigo-400 font-bold px-2.5 py-1 text-xs transition shadow-sm"
                         >
                           Shortlist Candidates
                         </button>
@@ -704,38 +704,38 @@ export function DriveApplicantsModal({
           <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 flex flex-col">
             
             {/* Header Section */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
+            <div className="flex items-center justify-between border-b border-base pb-3 mb-4 shrink-0">
               <div>
                 <button
                   type="button"
                   onClick={() => setShortlistRoundId(null)}
-                  className="text-xs font-semibold text-indigo-600 hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
                 >
                   ← Back to Pipeline
                 </button>
-                <h3 className="text-sm font-bold text-slate-900 mt-1">
+                <h3 className="text-sm font-bold text-primary mt-1">
                   Shortlist for Round {currentShortlistRound.roundNumber}: {ROUND_TYPE_LABELS[currentShortlistRound.roundType] || currentShortlistRound.roundType}
                 </h3>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 bg-slate-100 rounded-lg px-2 py-1">
+                <span className="text-xs font-bold text-secondary bg-surface-2 border border-base rounded-lg px-2 py-1">
                   {selectedApps.length} Selected
                 </span>
               </div>
             </div>
 
             {/* Checklist form */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 shadow-inner">
+            <div className="bg-surface-2 border border-base rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 shadow-inner">
               <div className="min-w-0">
-                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                <span className="block text-[10px] font-bold text-muted-fg uppercase tracking-wider mb-1">
                   Workflow Action
                 </span>
-                <label className="text-xs font-semibold text-slate-700 flex flex-wrap items-center gap-1.5">
+                <label className="text-xs font-semibold text-secondary flex flex-wrap items-center gap-1.5">
                   Update advanced applicants' status to:
                   <select
                     value={targetStatus}
                     onChange={(e) => setTargetStatus(e.target.value as PlacementDriveApplicationStatus)}
-                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-bold"
+                    className="field py-1 px-2 text-xs font-bold w-auto inline-block ml-1 bg-surface"
                   >
                     <option value="">No Change (Keep Current)</option>
                     {ACTIONABLE_STATUSES.map((status) => (
@@ -750,7 +750,7 @@ export function DriveApplicantsModal({
                 type="button"
                 onClick={handleSaveShortlist}
                 disabled={selectedApps.length === 0 || shortlistForRoundMutation.isPending}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-xs font-bold text-white shadow transition shrink-0"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand text-inverse px-4 py-2 text-xs font-bold shadow transition shrink-0"
               >
                 {shortlistForRoundMutation.isPending ? (
                   <>
@@ -769,28 +769,28 @@ export function DriveApplicantsModal({
             {/* Selection List */}
             <div className="flex-1 min-h-0 overflow-y-auto">
               {applicants.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400">
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-fg">
                   <User size={24} />
                   <p className="text-xs font-semibold mt-1">No applications to shortlist.</p>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                <div className="border border-base rounded-2xl overflow-hidden bg-surface shadow-sm">
                   {/* Select All Row */}
-                  <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50/70 border-b border-slate-200">
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-surface-2/70 border-b border-base">
                     <input
                       type="checkbox"
                       id="select-all-apps"
                       checked={selectedApps.length === applicants.length && applicants.length > 0}
                       onChange={(e) => handleSelectAllApps(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                      className="rounded border-base text-brand focus:ring-brand h-4 w-4 shrink-0"
                     />
-                    <label htmlFor="select-all-apps" className="text-xs font-bold text-slate-700 select-none cursor-pointer">
+                    <label htmlFor="select-all-apps" className="text-xs font-bold text-secondary select-none cursor-pointer">
                       Select All Applicants ({applicants.length})
                     </label>
                   </div>
 
                   {/* List Rows */}
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-base">
                     {applicants.map((app) => {
                       const isSelected = selectedApps.includes(app.id);
                       const isAlreadyInRound = currentShortlistRound.shortlistedApplications?.some(

@@ -44,14 +44,14 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
   const isRecruiter = user?.primaryRole === "RECRUITER";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4" onClick={onClose}>
       {/* Backdrop click dismisses modal */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" />
 
-      <div className="relative w-full max-w-3xl rounded-xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[90vh] z-10 animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-3xl flex flex-col max-h-[90vh] z-10 glass animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header Close button */}
         <button
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-fg hover:bg-surface-2 hover:text-primary transition"
           onClick={onClose}
           type="button"
           aria-label="Close"
@@ -63,18 +63,18 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
         <div className="overflow-y-auto p-6 space-y-6 flex-1">
           {/* Top Job Info */}
           <div className="flex items-start gap-4">
-            <div className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+            <div className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/20 dark:text-amber-400">
               <BriefcaseBusiness size={28} />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-950">{job.title || "Open Role"}</h2>
-                {job.featured && <span className="chip text-amber-700 bg-amber-50">Featured</span>}
+                <h2 className="text-xl font-bold text-primary">{job.title || "Open Role"}</h2>
+                {job.featured && <span className="chip text-amber-700 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20">Featured</span>}
               </div>
-              <p className="text-sm font-medium text-slate-600 mt-1">
+              <p className="text-sm font-medium text-secondary mt-1">
                 {job.company?.name || "Company"} &bull; {job.location || "Remote"}
               </p>
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-fg">
                 <span className="flex items-center gap-1">
                   <Globe size={13} />
                   {titleCase(job.workMode || "Remote")}
@@ -84,7 +84,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                   {titleCase(job.type || "Full Time")}
                 </span>
                 {salary && (
-                  <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                  <span className="flex items-center gap-1 text-brand font-medium">
                     <DollarSign size={13} />
                     {salary}
                   </span>
@@ -93,42 +93,42 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
             </div>
           </div>
 
-          <hr className="border-slate-100" />
+          <hr className="border-base" />
 
           {/* Description Section */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-950 mb-2">Job Description</h3>
-            <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.description}</p>
+            <h3 className="text-sm font-semibold text-primary mb-2">Job Description</h3>
+            <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.description}</p>
           </div>
 
           {job.responsibilities && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 mb-2">Responsibilities</h3>
-              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.responsibilities}</p>
+              <h3 className="text-sm font-semibold text-primary mb-2">Responsibilities</h3>
+              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.responsibilities}</p>
             </div>
           )}
 
           {job.requirements && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 mb-2">Requirements</h3>
-              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.requirements}</p>
+              <h3 className="text-sm font-semibold text-primary mb-2">Requirements</h3>
+              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.requirements}</p>
             </div>
           )}
 
           {job.perks && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 mb-2">Perks & Benefits</h3>
-              <p className="text-sm leading-6 text-slate-600 whitespace-pre-wrap">{job.perks}</p>
+              <h3 className="text-sm font-semibold text-primary mb-2">Perks & Benefits</h3>
+              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.perks}</p>
             </div>
           )}
 
           {/* Skills Required */}
           {job.skillsRequired && job.skillsRequired.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 mb-2">Required Skills</h3>
+              <h3 className="text-sm font-semibold text-primary mb-2">Required Skills</h3>
               <div className="flex flex-wrap gap-2">
                 {job.skillsRequired.map((skill) => (
-                  <span className="chip bg-slate-100 text-slate-700 px-3 py-1" key={skill}>
+                  <span className="chip px-3 py-1" key={skill}>
                     {skill}
                   </span>
                 ))}
@@ -136,16 +136,16 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
             </div>
           )}
 
-          <hr className="border-slate-100" />
+          <hr className="border-base" />
 
           {/* Apply Form / Status Section / External Apply */}
-          <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
+          <div className="bg-surface-2 rounded-lg p-5 border border-base">
             {job.applyUrl ? (
               <div className="text-center py-4 space-y-3">
-                <Globe size={24} className="mx-auto text-blue-600 animate-pulse" />
+                <Globe size={24} className="mx-auto text-brand animate-pulse" />
                 <div>
-                  <h4 className="font-semibold text-sm text-slate-900">External Job Application</h4>
-                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  <h4 className="font-semibold text-sm text-primary">External Job Application</h4>
+                  <p className="text-xs text-muted-fg mt-1 max-w-md mx-auto">
                     This job listing is sourced externally. Applications are processed directly on the company's hiring portal.
                   </p>
                 </div>
@@ -159,39 +159,39 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                 </a>
               </div>
             ) : applied ? (
-              <div className="flex items-center gap-3 text-emerald-800">
-                <CheckCircle2 size={24} className="shrink-0 text-emerald-600" />
+              <div className="flex items-center gap-3 text-brand">
+                <CheckCircle2 size={24} className="shrink-0 text-brand" />
                 <div>
                   <h4 className="font-semibold text-sm">Application Submitted!</h4>
-                  <p className="text-xs text-emerald-700/80 mt-0.5">
+                  <p className="text-xs text-brand/80 mt-0.5">
                     You have successfully applied for this position. The recruiter will review your profile shortly.
                   </p>
                 </div>
               </div>
             ) : isRecruiter ? (
-              <div className="flex items-center gap-3 text-amber-800">
+              <div className="flex items-center gap-3 text-amber-800 dark:text-amber-400">
                 <Award size={24} className="shrink-0 text-amber-600" />
                 <div>
                   <h4 className="font-semibold text-sm">Recruiter Account</h4>
-                  <p className="text-xs text-amber-700/80 mt-0.5">
+                  <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">
                     As a recruiter, you can manage this pipeline via your dashboard, but you cannot apply for jobs.
                   </p>
                 </div>
               </div>
             ) : !user ? (
               <div className="text-center py-2">
-                <p className="text-sm text-slate-600 mb-3">You must login to apply for this job.</p>
+                <p className="text-sm text-secondary mb-3">You must login to apply for this job.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex items-center gap-1.5 text-slate-950 font-semibold text-sm mb-3">
-                  <Sparkles size={16} className="text-emerald-700" />
+                <div className="flex items-center gap-1.5 text-primary font-semibold text-sm mb-3">
+                  <Sparkles size={16} className="text-brand" />
                   <h4>Apply for this Job</h4>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block sm:col-span-2">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500">
+                    <span className="mb-1.5 block text-xs font-semibold text-muted-fg">
                       Resume URL <span className="text-rose-500">*</span>
                     </span>
                     <input
@@ -205,7 +205,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                   </label>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500">GitHub URL (Optional)</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-muted-fg">GitHub URL (Optional)</span>
                     <input
                       className="field"
                       value={form.githubUrl}
@@ -216,7 +216,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                   </label>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500">LinkedIn URL (Optional)</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-muted-fg">LinkedIn URL (Optional)</span>
                     <input
                       className="field"
                       value={form.linkedinUrl}
@@ -227,7 +227,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                   </label>
 
                   <label className="block sm:col-span-2">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500">Portfolio URL (Optional)</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Portfolio URL (Optional)</span>
                     <input
                       className="field"
                       value={form.portfolioUrl}
@@ -238,7 +238,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                   </label>
 
                   <label className="block sm:col-span-2">
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-500">Cover Letter (Optional)</span>
+                    <span className="mb-1.5 block text-xs font-semibold text-muted-fg">Cover Letter (Optional)</span>
                     <textarea
                       className="field min-h-24"
                       value={form.coverLetter}

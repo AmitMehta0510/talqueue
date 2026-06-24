@@ -15,10 +15,10 @@ export function Metric({
 }) {
   return (
     <div>
-      <div className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+      <div className="text-lg font-semibold text-primary">
         {value}
       </div>
-      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+      <div className="text-xs text-muted-fg">
         {label}
       </div>
     </div>
@@ -52,8 +52,7 @@ export function Avatar({
 
   return (
     <div
-      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full font-bold`}
-      style={{ background: "var(--brand-light)", color: "var(--brand)" }}
+      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full font-bold bg-brand-light text-brand border border-brand-light/30`}
     >
       {initials(userName(user))}
     </div>
@@ -77,16 +76,15 @@ export function EmptyState({
   return (
     <div className="panel flex min-h-52 flex-col items-center justify-center gap-3 p-8 text-center">
       <div
-        className="inline-flex h-12 w-12 items-center justify-center rounded-xl"
-        style={{ background: "var(--brand-light)", color: "var(--brand)" }}
+        className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-light text-brand border border-brand-light/30"
       >
         <Icon size={22} />
       </div>
       <div>
-        <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+        <h3 className="text-base font-semibold text-primary">
           {title}
         </h3>
-        <p className="mt-1 max-w-md text-sm" style={{ color: "var(--text-muted)" }}>
+        <p className="mt-1 max-w-md text-sm text-muted-fg">
           {text}
         </p>
       </div>
@@ -100,7 +98,7 @@ export function EmptyState({
    ============================================================ */
 export function InlineLoader({ label = "Loading" }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
+    <div className="flex items-center gap-2 text-sm text-muted-fg">
       <div
         className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent flex-shrink-0"
         style={{ borderColor: "var(--brand)", borderTopColor: "transparent" }}
@@ -115,7 +113,7 @@ export function InlineLoader({ label = "Loading" }: { label?: string }) {
    ============================================================ */
 export function PageLoader({ label = "Loading workspace" }: { label?: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4" style={{ background: "var(--bg-base)" }}>
+    <div className="flex min-h-screen items-center justify-center px-4 bg-base">
       <div className="glass flex items-center gap-4 px-6 py-5 animate-scale-in">
         {/* Animated spinner */}
         <div className="relative h-10 w-10 flex-shrink-0">
@@ -134,10 +132,10 @@ export function PageLoader({ label = "Loading workspace" }: { label?: string }) 
           />
         </div>
         <div>
-          <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+          <div className="text-sm font-semibold text-primary">
             {label}
           </div>
-          <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+          <div className="text-xs mt-0.5 text-muted-fg">
             Please wait…
           </div>
         </div>

@@ -58,10 +58,10 @@ function NotificationItem({
 
   return (
     <article
-      className={`rounded-md border p-3 transition ${
+      className={`rounded-md border p-3 transition-all duration-200 ${
         notification.isRead
-          ? "border-slate-100 bg-white"
-          : "border-emerald-100 bg-emerald-50/70"
+          ? "border-base bg-surface"
+          : "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/30 dark:bg-emerald-950/20"
       }`}
     >
       <div className="flex gap-3">
@@ -69,12 +69,12 @@ function NotificationItem({
           {notification.actor ? (
             <Avatar user={notification.actor} size="sm" />
           ) : (
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-secondary border border-base">
               <NotificationGlyph type={notification.type} />
             </div>
           )}
           {!notification.isRead && (
-            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-600" />
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-brand animate-pulse" style={{ background: "var(--brand)" }} />
           )}
         </div>
 
@@ -86,10 +86,10 @@ function NotificationItem({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h4 className="truncate text-sm font-semibold text-slate-950">
+                <h4 className="truncate text-sm font-semibold text-primary">
                   {notification.title}
                 </h4>
-                <p className={`${compact ? "line-clamp-2" : ""} mt-1 text-sm leading-5 text-slate-600`}>
+                <p className={`${compact ? "line-clamp-2" : ""} mt-1 text-sm leading-5 text-secondary`}>
                   {notification.message}
                 </p>
               </div>
@@ -98,7 +98,7 @@ function NotificationItem({
           </Link>
 
           <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="truncate text-xs text-slate-500">
+            <div className="truncate text-xs text-muted-fg">
               {notification.actor ? `${userName(notification.actor)} - ` : ""}
               {formatDate(notification.createdAt)}
             </div>
@@ -137,11 +137,11 @@ export function NotificationPreview() {
   const unreadCount = data?.unreadCount || 0;
 
   return (
-    <div className="absolute right-0 top-11 z-30 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 shadow-panel">
+    <div className="absolute right-0 top-11 z-30 w-[min(24rem,calc(100vw-2rem))] p-3 glass animate-scale-in">
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-950">Notifications</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-primary">Notifications</h3>
+          <p className="text-xs text-muted-fg">
             {unreadCount ? `${unreadCount} unread` : "All caught up"}
           </p>
         </div>
@@ -158,7 +158,7 @@ export function NotificationPreview() {
 
       <div className="max-h-[28rem] space-y-2 overflow-y-auto">
         {notificationsQuery.isLoading ? (
-          <div className="flex items-center gap-2 px-1 py-6 text-sm text-slate-500">
+          <div className="flex items-center gap-2 px-1 py-6 text-sm text-muted-fg">
             <Loader2 className="animate-spin" size={16} />
             Loading notifications
           </div>
@@ -167,14 +167,14 @@ export function NotificationPreview() {
             <NotificationItem compact key={notification.id} notification={notification} />
           ))
         ) : (
-          <div className="px-1 py-6 text-center text-sm text-slate-500">
+          <div className="px-1 py-6 text-center text-sm text-muted-fg">
             No notifications yet.
           </div>
         )}
       </div>
 
       <Link
-        className="mt-3 flex items-center justify-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        className="mt-3 btn-secondary flex items-center justify-center w-full"
         to="/notifications"
       >
         Open inbox
@@ -209,8 +209,8 @@ export function NotificationsInbox() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Notifications</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-primary">Notifications</h2>
+          <p className="mt-1 text-sm text-muted-fg">
             Project requests, invites, mentions, referrals, reputation, and system updates.
           </p>
         </div>
@@ -226,7 +226,7 @@ export function NotificationsInbox() {
       </div>
 
       {notificationsQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-muted-fg">
           <Loader2 className="animate-spin" size={16} />
           Loading notifications
         </div>

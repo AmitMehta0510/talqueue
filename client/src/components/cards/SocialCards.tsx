@@ -80,7 +80,7 @@ export function EngineerCard({
 
   return (
     <article
-      className={`panel p-5 ${onOpenProfile ? "cursor-pointer transition hover:border-emerald-300 hover:shadow-md" : ""}`}
+      className={`panel p-5 hover-lift ${onOpenProfile ? "cursor-pointer hover:border-emerald-500/40 dark:hover:border-emerald-400/40" : ""}`}
       role={onOpenProfile ? "button" : undefined}
       tabIndex={onOpenProfile ? 0 : undefined}
       onClick={() => onOpenProfile?.(user)}
@@ -98,9 +98,9 @@ export function EngineerCard({
           <Avatar user={user} />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-slate-950">{userName(user)}</h3>
+              <h3 className="truncate text-sm font-semibold text-primary">{userName(user)}</h3>
               {user.verifiedEngineer && (
-                <span className="chip shrink-0 text-emerald-700">
+                <span className="chip shrink-0 text-brand bg-brand-light border-brand-light">
                   <Check size={13} />
                   Verified
                 </span>
@@ -111,15 +111,15 @@ export function EngineerCard({
                 </span>
               )}
             </div>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-muted-fg">
               {userHeadline(user) || `@${user.username}`}
             </p>
           </div>
         </div>
         {suggested.affinityScore !== undefined && (
           <div className="shrink-0 text-right">
-            <div className="text-sm font-semibold text-slate-950">{Math.round(suggested.affinityScore)}</div>
-            <div className="text-xs text-slate-500">Affinity</div>
+            <div className="text-sm font-semibold text-primary">{Math.round(suggested.affinityScore)}</div>
+            <div className="text-xs text-muted-fg">Affinity</div>
           </div>
         )}
       </div>
@@ -131,9 +131,9 @@ export function EngineerCard({
           { label: "Following", value: user.followingCount },
           { label: "Connections", value: user.connectionCount },
         ].map(({ label, value }) => (
-          <div className="rounded-md border border-slate-100 p-3" key={label}>
-            <div className="font-semibold text-slate-900">{formatCount(value)}</div>
-            <div className="mt-1 text-slate-500">{label}</div>
+          <div className="rounded-lg border border-base bg-surface-2 p-3" key={label}>
+            <div className="font-semibold text-primary">{formatCount(value)}</div>
+            <div className="mt-1 text-muted-fg">{label}</div>
           </div>
         ))}
       </div>
@@ -142,7 +142,7 @@ export function EngineerCard({
       <div className="mt-4 flex flex-wrap gap-2">
         {context && <span className="chip">{context}</span>}
         {(user.mutualConnectionCount ?? 0) > 0 && (
-          <span className="chip text-emerald-700">
+          <span className="chip text-brand bg-brand-light border-brand-light">
             <Users size={11} />
             {user.mutualConnectionCount} mutual
           </span>
@@ -160,12 +160,12 @@ export function EngineerCard({
 
       {/* Actions */}
       {!isSelf && (
-        <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-base pt-4">
 
           {/* Follow */}
           {onFollow && (
             isFollowing ? (
-              <button className="btn-secondary px-3 py-1.5 text-emerald-700" type="button" disabled>
+              <button className="btn-secondary px-3 py-1.5 text-brand bg-brand-light border-brand-light opacity-80" type="button" disabled>
                 <Check size={15} />
                 Following
               </button>
@@ -185,12 +185,12 @@ export function EngineerCard({
           {/* Connect */}
           {onConnect && (
             connectionStatus === "ACCEPTED" ? (
-              <button className="btn-secondary px-3 py-1.5 text-emerald-700" type="button" disabled>
+              <button className="btn-secondary px-3 py-1.5 text-brand bg-brand-light border-brand-light opacity-80" type="button" disabled>
                 <Check size={15} />
                 Connected
               </button>
             ) : connectionStatus === "PENDING" ? (
-              <button className="btn-secondary px-3 py-1.5 text-slate-400" type="button" disabled>
+              <button className="btn-secondary px-3 py-1.5 text-muted-fg" type="button" disabled>
                 <CheckCheck size={15} />
                 Request Sent
               </button>
@@ -210,10 +210,10 @@ export function EngineerCard({
           {/* Message — show always when handler given, disabled until connected */}
           {onMessage && (
             <button
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-[0.97] ${
                 canMessage
-                  ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50"
-                  : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400"
+                  ? "border-base bg-surface text-secondary hover:border-brand hover:bg-brand-light hover:text-brand"
+                  : "cursor-not-allowed border-base bg-surface-2 text-muted-fg opacity-50"
               }`}
               type="button"
               disabled={!canMessage || disabled}
@@ -233,7 +233,7 @@ export function EngineerCard({
             ) &&
             user.acceptingReferrals === true && (
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-100 dark:hover:bg-amber-950/50 hover:shadow-sm"
               type="button"
               disabled={disabled}
               onClick={handleReferral}

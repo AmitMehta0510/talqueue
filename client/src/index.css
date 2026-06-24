@@ -266,6 +266,7 @@ button:disabled { cursor: not-allowed; }
   }
 
   /* Surface backgrounds using tokens */
+  .bg-base      { background: var(--bg-base); }
   .bg-surface   { background: var(--bg-surface); }
   .bg-surface-2 { background: var(--bg-surface-2); }
   .bg-surface-3 { background: var(--bg-surface-3); }
@@ -274,8 +275,19 @@ button:disabled { cursor: not-allowed; }
   .text-primary   { color: var(--text-primary); }
   .text-secondary { color: var(--text-secondary); }
   .text-muted-fg  { color: var(--text-muted); }
+  .text-brand     { color: var(--brand); }
 
   /* Border using token */
   .border-base   { border-color: var(--border); }
   .border-strong { border-color: var(--border-strong); }
+  .border-brand-light { border-color: var(--brand-light); }
+
+  /* Brand Light Background */
+  .bg-brand-light { background: var(--brand-light); }
+
+  /* Interactive lift state */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }

@@ -54,31 +54,31 @@ const STATUS_STYLES: Record<
 > = {
   UPCOMING: {
     label: "Upcoming",
-    chip: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    chip: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60",
     dot: "bg-indigo-400",
   },
   ONGOING: {
     label: "Registrations Open",
-    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    dot: "bg-emerald-500 animate-pulse",
+    chip: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60",
+    dot: "bg-brand animate-pulse",
   },
   CLOSED: {
     label: "Closed",
-    chip: "bg-slate-100 text-slate-500 border-slate-200",
+    chip: "bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/60",
     dot: "bg-slate-400",
   },
 };
 
 const APP_STATUS_STYLES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  APPLIED: { label: "Applied", color: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 size={11} /> },
-  SHORTLISTED: { label: "Shortlisted", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 size={11} /> },
-  INTERVIEW_R1: { label: "Round 1 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
-  INTERVIEW_R2: { label: "Round 2 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
-  INTERVIEW_R3: { label: "Round 3 Interview", color: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock size={11} /> },
-  PPO_OFFERED: { label: "PPO Offered", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: <Zap size={11} /> },
-  SELECTED: { label: "Selected! 🎉", color: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 size={11} /> },
-  REJECTED: { label: "Not Selected", color: "text-rose-600 bg-rose-50 border-rose-200", icon: <XCircle size={11} /> },
-  WITHDRAWN: { label: "Withdrawn", color: "text-slate-500 bg-slate-50 border-slate-200", icon: <XCircle size={11} /> },
+  APPLIED: { label: "Applied", color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60", icon: <CheckCircle2 size={11} /> },
+  SHORTLISTED: { label: "Shortlisted", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60", icon: <CheckCircle2 size={11} /> },
+  INTERVIEW_R1: { label: "Round 1 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },
+  INTERVIEW_R2: { label: "Round 2 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },
+  INTERVIEW_R3: { label: "Round 3 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },
+  PPO_OFFERED: { label: "PPO Offered", color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/60", icon: <Zap size={11} /> },
+  SELECTED: { label: "Selected! 🎉", color: "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-900/60", icon: <CheckCircle2 size={11} /> },
+  REJECTED: { label: "Not Selected", color: "text-rose-600 dark:text-rose-455 bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60", icon: <XCircle size={11} /> },
+  WITHDRAWN: { label: "Withdrawn", color: "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60", icon: <XCircle size={11} /> },
 };
 
 // ---------------------------------------------------------------------------
@@ -105,10 +105,10 @@ function DriveCard({
   const eligibility = eligibilityQuery.data; // { eligible: boolean, reasons: string[], missingFields: string[] }
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group flex flex-col justify-between">
+    <article className="panel hover-lift justify-between overflow-hidden flex flex-col">
       <div>
         {/* Header stripe */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 to-blue-500" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-brand to-indigo-500" />
 
         <div className="p-5 space-y-4">
           {/* Company + Status */}
@@ -118,18 +118,18 @@ function DriveCard({
                 <img
                   src={cleanLogoUrl(drive.company?.logoUrl)!}
                   alt={drive.company?.name}
-                  className="h-11 w-11 rounded-xl border border-slate-100 object-cover shadow-sm"
+                  className="h-11 w-11 rounded-xl border border-base object-cover shadow-sm"
                 />
               ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-2 border border-base text-muted-fg">
                   <Building2 size={20} />
                 </div>
               )}
               <div>
-                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                <h3 className="text-sm font-bold text-primary leading-snug group-hover:text-brand transition-colors">
                   {drive.driveTitle}
                 </h3>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                <p className="text-xs font-semibold text-secondary mt-0.5">
                   {drive.company?.name}
                 </p>
               </div>
@@ -145,8 +145,8 @@ function DriveCard({
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold ${
                   drive.driveType === "INTERNSHIP"
-                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                    : "bg-blue-50 text-blue-700 border-blue-200"
+                    ? "bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900/60"
+                    : "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/60"
                 }`}
               >
                 {drive.driveType === "INTERNSHIP" ? "Internship" : "Full-Time"}
@@ -157,7 +157,7 @@ function DriveCard({
               
               {/* Eligibility Badge */}
               {eligibility && !eligibility.eligible && !hasApplied && (
-                <span className="inline-flex items-center gap-1 rounded-full border bg-amber-50 text-amber-700 border-amber-200 px-2 py-0.5 text-[9px] font-bold">
+                <span className="inline-flex items-center gap-1 rounded-full border bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-indigo-900/60 px-2 py-0.5 text-[9px] font-bold">
                   <AlertTriangle size={10} /> Ineligible
                 </span>
               )}
@@ -170,7 +170,7 @@ function DriveCard({
               {drive.roles.map((role) => (
                 <span
                   key={role}
-                  className="rounded-lg bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700"
+                  className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 px-2 py-0.5 text-[10px] font-bold text-blue-750 dark:text-blue-450"
                 >
                   {role}
                 </span>
@@ -179,22 +179,22 @@ function DriveCard({
           )}
 
           {/* Details grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-500">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-secondary">
             {drive.driveDate && (
               <span className="flex items-center gap-1.5">
-                <Calendar size={11} className="text-slate-400" />
+                <Calendar size={11} className="text-muted-fg" />
                 Drive: {formatDate(drive.driveDate)}
               </span>
             )}
             {drive.applyDeadline && (
               <span className="flex items-center gap-1.5">
-                <Clock size={11} className="text-slate-400" />
+                <Clock size={11} className="text-muted-fg" />
                 Deadline: {formatDate(drive.applyDeadline)}
               </span>
             )}
             {compensation && (
-              <span className="flex items-center gap-1.5 font-semibold text-slate-700 col-span-2">
-                <IndianRupee size={11} className="text-slate-400" />
+              <span className="flex items-center gap-1.5 font-semibold text-primary col-span-2">
+                <IndianRupee size={11} className="text-muted-fg" />
                 {compensation}
               </span>
             )}
@@ -202,20 +202,20 @@ function DriveCard({
 
           {/* Eligibility Criteria chips */}
           {(drive.minCgpa || drive.eligibleBranches.length > 0 || drive.eligibleYears.length > 0) && (
-            <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3 space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+            <div className="rounded-xl bg-surface-2 border border-base px-3.5 py-3 space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-fg flex items-center gap-1">
                 <GraduationCap size={10} /> Target Criteria
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {drive.minCgpa && (
-                  <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                  <span className="rounded-md bg-surface border border-base px-2 py-0.5 text-[10px] font-semibold text-secondary">
                     CGPA ≥ {drive.minCgpa}
                   </span>
                 )}
                 {drive.eligibleYears.map((y) => (
                   <span
                     key={y}
-                    className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                    className="rounded-md bg-surface border border-base px-2 py-0.5 text-[10px] font-semibold text-secondary"
                   >
                     {y === 4 ? "Final Year" : `${y}${["st","nd","rd"][y-1] || "th"} Year`}
                   </span>
@@ -223,13 +223,13 @@ function DriveCard({
                 {drive.eligibleBranches.slice(0, 3).map((b) => (
                   <span
                     key={b}
-                    className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                    className="rounded-md bg-surface border border-base px-2 py-0.5 text-[10px] font-semibold text-secondary"
                   >
                     {b}
                   </span>
                 ))}
                 {drive.eligibleBranches.length > 3 && (
-                  <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                  <span className="rounded-md bg-surface border border-base px-2 py-0.5 text-[10px] font-semibold text-muted-fg">
                     +{drive.eligibleBranches.length - 3} more
                   </span>
                 )}
@@ -239,8 +239,8 @@ function DriveCard({
 
           {/* Detailed Ineligibility Reasons */}
           {eligibility && !eligibility.eligible && !hasApplied && eligibility.reasons.length > 0 && (
-            <div className="rounded-xl bg-rose-50/50 border border-rose-100 p-3 text-[10px] font-semibold text-rose-700 space-y-1">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-rose-800">
+            <div className="rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/60 p-3 text-[10px] font-semibold text-rose-700 dark:text-rose-450 space-y-1">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-rose-800 dark:text-rose-400">
                 <Info size={12} /> Ineligibility Reasons:
               </div>
               <ul className="list-disc pl-4 space-y-0.5">
@@ -253,7 +253,7 @@ function DriveCard({
 
           {/* Description snippet */}
           {drive.description && (
-            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{drive.description}</p>
+            <p className="text-xs text-secondary line-clamp-2 leading-relaxed">{drive.description}</p>
           )}
         </div>
       </div>
@@ -262,12 +262,12 @@ function DriveCard({
       <div className="p-5 pt-0">
         {drive.status !== "CLOSED" && (
           hasApplied ? (
-            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm font-bold text-emerald-700">
+            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-light border border-brand-light px-4 py-2.5 text-sm font-bold text-brand">
               <CheckCircle2 size={15} />
               Applied — Profile Shared
             </div>
           ) : eligibility && !eligibility.eligible ? (
-            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-400 select-none">
+            <div className="w-full flex items-center justify-center gap-2 rounded-xl bg-surface-3 border border-base px-4 py-2.5 text-sm font-bold text-muted-fg select-none">
               <XCircle size={15} />
               Ineligible to Apply
             </div>
@@ -276,7 +276,7 @@ function DriveCard({
               type="button"
               onClick={() => onApply(drive.id)}
               disabled={isApplying}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 shadow-sm disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 btn-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:opacity-60"
             >
               {isApplying ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
               Apply for Drive
@@ -300,22 +300,22 @@ function MyApplicationsTracker() {
   if (apps.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 space-y-3">
+    <section className="rounded-2xl border border-blue-105 dark:border-blue-900/40 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10 p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Briefcase size={14} className="text-blue-600" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700">My Drive Applications</h3>
-        <span className="ml-auto rounded-full bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5">{apps.length}</span>
+        <Briefcase size={14} className="text-brand" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-brand">My Drive Applications</h3>
+        <span className="ml-auto rounded-full bg-brand text-inverse text-[10px] font-bold px-2 py-0.5">{apps.length}</span>
       </div>
       <div className="space-y-2">
         {apps.map((app) => {
           const style = APP_STATUS_STYLES[app.status] || APP_STATUS_STYLES["APPLIED"];
           return (
-            <div key={app.id} className="flex items-center gap-3 rounded-xl bg-white border border-blue-100 px-3.5 py-2.5">
+            <div key={app.id} className="flex items-center gap-3 rounded-xl bg-surface border border-base px-3.5 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-800 truncate">{app.drive?.driveTitle}</p>
-                <p className="text-[10px] text-slate-400">{app.drive?.company?.name}</p>
+                <p className="text-xs font-bold text-primary truncate">{app.drive?.driveTitle}</p>
+                <p className="text-[10px] text-muted-fg">{app.drive?.company?.name}</p>
               </div>
-              <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${style.color}`}>
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold bg-surface-2 border-base">
                 {style.icon}
                 {style.label}
               </span>
@@ -325,7 +325,7 @@ function MyApplicationsTracker() {
       </div>
       <Link
         to="/placements"
-        className="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 text-xs font-bold py-2.5 shadow-sm transition"
+        className="w-full flex items-center justify-center gap-2 btn-secondary text-brand hover:bg-brand-light hover:border-brand text-xs font-bold py-2.5 shadow-sm transition"
       >
         <Briefcase size={13} />
         Go to Placements Dashboard
@@ -362,12 +362,12 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
   if (!collegeId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50">
-          <GraduationCap size={28} className="text-indigo-400" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-light border border-brand-light text-brand">
+          <GraduationCap size={28} />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-700">Link your college to see campus drives</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs">
+          <p className="text-sm font-bold text-primary">Link your college to see campus drives</p>
+          <p className="text-xs text-muted-fg mt-1 max-w-xs">
             Add your college to your profile and we'll show you placement drives from companies targeting your campus.
           </p>
         </div>
@@ -400,25 +400,25 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
       <div className="space-y-6">
         <MyApplicationsTracker />
         {/* Info banner */}
-        <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-5 flex gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 shrink-0">
+        <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 p-5 flex gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shrink-0">
             <Info size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-indigo-900">What are Campus Drives?</h3>
-            <p className="text-xs text-indigo-700 mt-1 leading-relaxed">
+            <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">What are Campus Drives?</h3>
+            <p className="text-xs text-indigo-700 dark:text-indigo-455 mt-1 leading-relaxed">
               Companies partner with your college to conduct placement drives — mass hiring events where they visit campus, hold aptitude tests, technical interviews, and extend offers. These drives are exclusive to students of your college.
             </p>
           </div>
         </div>
 
         <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
-            <Users size={28} className="text-slate-400" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-3 border border-base text-muted-fg">
+            <Users size={28} />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-700">No campus drives yet</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm">
+            <p className="text-sm font-bold text-primary">No campus drives yet</p>
+            <p className="text-xs text-muted-fg mt-1 max-w-sm">
               Your college's upcoming placement drives will appear here once companies register them. Check back closer to placement season.
             </p>
           </div>
@@ -441,15 +441,15 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
       <MyApplicationsTracker />
 
       {/* Filter Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+      <div className="flex gap-1 p-1 rounded-xl bg-surface-2 border border-base w-fit">
         {(["ALL", "PLACEMENT", "INTERNSHIP"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setFilterType(t)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
               filterType === t
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-surface text-primary border border-base shadow-sm"
+                : "text-muted-fg hover:text-primary"
             }`}
           >
             {t === "ALL" ? "All Drives" : t === "PLACEMENT" ? "Placements" : "Internships"}
@@ -458,13 +458,13 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
       </div>
 
       {drives.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-4 bg-surface border border-base rounded-2xl shadow-sm">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-3 border border-base text-muted-fg">
             <Briefcase size={28} />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-700">No drives found</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-xs">
+            <p className="text-sm font-bold text-primary">No drives found</p>
+            <p className="text-xs text-muted-fg mt-1 max-w-xs">
               There are no campus drives of this type currently posted.
             </p>
           </div>
@@ -474,8 +474,8 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
           {ongoing.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-brand">
                   Registrations Open ({ongoing.length})
                 </h3>
               </div>
@@ -495,7 +495,7 @@ export function PlacementDrivesTab({ collegeId }: PlacementDrivesTabProps) {
 
           {upcoming.length > 0 && (
             <section className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-fg pl-1">
                 Upcoming ({upcoming.length})
               </h3>
               <div className="grid gap-4 md:grid-cols-2">

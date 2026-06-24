@@ -5,12 +5,12 @@ import { formatCount, formatDate, STATUS_CHIP_CLASSES, titleCase, userName } fro
 import { Avatar } from "../ui";
 
 const PLATFORM_COLORS: Record<string, string> = {
-  Devpost: "bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100/50",
-  Devfolio: "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/50",
-  Unstop: "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100/50",
-  TAIKAI: "bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100/50",
-  HackerEarth: "bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100/50",
-  Reskilll: "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100/50",
+  Devpost: "bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100/50 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-900/50",
+  Devfolio: "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100/50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
+  Unstop: "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100/50 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  TAIKAI: "bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100/50 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50",
+  HackerEarth: "bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100/50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/50",
+  Reskilll: "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100/50 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50",
 };
 
 const hackathonCount = (
@@ -33,7 +33,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
   if (end && now > end) {
     return {
       phase: "Completed",
-      colorClass: "bg-slate-100 text-slate-600 border-slate-200",
+      colorClass: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
       progress: 100,
       text: "Hackathon ended",
     };
@@ -46,7 +46,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
       const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
       return {
         phase: "Live",
-        colorClass: "bg-amber-100 text-amber-800 border-amber-200 animate-pulse",
+        colorClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
         progress: pct,
         text: `Happening Now (${pct}% elapsed)`,
         progressColor: "bg-gradient-to-r from-amber-500 to-orange-400",
@@ -54,7 +54,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
     }
     return {
       phase: "Closed",
-      colorClass: "bg-blue-100 text-blue-800 border-blue-200",
+      colorClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
       progress: 100,
       text: "Registration closed",
     };
@@ -82,7 +82,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
 
   return {
     phase: "Open",
-    colorClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    colorClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50",
     progress: pct,
     text,
     progressColor: "bg-gradient-to-r from-emerald-500 to-teal-400",
@@ -106,14 +106,14 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
     : "bg-slate-300";
 
   return (
-    <article className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_2px_12px_-3px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-300 hover:shadow-[0_16px_36px_-12px_rgba(16,185,129,0.12)] flex flex-col justify-between min-h-[380px]">
+    <article className="panel hover-lift flex flex-col justify-between min-h-[380px] overflow-hidden">
       {/* Dynamic top status accent bar */}
       <div className={`h-[4px] w-full ${topAccentClass}`} />
 
       <div className="flex flex-col flex-1">
         {/* Banner image wrapper */}
         {hackathon.bannerUrl && (
-          <div className="relative h-36 w-full overflow-hidden bg-slate-950 flex items-center justify-center border-b border-slate-100/50">
+          <div className="relative h-36 w-full overflow-hidden bg-black/40 flex items-center justify-center border-b border-base">
             {/* Blurred background ambiance copy */}
             <div 
               className="absolute inset-0 bg-cover bg-center blur-md scale-110 opacity-30 pointer-events-none"
@@ -136,7 +136,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
             <div className="flex flex-wrap items-center gap-1.5">
               {hackathon.isExternal && (
-                <span className={`chip text-[10px] font-bold border py-0.5 px-2 ${PLATFORM_COLORS[hackathon.sourcePlatform || ""] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
+                <span className={`chip text-[10px] font-bold border py-0.5 px-2 ${PLATFORM_COLORS[hackathon.sourcePlatform || ""] || "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800"}`}>
                   {hackathon.sourcePlatform || "External"}
                 </span>
               )}
@@ -146,7 +146,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
             </div>
             
             {hackathon.featured && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200/60 rounded-full px-2 py-0.5 animate-pulse">
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200/60 rounded-full px-2 py-0.5 animate-pulse dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">
                 <Sparkles size={11} className="fill-amber-500 text-amber-500" />
                 Featured
               </span>
@@ -156,32 +156,32 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           {/* Title and description */}
           <div className="mb-4">
             <div className="flex items-start gap-2">
-              <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
+              <h3 className="text-base font-bold text-primary group-hover:text-brand transition-colors line-clamp-1">
                 <Link to={`/hackathons/${hackathon.slug || hackathon.id}`}>
                   {hackathon.title}
                 </Link>
               </h3>
               {hackathon.verified && hackathon.status !== "DRAFT" && (
-                <span className="flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full p-0.5 shrink-0 mt-0.5" title="Verified by admin">
+                <span className="flex items-center justify-center text-brand bg-brand-light border border-brand-light/30 rounded-full p-0.5 shrink-0 mt-0.5" title="Verified by admin">
                   <Check size={11} className="stroke-[3]" />
                 </span>
               )}
             </div>
-            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed line-clamp-2">
+            <p className="mt-1.5 text-xs text-muted-fg leading-relaxed line-clamp-2">
               {hackathon.shortDescription || hackathon.description || "Join this collaborative engineering experience."}
             </p>
           </div>
 
           {/* Timeline and progress bar widget */}
-          <div className="mb-4.5 bg-slate-50/50 rounded-lg p-3 border border-slate-100/80">
-            <div className="flex items-center justify-between text-[11px] font-medium text-slate-600">
+          <div className="mb-4.5 bg-surface-2 rounded-lg p-3 border border-base">
+            <div className="flex items-center justify-between text-[11px] font-medium text-secondary">
               <div className="flex items-center gap-1">
-                <Clock size={12} className="text-slate-400" />
-                <span className="font-semibold text-slate-700">{timeline.text}</span>
+                <Clock size={12} className="text-muted-fg" />
+                <span className="font-semibold text-secondary">{timeline.text}</span>
               </div>
-              <span className="text-slate-400 font-semibold">{timeline.progress}%</span>
+              <span className="text-muted-fg font-semibold">{timeline.progress}%</span>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${timeline.progressColor || "bg-slate-400"}`}
                 style={{ width: `${timeline.progress}%` }}
@@ -191,18 +191,18 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
 
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-2 mt-auto text-[11px]">
-            <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-              <span className="text-slate-400 font-medium">Event Starts</span>
-              <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-700">
+            <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+              <span className="text-muted-fg font-medium">Event Starts</span>
+              <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
                 <CalendarDays size={13} className="text-blue-500" />
                 {formatDate(hackathon.startDate)}
               </div>
             </div>
 
             {hackathon.isExternal ? (
-              <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-                <span className="text-slate-400 font-medium">Team Size</span>
-                <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-700">
+              <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+                <span className="text-muted-fg font-medium">Team Size</span>
+                <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
                   <Users size={13} className="text-emerald-500" />
                   {(() => {
                     const min = hackathon.minTeamSize ?? 1;
@@ -215,35 +215,35 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-                <span className="text-slate-400 font-medium">Participation</span>
-                <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-700">
+              <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+                <span className="text-muted-fg font-medium">Participation</span>
+                <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
                   <Users size={13} className="text-emerald-500" />
                   {formatCount(registrationTotal)} {registrationTotal === 1 ? "Team" : "Teams"}
                 </div>
               </div>
             )}
 
-            <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-              <span className="text-slate-400 font-medium">Location</span>
-              <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-700">
+            <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+              <span className="text-muted-fg font-medium">Location</span>
+              <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
                 <MapPin size={13} className="text-amber-500" />
                 <span className="truncate">{hackathon.mode === "ONLINE" ? "Online" : hackathon.location || "Offline"}</span>
               </div>
             </div>
 
             {hackathon.isExternal ? (
-              <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-                <span className="text-slate-400 font-medium">Deadline</span>
-                <div className="flex items-center gap-1 mt-0.5 font-semibold text-rose-600">
+              <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+                <span className="text-muted-fg font-medium">Deadline</span>
+                <div className="flex items-center gap-1 mt-0.5 font-semibold text-rose-600 dark:text-rose-400">
                   <Clock size={13} className="text-rose-400" />
                   {formatDate(hackathon.registrationDeadline)}
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg border border-slate-100 p-2.5 bg-slate-50/20 hover:bg-slate-50/70 transition-colors flex flex-col justify-center">
-                <span className="text-slate-400 font-medium">Deliverables</span>
-                <div className="flex items-center gap-1 mt-0.5 font-semibold text-slate-700">
+              <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
+                <span className="text-muted-fg font-medium">Deliverables</span>
+                <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
                   <Trophy size={13} className="text-amber-500" />
                   {formatCount(submissionTotal)} {submissionTotal === 1 ? "Project" : "Projects"}
                 </div>
@@ -254,10 +254,10 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
       </div>
 
       {/* Footer details */}
-      <div className="p-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
-        <div className="flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
+      <div className="p-5 pt-3 border-t border-base flex items-center justify-between gap-3 shrink-0">
+        <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-fg">
           <Avatar user={hackathon.createdBy} size="sm" />
-          <span className="truncate font-semibold text-slate-600">{hackathon.organizerName || userName(hackathon.createdBy)}</span>
+          <span className="truncate font-semibold text-secondary">{hackathon.organizerName || userName(hackathon.createdBy)}</span>
         </div>
         
         {hackathon.isExternal && hackathon.externalUrl ? (
@@ -272,7 +272,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           </a>
         ) : (
           <Link
-            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 hover:text-emerald-700 hover:border-emerald-200 transition-colors"
+            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 hover:text-brand hover:border-brand-light transition-colors"
             to={`/hackathons/${hackathon.slug || hackathon.id}`}
           >
             <span>Details</span>

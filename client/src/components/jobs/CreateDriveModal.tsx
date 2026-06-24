@@ -134,17 +134,17 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full sm:max-w-2xl max-h-[95vh] bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+      <div className="relative w-full sm:max-w-2xl max-h-[95vh] glass rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-blue-50 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-base bg-surface-2 shrink-0">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Create Placement Drive</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Post a new campus placement opportunity</p>
+            <h2 className="text-base font-bold text-primary">Create Placement Drive</h2>
+            <p className="text-xs text-muted-fg mt-0.5">Post a new campus placement opportunity</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/70 text-slate-400 hover:text-slate-700 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-surface-3 text-muted-fg hover:text-primary transition"
           >
             <X size={16} />
           </button>
@@ -154,28 +154,28 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           {/* Drive Title */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Drive Title *</label>
+            <label className="block text-xs font-semibold text-secondary mb-1.5">Drive Title *</label>
             <input
               type="text"
               placeholder="e.g. Software Engineer Campus Drive 2025"
               value={form.driveTitle}
               onChange={(e) => setForm((f) => ({ ...f, driveTitle: e.target.value }))}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="field"
               required
             />
           </div>
 
           {/* Drive Type */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Drive Type</label>
+            <label className="block text-xs font-semibold text-secondary mb-1.5">Drive Type</label>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setForm((f) => ({ ...f, driveType: "PLACEMENT" }))}
                 className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition ${
                   form.driveType === "PLACEMENT"
-                    ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
+                    ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-sm"
+                    : "bg-surface border-base text-secondary hover:border-indigo-350 dark:hover:border-indigo-700"
                 }`}
               >
                 Full-Time Placement
@@ -185,8 +185,8 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
                 onClick={() => setForm((f) => ({ ...f, driveType: "INTERNSHIP" }))}
                 className={`flex-1 py-2 px-3 rounded-xl border text-sm font-semibold transition ${
                   form.driveType === "INTERNSHIP"
-                    ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
+                    ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-sm"
+                    : "bg-surface border-base text-secondary hover:border-indigo-350 dark:hover:border-indigo-700"
                 }`}
               >
                 Internship
@@ -196,14 +196,14 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
 
           {form.driveType === "INTERNSHIP" && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Internship Duration (Months)</label>
+              <label className="block text-xs font-semibold text-secondary mb-1.5">Internship Duration (Months)</label>
               <input
                 type="number"
                 min="1"
                 max="12"
                 value={form.internshipDurationMonths}
                 onChange={(e) => setForm((f) => ({ ...f, internshipDurationMonths: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="field"
                 required
               />
             </div>
@@ -211,42 +211,42 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
 
           {/* Company Search */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-secondary mb-1.5">
               <Building2 size={11} className="inline mr-1" />
               Company *
             </label>
             {selectedCompany ? (
-              <div className="flex items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2.5">
-                <span className="text-sm font-semibold text-indigo-800">{selectedCompany.name}</span>
+              <div className="flex items-center justify-between rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/20 px-3.5 py-2.5">
+                <span className="text-sm font-semibold text-indigo-800 dark:text-indigo-400">{selectedCompany.name}</span>
                 <button
                   type="button"
                   onClick={() => { setSelectedCompany(null); setCompanyQuery(""); }}
-                  className="text-indigo-400 hover:text-indigo-700 transition"
+                  className="text-indigo-400 dark:text-indigo-550 hover:text-indigo-705 dark:hover:text-indigo-300 transition"
                 >
                   <X size={14} />
                 </button>
               </div>
             ) : (
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-fg" />
                 <input
                   type="text"
                   placeholder="Search companies…"
                   value={companyQuery}
                   onChange={(e) => setCompanyQuery(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 pl-9 pr-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="field pl-9"
                 />
-                {companyLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />}
+                {companyLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-fg animate-spin" />}
                 {companySuggestions.length > 0 && (
-                  <ul className="absolute z-10 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg max-h-40 overflow-y-auto">
+                  <ul className="absolute z-10 mt-1 w-full rounded-xl border border-base bg-surface shadow-lg max-h-40 overflow-y-auto">
                     {companySuggestions.map((co) => (
                       <li key={co.id}>
                         <button
                           type="button"
                           onClick={() => { setSelectedCompany(co); setCompanyQuery(""); setCompanySuggestions([]); }}
-                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-indigo-50 text-sm text-left transition"
+                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-surface-2 text-sm text-left text-primary transition"
                         >
-                          <Building2 size={13} className="text-slate-400 shrink-0" />
+                          <Building2 size={13} className="text-muted-fg shrink-0" />
                           {co.name}
                         </button>
                       </li>
@@ -260,32 +260,32 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
           {/* Dates row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-secondary mb-1.5">
                 <Calendar size={11} className="inline mr-1" />Drive Date
               </label>
               <input
                 type="date"
                 value={form.driveDate}
                 onChange={(e) => setForm((f) => ({ ...f, driveDate: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="field"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-secondary mb-1.5">
                 <Clock size={11} className="inline mr-1" />Apply Deadline
               </label>
               <input
                 type="date"
                 value={form.applyDeadline}
                 onChange={(e) => setForm((f) => ({ ...f, applyDeadline: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="field"
               />
             </div>
           </div>
 
           {/* Roles */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Roles Offered</label>
+            <label className="block text-xs font-semibold text-secondary mb-1.5">Roles Offered</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -293,18 +293,18 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
                 value={roleInput}
                 onChange={(e) => setRoleInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRole(); } }}
-                className="flex-1 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="field flex-1"
               />
-              <button type="button" onClick={addRole} className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">
+              <button type="button" onClick={addRole} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition">
                 <Plus size={16} />
               </button>
             </div>
             {roles.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {roles.map((r) => (
-                  <span key={r} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                  <span key={r} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-400">
                     {r}
-                    <button type="button" onClick={() => setRoles((prev) => prev.filter((x) => x !== r))} className="text-indigo-400 hover:text-indigo-700">
+                    <button type="button" onClick={() => setRoles((prev) => prev.filter((x) => x !== r))} className="text-indigo-400 dark:text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300">
                       <X size={10} />
                     </button>
                   </span>
@@ -315,23 +315,23 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
 
           {/* Compensation */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-secondary mb-1.5">
               <IndianRupee size={11} className="inline mr-1" />Compensation (optional)
             </label>
             <div className={form.driveType === "INTERNSHIP" ? "block" : "grid grid-cols-2 gap-3"}>
               <div>
-                <p className="text-[10px] text-slate-400 mb-1">Stipend (₹/mo)</p>
+                <p className="text-[10px] text-muted-fg mb-1">Stipend (₹/mo)</p>
                 <div className="flex gap-2">
-                  <input type="number" placeholder="Min" value={form.stipendMin} onChange={(e) => setForm((f) => ({ ...f, stipendMin: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                  <input type="number" placeholder="Max" value={form.stipendMax} onChange={(e) => setForm((f) => ({ ...f, stipendMax: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                  <input type="number" placeholder="Min" value={form.stipendMin} onChange={(e) => setForm((f) => ({ ...f, stipendMin: e.target.value }))} className="field py-2 px-3 text-sm" />
+                  <input type="number" placeholder="Max" value={form.stipendMax} onChange={(e) => setForm((f) => ({ ...f, stipendMax: e.target.value }))} className="field py-2 px-3 text-sm" />
                 </div>
               </div>
               {form.driveType === "PLACEMENT" && (
                 <div>
-                  <p className="text-[10px] text-slate-400 mb-1">CTC (₹/yr)</p>
+                  <p className="text-[10px] text-muted-fg mb-1">CTC (₹/yr)</p>
                   <div className="flex gap-2">
-                    <input type="number" placeholder="Min" value={form.salaryMin} onChange={(e) => setForm((f) => ({ ...f, salaryMin: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                    <input type="number" placeholder="Max" value={form.salaryMax} onChange={(e) => setForm((f) => ({ ...f, salaryMax: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    <input type="number" placeholder="Min" value={form.salaryMin} onChange={(e) => setForm((f) => ({ ...f, salaryMin: e.target.value }))} className="field py-2 px-3 text-sm" />
+                    <input type="number" placeholder="Max" value={form.salaryMax} onChange={(e) => setForm((f) => ({ ...f, salaryMax: e.target.value }))} className="field py-2 px-3 text-sm" />
                   </div>
                 </div>
               )}
@@ -339,23 +339,23 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
           </div>
 
           {/* Eligibility */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="rounded-xl border border-base bg-surface-2 p-4 space-y-3">
+            <p className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
               <GraduationCap size={12} />Eligibility Criteria
             </p>
             <div>
-              <label className="block text-[10px] text-slate-500 mb-1">Min CGPA</label>
-              <input type="number" step="0.1" min="0" max="10" placeholder="e.g. 7.5" value={form.minCgpa} onChange={(e) => setForm((f) => ({ ...f, minCgpa: e.target.value }))} className="w-32 rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <label className="block text-[10px] text-muted-fg mb-1">Min CGPA</label>
+              <input type="number" step="0.1" min="0" max="10" placeholder="e.g. 7.5" value={form.minCgpa} onChange={(e) => setForm((f) => ({ ...f, minCgpa: e.target.value }))} className="field w-32 px-3 py-2 text-sm bg-surface" />
             </div>
             <div>
-              <label className="block text-[10px] text-slate-500 mb-1.5">Eligible Years</label>
+              <label className="block text-[10px] text-muted-fg mb-1.5">Eligible Years</label>
               <div className="flex flex-wrap gap-2">
                 {YEAR_OPTIONS.map(({ value, label }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => toggleYear(value)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold border transition ${eligibleYears.includes(value) ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"}`}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold border transition ${eligibleYears.includes(value) ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white" : "bg-surface border-base text-secondary hover:border-indigo-300 dark:hover:border-indigo-700"}`}
                   >
                     {label}
                   </button>
@@ -363,18 +363,18 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
               </div>
             </div>
             <div>
-              <label className="block text-[10px] text-slate-500 mb-1">Eligible Branches</label>
+              <label className="block text-[10px] text-muted-fg mb-1">Eligible Branches</label>
               <div className="flex gap-2">
-                <input type="text" placeholder="e.g. CSE, ECE…" value={branchInput} onChange={(e) => setBranchInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addBranch(); } }} className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                <button type="button" onClick={addBranch} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-200 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 transition">
+                <input type="text" placeholder="e.g. CSE, ECE…" value={branchInput} onChange={(e) => setBranchInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addBranch(); } }} className="field flex-1 bg-surface" />
+                <button type="button" onClick={addBranch} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface border border-base text-secondary hover:bg-surface-3 hover:text-primary transition">
                   <Plus size={14} />
                 </button>
               </div>
               {eligibleBranches.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {eligibleBranches.map((b) => (
-                    <span key={b} className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                      {b}<button type="button" onClick={() => setEligibleBranches((prev) => prev.filter((x) => x !== b))}><X size={9} /></button>
+                    <span key={b} className="inline-flex items-center gap-1 rounded-full bg-surface border border-base px-2.5 py-0.5 text-xs font-semibold text-secondary">
+                      {b}<button type="button" onClick={() => setEligibleBranches((prev) => prev.filter((x) => x !== b))} className="text-muted-fg hover:text-rose-500 transition ml-0.5"><X size={9} /></button>
                     </span>
                   ))}
                 </div>
@@ -384,7 +384,7 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-secondary mb-1.5">
               <FileText size={11} className="inline mr-1" />Description (optional)
             </label>
             <textarea
@@ -392,14 +392,14 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               rows={3}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              className="field resize-none"
             />
           </div>
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center gap-3 shrink-0 bg-white">
-          <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+        <div className="px-6 py-4 border-t border-base flex items-center gap-3 shrink-0 bg-surface">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5 text-sm font-semibold">
             Cancel
           </button>
           <button
@@ -407,7 +407,7 @@ export function CreateDriveModal({ collegeId, onClose }: CreateDriveModalProps) 
             form="create-drive-form"
             onClick={handleSubmit}
             disabled={createMutation.isPending}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60 transition shadow-sm"
+            className="btn-primary flex-1 py-2.5 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white disabled:opacity-60 transition shadow-sm flex items-center justify-center gap-2"
           >
             {createMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : null}
             Create Drive
