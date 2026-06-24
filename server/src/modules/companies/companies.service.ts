@@ -141,6 +141,7 @@ export const getCompanies = async (
     size?: CompanySize;
     hasJobs?: boolean;
   } = {},
+  userId?: string,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -272,6 +273,8 @@ export const getCompanies = async (
 
         totalRatings: true,
 
+        type: true,
+
         _count: {
           select: {
             jobs: true,
@@ -279,16 +282,33 @@ export const getCompanies = async (
             experiences: true,
           },
         },
+
+        // Include followers subquery only when userId is provided
+        ...(userId ? {
+          followers: {
+            where: { id: userId },
+            select: { id: true },
+          },
+        } : {}),
       },
     }),
   ]);
+
+  // Map isFollowing per company and strip raw followers array from response
+  const companiesWithFollowStatus = companies.map((company) => {
+    const { followers, ...rest } = company as typeof company & { followers?: { id: string }[] };
+    return {
+      ...rest,
+      isFollowing: userId ? (followers?.length ?? 0) > 0 : undefined,
+    };
+  });
 
   return {
     page,
     limit,
     total,
     totalPages: Math.ceil(total / limit),
-    companies,
+    companies: companiesWithFollowStatus,
   };
 };
 
@@ -378,6 +398,8 @@ export const getCompanyBySlug = async (
           experienceLevel: true,
 
           createdAt: true,
+
+          applyUrl: true,
         },
       },
 
@@ -451,9 +473,18 @@ export const getCompanyBySlug = async (
     }).catch(console.error);
   }
 
-  // isFollowing is served by a dedicated lightweight endpoint (GET /:companyId/follow-status)
-  // to avoid a sequential DB round-trip on every company profile view.
-  return company;
+  // Compute isFollowing inline — avoids a second HTTP round-trip from the client.
+  // The followers subquery already filters to just { id: userId } so it's a single index lookup.
+  const isFollowing = userId
+    ? await prisma.company
+        .findFirst({
+          where: { id: company.id, followers: { some: { id: userId } } },
+          select: { id: true },
+        })
+        .then((r) => r !== null)
+    : false;
+
+  return { ...company, isFollowing };
 };
 
 // GET COMPANY EMPLOYEES

@@ -227,3 +227,28 @@ export const cleanLogoUrl = (url?: string | null): string | null => {
   return url;
 };
 
+/**
+ * Parses a raw ATS job title (Greenhouse/Lever/Ashby) that often has department or
+ * team info appended after a comma, e.g. "Software Engineer, Payments Team".
+ *
+ * Returns:
+ *  - `cleanTitle`: The core role title (before the first ", ")
+ *  - `tags`: An array of department/team chips to render below the title
+ *
+ * Guard: only splits if each tail segment has 1–5 words, to avoid incorrectly
+ * splitting titles like "Director, Product & Engineering, India".
+ */
+export function parseJobTitle(rawTitle: string): { cleanTitle: string; tags: string[] } {
+  if (!rawTitle) return { cleanTitle: rawTitle, tags: [] };
+
+  const parts = rawTitle.split(", ");
+  if (parts.length <= 1) return { cleanTitle: rawTitle, tags: [] };
+
+  const cleanTitle = parts[0].trim();
+  const tags = parts
+    .slice(1)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0 && t.split(" ").length <= 5);
+
+  return { cleanTitle, tags };
+}

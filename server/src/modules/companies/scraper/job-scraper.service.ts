@@ -265,6 +265,10 @@ export interface CompanyRow {
   country: string | null;
   websiteUrl: string | null;
   careersPageUrl?: string | null;
+  /** ATS board token — when provided, used directly instead of the static slug-map lookup. */
+  atsToken?: string | null;
+  /** ATS source discriminator: 'greenhouse' | 'lever' | 'ashby' */
+  atsSource?: string | null;
 }
 
 interface ProcessResult {
@@ -284,10 +288,19 @@ interface ProcessResult {
 export async function processCompany(company: CompanyRow): Promise<ProcessResult> {
   const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
   const activeSlugs: string[] = [];
+
+  // Resolve ATS tokens: explicit atsToken/atsSource fields take priority over
+  // the static slug-map lookup (used for discovered companies with DB-stored tokens).
   const lookupKey = company.slug.replace(/-[a-z0-9]{5}$/i, "");
-  const greenhouseToken = GREENHOUSE_TOKENS[lookupKey];
-  const ashbyToken = ASHBY_TOKENS[lookupKey];
-  const leverToken = LEVER_TOKENS[lookupKey];
+  const greenhouseToken =
+    (company.atsSource === "greenhouse" && company.atsToken) ? company.atsToken
+    : GREENHOUSE_TOKENS[lookupKey];
+  const ashbyToken =
+    (company.atsSource === "ashby" && company.atsToken) ? company.atsToken
+    : ASHBY_TOKENS[lookupKey];
+  const leverToken =
+    (company.atsSource === "lever" && company.atsToken) ? company.atsToken
+    : LEVER_TOKENS[lookupKey];
 
   try {
     if (greenhouseToken) {

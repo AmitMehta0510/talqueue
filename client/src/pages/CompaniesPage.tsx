@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
   Building2,
@@ -18,6 +18,8 @@ import {
   ArrowLeft,
   TrendingUp,
   ChevronRight,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
@@ -36,6 +38,7 @@ import {
 import { Company, CompanySize, CompanyType, User } from "../lib/api";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 import { useFileUpload } from "../hooks/useFileUpload";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
   compactPayload,
   formatCount,
@@ -44,6 +47,7 @@ import {
   userHeadline,
   userName,
   cleanLogoUrl,
+  parseJobTitle,
 } from "../lib/format";
 
 const companyTypes: CompanyType[] = [
@@ -92,7 +96,39 @@ function CompanyLogo({ company, size = "md" }: { company: Company; size?: "sm" |
 // Naukri-style Company Card
 // ---------------------------------------------------------------------------
 function CompanyCard({ company }: { company: Company }) {
+  const { user } = useAuth();
+  const followMutation = useFollowCompanyMutation();
+  const unfollowMutation = useUnfollowCompanyMutation();
   const typeColor = TYPE_COLOR[company.type ?? "OTHER"] ?? TYPE_COLOR.OTHER;
+  const isFollowPending = followMutation.isPending || unfollowMutation.isPending;
+
+  // Local optimistic state — decoupled from the list-cache prop so the button
+  // reflects the action immediately without waiting for the list re-fetch.
+  const [isFollowing, setIsFollowing] = useState(!!company.isFollowing);
+
+  // Sync when the server data arrives (after invalidation re-fetch).
+  useEffect(() => {
+    setIsFollowing(!!company.isFollowing);
+  }, [company.isFollowing]);
+
+  const handleCardFollow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || isFollowPending) return;
+    if (isFollowing) {
+      setIsFollowing(false);
+      unfollowMutation.mutate(
+        { companyId: company.id, slug: company.slug, companyName: company.name },
+        { onError: () => setIsFollowing(true) },
+      );
+    } else {
+      setIsFollowing(true);
+      followMutation.mutate(
+        { companyId: company.id, slug: company.slug, companyName: company.name },
+        { onError: () => setIsFollowing(false) },
+      );
+    }
+  };
 
   return (
     <Link
@@ -114,6 +150,28 @@ function CompanyCard({ company }: { company: Company }) {
             {company.tagline || company.industry || "Technology Company"}
           </p>
         </div>
+        {/* Follow button on card — stop propagation so card link doesn't fire */}
+        {user && (
+          <button
+            type="button"
+            onClick={handleCardFollow}
+            disabled={isFollowPending}
+            title={isFollowing ? "Following" : "Follow"}
+            className={`shrink-0 flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition-all duration-150 ${
+              isFollowing
+                ? "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                : "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+            }`}
+          >
+            {isFollowPending ? (
+              <Loader2 size={10} className="animate-spin" />
+            ) : isFollowing ? (
+              <><UserCheck size={10} /> Following</>
+            ) : (
+              <><UserPlus size={10} /> Follow</>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Badges */}
@@ -447,6 +505,7 @@ function CompanyDetail({ slug }: { slug: string }) {
 
   const followMutation = useFollowCompanyMutation();
   const unfollowMutation = useUnfollowCompanyMutation();
+  const [showUnfollowDialog, setShowUnfollowDialog] = useState(false);
 
   const isGlobalCompanyAdmin = useMemo(() => {
     if (!user || !company) return false;
@@ -462,10 +521,19 @@ function CompanyDetail({ slug }: { slug: string }) {
     }
     if (!company) return;
     if (company.isFollowing) {
-      unfollowMutation.mutate(company.id);
+      // Show confirm dialog before unfollowing
+      setShowUnfollowDialog(true);
     } else {
-      followMutation.mutate(company.id);
+      followMutation.mutate({ companyId: company.id, slug: company.slug, companyName: company.name });
     }
+  };
+
+  const handleConfirmUnfollow = () => {
+    if (!company) return;
+    unfollowMutation.mutate(
+      { companyId: company.id, slug: company.slug, companyName: company.name },
+      { onSettled: () => setShowUnfollowDialog(false) }
+    );
   };
 
   if (companyQuery.isLoading) {
@@ -499,7 +567,10 @@ function CompanyDetail({ slug }: { slug: string }) {
         {company.coverImageUrl ? (
           <img className="h-44 w-full object-cover sm:h-56" src={company.coverImageUrl} alt={company.name} />
         ) : (
-          <div className="h-24 w-full bg-gradient-to-br from-blue-600 to-indigo-700" />
+          <div
+            className="h-44 w-full sm:h-56"
+            style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)" }}
+          />
         )}
         <div className="px-6 pb-6">
           {/* Logo overlapping banner */}
@@ -582,10 +653,21 @@ function CompanyDetail({ slug }: { slug: string }) {
             <h2 className="text-sm font-bold mb-4" style={{ color: "var(--text-primary)" }}>Open Positions</h2>
             {(company.jobs || []).length > 0 ? (
               <div className="space-y-3">
-                {(company.jobs || []).map((job) => (
+              {(company.jobs || []).map((job) => {
+                  const { cleanTitle, tags } = parseJobTitle(job.title || "");
+                  return (
                   <div key={job.id} className="flex items-start justify-between gap-3 rounded-lg border p-3 transition" style={{ borderColor: "var(--border)" }}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{job.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{cleanTitle}</p>
+                      {tags.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {tags.map((tag, idx) => (
+                            <span key={idx} className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
                         {[job.location, titleCase(job.workMode), titleCase(job.experienceLevel)].filter(Boolean).join(" · ")}
                       </p>
@@ -600,67 +682,36 @@ function CompanyDetail({ slug }: { slug: string }) {
                         )}
                       </div>
                     </div>
-                    <Link
-                      to="/jobs"
-                      className="shrink-0 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
-                    >
-                      Apply
-                    </Link>
+                    {/* External apply redirect — uses job.applyUrl (Greenhouse/Lever/Ashby ATS link) */}
+                    {job.applyUrl ? (
+                      <a
+                        href={job.applyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition flex items-center gap-1"
+                      >
+                        Apply <ExternalLink size={10} />
+                      </a>
+                    ) : job.slug ? (
+                      <Link
+                        to={`/jobs/${job.slug}`}
+                        className="shrink-0 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View Job
+                      </Link>
+                    ) : null}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>No open positions right now.</p>
             )}
           </div>
 
-          {/* Employees */}
-          <div className="panel p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Current Employees</h2>
-              {employeesQuery.isFetching && <Loader2 className="animate-spin" size={14} style={{ color: "var(--text-muted)" }} />}
-            </div>
-            {employees.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {employees.map((emp) => (
-                  <div key={emp.id} className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
-                    <Avatar user={emp.user} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(emp.user)}</p>
-                      <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{emp.title || userHeadline(emp.user)}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {emp.verified && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">✓ Verified</span>}
-                        {emp.user?.acceptingReferrals && (
-                          <button
-                            type="button"
-                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
-                            onClick={() => setSelectedReferralUser(emp.user || null)}
-                          >
-                            Request Referral →
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>No employee profiles linked yet.</p>
-            )}
-            {(employeesQuery.data?.totalPages || 0) > 1 && (
-              <div className="mt-4 flex justify-end gap-2">
-                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
-                  disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1, p - 1))}>
-                  Previous
-                </button>
-                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
-                  disabled={employeePage >= (employeesQuery.data?.totalPages || 1)}
-                  onClick={() => setEmployeePage((p) => p + 1)}>
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Employees section removed from left column — moved to right sidebar below About card */}
         </div>
 
         {/* Right sidebar */}
@@ -709,23 +760,54 @@ function CompanyDetail({ slug }: { slug: string }) {
             )}
           </div>
 
-          {/* Employee preview */}
-          {(company.experiences || []).length > 0 && (
-            <div className="panel p-5">
-              <h3 className="text-sm font-bold mb-3" style={{ color: "var(--text-primary)" }}>Employee Highlights</h3>
-              <div className="space-y-3">
-                {(company.experiences || []).slice(0, 5).map((exp) => (
-                  <div key={exp.id} className="flex items-center gap-2.5">
-                    <Avatar user={exp.user} size="sm" />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{userName(exp.user)}</p>
-                      <p className="truncate text-[10px]" style={{ color: "var(--text-muted)" }}>{exp.title || "Employee"}</p>
+          {/* Employees panel — moved here from left column, below About card */}
+          <div className="panel p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Employees on Eng Hub</h3>
+              {employeesQuery.isFetching && <Loader2 className="animate-spin" size={14} style={{ color: "var(--text-muted)" }} />}
+            </div>
+            {employees.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {employees.map((emp) => (
+                  <div key={emp.id} className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                    <Avatar user={emp.user} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(emp.user)}</p>
+                      <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{emp.title || userHeadline(emp.user)}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {emp.verified && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">✓ Verified</span>}
+                        {emp.user?.acceptingReferrals && (
+                          <button
+                            type="button"
+                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
+                            onClick={() => setSelectedReferralUser(emp.user || null)}
+                          >
+                            Request Referral →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>No employee profiles linked yet.</p>
+            )}
+            {(employeesQuery.data?.totalPages || 0) > 1 && (
+              <div className="mt-4 flex justify-end gap-2">
+                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
+                  disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1, p - 1))}>
+                  Previous
+                </button>
+                <button className="btn-secondary px-3 py-1.5 text-xs" type="button"
+                  disabled={employeePage >= (employeesQuery.data?.totalPages || 1)}
+                  onClick={() => setEmployeePage((p) => p + 1)}>
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
         </aside>
       </div>
 
@@ -736,6 +818,19 @@ function CompanyDetail({ slug }: { slug: string }) {
           onClose={() => setSelectedReferralUser(null)}
         />
       )}
+
+      {/* Unfollow confirmation dialog */}
+      <ConfirmDialog
+        open={showUnfollowDialog}
+        title={`Unfollow ${company?.name ?? "this company"}?`}
+        message="You will stop receiving updates and job alerts from this company."
+        confirmLabel="Unfollow"
+        cancelLabel="Cancel"
+        variant="default"
+        isPending={unfollowMutation.isPending}
+        onConfirm={handleConfirmUnfollow}
+        onCancel={() => setShowUnfollowDialog(false)}
+      />
     </section>
   );
 }

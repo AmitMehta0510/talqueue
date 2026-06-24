@@ -46,7 +46,7 @@ import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
 import { ApplicationKanbanBoard } from "../components/jobs/ApplicationKanbanBoard";
 import { PlacementDrivesTab } from "../components/jobs/PlacementDrivesTab";
-import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline } from "../lib/format";
+import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline, parseJobTitle } from "../lib/format";
 
 type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "campus-drives";
 type SubViewType = { type: "dashboard" } | { type: "pipeline"; jobId: string };
@@ -80,28 +80,7 @@ const ROLE_MAPPINGS: Record<string, string[]> = {
   "Software Engineering / General": ["software engineer", "software developer", "engineer", "developer", "programmer", "architect"]
 };
 
-// ---------------------------------------------------------------------------
-// Title cleaning — Bug #4
-// ATS systems (Greenhouse, Lever, Ashby) append department/team labels to
-// job titles via commas, e.g. "Frontend Engineer, Design Systems".
-// We split on ", " and treat the tail segments as department tags.
-// ---------------------------------------------------------------------------
-function parseJobTitle(rawTitle: string): { cleanTitle: string; tags: string[] } {
-  if (!rawTitle) return { cleanTitle: rawTitle, tags: [] };
-
-  // Split on ", " — first segment is the core title, rest are tags.
-  // Guard: only split if the tail has 1–4 words (avoids splitting "Director, Product & Engineering, India").
-  const parts = rawTitle.split(", ");
-  if (parts.length <= 1) return { cleanTitle: rawTitle, tags: [] };
-
-  const cleanTitle = parts[0].trim();
-  const tags = parts
-    .slice(1)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0 && t.split(" ").length <= 5); // Discard overly long fragments
-
-  return { cleanTitle, tags };
-}
+// parseJobTitle is shared from ../lib/format
 
 // ---------------------------------------------------------------------------
 // Active filter chips — dark mode aware

@@ -70,29 +70,75 @@ function loadSeedFile<T>(filename: string): T[] {
   }
 }
 
+// ---------------------------------------------------------------------------
+// HYBRID LOOKUP HELPERS
+// ---------------------------------------------------------------------------
+
 /**
- * Checks if a company already exists in the DB by name (case-insensitive).
- * Returns the existing company ID if found, or null if new.
+ * Hybrid 3-way lookup for company discovery:
+ *
+ * 1. Token match  - company already linked to this ATS board (processed before). Skip.
+ * 2. Name match   - company exists in DB but not yet linked to this token. Link and scrape.
+ * 3. No match     - brand-new company. Auto-create, link, and scrape.
  */
-async function findExistingCompany(name: string): Promise<string | null> {
-  const existing = await prisma.company.findFirst({
-    where: { name: { equals: name, mode: "insensitive" } },
-    select: { id: true },
+async function resolveCompanyByAtsToken(
+  atsToken: string,
+  atsSource: "greenhouse" | "lever" | "ashby",
+  name: string
+): Promise<
+  | { action: "skip" }
+  | { action: "link"; id: string; slug: string; name: string }
+  | { action: "create" }
+> {
+  // 1. Token-first lookup - was this board already linked in a prior run?
+  const byToken = await prisma.company.findFirst({
+    where: { atsToken, atsSource },
+    select: { id: true, slug: true, name: true },
   });
-  return existing?.id ?? null;
+  if (byToken) {
+    return { action: "skip" };
+  }
+
+  // 2. Name match - company exists but has not been linked to this ATS token yet
+  const byName = await prisma.company.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+    select: { id: true, slug: true, name: true },
+  });
+  if (byName) {
+    return { action: "link", id: byName.id, slug: byName.slug, name: byName.name };
+  }
+
+  // 3. Neither - brand new board
+  return { action: "create" };
+}
+
+/**
+ * Links an ATS board token to an existing company record.
+ */
+async function linkAtsTokenToCompany(
+  companyId: string,
+  atsToken: string,
+  atsSource: "greenhouse" | "lever" | "ashby"
+): Promise<void> {
+  await prisma.company.update({
+    where: { id: companyId },
+    data: { atsToken, atsSource },
+  });
 }
 
 /**
  * Auto-creates a new company discovered from an ATS aggregate scan.
- * Marks it verified=false and stamps discoveredVia so admins can review.
+ * Marks it verified=false and stamps discoveredVia, atsToken, atsSource.
  */
 async function autoCreateCompany(params: {
   name: string;
   domain: string;
   industry: string;
   discoveredVia: string;
-}): Promise<string> {
-  const { name, domain, industry, discoveredVia } = params;
+  atsToken: string;
+  atsSource: "greenhouse" | "lever" | "ashby";
+}): Promise<{ id: string; slug: string }> {
+  const { name, domain, industry, discoveredVia, atsToken, atsSource } = params;
   const baseSlug = slugify(name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
   const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
 
@@ -101,6 +147,7 @@ async function autoCreateCompany(params: {
       name,
       slug,
       logoUrl: `https://logo.clearbit.com/${domain}`,
+      coverImageUrl: `https://picsum.photos/seed/${domain}/1200/400`,
       websiteUrl: `https://${domain}`,
       careersPageUrl: `https://${domain}/careers`,
       industry,
@@ -108,11 +155,13 @@ async function autoCreateCompany(params: {
       discoveredVia,
       hiringEnabled: true,
       referralEnabled: false,
+      atsToken,
+      atsSource,
     },
-    select: { id: true },
+    select: { id: true, slug: true },
   });
 
-  return company.id;
+  return { id: company.id, slug: company.slug };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,8 +169,12 @@ async function autoCreateCompany(params: {
 // ---------------------------------------------------------------------------
 
 /**
- * Scans the curated greenhouse-boards.json list and discovers companies
- * not yet in the DB. Auto-creates them and immediately scrapes their jobs.
+ * Scans the curated greenhouse-boards.json list and discovers companies.
+ *
+ * Uses a hybrid 3-way upsert pipeline:
+ * - Already linked by token -> skip (processed in prior run)
+ * - Exists by name but no token -> link atsToken + scrape fresh jobs
+ * - New board entirely -> auto-create company + link + scrape
  */
 async function discoverGreenhouseCompanies(
   budget: number,
@@ -139,14 +192,15 @@ async function discoverGreenhouseCompanies(
     }
 
     try {
-      // Check if already in DB
-      const existingId = await findExistingCompany(board.name);
-      if (existingId) {
+      const resolution = await resolveCompanyByAtsToken(board.token, "greenhouse", board.name);
+
+      // Already linked in a prior run
+      if (resolution.action === "skip") {
         result.skipped++;
         continue;
       }
 
-      // Verify the board token actually has jobs before creating the company
+      // Verify the board token actually has jobs before doing any work
       let hasJobs = false;
       try {
         const res = await axios.get(
@@ -155,7 +209,6 @@ async function discoverGreenhouseCompanies(
         );
         hasJobs = (res.data?.jobs?.length ?? 0) > 0;
       } catch {
-        // Board doesn't exist or is private — skip silently
         result.skipped++;
         await sleep(REQUEST_DELAY_MS);
         continue;
@@ -167,40 +220,51 @@ async function discoverGreenhouseCompanies(
         continue;
       }
 
-      // Auto-create the company
-      console.log(`[Discovery] Greenhouse: creating new company "${board.name}" (token: ${board.token})`);
-      const companyId = await autoCreateCompany({
-        name: board.name,
-        domain: board.domain,
-        industry: board.industry,
-        discoveredVia: "greenhouse-aggregate",
-      });
+      let companyId: string;
+      let companySlug: string;
+      let companyName: string;
 
-      // Run a targeted job scrape for this new company
+      if (resolution.action === "link") {
+        // Existing company, link the token and scrape jobs
+        console.log(
+          `[Discovery] Greenhouse: linking existing company "${resolution.name}" to token "${board.token}"`
+        );
+        await linkAtsTokenToCompany(resolution.id, board.token, "greenhouse");
+        companyId = resolution.id;
+        companySlug = resolution.slug;
+        companyName = resolution.name;
+      } else {
+        // Brand-new company - auto-create
+        console.log(
+          `[Discovery] Greenhouse: creating new company "${board.name}" (token: ${board.token})`
+        );
+        const created = await autoCreateCompany({
+          name: board.name,
+          domain: board.domain,
+          industry: board.industry,
+          discoveredVia: "greenhouse-aggregate",
+          atsToken: board.token,
+          atsSource: "greenhouse",
+        });
+        companyId = created.id;
+        companySlug = created.slug;
+        companyName = board.name;
+      }
+
+      // Scrape jobs for this company
       const companyRow: CompanyRow = {
         id: companyId,
-        name: board.name,
-        slug: `${slugify(board.name, { lower: true, strict: true })}-*`, // will be resolved from DB
+        name: companyName,
+        slug: companySlug,
         headquarters: null,
         country: null,
         websiteUrl: `https://${board.domain}`,
+        atsToken: board.token,
+        atsSource: "greenhouse",
       };
 
-      // Fetch the actual slug from DB (needed for GREENHOUSE_TOKENS lookup)
-      const saved = await prisma.company.findUnique({
-        where: { id: companyId },
-        select: { slug: true },
-      });
-      if (saved) companyRow.slug = saved.slug;
+      const processResult = await processCompany(companyRow);
 
-      // Override slug for token matching: use the board token directly
-      // The processCompany function looks up GREENHOUSE_TOKENS[company.slug],
-      // so we temporarily patch the slug to the board token for this call.
-      const patchedRow: CompanyRow = { ...companyRow, slug: board.token };
-
-      const processResult = await processCompany(patchedRow);
-
-      // Fix slug back to actual DB slug for ES sync
       if (processResult.processedJobIds.length > 0) {
         await syncJobsToElasticBulk(processResult.processedJobIds);
       }
@@ -210,7 +274,7 @@ async function discoverGreenhouseCompanies(
       result.jobsUpdated += processResult.updated;
 
       console.log(
-        `[Discovery] Greenhouse: ✓ "${board.name}" — jobs: ${processResult.created} created, ${processResult.updated} updated`
+        `[Discovery] Greenhouse: ok "${companyName}" - jobs: ${processResult.created} created, ${processResult.updated} updated`
       );
 
       await sleep(REQUEST_DELAY_MS);
@@ -227,8 +291,8 @@ async function discoverGreenhouseCompanies(
 // ---------------------------------------------------------------------------
 
 /**
- * Scans the curated lever-companies.json list and discovers companies
- * not yet in the DB. Auto-creates them and immediately scrapes their jobs.
+ * Scans the curated lever-companies.json list and discovers companies.
+ * Uses the same hybrid 3-way upsert pipeline as Greenhouse.
  */
 async function discoverLeverCompanies(
   budget: number,
@@ -246,9 +310,10 @@ async function discoverLeverCompanies(
     }
 
     try {
-      // Check if already in DB
-      const existingId = await findExistingCompany(entry.name);
-      if (existingId) {
+      const resolution = await resolveCompanyByAtsToken(entry.slug, "lever", entry.name);
+
+      // Already linked in a prior run
+      if (resolution.action === "skip") {
         result.skipped++;
         continue;
       }
@@ -273,24 +338,47 @@ async function discoverLeverCompanies(
         continue;
       }
 
-      // Auto-create the company
-      console.log(`[Discovery] Lever: creating new company "${entry.name}" (slug: ${entry.slug})`);
-      const companyId = await autoCreateCompany({
-        name: entry.name,
-        domain: entry.domain,
-        industry: entry.industry,
-        discoveredVia: "lever-aggregate",
-      });
+      let companyId: string;
+      let companySlug: string;
+      let companyName: string;
 
-      // Build a company row where the slug matches the LEVER_TOKENS key
-      // We patch the slug to the Lever slug so processCompany() can look it up.
+      if (resolution.action === "link") {
+        // Existing company, link the token and scrape jobs
+        console.log(
+          `[Discovery] Lever: linking existing company "${resolution.name}" to slug "${entry.slug}"`
+        );
+        await linkAtsTokenToCompany(resolution.id, entry.slug, "lever");
+        companyId = resolution.id;
+        companySlug = resolution.slug;
+        companyName = resolution.name;
+      } else {
+        // Brand-new company - auto-create
+        console.log(
+          `[Discovery] Lever: creating new company "${entry.name}" (slug: ${entry.slug})`
+        );
+        const created = await autoCreateCompany({
+          name: entry.name,
+          domain: entry.domain,
+          industry: entry.industry,
+          discoveredVia: "lever-aggregate",
+          atsToken: entry.slug,
+          atsSource: "lever",
+        });
+        companyId = created.id;
+        companySlug = created.slug;
+        companyName = entry.name;
+      }
+
+      // Scrape jobs for this company
       const companyRow: CompanyRow = {
         id: companyId,
-        name: entry.name,
-        slug: entry.slug, // patched to match LEVER_TOKENS key
+        name: companyName,
+        slug: companySlug,
         headquarters: null,
         country: null,
         websiteUrl: `https://${entry.domain}`,
+        atsToken: entry.slug,
+        atsSource: "lever",
       };
 
       const processResult = await processCompany(companyRow);
@@ -304,7 +392,7 @@ async function discoverLeverCompanies(
       result.jobsUpdated += processResult.updated;
 
       console.log(
-        `[Discovery] Lever: ✓ "${entry.name}" — jobs: ${processResult.created} created, ${processResult.updated} updated`
+        `[Discovery] Lever: ok "${companyName}" - jobs: ${processResult.created} created, ${processResult.updated} updated`
       );
 
       await sleep(REQUEST_DELAY_MS);
@@ -323,14 +411,14 @@ async function discoverLeverCompanies(
 /**
  * Runs the nightly company discovery pipeline.
  *
- * 1. Loads curated Greenhouse and Lever board lists.
- * 2. Cross-references against existing DB companies.
- * 3. For each new company found (up to MAX_DISCOVERED_COMPANIES):
- *    a. Verifies the ATS board has active job postings.
- *    b. Auto-creates the company with verified=false, discoveredVia=<source>.
- *    c. Immediately scrapes and stores the company's tech jobs.
- *    d. Syncs the jobs to Elasticsearch.
- * 4. Returns a summary report.
+ * Hybrid 3-way upsert logic per board:
+ *  a. Token already linked in DB -> skip (board was processed in a prior run)
+ *  b. Name matches an existing DB company -> link atsToken + scrape fresh jobs
+ *  c. Completely new -> auto-create company + link atsToken + scrape jobs
+ *
+ * This fixes the "Discovered: 0, Skipped: 178" regression where the old
+ * name-only check caused all pre-seeded companies (Airtable, Gusto, etc.)
+ * to be unconditionally skipped, preventing any job scraping.
  */
 export async function runCompanyDiscovery(): Promise<DiscoveryResult> {
   console.log("[Discovery] Starting nightly company discovery scan...");
@@ -344,8 +432,8 @@ export async function runCompanyDiscovery(): Promise<DiscoveryResult> {
     errors: 0,
   };
 
-  // Phase A: Greenhouse
-  const greenhouseBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.55); // ~55% from Greenhouse
+  // Phase A: Greenhouse (~55% of budget)
+  const greenhouseBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.55);
   await discoverGreenhouseCompanies(greenhouseBudget, result);
 
   // Phase B: Lever (remaining budget)

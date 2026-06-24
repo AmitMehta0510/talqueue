@@ -852,13 +852,32 @@ export const useFollowCompanyMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (companyId: string) => {
+    mutationFn: ({ companyId }: { companyId: string; slug?: string; companyName?: string }) => {
       if (!user) throw new Error("Login required");
       return api.followCompany(companyId);
     },
-    onSuccess: (res) => showToast("success", res.message || "Following company"),
-    onError: (error) => showToast("error", getErrorMessage(error)),
-    onSettled: (data, error, variables) => {
+    onMutate: async ({ slug }) => {
+      if (!slug) return;
+      const key = queryKeys.companies.detail(slug);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any) =>
+        old ? { ...old, isFollowing: true } : old
+      );
+      return { previous, key };
+    },
+    onError: (_err, _vars, ctx: any) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(ctx.key, ctx.previous);
+      }
+      showToast("error", "Failed to follow company");
+    },
+    onSuccess: (_res, { slug, companyName }) => {
+      showToast("success", companyName ? `Now following ${companyName}` : "Company followed");
+      // Invalidate company detail to sync follower count
+      if (slug) queryClient.invalidateQueries({ queryKey: queryKeys.companies.detail(slug) });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     },
   });
@@ -870,13 +889,31 @@ export const useUnfollowCompanyMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (companyId: string) => {
+    mutationFn: ({ companyId }: { companyId: string; slug?: string; companyName?: string }) => {
       if (!user) throw new Error("Login required");
       return api.unfollowCompany(companyId);
     },
-    onSuccess: (res) => showToast("success", res.message || "Unfollowed company"),
-    onError: (error) => showToast("error", getErrorMessage(error)),
-    onSettled: (data, error, variables) => {
+    onMutate: async ({ slug }) => {
+      if (!slug) return;
+      const key = queryKeys.companies.detail(slug);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any) =>
+        old ? { ...old, isFollowing: false } : old
+      );
+      return { previous, key };
+    },
+    onError: (_err, _vars, ctx: any) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(ctx.key, ctx.previous);
+      }
+      showToast("error", "Failed to unfollow company");
+    },
+    onSuccess: (_res, { slug, companyName }) => {
+      showToast("success", companyName ? `Unfollowed ${companyName}` : "Unfollowed");
+      if (slug) queryClient.invalidateQueries({ queryKey: queryKeys.companies.detail(slug) });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     },
   });

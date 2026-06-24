@@ -98,7 +98,7 @@ export const getCompaniesHandler = asyncHandler(
       type,
       size,
       hasJobs,
-    });
+    }, (req as any).user?.id);
 
     res.json(successResponse(companies));
   },

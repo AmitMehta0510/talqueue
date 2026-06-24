@@ -2203,6 +2203,12 @@ model Company {
   // How this company was added: 'greenhouse-aggregate' | 'lever-aggregate' | 'seeded' | null (manual)
   discoveredVia String?
 
+  // ATS board token linking this company to its external job board.
+  // Set during discovery; null for manually created/seeded companies.
+  // atsSource: 'greenhouse' | 'lever' | 'ashby'
+  atsToken  String?
+  atsSource String?
+
   experiences Experience[]
 
   jobs Job[]

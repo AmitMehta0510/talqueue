@@ -934,6 +934,7 @@ export type Company = {
       | "workMode"
       | "experienceLevel"
       | "createdAt"
+      | "applyUrl"
     >
   >;
   experiences?: Experience[];
