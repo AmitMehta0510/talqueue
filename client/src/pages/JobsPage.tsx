@@ -38,6 +38,7 @@ import {
 } from "../hooks/usePlatformQueries";
 import { useAuth } from "../contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState, Avatar } from "../components/ui";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { JobDetailModal } from "../components/cards/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { ExternalApplyModal } from "../components/forms/ExternalApplyModal";
@@ -726,13 +727,15 @@ export function JobsPage() {
   const [internDuration,     setInternDuration]     = useState<string | null>(null);
   const [ppoOnly,            setPpoOnly]            = useState(false);
   const [freshness,          setFreshness]          = useState<string | null>(null);
+  const [unsaveConfirmJobId, setUnsaveConfirmJobId] = useState<string | null>(null);
 
   const pendingSaveJobId = useRef<string | null>(null);
+  const prevTab = useRef(activeTab);
 
   // Reset pagination on tab/filter change
   useEffect(() => {
     setJobPage(1);
-  }, [activeTab, searchVal, selectedWorkModes, selectedJobTypes, selectedSkills, selectedLocations, freshness]);
+  }, [activeTab, searchVal, selectedWorkModes, selectedJobTypes, selectedSkills, selectedLocations, selectedRoles, freshness]);
 
   // Queries
   const jobsQuery = useJobsQuery(
@@ -745,6 +748,7 @@ export function JobsPage() {
           jobType: selectedJobTypes.length ? selectedJobTypes : undefined,
           skills: selectedSkills.length ? selectedSkills : undefined,
           location: selectedLocations.length ? selectedLocations : undefined,
+          roles: selectedRoles.length ? selectedRoles : undefined,
           freshness: freshness || undefined,
         }
       : undefined
@@ -782,6 +786,13 @@ export function JobsPage() {
   const handleSaveToggle = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     if (saveMutation.isPending) return;
+
+    const isSaved = savedJobIds.has(jobId);
+    if (isSaved) {
+      setUnsaveConfirmJobId(jobId);
+      return;
+    }
+
     pendingSaveJobId.current = jobId;
     try {
       await saveMutation.mutateAsync(jobId);
@@ -873,13 +884,19 @@ export function JobsPage() {
 
   useEffect(() => {
     if (filteredJobs.length > 0) {
-      const isStillInList = filteredJobs.some((j) => j.id === selectedJob?.id);
-      if (!isStillInList) setSelectedJob(filteredJobs[0]);
+      const tabChanged = prevTab.current !== activeTab;
+      prevTab.current = activeTab;
+
+      if (tabChanged) {
+        setSelectedJob(filteredJobs[0]);
+      } else {
+        const isStillInList = filteredJobs.some((j) => j.id === selectedJob?.id);
+        if (!isStillInList) setSelectedJob(filteredJobs[0]);
+      }
     } else {
       setSelectedJob(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredJobs]);
+  }, [filteredJobs, activeTab]);
 
   if (activeTab === "recruiter" && recruiterView.type === "pipeline") {
     return (
@@ -1501,6 +1518,31 @@ export function JobsPage() {
         <ExternalApplyModal
           job={externalApplyJob}
           onClose={() => setExternalApplyJob(null)}
+        />
+      )}
+      {unsaveConfirmJobId && (
+        <ConfirmDialog
+          open={!!unsaveConfirmJobId}
+          title="Unsave Job?"
+          message="Are you sure you want to remove this job from your saved jobs?"
+          confirmLabel="Unsave"
+          cancelLabel="Cancel"
+          variant="danger"
+          isPending={saveMutation.isPending}
+          onConfirm={async () => {
+            if (unsaveConfirmJobId) {
+              pendingSaveJobId.current = unsaveConfirmJobId;
+              try {
+                await saveMutation.mutateAsync(unsaveConfirmJobId);
+              } catch {
+                /* toasted */
+              } finally {
+                pendingSaveJobId.current = null;
+                setUnsaveConfirmJobId(null);
+              }
+            }
+          }}
+          onCancel={() => setUnsaveConfirmJobId(null)}
         />
       )}
     </div>

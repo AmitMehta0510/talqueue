@@ -21,6 +21,18 @@ const JOBS_PAGE_CACHE_PREFIX = "jobs:page";
 const JOBS_LISTING_TTL_SECONDS = 60;
 const JOBS_AUTOCOMPLETE_TTL_SECONDS = 3600; // 1 hour
 
+export const ROLE_MAPPINGS: Record<string, string[]> = {
+  "Frontend Developer": ["frontend", "front-end", "ui", "react", "angular", "vue", "javascript"],
+  "Backend Developer": ["backend", "back-end", "node", "django", "spring", "golang", "python developer", "java developer", "c#", "net developer", "ruby"],
+  "Fullstack Developer": ["fullstack", "full-stack", "full stack"],
+  "Mobile Engineer": ["mobile", "ios", "android", "flutter", "react native", "swift"],
+  "DevOps & SRE": ["devops", "sre", "cloud", "infrastructure", "aws", "kubernetes", "platform engineer", "docker", "ci/cd"],
+  "Data & AI / ML": ["data", "machine learning", "ml", "ai", "artificial intelligence", "data scientist", "data engineer", "deep learning", "nlp"],
+  "Product Management": ["product manager", "pm", "product management", "product owner"],
+  "QA & Testing": ["qa", "quality assurance", "test", "testing", "automation engineer", "sdet", "selenium"],
+  "Software Engineering / General": ["software engineer", "software developer", "engineer", "developer", "programmer", "architect"]
+};
+
 // Filter params accepted by getJobs
 export interface JobsFilterParams {
   page?: number;
@@ -30,6 +42,7 @@ export interface JobsFilterParams {
   jobType?: string[];  // e.g. ["FULL_TIME","INTERNSHIP"]
   skills?: string[];   // e.g. ["React","Node.js"]
   location?: string[]; // e.g. ["Bengaluru"]
+  roles?: string[];    // e.g. ["Frontend Developer"]
   freshness?: "24h" | "3d" | "7d" | "15d" | "30d" | null;
 }
 
@@ -48,6 +61,7 @@ const getJobsFilterCacheKey = (params: JobsFilterParams): string => {
   if (p.jobType?.length)         parts.push(`jt=${[...p.jobType].sort().join(",")}`);
   if (p.skills?.length)          parts.push(`sk=${[...p.skills].sort().join(",").slice(0, 120)}`);
   if (p.location?.length)        parts.push(`lo=${[...p.location].sort().join(",").slice(0, 120)}`);
+  if (p.roles?.length)           parts.push(`ro=${[...p.roles].sort().join(",").slice(0, 120)}`);
   if (p.freshness)               parts.push(`fr=${p.freshness}`);
   return `${JOBS_PAGE_CACHE_PREFIX}:${parts.join(":")}`;
 };
@@ -379,60 +393,57 @@ export const getJobs = async (params: JobsFilterParams = {}) => {
 
   // ── Build Prisma where clause from active filters ─────────────────────────
   const where: Prisma.JobWhereInput = { status: "OPEN", deletedAt: null };
+  const andClauses: Prisma.JobWhereInput[] = [];
 
   // Full-text search across title, description, company name via subquery
   if (params.search?.trim()) {
     const q = params.search.trim().toLowerCase();
-    where.OR = [
-      { title:       { contains: q, mode: "insensitive" } },
-      { description: { contains: q, mode: "insensitive" } },
-      { company:     { name: { contains: q, mode: "insensitive" } } },
-    ];
+    andClauses.push({
+      OR: [
+        { title:       { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { company:     { name: { contains: q, mode: "insensitive" } } },
+      ]
+    });
   }
 
   // Work mode filter (multi-select)
   if (params.workMode?.length) {
-    where.workMode = { in: params.workMode as any };
+    andClauses.push({ workMode: { in: params.workMode as any } });
   }
 
   // Job type filter (multi-select)
   if (params.jobType?.length) {
-    where.type = { in: params.jobType as any };
+    andClauses.push({ type: { in: params.jobType as any } });
   }
 
   // Skills filter — job must contain at least one of the selected skills
   if (params.skills?.length) {
-    where.skillsRequired = { hasSome: params.skills };
+    andClauses.push({ skillsRequired: { hasSome: params.skills } });
   }
 
   // Location filter (multi-select, case-insensitive substring match)
   if (params.location?.length) {
-    where.OR = [
-      ...(where.OR ?? []),
-      ...params.location.map((loc) => ({
+    andClauses.push({
+      OR: params.location.map((loc) => ({
         location: { contains: loc, mode: "insensitive" as const },
       })),
-    ];
-    // When location filter is combined with other ORs from search, we need
-    // to restructure: wrap search ORs in AND + location OR.
-    if (params.search?.trim() && params.location.length) {
-      const searchOr = [
-        { title:       { contains: params.search.trim(), mode: "insensitive" as const } },
-        { description: { contains: params.search.trim(), mode: "insensitive" as const } },
-        { company:     { name: { contains: params.search.trim(), mode: "insensitive" as const } } },
-      ];
-      const locationOr = params.location.map((loc) => ({
-        location: { contains: loc, mode: "insensitive" as const },
-      }));
-      delete where.OR;
-      (where as any).AND = [
-        { OR: searchOr },
-        { OR: locationOr },
-      ];
-    } else if (params.location.length) {
-      where.OR = params.location.map((loc) => ({
-        location: { contains: loc, mode: "insensitive" as const },
-      }));
+    });
+  }
+
+  // Roles filter — job title must match at least one keyword from any selected role
+  if (params.roles?.length) {
+    const roleKeywords = params.roles.reduce<string[]>((acc, role) => {
+      const keywords = ROLE_MAPPINGS[role] || [];
+      return acc.concat(keywords);
+    }, []);
+
+    if (roleKeywords.length > 0) {
+      andClauses.push({
+        OR: roleKeywords.map((kw) => ({
+          title: { contains: kw, mode: "insensitive" as const },
+        })),
+      });
     }
   }
 
@@ -448,18 +459,17 @@ export const getJobs = async (params: JobsFilterParams = {}) => {
     const days = freshnessMap[params.freshness];
     if (days) {
       const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-      // Use postedAt if set (ATS source date), otherwise fall back to createdAt.
-      // We check: (postedAt >= cutoff) OR (postedAt is null AND createdAt >= cutoff)
-      (where as any).AND = [
-        ...((where as any).AND ?? []),
-        {
-          OR: [
-            { postedAt: { gte: cutoff, not: null } },
-            { AND: [{ postedAt: null }, { createdAt: { gte: cutoff } }] },
-          ],
-        },
-      ];
+      andClauses.push({
+        OR: [
+          { postedAt: { gte: cutoff, not: null } },
+          { AND: [{ postedAt: null }, { createdAt: { gte: cutoff } }] },
+        ],
+      });
     }
+  }
+
+  if (andClauses.length > 0) {
+    where.AND = andClauses;
   }
 
   // ── DB-level pagination (LIMIT/OFFSET pushed to Postgres) ─────────────────

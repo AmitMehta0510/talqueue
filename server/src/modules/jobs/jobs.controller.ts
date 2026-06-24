@@ -49,6 +49,7 @@ export const getJobsHandler = asyncHandler(async (req: Request, res: Response) =
   const jobType   = parseMulti(req.query.jobType);
   const skills    = parseMulti(req.query.skills);
   const location  = parseMulti(req.query.location);
+  const roles     = parseMulti(req.query.roles);
   const search    = (req.query.search as string | undefined)?.trim() || undefined;
   const freshness = (req.query.freshness as string | undefined) || undefined;
 
@@ -60,6 +61,7 @@ export const getJobsHandler = asyncHandler(async (req: Request, res: Response) =
     jobType:   jobType.length   ? jobType   : undefined,
     skills:    skills.length    ? skills    : undefined,
     location:  location.length  ? location  : undefined,
+    roles:     roles.length     ? roles     : undefined,
     freshness: (freshness as any) || null,
   });
 

@@ -2523,6 +2523,7 @@ export const api = {
       jobType?: string[];
       skills?: string[];
       location?: string[];
+      roles?: string[];
       freshness?: string | null;
     },
     options?: EndpointOptions,
@@ -2536,6 +2537,7 @@ export const api = {
           jobType: params.jobType?.join(","),
           skills: params.skills?.join(","),
           location: params.location?.join(","),
+          roles: params.roles?.join(","),
           freshness: params.freshness || undefined,
         }
       : {};

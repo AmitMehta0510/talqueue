@@ -58,7 +58,7 @@ export const getSavedJobs = async (userId: string, page = 1, limit = 20) => {
   const safeLimit = Math.min(limit, 50);
   const skip = (page - 1) * safeLimit;
 
-  return prisma.savedJob.findMany({
+  const records = await prisma.savedJob.findMany({
     where: {
       userId,
     },
@@ -75,6 +75,8 @@ export const getSavedJobs = async (userId: string, page = 1, limit = 20) => {
     skip,
     take: safeLimit,
   });
+
+  return records.map((r) => r.job).filter(Boolean) as any;
 };
 
 export const getRecommendedJobs = async (

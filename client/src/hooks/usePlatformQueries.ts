@@ -1533,6 +1533,7 @@ export const useJobsQuery = (params?: {
   jobType?: string[];
   skills?: string[];
   location?: string[];
+  roles?: string[];
   freshness?: string | null;
 }) =>
   useQuery({
@@ -3474,7 +3475,13 @@ export const useSaveJobMutation = () => {
       }
       showToast("error", getErrorMessage(_err));
     },
-    onSuccess: () => showToast("success", "Saved jobs updated"),
+    onSuccess: (res) => {
+      if (res?.data?.saved) {
+        showToast("success", "Job Saved");
+      } else {
+        showToast("success", "Job Unsaved");
+      }
+    },
     onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.recommendations.savedJobs(),
