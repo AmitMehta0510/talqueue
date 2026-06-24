@@ -75,7 +75,7 @@ function CollegeLogo({ college }: { college: College }) {
   }
 
   return (
-    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
       <GraduationCap size={21} />
     </div>
   );
@@ -116,8 +116,8 @@ function CreateCollegePanel({ disabled }: { disabled?: boolean }) {
     <div className="panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">College catalog</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>College catalog</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             Browse institutions, departments, and official campus communities.
           </p>
         </div>
@@ -133,7 +133,7 @@ function CreateCollegePanel({ disabled }: { disabled?: boolean }) {
       </div>
 
       {open && (
-        <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={submit}>
+        <form className="mt-5 space-y-3 border-t pt-5" onSubmit={submit} style={{ borderColor: "var(--border)" }}>
           <div className="grid gap-3 md:grid-cols-[1fr_12rem_12rem]">
             <input
               className="field"
@@ -185,14 +185,14 @@ function RequestCollegePanel() {
     <div className="panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">College catalog</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>College catalog</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             Browse institutions, departments, and official campus communities.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
-          <Info size={15} className="shrink-0 text-blue-600" />
-          <p className="text-xs font-semibold text-blue-700">
+        <div className="flex items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5">
+          <Info size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
+          <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
             To add your college, contact a platform admin or email <span className="underline">admin@platform.com</span>.
           </p>
         </div>
@@ -210,8 +210,8 @@ function CollegeCard({ college }: { college: College }) {
         <div className="flex min-w-0 items-center gap-3">
           <CollegeLogo college={college} />
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-slate-950">{college.name}</h3>
-            <p className="truncate text-xs text-slate-500">{location}</p>
+            <h3 className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{college.name}</h3>
+            <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{location}</p>
           </div>
         </div>
         <Link className="btn-secondary px-3 py-1.5" to={`/colleges/${college.normalizedKey || college.id}`}>
@@ -225,7 +225,7 @@ function CollegeCard({ college }: { college: College }) {
         <Metric label="Educations" value={formatCount(college._count?.educations)} />
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+      <div className="mt-5 flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
         {college.website && (
           <a className="btn-secondary px-3 py-1.5" href={college.website} rel="noreferrer" target="_blank">
             Website
@@ -288,7 +288,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
   if (collegeQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+    <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <Loader2 className="animate-spin" size={16} />
         Loading college
       </div>
@@ -310,8 +310,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           <div className="flex min-w-0 gap-4">
             <CollegeLogo college={college} />
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold text-slate-950">{college.name}</h2>
-              <p className="mt-2 text-sm text-slate-500">
+              <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{college.name}</h2>
+              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
                 {[college.city, college.state].filter(Boolean).join(", ") || "Location unlisted"}
               </p>
             </div>
@@ -338,13 +338,13 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
       </div>
 
       {isTpo && (
-        <div className="flex border-b border-slate-200">
+        <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
           <button
             onClick={() => setActiveSubTab("overview")}
             className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
               activeSubTab === "overview"
                 ? "border-emerald-600 text-emerald-700"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent hover:text-emerald-700"
             }`}
           >
             Overview
@@ -354,7 +354,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
               activeSubTab === "tpo"
                 ? "border-emerald-600 text-emerald-700"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                : "border-transparent hover:text-emerald-700"
             }`}
           >
             TPO Portal
@@ -372,20 +372,20 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           <div className="panel p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
-              {departmentsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+              {departmentsQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {(departmentsQuery.data || []).length ? (
                 (departmentsQuery.data || []).map((department) => (
-                  <div className="rounded-md border border-slate-100 p-3" key={department.id}>
-                    <div className="text-sm font-semibold text-slate-900">{department.name}</div>
-                    <div className="mt-1 text-xs text-slate-500">
+                  <div className="rounded-md border p-3" key={department.id} style={{ borderColor: "var(--border)" }}>
+                    <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{department.name}</div>
+                    <div className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
                       {department.createdAt ? formatDate(department.createdAt) : "Department"}
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500">No departments listed yet.</p>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No departments listed yet.</p>
               )}
             </div>
           </div>
@@ -393,7 +393,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           <aside className="panel p-5">
             {canManageDepartments ? (
               <>
-                <h3 className="text-sm font-semibold text-slate-950">Add department</h3>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Add department</h3>
                 <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
                   <input
                     className="field"
@@ -410,8 +410,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
               </>
             ) : (
               <>
-                <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
-                <p className="mt-3 text-xs text-slate-400">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Departments</h3>
+                <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
                   Department management is restricted to college administrators. Contact your placement officer if a department is missing.
                 </p>
               </>
@@ -422,7 +422,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         /* ── TPO Portal Layout ── */
         <div className="space-y-4">
           {/* TPO Sub-tab navigation */}
-          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+          <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "var(--bg-surface-2)" }}>
             {(["cdcr", "drives", "invites", "alumni", "stats"] as const).map((tab) => {
               const labels: Record<string, string> = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites", alumni: "Alumni", stats: "Statistics" };
               const pendingCount = tab === "invites"
@@ -436,9 +436,9 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                   onClick={() => setTpoSubTab(tab)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                     tpoSubTab === tab
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
+                      ? "text-slate-900 shadow-sm" : "hover:opacity-80"
                   }`}
+                  style={tpoSubTab === tab ? { background: "var(--bg-surface)", color: "var(--text-primary)" } : { color: "var(--text-muted)" }}
                 >
                   {labels[tab]}
                   {pendingCount > 0 && (
@@ -454,11 +454,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           {/* CDCR Members Roster */}
           <div className="panel p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                 <Shield size={16} className="text-emerald-600" />
                 CDCR Representatives
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                 Roster of student/faculty coordinators authorized to manage placement drives.
               </p>
             </div>
@@ -468,9 +468,9 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 <Loader2 className="animate-spin text-slate-400" size={20} />
               </div>
             ) : (cdcrQuery.data || []).length ? (
-              <div className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+              <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
                 <table className="w-full border-collapse text-left text-xs">
-                  <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <thead className="text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                     <tr>
                       <th className="px-4 py-3">Member</th>
                       <th className="px-4 py-3">Email</th>
@@ -478,7 +478,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tbody className="divide-y text-sm" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                     {(cdcrQuery.data || []).map((member) => (
                       <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-4 py-3 flex items-center gap-2.5">
@@ -489,20 +489,20 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                               className="h-8 w-8 rounded-full object-cover border border-slate-100 shadow-sm"
                             />
                           ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 font-bold">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full font-bold" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                               {member.user?.profile?.fullName?.charAt(0) || "U"}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-900 truncate">
+                            <p className="font-bold truncate" style={{ color: "var(--text-primary)" }}>
                               {member.user?.profile?.fullName || "User"}
                             </p>
-                            <p className="text-[10px] text-slate-400 truncate">
+                            <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>
                               @{member.user?.username}
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-500">
+                        <td className="px-4 py-3 font-semibold" style={{ color: "var(--text-muted)" }}>
                           {member.user?.email}
                         </td>
                         <td className="px-4 py-3">
@@ -517,7 +517,9 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                               }
                             }}
                             disabled={removeMutation.isPending}
-                            className="text-slate-400 hover:text-rose-600 transition p-1 hover:bg-rose-50 rounded-lg"
+                            className="transition p-1 rounded-lg" style={{ color: "var(--text-muted)" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = "#e11d48")}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
                             title="Revoke access"
                           >
                             <Trash2 size={14} />
@@ -540,17 +542,17 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           {/* Search & Assign Panel */}
           <aside className="panel p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                 <UserPlus size={16} className="text-emerald-600" />
                 Assign CDCR Member
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                 Search students of this college to grant CDCR coordination permissions.
               </p>
             </div>
 
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none" style={{ color: "var(--text-muted)" }}>
                 <Search size={14} />
               </div>
               <input
@@ -568,11 +570,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                   <Loader2 className="animate-spin text-slate-400" size={16} />
                 </div>
               ) : (searchResultsQuery.data || []).length ? (
-                <div className="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-60 overflow-y-auto shadow-inner">
+              <div className="rounded-xl border divide-y max-h-60 overflow-y-auto shadow-inner" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", borderTop: "none" }}>
                   {(searchResultsQuery.data || []).map((student) => {
                     const isAlreadyCdcr = (cdcrQuery.data || []).some((m) => m.userId === student.id);
                     return (
-                      <div key={student.id} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                      <div key={student.id} className="p-3 flex items-center justify-between gap-3 transition-colors" style={{ borderColor: "var(--border)" }}>
                         <div className="flex items-center gap-2 min-w-0">
                           {cleanLogoUrl(student.profile?.avatarUrl) ? (
                             <img
@@ -581,15 +583,15 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                               className="h-7 w-7 rounded-full object-cover border border-slate-100"
                             />
                           ) : (
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                               {student.profile?.fullName?.charAt(0) || "U"}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">
+                            <p className="text-xs font-bold truncate" style={{ color: "var(--text-primary)" }}>
                               {student.profile?.fullName || "User"}
                             </p>
-                            <p className="text-[10px] text-slate-400 truncate">
+                            <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>
                               @{student.username}
                             </p>
                           </div>
@@ -618,10 +620,10 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 text-center py-4">No matching students found.</p>
+                <p className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>No matching students found.</p>
               )
             ) : searchQuery.trim().length > 0 ? (
-              <p className="text-[10px] text-slate-400 text-center py-2">Type at least 2 characters to search.</p>
+              <p className="text-[10px] text-center py-2" style={{ color: "var(--text-muted)" }}>Type at least 2 characters to search.</p>
             ) : null}
             </aside>
 
@@ -632,11 +634,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             <div className="panel p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                     <Zap size={16} className="text-indigo-600" />
                     Placement Drives
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">All drives for this college — create, manage status, and track applications.</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>All drives for this college — create, manage status, and track applications.</p>
                 </div>
                 <button
                   type="button"
@@ -650,9 +652,9 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
               {allDrivesQuery.isLoading ? (
                 <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
               ) : (allDrivesQuery.data || []).length ? (
-                <div className="overflow-hidden rounded-xl border border-slate-100">
+                <div className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)" }}>
                   <table className="w-full border-collapse text-left text-xs">
-                    <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <thead className="text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                       <tr>
                         <th className="px-4 py-3">Drive</th>
                         <th className="px-4 py-3">Company</th>
@@ -661,15 +663,15 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y" style={{ borderColor: "var(--border)" }}>
                       {(allDrivesQuery.data || []).map((drive) => (
                         <tr key={drive.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-4 py-3">
-                            <p className="font-bold text-slate-800 truncate max-w-[180px]">{drive.driveTitle}</p>
-                            {drive.roles.length > 0 && <p className="text-[10px] text-slate-400">{drive.roles.join(", ")}</p>}
+                            <p className="font-bold truncate max-w-[180px]" style={{ color: "var(--text-primary)" }}>{drive.driveTitle}</p>
+                            {drive.roles.length > 0 && <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{drive.roles.join(", ")}</p>}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">{drive.company?.name}</td>
-                          <td className="px-4 py-3 text-slate-500">{drive.driveDate ? formatDate(drive.driveDate) : "—"}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{drive.company?.name}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{drive.driveDate ? formatDate(drive.driveDate) : "—"}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
                               drive.status === "ONGOING" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
@@ -724,11 +726,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           {tpoSubTab === "invites" && (
             <div className="panel p-5 space-y-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                   <Building2 size={16} className="text-violet-600" />
                   Company Invitations
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Companies requesting to conduct placement drives at your college.</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Companies requesting to conduct placement drives at your college.</p>
               </div>
 
               {driveInvitesQuery.isLoading ? (
@@ -737,17 +739,17 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 <div className="space-y-3">
                   {(driveInvitesQuery.data || []).map((invite) => (
                     <div key={invite.id} className={`rounded-xl border p-4 space-y-3 transition ${
-                      invite.status === "PENDING" ? "border-violet-200 bg-violet-50/30" : "border-slate-100 bg-white opacity-60"
+                      invite.status === "PENDING" ? "border-violet-200 dark:border-violet-700 bg-violet-50/30 dark:bg-violet-900/10" : "opacity-60"
                     }`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{invite.driveTitle}</p>
-                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                          <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{invite.driveTitle}</p>
+                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
                             <Building2 size={10} />
                             {invite.company?.name}
                           </p>
                           {invite.message && (
-                            <p className="text-xs text-slate-600 mt-1.5 italic border-l-2 border-violet-300 pl-2">"{invite.message}"</p>
+                            <p className="text-xs mt-1.5 italic border-l-2 border-violet-300 pl-2" style={{ color: "var(--text-secondary)" }}>"{ invite.message}"</p>
                           )}
                         </div>
                         <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -760,7 +762,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                      <div className="flex flex-wrap gap-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
                         {invite.driveDate && <span className="flex items-center gap-1"><Calendar size={9} />Drive: {formatDate(invite.driveDate)}</span>}
                         {invite.applyDeadline && <span className="flex items-center gap-1"><Clock size={9} />Deadline: {formatDate(invite.applyDeadline)}</span>}
                         {invite.roles.length > 0 && <span>Roles: {invite.roles.join(", ")}</span>}
@@ -804,11 +806,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           {tpoSubTab === "alumni" && (
             <div className="panel p-5 space-y-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-950 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                   <ShieldCheck size={16} className="text-emerald-600" />
                   Alumni Verification Requests
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Review and verify alumni status claims from graduates of your institution.</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Review and verify alumni status claims from graduates of your institution.</p>
               </div>
 
               {alumniClaimsQuery.isLoading ? (
@@ -819,8 +821,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                     <ShieldCheck size={22} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-700">No pending alumni claims</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xs">When graduates claim their alumni status, their requests will appear here for your review.</p>
+                  <p className="text-sm font-bold" style={{ color: "var(--text-secondary)" }}>No pending alumni claims</p>
+                    <p className="text-xs mt-1 max-w-xs" style={{ color: "var(--text-muted)" }}>When graduates claim their alumni status, their requests will appear here for your review.</p>
                   </div>
                 </div>
               ) : (
@@ -840,10 +842,10 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">
+                          <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)" }}>
                             {claim.user?.profile?.fullName || claim.user?.username || "Unknown Student"}
                           </p>
-                          <p className="text-xs text-slate-500 truncate">
+                          <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
                             @{claim.user?.username} · {claim.user?.email}
                           </p>
                           <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
@@ -880,15 +882,15 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           {tpoSubTab === "stats" && (
             <div className="space-y-6">
               {/* Year filter selector */}
-              <div className="panel p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-100 shadow-sm rounded-xl">
+              <div className="panel p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">Placement & Internship Analytics</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Academic statistics and performance overview.</p>
+                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Placement &amp; Internship Analytics</h3>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Academic statistics and performance overview.</p>
                 </div>
                 <select
                   value={selectedYear || ""}
                   onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : undefined)}
-                  className="field py-1 px-3 text-xs w-full sm:w-48 bg-white border border-slate-200 rounded-lg shadow-sm"
+                  className="field py-1 px-3 text-xs w-full sm:w-48 rounded-lg shadow-sm" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
                 >
                   <option value="">All Academic Years</option>
                   <option value="2026">2026 - 2027</option>
@@ -898,12 +900,12 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
               </div>
 
               {statsQuery.isLoading ? (
-                <div className="panel p-12 flex flex-col items-center justify-center bg-white border border-slate-100 shadow-sm rounded-xl">
+                <div className="panel p-12 flex flex-col items-center justify-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
                   <Loader2 size={32} className="animate-spin text-indigo-600 mb-2" />
                   <p className="text-xs text-slate-400">Loading statistics...</p>
                 </div>
               ) : statsQuery.error || !statsQuery.data ? (
-                <div className="panel p-12 flex flex-col items-center justify-center bg-white border border-slate-100 shadow-sm rounded-xl text-slate-400">
+                <div className="panel p-12 flex flex-col items-center justify-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl text-slate-400">
                   <Building2 size={40} className="mb-2 text-slate-300" />
                   <p className="text-sm font-semibold">No statistical data available</p>
                   <p className="text-xs text-slate-400 mt-1">Try changing the year filter or adding placement drives.</p>
@@ -912,65 +914,65 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 <>
                   {/* KPI Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Total Drives</span>
-                      <span className="text-3xl font-extrabold text-slate-800 mt-2">{statsQuery.data.summary.totalDrives}</span>
-                      <span className="text-[10px] text-slate-400 mt-1.5">{statsQuery.data.summary.totalInternshipDrives} Internship drives</span>
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Total Drives</span>
+                      <span className="text-3xl font-extrabold mt-2" style={{ color: "var(--text-primary)" }}>{statsQuery.data.summary.totalDrives}</span>
+                      <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>{statsQuery.data.summary.totalInternshipDrives} Internship drives</span>
                     </div>
 
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Total Applicants</span>
-                      <span className="text-3xl font-extrabold text-slate-800 mt-2">{statsQuery.data.summary.totalApplicants}</span>
-                      <span className="text-[10px] text-slate-400 mt-1.5">Applications received</span>
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Total Applicants</span>
+                      <span className="text-3xl font-extrabold mt-2" style={{ color: "var(--text-primary)" }}>{statsQuery.data.summary.totalApplicants}</span>
+                      <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>Applications received</span>
                     </div>
 
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Students Placed</span>
-                      <span className="text-3xl font-extrabold text-emerald-600 mt-2">{statsQuery.data.summary.totalSelected}</span>
-                      <span className="text-[10px] text-slate-400 mt-1.5">Successful offers</span>
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Students Placed</span>
+                      <span className="text-3xl font-extrabold mt-2 text-emerald-600">{statsQuery.data.summary.totalSelected}</span>
+                      <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>Successful offers</span>
                     </div>
 
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Placement %</span>
-                      <span className="text-3xl font-extrabold text-indigo-600 mt-2">{statsQuery.data.summary.placementPercent}%</span>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Placement %</span>
+                      <span className="text-3xl font-extrabold mt-2 text-indigo-600">{statsQuery.data.summary.placementPercent}%</span>
+                      <div className="w-full h-1.5 rounded-full mt-2.5 overflow-hidden" style={{ background: "var(--bg-surface-2)" }}>
                         <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${statsQuery.data.summary.placementPercent}%` }} />
                       </div>
                     </div>
 
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Avg Package</span>
-                      <span className="text-3xl font-extrabold text-slate-800 mt-2">
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Avg Package</span>
+                      <span className="text-3xl font-extrabold mt-2" style={{ color: "var(--text-primary)" }}>
                         {statsQuery.data.summary.avgPackageLPA ? `${statsQuery.data.summary.avgPackageLPA} LPA` : "N/A"}
                       </span>
-                      <span className="text-[10px] text-slate-400 mt-1.5">Average selected salary</span>
+                      <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>Average selected salary</span>
                     </div>
 
-                    <div className="panel p-4 flex flex-col bg-white border border-slate-100 shadow-sm rounded-xl">
-                      <span className="text-xs font-semibold text-slate-400">Max Package</span>
-                      <span className="text-3xl font-extrabold text-slate-800 mt-2">
+                    <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
+                      <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Max Package</span>
+                      <span className="text-3xl font-extrabold mt-2" style={{ color: "var(--text-primary)" }}>
                         {statsQuery.data.summary.maxPackageLPA ? `${statsQuery.data.summary.maxPackageLPA} LPA` : "N/A"}
                       </span>
-                      <span className="text-[10px] text-slate-400 mt-1.5">Highest offer package</span>
+                      <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>Highest offer package</span>
                     </div>
                   </div>
 
                   {/* Branch & Company Graphs/Lists */}
                   <div className="grid gap-6 lg:grid-cols-2">
                     {/* Branch Breakdown */}
-                    <div className="panel p-5 bg-white border border-slate-100 shadow-sm rounded-xl space-y-4">
-                      <h4 className="text-sm font-bold text-slate-800">Branch Performance</h4>
+                    <div className="panel p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl space-y-4">
+                      <h4 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Branch Performance</h4>
                       {statsQuery.data.byBranch.length === 0 ? (
                         <div className="text-center py-12 text-slate-400 text-xs">No department data available.</div>
                       ) : (
                         <div className="space-y-4">
                           {statsQuery.data.byBranch.map((b) => (
                             <div key={b.branch} className="space-y-1.5">
-                              <div className="flex justify-between text-xs font-bold text-slate-700">
+                              <div className="flex justify-between text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
                                 <span>{b.branch}</span>
                                 <span className="text-slate-500">{b.selected} / {b.total} placed ({b.placementPercent}%)</span>
                               </div>
-                              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-3 w-full rounded-full overflow-hidden" style={{ background: "var(--bg-surface-2)" }}>
                                 <div 
                                   className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
                                   style={{ width: `${b.placementPercent}%` }}
@@ -984,15 +986,15 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
                     {/* Top Companies */}
                     <div className="panel p-5 bg-white border border-slate-100 shadow-sm rounded-xl space-y-4">
-                      <h4 className="text-sm font-bold text-slate-800">Top Hiring Partners</h4>
+                      <h4 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Top Hiring Partners</h4>
                       {statsQuery.data.byCompany.length === 0 ? (
                         <div className="text-center py-12 text-slate-400 text-xs">No partner hiring data available.</div>
                       ) : (
-                        <div className="divide-y divide-slate-100">
+                        <div className="divide-y" style={{ borderColor: "var(--border)" }}>
                           {statsQuery.data.byCompany.map((c, idx) => (
                             <div key={c.companyId} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                               <div className="flex items-center gap-3">
-                                <span className="text-xs font-extrabold text-slate-400 w-4">#{idx + 1}</span>
+                                <span className="text-xs font-extrabold w-4" style={{ color: "var(--text-muted)" }}>#{idx + 1}</span>
                                 {c.companyLogo ? (
                                   <img src={cleanLogoUrl(c.companyLogo) || undefined} alt={c.companyName} className="h-7 w-7 rounded-lg object-contain bg-slate-50 border border-slate-100 p-0.5" />
                                 ) : (
@@ -1000,7 +1002,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                                     {c.companyName.charAt(0)}
                                   </div>
                                 )}
-                                <span className="text-xs font-bold text-slate-700">{c.companyName}</span>
+                                <span className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>{c.companyName}</span>
                               </div>
                               <div className="text-right">
                                 <p className="text-xs font-bold text-indigo-600">{c.offers} {c.offers === 1 ? 'Offer' : 'Offers'}</p>
@@ -1087,7 +1089,7 @@ export function CollegesPage() {
 
       <div className="panel p-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: "var(--text-muted)" }} />
           <input
             className="field pl-9"
             value={query}
@@ -1098,7 +1100,7 @@ export function CollegesPage() {
       </div>
 
       {isFetchingList && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
           <Loader2 className="animate-spin" size={16} />
           Loading colleges
         </div>
