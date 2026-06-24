@@ -61,8 +61,8 @@ function ReceivedInvitesPanel() {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Project invites</h3>
-        {invitesQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Project invites</h3>
+        {invitesQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {pendingInvites.map((invite) => (
@@ -88,19 +88,19 @@ function InviteCard({
   onReject: () => void;
 }) {
   return (
-    <article className="rounded-md border border-emerald-100 bg-emerald-50/60 p-4">
+    <article className="rounded-md border border-emerald-200 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-900/20 p-4">
       <div className="flex items-center gap-3">
         <Avatar user={invite.invitedBy || invite.project?.owner} size="sm" />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-950">
+          <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {invite.project?.title || "Project invite"}
           </div>
-          <div className="truncate text-xs text-slate-500">
+          <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
             From {userName(invite.invitedBy || invite.project?.owner)}
           </div>
         </div>
       </div>
-      {invite.message && <p className="mt-3 text-sm text-slate-600">{invite.message}</p>}
+      {invite.message && <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>{invite.message}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <button className="btn-primary px-3 py-1.5" type="button" onClick={onAccept}>
           <Check size={15} />
@@ -157,7 +157,7 @@ function ProjectEditor({ project }: { project: Project }) {
 
   return (
     <form className="panel p-5" onSubmit={submit}>
-      <h3 className="text-sm font-semibold text-slate-950">Project settings</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Project settings</h3>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <input
           className="field"
@@ -258,7 +258,7 @@ function ProjectOwnerActions({ project }: { project: Project }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Owner actions</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Owner actions</h3>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button
           className="btn-secondary justify-start"
@@ -288,7 +288,7 @@ function ProjectOwnerActions({ project }: { project: Project }) {
           Sync GitHub
         </button>
         <button
-          className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:text-slate-300"
+          className="justify-start rounded-md border px-4 py-2 text-sm font-semibold transition hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-700 hover:border-rose-300 disabled:opacity-40" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
           type="button"
           disabled={lifecycle.isPending}
           onClick={() => {
@@ -313,8 +313,8 @@ function JoinRequestsPanel({ project }: { project: Project }) {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Join requests</h3>
-        {requestsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Join requests</h3>
+        {requestsQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
       <div className="mt-4 space-y-3">
         {requests.length ? (
@@ -327,7 +327,7 @@ function JoinRequestsPanel({ project }: { project: Project }) {
             />
           ))
         ) : (
-          <p className="text-sm text-slate-500">No join requests yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No join requests yet.</p>
         )}
       </div>
     </div>
@@ -344,22 +344,22 @@ function JoinRequestRow({
   onReject: () => void;
 }) {
   return (
-    <article className="rounded-md border border-slate-100 p-3">
+    <article className="rounded-md border p-3" style={{ borderColor: "var(--border)" }}>
       <div className="flex gap-3">
         <Avatar user={request.user} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-slate-900">
+              <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {userName(request.user)}
               </div>
-              <div className="truncate text-xs text-slate-500">
+              <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                 {userHeadline(request.user) || formatDate(request.createdAt)}
               </div>
             </div>
             <StatusBadge value={request.status} />
           </div>
-          {request.message && <p className="mt-2 text-sm text-slate-600">{request.message}</p>}
+          {request.message && <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{request.message}</p>}
           {request.status === "PENDING" && (
             <div className="mt-3 flex gap-2">
               <button className="btn-primary px-3 py-1.5" type="button" onClick={onAccept}>
@@ -394,7 +394,7 @@ function InviteUserPanel({ project }: { project: Project }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Invite collaborator</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Invite collaborator</h3>
       <form className="mt-4 flex gap-2" onSubmit={submit}>
         <input
           className="field"
@@ -423,16 +423,16 @@ function InviteUserPanel({ project }: { project: Project }) {
 
           return (
             <div
-              className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
+              className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }}
               key={foundUser.id}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar user={foundUser} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {userName(foundUser)}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {userHeadline(foundUser) || `@${foundUser.username}`}
                   </div>
                 </div>
@@ -471,21 +471,21 @@ function SentInvitesPanel({ project }: { project: Project }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Sent invites</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Sent invites</h3>
       <div className="mt-4 space-y-2">
         {invites.length ? (
           invites.map((invite) => (
             <div
-              className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3"
+              className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }}
               key={invite.id}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar user={invite.invitedUser} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {userName(invite.invitedUser)}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {formatDate(invite.createdAt)}
                   </div>
                 </div>
@@ -494,7 +494,7 @@ function SentInvitesPanel({ project }: { project: Project }) {
             </div>
           ))
         ) : (
-          <p className="text-sm text-slate-500">No invites sent yet.</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>No invites sent yet.</p>
         )}
       </div>
     </div>
@@ -528,8 +528,8 @@ function ProjectJoinPanel({ project }: { project: Project }) {
   if (!user) {
     return (
       <div className="panel p-5">
-        <h3 className="text-sm font-semibold text-slate-950">Join project</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Join project</h3>
+        <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-muted)" }}>
           Sign in to request access and collaborate with this team.
         </p>
         <Link className="btn-primary mt-4" to="/auth">
@@ -542,7 +542,7 @@ function ProjectJoinPanel({ project }: { project: Project }) {
   if (pendingRequest) {
     return (
       <div className="panel border-emerald-100 bg-emerald-50/40 p-5">
-        <h3 className="text-sm font-semibold text-slate-950">Join request pending</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Join request pending</h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           The owner can review your request from their project workspace.
         </p>
@@ -566,7 +566,7 @@ function ProjectJoinPanel({ project }: { project: Project }) {
 
   return (
     <form className="panel p-5" onSubmit={submit}>
-      <h3 className="text-sm font-semibold text-slate-950">Request to join</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Request to join</h3>
       <textarea
         className="field mt-4 min-h-24"
         value={message}
@@ -594,18 +594,18 @@ function MembersPanel({
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Members</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Members</h3>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {(project.members || []).slice(0, 12).map((member) => (
-          <div className="rounded-md border border-slate-100 p-3" key={member.id || member.userId}>
+          <div className="rounded-md border p-3" key={member.id || member.userId} style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar user={member.user} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {userName(member.user)}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {titleCase(member.role)} {member.joinedAt ? `- ${formatDate(member.joinedAt)}` : ""}
                   </div>
                 </div>
@@ -650,7 +650,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
   if (projectQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <Loader2 className="animate-spin" size={16} />
         Loading project
       </div>
@@ -671,7 +671,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-bold text-slate-950">{project.title}</h2>
+              <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{project.title}</h2>
               {project.verified && (
                 <span className="chip text-emerald-700">
                   <Check size={13} />
@@ -681,7 +681,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
               {project.trustLevel && <StatusBadge value={project.trustLevel} />}
               <StatusBadge value={project.status || "OPEN"} />
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
               {project.shortDescription || project.description}
             </p>
           </div>
@@ -725,7 +725,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
       <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
         <div className="space-y-5">
           <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Public project details</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Public project details</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Metric label="Pull requests" value={formatCount(project.pullRequestsCount)} />
               <Metric label="Contributors" value={formatCount(project.contributorsCount)} />
@@ -742,15 +742,15 @@ function ProjectDetail({ projectId }: { projectId: string }) {
                   </span>
                 ))
               ) : (
-                <span className="text-sm text-slate-500">No stack listed yet.</span>
+                <span className="text-sm" style={{ color: "var(--text-muted)" }}>No stack listed yet.</span>
               )}
             </div>
             {languageEntries.length > 0 && (
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
                 {languageEntries.map(([language, value]) => (
-                  <div className="rounded-md border border-slate-100 p-3" key={language}>
-                    <div className="truncate text-sm font-semibold text-slate-900">{language}</div>
-                    <div className="mt-1 text-xs text-slate-500">{formatCount(Number(value))}</div>
+                  <div className="rounded-md border p-3" key={language} style={{ borderColor: "var(--border)" }}>
+                    <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{language}</div>
+                    <div className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>{formatCount(Number(value))}</div>
                   </div>
                 ))}
               </div>
@@ -765,14 +765,14 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
         <aside className="space-y-5">
           <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Owner</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Owner</h3>
             <div className="mt-4 flex items-center gap-3">
               <Avatar user={project.owner} />
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-950">
+                <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                   {userName(project.owner)}
                 </div>
-                <div className="truncate text-xs text-slate-500">
+                <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                   {userHeadline(project.owner) || project.owner?.username}
                 </div>
               </div>
@@ -785,20 +785,20 @@ function ProjectDetail({ projectId }: { projectId: string }) {
           {owner && <SentInvitesPanel project={project} />}
 
           <div className="panel p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Open roles</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Open roles</h3>
             <div className="mt-4 space-y-3">
               {(project.requiredRoles || []).length ? (
                 (project.requiredRoles || []).map((role) => (
-                  <div className="rounded-md border border-slate-100 p-3 text-sm text-slate-700" key={role.id}>
-                    <div className="font-semibold text-slate-900">{role.title}</div>
-                    {role.description && <p className="mt-1 text-xs text-slate-500">{role.description}</p>}
-                    <div className="mt-2 text-xs text-slate-500">
+                  <div className="rounded-md border p-3 text-sm" key={role.id} style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+                    <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{role.title}</div>
+                    {role.description && <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>{role.description}</p>}
+                    <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
                       {role.filledSlots || 0}/{role.slots || 1} filled
                     </div>
                   </div>
                 ))
               ) : (
-                <span className="text-sm text-slate-500">No open roles listed.</span>
+                <span className="text-sm" style={{ color: "var(--text-muted)" }}>No open roles listed.</span>
               )}
             </div>
           </div>
@@ -868,8 +868,8 @@ export function ProjectsPage() {
       <div className="panel p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Project workspace</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Project workspace</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Browse public builds, open detail views, request access, and manage owned projects.
             </p>
           </div>
@@ -909,7 +909,7 @@ export function ProjectsPage() {
         </div>
       </div>
       {projectsQuery.isFetching && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
           <Loader2 className="animate-spin" size={16} />
           Loading projects
         </div>

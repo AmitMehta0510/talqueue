@@ -81,8 +81,8 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
     <div className="panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Teams</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Teams</h2>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             Create working groups, manage members, and prepare hackathon squads.
           </p>
         </div>
@@ -92,7 +92,7 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
       </div>
 
       {open && (
-        <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={submit}>
+        <form className="mt-5 space-y-3 border-t pt-5" onSubmit={submit} style={{ borderColor: "var(--border)" }}>
           <div className="grid gap-3 md:grid-cols-2">
             <input
               className="field" value={form.name} required
@@ -107,7 +107,7 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
           </div>
 
           {/* Member search */}
-          <div className="rounded-md border border-slate-100 p-3">
+          <div className="rounded-md border p-3" style={{ borderColor: "var(--border)" }}>
             <div className="flex gap-2">
               <input
                 className="field" value={query}
@@ -139,14 +139,15 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
                   const selected = selectedMembers.some((m) => m.id === u.id);
                   return (
                     <button
-                      className={`flex items-center justify-between gap-3 rounded-md border p-3 text-left transition ${selected ? "border-emerald-300 bg-emerald-50" : "border-slate-100 hover:border-emerald-200 hover:bg-emerald-50"}`}
+                      className={`flex items-center justify-between gap-3 rounded-md border p-3 text-left transition ${selected ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700" : "hover:border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/10"}`}
+                      style={!selected ? { borderColor: "var(--border)" } : {}}
                       key={u.id} type="button" onClick={() => addMember(u)}
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <Avatar user={u} size="sm" />
                         <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-slate-900">{userName(u)}</span>
-                          <span className="block truncate text-xs text-slate-500">{userHeadline(u)}</span>
+                          <span className="block truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(u)}</span>
+                          <span className="block truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(u)}</span>
                         </span>
                       </span>
                       {selected ? <Check size={15} className="text-emerald-600" /> : <Plus size={15} />}
@@ -177,24 +178,24 @@ function PendingInvitesBanner() {
 
   return (
     <div className="panel overflow-hidden p-0">
-      <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-2">
-        <UserPlus size={15} className="text-amber-700" />
-        <span className="text-sm font-semibold text-amber-800">
+      <div className="border-b border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-2">
+        <UserPlus size={15} className="text-amber-700 dark:text-amber-400" />
+        <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
           You have {invites.length} pending team invite{invites.length !== 1 ? "s" : ""}
         </span>
       </div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
         {invites.map((invite: TeamInvite) => (
           <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {invite.team?.name || "Team"}
               </div>
-              <div className="mt-0.5 text-xs text-slate-500">
+              <div className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
                 Invited by {invite.invitedBy ? userName(invite.invitedBy) : "someone"} · {formatDate(invite.createdAt)}
               </div>
               {invite.message && (
-                <p className="mt-1 text-sm text-slate-600 italic">"{invite.message}"</p>
+                <p className="mt-1 text-sm italic" style={{ color: "var(--text-secondary)" }}>"{invite.message}"</p>
               )}
             </div>
             <div className="flex gap-2">
@@ -229,10 +230,10 @@ function TeamCard({ team }: { team: Team }) {
     <article className={`panel p-5 ${team.status === "ARCHIVED" ? "opacity-75" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold text-slate-950">
+          <h3 className="truncate text-base font-semibold" style={{ color: "var(--text-primary)" }}>
             <Link className="hover:text-emerald-700" to={`/teams/${team.id}`}>{team.name}</Link>
           </h3>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 line-clamp-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
             {team.description || "No description yet."}
           </p>
         </div>
@@ -247,22 +248,22 @@ function TeamCard({ team }: { team: Team }) {
           { label: "Reputation", value: formatCount(team.reputationScore) },
           { label: "Completed", value: formatCount(team.completedProjectsCount) },
         ].map(({ label, value }) => (
-          <div className="rounded-md border border-slate-100 p-3" key={label}>
-            <div className="font-semibold text-slate-900">{value}</div>
-            <div className="mt-1 text-slate-500">{label}</div>
+          <div className="rounded-md border p-3" key={label} style={{ borderColor: "var(--border)" }}>
+            <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{value}</div>
+            <div className="mt-1" style={{ color: "var(--text-muted)" }}>{label}</div>
           </div>
         ))}
       </div>
 
       <div className="mt-4 flex -space-x-2">
         {(team.members || []).slice(0, 6).map((m) => (
-          <div className="rounded-full border-2 border-white" key={m.id || m.userId}>
+          <div className="rounded-full border-2" key={m.id || m.userId} style={{ borderColor: "var(--bg-surface)" }}>
             <Avatar user={m.user} size="sm" />
           </div>
         ))}
       </div>
 
-      <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
+      <div className="mt-5 flex justify-end border-t pt-4" style={{ borderColor: "var(--border)" }}>
         <Link className="btn-secondary px-3 py-1.5" to={`/teams/${team.id}`}>Open</Link>
       </div>
     </article>
@@ -287,7 +288,7 @@ function EditTeamPanel({ team }: { team: Team }) {
   return (
     <div className="panel p-5">
       <button
-        className="flex w-full items-center justify-between text-sm font-semibold text-slate-950"
+        className="flex w-full items-center justify-between text-sm font-semibold" style={{ color: "var(--text-primary)" }}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="flex items-center gap-2"><Edit3 size={15} /> Edit team</span>
@@ -337,7 +338,7 @@ function InviteMemberPanel({ team }: { team: Team }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Invite members</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Invite members</h3>
       <form className="mt-4 flex gap-2" onSubmit={submitSearch}>
         <input
           className="field" value={query}
@@ -358,12 +359,12 @@ function InviteMemberPanel({ team }: { team: Team }) {
           const u: User = item?.id ? item : item?.user;
           if (!u?.id) return null;
           return (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={u.id}>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3" key={u.id} style={{ borderColor: "var(--border)" }}>
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar user={u} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">{userName(u)}</div>
-                  <div className="truncate text-xs text-slate-500">{userHeadline(u) || `@${u.username}`}</div>
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(u)}</div>
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(u) || `@${u.username}`}</div>
                 </div>
               </div>
               <button
@@ -377,7 +378,7 @@ function InviteMemberPanel({ team }: { team: Team }) {
           );
         })}
         {search.data && users.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-3">No engineers found — all matches are already members.</p>
+          <p className="text-sm text-center py-3" style={{ color: "var(--text-muted)" }}>No engineers found — all matches are already members.</p>
         )}
       </div>
     </div>
@@ -397,10 +398,10 @@ function MembersPanel({
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Members ({teamMemberCount(team)})</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Members ({teamMemberCount(team)})</h3>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {(team.members || []).map((member) => (
-          <div className="rounded-md border border-slate-100 p-3" key={member.id || member.userId}>
+          <div className="rounded-md border p-3" key={member.id || member.userId} style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between gap-3">
               <button
                 className="flex min-w-0 items-center gap-3 text-left"
@@ -408,8 +409,8 @@ function MembersPanel({
               >
                 <Avatar user={member.user} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">{userName(member.user)}</div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(member.user)}</div>
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {userHeadline(member.user) || formatDate(member.joinedAt)}
                   </div>
                 </div>
@@ -471,9 +472,9 @@ function TeamInvitesPanel({
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
         Invites
-        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{invites.length}</span>
+        <span className="ml-2 rounded-full px-2 py-0.5 text-xs" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>{invites.length}</span>
       </h3>
       <div className="mt-4 space-y-2">
         {invites.map((invite: TeamInvite) => {
@@ -481,19 +482,19 @@ function TeamInvitesPanel({
           const isPending = invite.status === "PENDING";
 
           return (
-            <div className="rounded-md border border-slate-100 p-3" key={invite.id}>
+            <div className="rounded-md border p-3" key={invite.id} style={{ borderColor: "var(--border)" }}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {invite.invitedUser ? userName(invite.invitedUser) : `User ${invite.invitedUserId.slice(0, 8)}`}
                   </div>
-                  <div className="text-xs text-slate-500">{formatDate(invite.createdAt)}</div>
+                  <div className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(invite.createdAt)}</div>
                 </div>
                 <span className={`chip border ${invite.status === "ACCEPTED" ? "text-emerald-700 border-emerald-200" : invite.status === "REJECTED" ? "text-rose-700 border-rose-200" : "border-slate-200"}`}>
                   {titleCase(invite.status)}
                 </span>
               </div>
-              {invite.message && <p className="mt-2 text-sm text-slate-600 italic">"{invite.message}"</p>}
+              {invite.message && <p className="mt-2 text-sm italic" style={{ color: "var(--text-secondary)" }}>"{invite.message}"</p>}
               {isPending && (
                 <div className="mt-3 flex gap-2">
                   {isRecipient && (
@@ -552,7 +553,7 @@ function TeamActions({
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Actions</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Actions</h3>
       <div className="mt-4 grid gap-2">
         {/* Leave (non-owner only) */}
         {!isOwner && (
@@ -586,7 +587,8 @@ function TeamActions({
         {/* Delete (owner only) */}
         {isOwner && (
           <button
-            className="justify-start rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 flex items-center gap-2 disabled:opacity-60"
+          className="justify-start rounded-md border px-4 py-2 text-sm font-semibold transition hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-700 hover:border-rose-300 flex items-center gap-2 disabled:opacity-60"
+            style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
             type="button" disabled={lifecycle.isPending}
             onClick={() => setShowDeleteConfirm(true)}
           >
@@ -598,26 +600,26 @@ function TeamActions({
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+          <div className="relative w-full max-w-md rounded-xl p-6 shadow-2xl" style={{ background: "var(--bg-surface)" }}>
             <div className="flex flex-col items-center text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100">
                 <AlertTriangle className="text-rose-600" size={28} />
               </div>
-              <h3 className="mt-4 text-lg font-bold text-slate-950">Delete "{team.name}"?</h3>
-              <p className="mt-2 text-sm text-slate-500">
+              <h3 className="mt-4 text-lg font-bold" style={{ color: "var(--text-primary)" }}>Delete "{team.name}"?</h3>
+              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
                 This will permanently delete the team and all associated data.{" "}
-                <strong className="text-slate-700">
+                <strong style={{ color: "var(--text-secondary)" }}>
                   {memberCount} member{memberCount !== 1 ? "s" : ""}
                 </strong>{" "}
                 will lose access. This action cannot be undone.
               </p>
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
                 Consider <strong>archiving</strong> instead — archived teams can be restored later.
               </p>
             </div>
             <div className="mt-6 flex gap-3">
               <button
-                className="flex-1 rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-md border py-2 text-sm font-semibold transition" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
                 type="button" onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancel
@@ -646,15 +648,15 @@ function TeamOwnerPanel({ team }: { team: Team }) {
 
   return (
     <div className="panel p-5">
-      <h3 className="text-sm font-semibold text-slate-950">Owner</h3>
+      <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Owner</h3>
       <button
         className="mt-4 flex w-full items-center gap-3 text-left"
         onClick={() => owner?.id && navigate(`/users/${owner.username || owner.id}`)}
       >
         <Avatar user={owner} />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-950">{userName(owner)}</div>
-          <div className="truncate text-xs text-slate-500">{userHeadline(owner) || owner?.username || "Team owner"}</div>
+          <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(owner)}</div>
+          <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(owner) || owner?.username || "Team owner"}</div>
         </div>
       </button>
     </div>
@@ -674,7 +676,7 @@ function TeamDetail({ teamId }: { teamId: string }) {
 
   if (teamQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <Loader2 className="animate-spin" size={16} /> Loading team
       </div>
     );
@@ -695,12 +697,12 @@ function TeamDetail({ teamId }: { teamId: string }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-bold text-slate-950">{team.name}</h2>
+              <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{team.name}</h2>
               <span className={`chip border ${statusColor(team.status)}`}>
                 {titleCase(team.status || "ACTIVE")}
               </span>
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
               {team.description || "No description yet."}
             </p>
           </div>
@@ -775,7 +777,7 @@ export function TeamsPage() {
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-[1fr_12rem]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: "var(--text-muted)" }} />
             <input
               className="field pl-9" value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -792,7 +794,7 @@ export function TeamsPage() {
       </div>
 
       {teamsQuery.isFetching && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
           <Loader2 className="animate-spin" size={16} /> Loading teams
         </div>
       )}
