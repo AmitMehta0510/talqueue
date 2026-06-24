@@ -9,7 +9,7 @@ import { cleanLogoUrl } from "../../lib/format";
 type Action = "VERIFY" | "REJECT";
 
 const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  "greenhouse-aggregate": { label: "Greenhouse", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-600/20" },
+  "greenhouse-aggregate": { label: "Greenhouse", color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-600/20" },
   "lever-aggregate":      { label: "Lever",       color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-600/20" },
   "seeded":               { label: "Seeded",      color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-600/20"     },
 };
@@ -98,11 +98,11 @@ export function DiscoveredCompaniesPanel() {
             id="trigger-company-discovery"
             disabled={triggerDiscovery.isPending}
             onClick={() => triggerDiscovery.mutate()}
-            className="flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition"
+            className="flex items-center gap-1.5 rounded-lg border border-indigo-600/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20 disabled:opacity-50 transition"
           >
             {triggerDiscovery.isPending ? (
               <>
-                <Loader2 size={12} className="animate-spin text-emerald-400" />
+                <Loader2 size={12} className="animate-spin text-indigo-400" />
                 Discovering...
               </>
             ) : (
@@ -129,9 +129,9 @@ export function DiscoveredCompaniesPanel() {
           <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">Pending Review</div>
           <div className="text-2xl font-black text-white">{total}</div>
         </div>
-        <div className="rounded-xl border border-emerald-600/20 bg-emerald-500/5 px-4 py-3">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-500/70 mb-0.5">Greenhouse</div>
-          <div className="text-2xl font-black text-emerald-400">
+        <div className="rounded-xl border border-indigo-600/20 bg-indigo-500/5 px-4 py-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-500/70 mb-0.5">Greenhouse</div>
+          <div className="text-2xl font-black text-indigo-400">
             {companies.filter((c) => c.discoveredVia === "greenhouse-aggregate").length}
           </div>
         </div>
@@ -149,7 +149,7 @@ export function DiscoveredCompaniesPanel() {
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             id="discovered-companies-search"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-indigo-500 focus:outline-none transition"
             placeholder="Filter by name or industry..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -165,7 +165,7 @@ export function DiscoveredCompaniesPanel() {
               id="bulk-verify-discovered"
               disabled={reviewMutation.isPending}
               onClick={() => handleBulkAction("VERIFY")}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition"
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50 transition"
             >
               {reviewMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
               Verify All
@@ -186,12 +186,12 @@ export function DiscoveredCompaniesPanel() {
       {/* Content */}
       {query.isPending ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={22} className="animate-spin text-emerald-500" />
+          <Loader2 size={22} className="animate-spin text-indigo-500" />
         </div>
       ) : total === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-600/20">
-            <Building2 size={28} className="text-emerald-400" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-600/20">
+            <Building2 size={28} className="text-indigo-400" />
           </div>
           <h3 className="font-bold text-zinc-300 mb-1">No Pending Companies</h3>
           <p className="text-sm text-zinc-500 max-w-xs">
@@ -211,7 +211,7 @@ export function DiscoveredCompaniesPanel() {
               type="checkbox"
               checked={allSelected}
               onChange={toggleSelectAll}
-              className="h-4 w-4 rounded border-zinc-600 accent-emerald-500 cursor-pointer"
+              className="h-4 w-4 rounded border-zinc-600 accent-indigo-500 cursor-pointer"
             />
             <span className="text-xs text-zinc-400">
               {allSelected ? `All ${filtered.length} companies selected` : `Select all ${filtered.length} on this page`}
@@ -230,7 +230,7 @@ export function DiscoveredCompaniesPanel() {
                   key={company.id}
                   className={`group rounded-xl border transition ${
                     isSelected
-                      ? "border-emerald-600/50 bg-emerald-500/5"
+                      ? "border-indigo-600/50 bg-indigo-500/5"
                       : "border-zinc-700/50 bg-zinc-800/40 hover:border-zinc-600"
                   }`}
                 >
@@ -241,7 +241,7 @@ export function DiscoveredCompaniesPanel() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelect(company.id)}
-                      className="h-4 w-4 shrink-0 rounded border-zinc-600 accent-emerald-500 cursor-pointer"
+                      className="h-4 w-4 shrink-0 rounded border-zinc-600 accent-indigo-500 cursor-pointer"
                     />
 
                     {/* Logo */}
@@ -301,7 +301,7 @@ export function DiscoveredCompaniesPanel() {
                         id={`verify-company-${company.id}`}
                         disabled={reviewMutation.isPending}
                         onClick={() => handleSingleAction(company.id, "VERIFY")}
-                        className="flex items-center gap-1 rounded-lg bg-emerald-600/20 border border-emerald-600/30 px-2.5 py-1.5 text-[11px] font-bold text-emerald-400 hover:bg-emerald-600/40 disabled:opacity-50 transition"
+                        className="flex items-center gap-1 rounded-lg bg-indigo-600/20 border border-indigo-600/30 px-2.5 py-1.5 text-[11px] font-bold text-indigo-400 hover:bg-indigo-600/40 disabled:opacity-50 transition"
                         title="Verify this company"
                       >
                         <CheckCircle size={11} />

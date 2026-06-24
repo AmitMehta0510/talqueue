@@ -643,7 +643,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
               <Icon size={16} />
               {label}
               {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
               )}
             </button>
           ))}
@@ -807,7 +807,7 @@ function ProfileHero({
         style={
           profile.profile?.bannerUrl
             ? { backgroundImage: `url(${profile.profile.bannerUrl})` }
-            : { background: "linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #1e3a5f 100%)" }
+            : { background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)" }
         }
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -822,7 +822,7 @@ function ProfileHero({
                 <Avatar user={profile} size="lg" />
               </div>
               {profile.verifiedEngineer && (
-                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white">
+                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 ring-2 ring-white">
                   <ShieldCheck size={13} className="text-white" />
                 </div>
               )}
@@ -848,7 +848,7 @@ function ProfileHero({
           <div className="flex items-center gap-3">
             <CompletionRing pct={completePct} />
             <span className="chip flex items-center gap-1.5">
-              <ShieldCheck size={13} className="text-emerald-600 dark:text-emerald-400" />
+              <ShieldCheck size={13} className="text-indigo-600 dark:text-indigo-400" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
           </div>
@@ -856,7 +856,7 @@ function ProfileHero({
 
         {/* Quick stats */}
         <div className="mt-5 flex flex-wrap gap-6 border-t pt-5 text-center" style={{ borderColor: "var(--border)" }}>
-          <QuickStat label="Reputation" value={formatCount(profile.reputationScore)} accent="emerald" />
+          <QuickStat label="Reputation" value={formatCount(profile.reputationScore)} accent="indigo" />
           <QuickStat label="Engineering" value={Math.round(profile.engineeringScore || 0)} accent="teal" />
           <QuickStat label="Followers" value={formatCount(profile.followersCount)} accent="slate" />
           <QuickStat label="Connections" value={formatCount(profile.connectionCount)} accent="slate" />
@@ -872,7 +872,7 @@ function ProfileHero({
                 href={href!}
                 target="_blank"
                 rel="noreferrer"
-                className="chip inline-flex items-center gap-1.5 transition hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400"
+                className="chip inline-flex items-center gap-1.5 transition hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-400"
               >
                 <Icon size={13} />
                 {label}
@@ -888,7 +888,7 @@ function ProfileHero({
             {availability.map((a) => (
               <span
                 key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
+                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700"
               >
                 <Zap size={11} />
                 {a}
@@ -918,7 +918,7 @@ function CompletionRing({ pct }: { pct: number }) {
             cy="28"
             r={r}
             fill="none"
-            stroke="#059669"
+            stroke="#6366f1"
             strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={circ}
@@ -940,11 +940,11 @@ function QuickStat({
 }: {
   label: string;
   value: string | number;
-  accent: "emerald" | "teal" | "slate";
+  accent: "indigo" | "teal" | "slate";
 }) {
   const textClass =
-    accent === "emerald"
-      ? "text-emerald-600 dark:text-emerald-400"
+    accent === "indigo"
+      ? "text-indigo-600 dark:text-indigo-400"
       : accent === "teal"
         ? "text-teal-600 dark:text-teal-400"
         : "";
@@ -1009,7 +1009,7 @@ function AboutTab({
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--bg-surface-2)" }}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700"
+              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-500 transition-all duration-700"
               style={{ width: `${tasks.length ? (completedTasks / tasks.length) * 100 : 0}%` }}
             />
           </div>
@@ -1020,7 +1020,7 @@ function AboutTab({
                 <div
                   key={task.label}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${task.complete
-                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
                       : ""
                     }`}
                   style={!task.complete ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}
@@ -1050,7 +1050,7 @@ function AboutTab({
                   href={profile.profile.githubUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-emerald-700 hover:underline"
+                  className="text-indigo-700 hover:underline"
                 >
                   GitHub
                 </a>
@@ -1145,7 +1145,7 @@ function ExperienceTab({
         </div>
         <button
           id="profile-add-experience-btn"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800"
           onClick={editingId ? onCancel : onToggleForm}
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
@@ -1253,7 +1253,7 @@ function ExperienceTab({
                 />
               </Field>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-500 border-base bg-surface text-secondary">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-indigo-500 border-base bg-surface text-secondary">
                   <input
                     type="checkbox"
                     checked={form.isCurrent}
@@ -1411,7 +1411,7 @@ function SkillsTab({
         <button
           onClick={onVerify}
           disabled={isVerifying}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:opacity-50"
         >
           {isVerifying ? (
             <Loader2 className="animate-spin" size={15} />
@@ -1523,7 +1523,7 @@ function EducationTab({
         </div>
         <button
           id="profile-add-education-btn"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800"
           onClick={editingId ? onCancel : onToggleForm}
         >
           {showForm ? <X size={15} /> : <Plus size={15} />}
@@ -1557,7 +1557,7 @@ function EducationTab({
                         {collegeResults.map((college) => (
                           <button
                             key={college.id}
-                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-500/10"
+                            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-indigo-500/10"
                             type="button"
                             onClick={() => onSelectCollege(college)}
                           >
@@ -1715,7 +1715,7 @@ function EducationTab({
                 </Field>
               </div>
               <div className="flex items-center">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-emerald-500 border-base bg-surface text-secondary">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition hover:border-indigo-500 border-base bg-surface text-secondary">
                   <input
                     type="checkbox"
                     checked={form.current}
@@ -1953,7 +1953,7 @@ function SettingsTab({
             <div className="mt-1 flex flex-col gap-2">
               {profileForm.avatarUrl && (
                 <div className="flex items-center gap-2">
-                  <img src={profileForm.avatarUrl} alt="Avatar Preview" className="h-12 w-12 rounded-full object-cover ring-2 ring-emerald-500/20" />
+                  <img src={profileForm.avatarUrl} alt="Avatar Preview" className="h-12 w-12 rounded-full object-cover ring-2 ring-indigo-500/20" />
                   <span className="text-xs truncate max-w-xs text-muted-fg">{profileForm.avatarUrl}</span>
                 </div>
               )}
@@ -1963,9 +1963,9 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleAvatarChange}
                   disabled={avatarUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 transition text-muted-fg"
                 />
-                {avatarUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+                {avatarUpload.uploading && <Loader2 className="animate-spin text-indigo-600 shrink-0" size={16} />}
               </div>
             </div>
           </Field>
@@ -1974,7 +1974,7 @@ function SettingsTab({
             <div className="mt-1 flex flex-col gap-2">
               {profileForm.bannerUrl && (
                 <div className="flex flex-col gap-1">
-                  <img src={profileForm.bannerUrl} alt="Banner Preview" className="h-20 w-full rounded-xl object-cover ring-2 ring-emerald-500/20" />
+                  <img src={profileForm.bannerUrl} alt="Banner Preview" className="h-20 w-full rounded-xl object-cover ring-2 ring-indigo-500/20" />
                   <span className="text-xs truncate max-w-xs text-muted-fg">{profileForm.bannerUrl}</span>
                 </div>
               )}
@@ -1984,9 +1984,9 @@ function SettingsTab({
                   accept="image/*"
                   onChange={handleBannerChange}
                   disabled={bannerUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 transition text-muted-fg"
                 />
-                {bannerUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+                {bannerUpload.uploading && <Loader2 className="animate-spin text-indigo-600 shrink-0" size={16} />}
               </div>
             </div>
           </Field>
@@ -2030,7 +2030,7 @@ function SettingsTab({
                     href={profileForm.resumeUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 hover:underline"
                   >
                     <ExternalLink size={12} /> View current resume
                   </a>
@@ -2043,9 +2043,9 @@ function SettingsTab({
                   accept="application/pdf"
                   onChange={handleResumeChange}
                   disabled={resumeUpload.uploading}
-                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 dark:file:bg-emerald-900/30 file:text-emerald-700 dark:file:text-emerald-300 hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/50 transition text-muted-fg"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 transition text-muted-fg"
                 />
-                {resumeUpload.uploading && <Loader2 className="animate-spin text-emerald-600 shrink-0" size={16} />}
+                {resumeUpload.uploading && <Loader2 className="animate-spin text-indigo-600 shrink-0" size={16} />}
               </div>
             </div>
           </Field>
@@ -2143,13 +2143,13 @@ function SkillManager({
                     skillSearch.data.slice(0, 8).map((skill) => (
                       <button
                         key={skill.id}
-                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-emerald-500/10"
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-indigo-500/10"
                         type="button"
                         onClick={() => selectSkill(skill)}
                       >
                         <span className="font-medium text-primary">{skill.name}</span>
                         {skill.verified && (
-                          <span className="rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700">
+                          <span className="rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-xs text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700">
                             Verified
                           </span>
                         )}
@@ -2159,7 +2159,7 @@ function SkillManager({
                     <div className="p-3">
                       <p className="text-sm text-muted-fg">No matching skills found.</p>
                       <button
-                        className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2.5 text-left text-sm font-medium text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                        className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2.5 text-left text-sm font-medium text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                         type="button"
                         disabled={creatingCustom}
                         onClick={handleCreateCustomSkill}
@@ -2176,11 +2176,11 @@ function SkillManager({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 p-4 transition-all bg-brand-light/20">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-muted-fg">Selected Skill:</span>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm">
                   {selectedSkill.name}
                   <button
                     type="button"
-                    className="rounded-full p-0.5 hover:bg-emerald-700 transition"
+                    className="rounded-full p-0.5 hover:bg-indigo-700 transition"
                     onClick={() => setSelectedSkill(null)}
                     title="Change skill"
                   >

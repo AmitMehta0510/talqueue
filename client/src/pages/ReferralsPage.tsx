@@ -44,7 +44,7 @@ export function ReferralsPage() {
     switch (status) {
       case "ACCEPTED":
         return (
-          <span className="chip bg-emerald-50 text-emerald-800 border-emerald-100 flex items-center gap-1 font-semibold">
+          <span className="chip bg-indigo-50 text-indigo-800 border-indigo-100 flex items-center gap-1 font-semibold">
             <CheckCircle size={12} />
             Accepted
           </span>
@@ -160,7 +160,7 @@ export function ReferralsPage() {
                       Opening Information
                     </span>
                     <div className="flex items-start gap-2.5 border rounded-lg p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
-                      <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 mt-0.5">
+                      <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 mt-0.5">
                         <Building2 size={18} />
                       </div>
                       <div>
@@ -173,7 +173,7 @@ export function ReferralsPage() {
                             href={req.jobUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 mt-2 text-emerald-700 hover:text-emerald-900 transition font-semibold"
+                            className="inline-flex items-center gap-1 mt-2 text-indigo-700 hover:text-indigo-900 transition font-semibold"
                           >
                             View Job Link <ExternalLink size={12} />
                           </a>
@@ -339,7 +339,7 @@ export function ReferralsPage() {
                   </div>
 
                   <div className="flex items-start gap-3 border rounded-lg p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
-                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 mt-0.5">
+                    <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800 mt-0.5">
                       <Sparkles size={16} />
                     </div>
                     <div>
@@ -352,7 +352,7 @@ export function ReferralsPage() {
                           href={req.jobUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 mt-2 text-emerald-700 hover:text-emerald-900 transition font-semibold"
+                          className="inline-flex items-center gap-1 mt-2 text-indigo-700 hover:text-indigo-900 transition font-semibold"
                         >
                           View Job Posting <ExternalLink size={12} />
                         </a>

@@ -629,7 +629,10 @@ export type Job = {
     slug?: string;
   };
   createdAt?: string;
+  /** Source posting date from ATS (Greenhouse/Lever/Ashby). Null for manually posted jobs. */
+  postedAt?: string | null;
 };
+
 
 export type ExternalAppStatus =
   | "APPLIED"
@@ -2511,14 +2514,43 @@ export const api = {
     }),
   deleteHackathon: (hackathonId: string) =>
     request<Hackathon>(`/hackathons/${hackathonId}`, { method: "DELETE" }),
-  jobs: (params?: { page?: number; limit?: number }, options?: EndpointOptions) =>
-    request<{
+  jobs: (
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      workMode?: string[];
+      jobType?: string[];
+      skills?: string[];
+      location?: string[];
+      freshness?: string | null;
+    },
+    options?: EndpointOptions,
+  ) => {
+    const flatParams = params
+      ? {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          workMode: params.workMode?.join(","),
+          jobType: params.jobType?.join(","),
+          skills: params.skills?.join(","),
+          location: params.location?.join(","),
+          freshness: params.freshness || undefined,
+        }
+      : {};
+    return request<{
       jobs: Job[];
       total: number;
       page: number;
       limit: number;
       totalPages: number;
-    }>(`/jobs${toQuery(params || {})}`, options),
+    }>(`/jobs${toQuery(flatParams)}`, options);
+  },
+  jobSkillsAutocomplete: (q: string, limit = 15, options?: EndpointOptions) =>
+    request<string[]>(`/jobs/skills/autocomplete${toQuery({ q, limit })}`, options),
+  jobLocationsAutocomplete: (q: string, limit = 15, options?: EndpointOptions) =>
+    request<string[]>(`/jobs/locations/autocomplete${toQuery({ q, limit })}`, options),
   createJob: (body: {
     companyId?: string;
     companyName?: string;

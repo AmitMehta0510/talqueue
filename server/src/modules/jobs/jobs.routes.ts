@@ -1,8 +1,6 @@
-import { Router }
-from "express";
+import { Router } from "express";
 
-import { protect }
-from "modules/auth/auth.middleware";
+import { protect } from "modules/auth/auth.middleware";
 
 import {
   createJobHandler,
@@ -10,6 +8,8 @@ import {
   getJobBySlugHandler,
   getCompanyJobsHandler,
   getRecruiterJobsHandler,
+  getJobSkillsAutocompleteHandler,
+  getJobLocationsAutocompleteHandler,
   seedJobsHandler,
 } from "./jobs.controller";
 
@@ -18,34 +18,45 @@ const router = Router();
 router.post(
   "/",
   protect,
-  createJobHandler
+  createJobHandler,
 );
 
 router.post(
   "/seed",
   protect,
-  seedJobsHandler
+  seedJobsHandler,
 );
 
 router.get(
   "/",
-  getJobsHandler
+  getJobsHandler,
 );
 
 router.get(
   "/my/jobs",
   protect,
-  getRecruiterJobsHandler
+  getRecruiterJobsHandler,
+);
+
+// ─── Autocomplete endpoints (must be before /:slug to avoid shadowing) ────────
+router.get(
+  "/skills/autocomplete",
+  getJobSkillsAutocompleteHandler,
+);
+
+router.get(
+  "/locations/autocomplete",
+  getJobLocationsAutocompleteHandler,
 );
 
 router.get(
   "/company/:companyId",
-  getCompanyJobsHandler
+  getCompanyJobsHandler,
 );
 
 router.get(
   "/:slug",
-  getJobBySlugHandler
+  getJobBySlugHandler,
 );
 
 export default router;

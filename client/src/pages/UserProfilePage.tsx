@@ -149,7 +149,7 @@ export function UserProfilePage() {
           style={
             profile.profile?.bannerUrl
               ? { backgroundImage: `url(${profile.profile.bannerUrl})` }
-              : { background: "linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #1e3a5f 100%)" }
+              : { background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)" }
           }
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -164,7 +164,7 @@ export function UserProfilePage() {
                   <Avatar user={profile} size="lg" />
                 </div>
                 {profile.verifiedEngineer && (
-                  <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 ring-2 ring-white dark:ring-slate-800">
+                  <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-800">
                     <ShieldCheck size={13} className="text-white" />
                   </div>
                 )}
@@ -187,7 +187,7 @@ export function UserProfilePage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 id="user-profile-message-btn"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:opacity-50"
                 disabled={createDirectConversation.isPending}
                 onClick={startConversation}
               >
@@ -212,7 +212,7 @@ export function UserProfilePage() {
               {isFollowing ? (
                 <button
                   id="user-profile-following-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300"
                   disabled
                 >
                   <ShieldCheck size={15} />
@@ -221,7 +221,7 @@ export function UserProfilePage() {
               ) : (
                 <button
                   id="user-profile-follow-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50"
                   style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
                   disabled={followUser.isPending}
                   onClick={() => followUser.mutate(profile.id)}
@@ -240,13 +240,13 @@ export function UserProfilePage() {
           {/* Trust badge */}
           <div className="mt-3 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
-              <ShieldCheck size={12} className="text-emerald-600" />
+              <ShieldCheck size={12} className="text-indigo-600" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
             {availability.map((a) => (
               <span
                 key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700"
+                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700"
               >
                 <Zap size={11} />
                 {a}
@@ -272,7 +272,7 @@ export function UserProfilePage() {
                   href={href!}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:border-emerald-300 hover:text-emerald-600 dark:hover:text-emerald-400"
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400"
                   style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
                 >
                   <Icon size={13} />
@@ -294,7 +294,7 @@ export function UserProfilePage() {
               id={`user-profile-tab-${id}`}
               className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
                 ${activeTab === id
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "text-indigo-600 dark:text-indigo-400"
                   : "hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
@@ -303,7 +303,7 @@ export function UserProfilePage() {
               <Icon size={15} />
               {label}
               {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
               )}
             </button>
           ))}
@@ -450,7 +450,7 @@ export function UserProfilePage() {
               <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
                 Mutual Connections
                 {mutuals.length > 0 && (
-                  <span className="ml-2 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  <span className="ml-2 rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                     {mutuals.length}{mutualQuery.hasNextPage ? "+" : ""}
                   </span>
                 )}
@@ -469,7 +469,7 @@ export function UserProfilePage() {
                       return (
                         <button
                           key={u.id}
-                          className="flex items-center gap-3 rounded-xl border p-4 text-left shadow-sm transition hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
+                          className="flex items-center gap-3 rounded-xl border p-4 text-left shadow-sm transition hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md"
                           style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
                           onClick={() => navigate(`/users/${u.username || u.id}`)}
                         >
@@ -535,7 +535,7 @@ export function UserProfilePage() {
 function QStat({ label, value, accent = false }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div>
-      <div className={`text-lg font-bold ${accent ? "text-emerald-600 dark:text-emerald-400" : ""}`} style={!accent ? { color: "var(--text-primary)" } : {}}>{value}</div>
+      <div className={`text-lg font-bold ${accent ? "text-indigo-600 dark:text-indigo-400" : ""}`} style={!accent ? { color: "var(--text-primary)" } : {}}>{value}</div>
       <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
     </div>
   );
@@ -553,7 +553,7 @@ function InfoPanel({
   return (
     <div className="panel p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Icon size={14} className="text-emerald-600 dark:text-emerald-400" />
+        <Icon size={14} className="text-indigo-600 dark:text-indigo-400" />
         <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h3>
       </div>
       {children}
@@ -632,7 +632,7 @@ function SkillVerificationModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
           <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-bold" style={{ color: "var(--text-primary)" }}>
               {skill.skill?.name || "Skill"} Verification
             </h3>
@@ -674,7 +674,7 @@ function SkillVerificationModal({
             <div className="space-y-4 text-sm" style={{ color: "var(--text-secondary)" }}>
               <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
                 <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Verification Source:</span>
-                <span className="rounded bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700">
+                <span className="rounded bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700">
                   {skill.verificationSource || "External Profiles"}
                 </span>
               </div>
@@ -686,7 +686,7 @@ function SkillVerificationModal({
                   <div className="space-y-2 rounded-xl border p-3.5" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                     {proof.repositories.map((repo: any) => (
                       <div key={repo.name} className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-emerald-700 dark:text-emerald-400 break-all">{repo.name}</span>
+                        <span className="font-medium text-indigo-700 dark:text-indigo-400 break-all">{repo.name}</span>
                         <span className="shrink-0" style={{ color: "var(--text-muted)" }}>{(repo.bytes / 1024).toFixed(1)} KB code</span>
                       </div>
                     ))}
@@ -738,7 +738,7 @@ function SkillVerificationModal({
                         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>@{proof.codingninjas.username}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                    <div className="flex justify-between font-semibold text-indigo-600 dark:text-indigo-400">
                       <span>Verification Status:</span>
                       <span>{proof.hackerrank?.status || proof.geeksforgeeks?.status || proof.codingninjas?.status}</span>
                     </div>

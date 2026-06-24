@@ -75,7 +75,7 @@ function CollegeLogo({ college }: { college: College }) {
   }
 
   return (
-    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400">
       <GraduationCap size={21} />
     </div>
   );
@@ -301,7 +301,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/colleges">
+      <Link className="text-sm font-semibold text-indigo-700 hover:text-indigo-900" to="/colleges">
         Back to colleges
       </Link>
 
@@ -343,8 +343,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             onClick={() => setActiveSubTab("overview")}
             className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
               activeSubTab === "overview"
-                ? "border-emerald-600 text-emerald-700"
-                : "border-transparent hover:text-emerald-700"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent hover:text-indigo-700"
             }`}
           >
             Overview
@@ -353,8 +353,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             onClick={() => setActiveSubTab("tpo")}
             className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
               activeSubTab === "tpo"
-                ? "border-emerald-600 text-emerald-700"
-                : "border-transparent hover:text-emerald-700"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent hover:text-indigo-700"
             }`}
           >
             TPO Portal
@@ -455,7 +455,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           <div className="panel p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-                <Shield size={16} className="text-emerald-600" />
+                <Shield size={16} className="text-indigo-600" />
                 CDCR Representatives
               </h3>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -543,7 +543,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
           <aside className="panel p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-                <UserPlus size={16} className="text-emerald-600" />
+                <UserPlus size={16} className="text-indigo-600" />
                 Assign CDCR Member
               </h3>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -598,7 +598,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         </div>
 
                         {isAlreadyCdcr ? (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
                             CDCR
                           </span>
                         ) : (
@@ -610,7 +610,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                               });
                             }}
                             disabled={assignMutation.isPending}
-                            className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-2 py-1 transition disabled:opacity-50"
+                            className="flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-2 py-1 transition disabled:opacity-50"
                           >
                             Assign
                           </button>
@@ -674,7 +674,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{drive.driveDate ? formatDate(drive.driveDate) : "—"}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                              drive.status === "ONGOING" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              drive.status === "ONGOING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                               drive.status === "UPCOMING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                               "bg-slate-100 text-slate-500 border-slate-200"
                             }`}>
@@ -695,7 +695,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                                   type="button"
                                   onClick={() => updateDriveMutation.mutate({ id: drive.id, data: { status: "ONGOING" } })}
                                   disabled={updateDriveMutation.isPending}
-                                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition disabled:opacity-50"
+                                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition disabled:opacity-50"
                                 >
                                   Open
                                 </button>
@@ -754,7 +754,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         </div>
                         <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                           invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                          invite.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          invite.status === "ACCEPTED" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                           invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                           "bg-slate-100 text-slate-500 border-slate-200"
                         }`}>
@@ -774,7 +774,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                             type="button"
                             onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "ACCEPT" })}
                             disabled={respondToInviteMutation.isPending}
-                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 transition disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 transition disabled:opacity-50"
                           >
                             {respondToInviteMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={13} />}
                             Accept & Create Drive
@@ -790,7 +790,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         </div>
                       )}
                       {invite.status === "ACCEPTED" && invite.placementDrive && (
-                        <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                        <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
                           <CheckCircle2 size={10} /> Drive created successfully
                         </p>
                       )}
@@ -807,7 +807,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             <div className="panel p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-                  <ShieldCheck size={16} className="text-emerald-600" />
+                  <ShieldCheck size={16} className="text-indigo-600" />
                   Alumni Verification Requests
                 </h3>
                 <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Review and verify alumni status claims from graduates of your institution.</p>
@@ -817,7 +817,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
               ) : (alumniClaimsQuery.data || []).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-400">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-400">
                     <ShieldCheck size={22} />
                   </div>
                   <div>
@@ -858,7 +858,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           type="button"
                           onClick={() => approveAlumniMutation.mutate(claim.id)}
                           disabled={approveAlumniMutation.isPending || rejectAlumniMutation.isPending}
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 transition shadow-sm disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 transition shadow-sm disabled:opacity-50"
                         >
                           {approveAlumniMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <UserCheck size={13} />}
                           Verify
@@ -928,7 +928,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
                     <div className="panel p-4 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm rounded-xl">
                       <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Students Placed</span>
-                      <span className="text-3xl font-extrabold mt-2 text-emerald-600">{statsQuery.data.summary.totalSelected}</span>
+                      <span className="text-3xl font-extrabold mt-2 text-indigo-600">{statsQuery.data.summary.totalSelected}</span>
                       <span className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>Successful offers</span>
                     </div>
 

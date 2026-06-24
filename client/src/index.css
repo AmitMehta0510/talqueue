@@ -8,40 +8,40 @@
 
 :root {
   /* Surfaces */
-  --bg-base:          #f0f4f2;
-  --bg-surface:       #ffffff;
-  --bg-surface-2:     #f8fafb;
-  --bg-surface-3:     #f1f5f3;
-  --bg-overlay:       rgba(0, 0, 0, 0.45);
+  --bg-base: #f0f2ff;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f5f6ff;
+  --bg-surface-3: #eef0ff;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
 
   /* Borders */
-  --border:           rgba(0, 0, 0, 0.08);
-  --border-strong:    rgba(0, 0, 0, 0.14);
-  --border-focus:     #059669;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-focus: #6366f1;
 
   /* Text */
-  --text-primary:     #0f1f18;
-  --text-secondary:   #4a6358;
-  --text-muted:       #7a9589;
-  --text-inverse:     #ffffff;
+  --text-primary: #0f0e1e;
+  --text-secondary: #4b4680;
+  --text-muted: #7c7aa6;
+  --text-inverse: #ffffff;
 
   /* Brand */
-  --brand:            #047857;
-  --brand-light:      #d1fae5;
-  --brand-glow:       rgba(4, 120, 87, 0.18);
+  --brand: #4f46e5;
+  --brand-light: #eef2ff;
+  --brand-glow: rgba(79, 70, 229, 0.18);
 
   /* Glass */
-  --glass-bg:         rgba(255, 255, 255, 0.72);
-  --glass-border:     rgba(255, 255, 255, 0.6);
-  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
   /* Shimmer */
-  --shimmer-base:     #e8eeed;
-  --shimmer-shine:    #f4f7f6;
+  --shimmer-base: #e8eaf8;
+  --shimmer-shine: #f2f3ff;
 
   /* Scrollbar */
-  --scrollbar-track:  #f0f4f2;
-  --scrollbar-thumb:  #c5d5ce;
+  --scrollbar-track: #eef0ff;
+  --scrollbar-thumb: #c7c5ee;
 
   color-scheme: light;
   font-synthesis: none;
@@ -52,41 +52,51 @@
 }
 
 .dark {
-  /* Surfaces */
-  --bg-base:          #0c1410;
-  --bg-surface:       #111a16;
-  --bg-surface-2:     #172218;
-  --bg-surface-3:     #1d2b21;
-  --bg-overlay:       rgba(0, 0, 0, 0.7);
+  /* Surfaces — Pure Neutral Obsidian (zero tint) */
+  --bg-base: #090909;
+  /* True matte black, zero color tint */
+  --bg-surface: #0d0d0f;
+  /* Clean neutral surface for primary panels */
+  --bg-surface-2: #111118;
+  /* Secondary level panels */
+  --bg-surface-3: #18181f;
+  /* Active/Hover panel states */
+  --bg-overlay: rgba(0, 0, 0, 0.85);
 
-  /* Borders */
-  --border:           rgba(255, 255, 255, 0.07);
-  --border-strong:    rgba(255, 255, 255, 0.12);
-  --border-focus:     #34d399;
+  /* Borders — Soft metallic slate lines */
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --border-focus: #6366f1;
+  /* Electric Indigo focus border */
 
-  /* Text */
-  --text-primary:     #e8f5ef;
-  --text-secondary:   #8ab89e;
-  --text-muted:       #5a7d6a;
-  --text-inverse:     #0f1f18;
+  /* Text — Ultra-readable comfortable off-white & silver slates */
+  --text-primary: #f4f4f6;
+  /* Soft off-white, crisp for eyes */
+  --text-secondary: #9ca3af;
+  /* Clean silver secondary text */
+  --text-muted: #6b7280;
+  /* Perfect contrast muted placeholder text */
+  --text-inverse: #090909;
+  /* Inverted contrast text over brand background */
 
-  /* Brand */
-  --brand:            #34d399;
-  --brand-light:      rgba(52, 211, 153, 0.12);
-  --brand-glow:       rgba(52, 211, 153, 0.2);
+  /* Brand — Sharp, elegant Electric Indigo accents */
+  --brand: #6366f1;
+  /* Electric Indigo for primary buttons/highlights */
+  --brand-light: rgba(99, 102, 241, 0.10);
+  --brand-glow: rgba(99, 102, 241, 0.18);
 
-  /* Glass */
-  --glass-bg:         rgba(17, 26, 22, 0.75);
-  --glass-border:     rgba(255, 255, 255, 0.08);
-  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Glass — Indigo-tinted premium frosted glass */
+  --glass-bg: rgba(15, 14, 30, 0.70);
+  --glass-border: rgba(99, 102, 241, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   /* Shimmer */
-  --shimmer-base:     #1d2b21;
-  --shimmer-shine:    #253323;
+  --shimmer-base: #0f0e1e;
+  --shimmer-shine: #1a1830;
 
   /* Scrollbar */
-  --scrollbar-track:  #0c1410;
-  --scrollbar-thumb:  #2a3d30;
+  --scrollbar-track: #090909;
+  --scrollbar-thumb: #2a2840;
 
   color-scheme: dark;
 }
@@ -113,45 +123,73 @@ body {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Light mode body gradient */
+/* Light mode body gradient — Indigo-tinted airy base */
 :root body {
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(167, 243, 208, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 100% 100%, rgba(209, 250, 229, 0.2) 0%, transparent 50%),
-    linear-gradient(160deg, #f0f8f4 0%, #eef4f1 50%, #f3f0eb 100%);
+    radial-gradient(ellipse at 0% 0%, rgba(165, 180, 252, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(196, 181, 253, 0.15) 0%, transparent 50%),
+    linear-gradient(160deg, #f0f2ff 0%, #eef0f9 50%, #f2f0ff 100%);
 }
 
-/* Dark mode body gradient */
+/* Dark mode body gradient — Subtle indigo/violet corner bleeds over pure obsidian */
 .dark body {
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(4, 120, 87, 0.08) 0%, transparent 40%),
-    radial-gradient(ellipse at 100% 100%, rgba(6, 78, 59, 0.06) 0%, transparent 40%),
-    linear-gradient(160deg, #0c1410 0%, #0e1812 50%, #0c1410 100%);
+    radial-gradient(ellipse at 0% 0%, rgba(99, 102, 241, 0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 100% 100%, rgba(139, 92, 246, 0.02) 0%, transparent 45%),
+    linear-gradient(160deg, #090909 0%, #0b0a12 50%, #090909 100%);
 }
 
-button, input, select, textarea { font: inherit; }
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; }
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
 
 ::selection {
-  background: #6ee7b7;
-  color: #022c22;
+  background: #6366f1;
+  color: #ffffff;
 }
+
 
 /* ============================================================
    SCROLLBAR STYLING
    ============================================================ */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 99px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* ============================================================
    COMPONENT LAYER — Design System
@@ -166,7 +204,7 @@ button:disabled { cursor: not-allowed; }
   }
 
   .dark .panel {
-    @apply bg-[#111a16]/90;
+    @apply bg-[#10101a]/90;
   }
 
   /* Glass panel — premium frosted glass */
@@ -186,11 +224,15 @@ button:disabled { cursor: not-allowed; }
     color: var(--text-primary);
     border-color: var(--border-strong);
   }
+
   .field:focus {
     border-color: var(--border-focus);
     box-shadow: 0 0 0 3px var(--brand-glow);
   }
-  .field::placeholder { color: var(--text-muted); }
+
+  .field::placeholder {
+    color: var(--text-muted);
+  }
 
   /* --- BUTTONS --- */
   .btn-primary {
@@ -198,8 +240,15 @@ button:disabled { cursor: not-allowed; }
     background: var(--brand);
     color: var(--text-inverse);
   }
-  .btn-primary:hover { filter: brightness(1.1); }
-  .btn-primary:disabled { @apply opacity-50 cursor-not-allowed; filter: none; }
+
+  .btn-primary:hover {
+    filter: brightness(1.1);
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    filter: none;
+  }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97];
@@ -207,12 +256,16 @@ button:disabled { cursor: not-allowed; }
     color: var(--text-secondary);
     background: var(--bg-surface);
   }
+
   .btn-secondary:hover {
     border-color: var(--brand);
     color: var(--brand);
     background: var(--brand-light);
   }
-  .btn-secondary:disabled { @apply opacity-50 cursor-not-allowed; }
+
+  .btn-secondary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 
   .icon-btn {
     @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150 active:scale-95;
@@ -220,6 +273,7 @@ button:disabled { cursor: not-allowed; }
     color: var(--text-secondary);
     background: var(--bg-surface);
   }
+
   .icon-btn:hover {
     border-color: var(--brand);
     color: var(--brand);
@@ -236,12 +290,10 @@ button:disabled { cursor: not-allowed; }
 
   /* --- SHIMMER SKELETON --- */
   .skeleton {
-    background: linear-gradient(
-      90deg,
-      var(--shimmer-base) 25%,
-      var(--shimmer-shine) 50%,
-      var(--shimmer-base) 75%
-    );
+    background: linear-gradient(90deg,
+        var(--shimmer-base) 25%,
+        var(--shimmer-shine) 50%,
+        var(--shimmer-base) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.6s linear infinite;
     border-radius: 0.375rem;
@@ -258,7 +310,10 @@ button:disabled { cursor: not-allowed; }
    ============================================================ */
 
 @layer utilities {
-  .text-xxs { font-size: 0.65rem; line-height: 1rem; }
+  .text-xxs {
+    font-size: 0.65rem;
+    line-height: 1rem;
+  }
 
   /* Glow effect for brand elements */
   .glow-brand {
@@ -266,24 +321,56 @@ button:disabled { cursor: not-allowed; }
   }
 
   /* Surface backgrounds using tokens */
-  .bg-base      { background: var(--bg-base); }
-  .bg-surface   { background: var(--bg-surface); }
-  .bg-surface-2 { background: var(--bg-surface-2); }
-  .bg-surface-3 { background: var(--bg-surface-3); }
+  .bg-base {
+    background: var(--bg-base);
+  }
+
+  .bg-surface {
+    background: var(--bg-surface);
+  }
+
+  .bg-surface-2 {
+    background: var(--bg-surface-2);
+  }
+
+  .bg-surface-3 {
+    background: var(--bg-surface-3);
+  }
 
   /* Text using tokens */
-  .text-primary   { color: var(--text-primary); }
-  .text-secondary { color: var(--text-secondary); }
-  .text-muted-fg  { color: var(--text-muted); }
-  .text-brand     { color: var(--brand); }
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-muted-fg {
+    color: var(--text-muted);
+  }
+
+  .text-brand {
+    color: var(--brand);
+  }
 
   /* Border using token */
-  .border-base   { border-color: var(--border); }
-  .border-strong { border-color: var(--border-strong); }
-  .border-brand-light { border-color: var(--brand-light); }
+  .border-base {
+    border-color: var(--border);
+  }
+
+  .border-strong {
+    border-color: var(--border-strong);
+  }
+
+  .border-brand-light {
+    border-color: var(--brand-light);
+  }
 
   /* Brand Light Background */
-  .bg-brand-light { background: var(--brand-light); }
+  .bg-brand-light {
+    background: var(--brand-light);
+  }
 
   /* Interactive lift state */
   .hover-lift {

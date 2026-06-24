@@ -79,7 +79,7 @@ export function CompanyRequestsPanel() {
               key={s}
               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition border
                 ${statusFilter === s
-                  ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20"
+                  ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20"
                   : "hover:bg-[var(--bg-surface-2)]"
                 }`}
               style={statusFilter !== s ? { borderColor: "var(--border)", color: "var(--text-muted)" } : {}}
@@ -100,7 +100,7 @@ export function CompanyRequestsPanel() {
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {loading ? (
-          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
+          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div>
         ) : requests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="mb-3 rounded-full p-4" style={{ background: "var(--bg-surface-2)" }}><CheckCircle2 size={20} style={{ color: "var(--text-muted)" }} /></div>
@@ -130,7 +130,7 @@ export function CompanyRequestsPanel() {
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       isClaim ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20" :
-                      isRecruiter ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                      isRecruiter ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20" :
                       "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                     }}`}>
                       {isClaim ? "KYC CLAIM" : isRecruiter ? "RECRUITER" : "LEGACY CO"}
@@ -211,7 +211,7 @@ export function CompanyRequestsPanel() {
                     {r.status === "PENDING" ? (
                       <div className="flex items-center gap-2">
                         <button
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-600/20 px-2.5 py-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20 transition disabled:opacity-50"
+                          className="flex items-center gap-1 rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-2.5 py-1.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 transition disabled:opacity-50"
                           onClick={() => handleApprove(r)}
                           disabled={actionPending === r.id}
                         >

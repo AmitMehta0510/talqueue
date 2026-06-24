@@ -53,7 +53,7 @@ export function EventsPanel() {
 
   const getOrganizerIcon = (event: any) => {
     if (event.college) return <GraduationCap size={11} className="text-blue-400" />;
-    if (event.company) return <Building2 size={11} className="text-emerald-400" />;
+    if (event.company) return <Building2 size={11} className="text-indigo-400" />;
     return <Users size={11} className="text-purple-400" />;
   };
 
@@ -71,7 +71,7 @@ export function EventsPanel() {
         </div>
         <button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
           onClick={() => setIsCreating(true)}
         >
           <Plus size={13} />
@@ -82,7 +82,7 @@ export function EventsPanel() {
       {/* KPI stats */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <div className="relative overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900/40 p-4">
-          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 opacity-10" />
+          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br from-indigo-500 to-teal-600 opacity-10" />
           <div className="text-2xl font-black text-white">{rawEvents.length}</div>
           <div className="mt-1 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Events Loaded</div>
         </div>
@@ -111,7 +111,7 @@ export function EventsPanel() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All Types</option>
             <option value="GENERAL">GENERAL</option>
@@ -123,7 +123,7 @@ export function EventsPanel() {
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All Locations</option>
             <option value="ONLINE">Online (Meeting Link)</option>
@@ -136,7 +136,7 @@ export function EventsPanel() {
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
-            <Loader2 size={20} className="animate-spin text-emerald-500" />
+            <Loader2 size={20} className="animate-spin text-indigo-500" />
           </div>
         ) : (
           <DataTable
@@ -163,7 +163,7 @@ export function EventsPanel() {
                       href={e.meetingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold hover:underline"
+                      className="flex items-center gap-1 text-[10px] text-indigo-400 font-semibold hover:underline"
                     >
                       <Video size={10} />
                       Virtual Link
@@ -188,7 +188,7 @@ export function EventsPanel() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                      className="rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                       onClick={() => setAuditingEvent(e)}
                     >
                       Audit
@@ -258,7 +258,7 @@ function AuditAttendeesModal({ event, onClose }: { event: any; onClose: () => vo
       <div className="relative w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Users size={16} className="text-emerald-400" />
+            <Users size={16} className="text-indigo-400" />
             RSVPs Auditing Directory
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
@@ -279,7 +279,7 @@ function AuditAttendeesModal({ event, onClose }: { event: any; onClose: () => vo
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden min-h-[220px]">
             {query.isPending ? (
-              <div className="flex justify-center py-10"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
+              <div className="flex justify-center py-10"><Loader2 size={16} className="animate-spin text-indigo-500" /></div>
             ) : rsvps.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Info size={18} className="text-zinc-600 mb-2" />
@@ -303,7 +303,7 @@ function AuditAttendeesModal({ event, onClose }: { event: any; onClose: () => vo
                       </div>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase ring-1 ${
-                      rsvp.status === "GOING" ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" :
+                      rsvp.status === "GOING" ? "bg-indigo-500/15 text-indigo-400 ring-indigo-500/30" :
                       rsvp.status === "MAYBE" ? "bg-amber-500/15 text-amber-400 ring-amber-500/30" :
                       "bg-rose-500/15 text-rose-400 ring-rose-500/30"
                     }`}>
@@ -398,7 +398,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
       <div className="relative w-full max-w-xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Calendar size={16} className="text-emerald-400" />
+            <Calendar size={16} className="text-indigo-400" />
             Edit Event Parameters
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
@@ -421,7 +421,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
           <div className="space-y-1">
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Description</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -455,7 +455,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location (Physical)</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Auditorium Hall A"
@@ -465,7 +465,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Meeting Link (Virtual)</label>
               <input
                 type="url"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
                 placeholder="https://zoom.us/j/..."
@@ -478,7 +478,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Capacity Limit</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
                 placeholder="Unlimited if empty"
@@ -487,7 +487,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Scope Type</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
@@ -567,7 +567,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
       <div className="relative w-full max-w-xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Plus size={18} className="text-emerald-400" />
+            <Plus size={18} className="text-indigo-400" />
             Post New Compliance Event
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
@@ -580,7 +580,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Title *</label>
             <input
               type="text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Platform Alignment Session"
@@ -591,7 +591,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-1">
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Description</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide a comprehensive event overview..."
@@ -626,7 +626,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location (Physical)</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Auditorium Hall A"
@@ -636,7 +636,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Meeting Link (Virtual)</label>
               <input
                 type="url"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-indigo-500 focus:outline-none transition"
                 value={meetingUrl}
                 onChange={(e) => setMeetingUrl(e.target.value)}
                 placeholder="https://zoom.us/j/..."
@@ -649,7 +649,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Capacity Limit</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
                 placeholder="Unlimited if empty"
@@ -658,7 +658,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Scope Type</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >

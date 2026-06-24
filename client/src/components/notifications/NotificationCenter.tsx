@@ -61,7 +61,7 @@ function NotificationItem({
       className={`rounded-md border p-3 transition-all duration-200 ${
         notification.isRead
           ? "border-base bg-surface"
-          : "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/30 dark:bg-emerald-950/20"
+          : "border-indigo-200 bg-indigo-50/40 dark:border-indigo-900/30 dark:bg-indigo-950/20"
       }`}
     >
       <div className="flex gap-3">
@@ -191,7 +191,7 @@ export function NotificationBellButton() {
     <span className="relative inline-flex">
       <Bell size={17} />
       {unreadCount > 0 && (
-        <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[10px] font-bold text-white">
+        <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       )}

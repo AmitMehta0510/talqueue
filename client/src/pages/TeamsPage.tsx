@@ -39,7 +39,7 @@ const canManageTeam = (team?: Team, userId?: string) => {
 const statusColor = (status?: string) => {
   if (status === "ARCHIVED") return "text-amber-700 bg-amber-50 border-amber-200";
   if (status === "DELETED") return "text-rose-700 bg-rose-50 border-rose-200";
-  return "text-emerald-700 bg-emerald-50 border-emerald-200";
+  return "text-indigo-700 bg-indigo-50 border-indigo-200";
 };
 
 // ─── Create Team ─────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
                   const selected = selectedMembers.some((m) => m.id === u.id);
                   return (
                     <button
-                      className={`flex items-center justify-between gap-3 rounded-md border p-3 text-left transition ${selected ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700" : "hover:border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/10"}`}
+                      className={`flex items-center justify-between gap-3 rounded-md border p-3 text-left transition ${selected ? "border-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-700" : "hover:border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/10"}`}
                       style={!selected ? { borderColor: "var(--border)" } : {}}
                       key={u.id} type="button" onClick={() => addMember(u)}
                     >
@@ -150,7 +150,7 @@ function CreateTeamPanel({ disabled }: { disabled?: boolean }) {
                           <span className="block truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(u)}</span>
                         </span>
                       </span>
-                      {selected ? <Check size={15} className="text-emerald-600" /> : <Plus size={15} />}
+                      {selected ? <Check size={15} className="text-indigo-600" /> : <Plus size={15} />}
                     </button>
                   );
                 })}
@@ -231,7 +231,7 @@ function TeamCard({ team }: { team: Team }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            <Link className="hover:text-emerald-700" to={`/teams/${team.id}`}>{team.name}</Link>
+            <Link className="hover:text-indigo-700" to={`/teams/${team.id}`}>{team.name}</Link>
           </h3>
           <p className="mt-2 line-clamp-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
             {team.description || "No description yet."}
@@ -490,7 +490,7 @@ function TeamInvitesPanel({
                   </div>
                   <div className="text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(invite.createdAt)}</div>
                 </div>
-                <span className={`chip border ${invite.status === "ACCEPTED" ? "text-emerald-700 border-emerald-200" : invite.status === "REJECTED" ? "text-rose-700 border-rose-200" : "border-slate-200"}`}>
+                <span className={`chip border ${invite.status === "ACCEPTED" ? "text-indigo-700 border-indigo-200" : invite.status === "REJECTED" ? "text-rose-700 border-rose-200" : "border-slate-200"}`}>
                   {titleCase(invite.status)}
                 </span>
               </div>
@@ -577,7 +577,7 @@ function TeamActions({
         )}
         {canManage && isArchived && (
           <button
-            className="btn-secondary justify-start text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            className="btn-secondary justify-start text-indigo-700 border-indigo-200 hover:bg-indigo-50"
             type="button" disabled={lifecycle.isPending}
             onClick={() => lifecycle.mutate("restore")}
           >
@@ -688,7 +688,7 @@ function TeamDetail({ teamId }: { teamId: string }) {
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/teams">
+      <Link className="text-sm font-semibold text-indigo-700 hover:text-indigo-900" to="/teams">
         ← Back to teams
       </Link>
 

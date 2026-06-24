@@ -107,7 +107,7 @@ export function JobsPanel() {
         </div>
         <button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
           onClick={() => runJobScraper.mutate()}
           disabled={runJobScraper.isPending}
         >
@@ -133,7 +133,7 @@ export function JobsPanel() {
         </div>
         <button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
           onClick={() => setIsCreating(true)}
         >
           <Plus size={13} />
@@ -154,7 +154,7 @@ export function JobsPanel() {
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilterChange(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All Statuses</option>
             <option value="OPEN">OPEN</option>
@@ -168,7 +168,7 @@ export function JobsPanel() {
           <select
             value={workModeFilter}
             onChange={(e) => handleWorkModeFilterChange(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All Work Modes</option>
             <option value="REMOTE">REMOTE</option>
@@ -180,7 +180,7 @@ export function JobsPanel() {
           <select
             value={typeFilter}
             onChange={(e) => handleTypeFilterChange(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All Job Types</option>
             <option value="FULL_TIME">FULL_TIME</option>
@@ -195,7 +195,7 @@ export function JobsPanel() {
           <select
             value={featuredFilter}
             onChange={(e) => handleFeaturedFilterChange(e.target.value)}
-            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-emerald-500 focus:outline-none transition"
+            className="w-full h-[38px] rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-xs text-zinc-300 focus:border-indigo-500 focus:outline-none transition"
           >
             <option value="">All (Featured/Normal)</option>
             <option value="FEATURED">Featured Only</option>
@@ -207,7 +207,7 @@ export function JobsPanel() {
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
-            <Loader2 size={20} className="animate-spin text-emerald-500" />
+            <Loader2 size={20} className="animate-spin text-indigo-500" />
           </div>
         ) : (
           <>
@@ -270,7 +270,7 @@ export function JobsPanel() {
                       {j.status === "DRAFT" && (
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                          className="rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                           onClick={() => handleToggleStatus(j, "OPEN")}
                         >
                           Open
@@ -429,7 +429,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
       <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Briefcase size={16} className="text-emerald-400" />
+            <Briefcase size={16} className="text-indigo-400" />
             Edit Job Details
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
@@ -443,7 +443,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Title *</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Software Engineer"
@@ -454,7 +454,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Bangalore, India (or Remote)"
@@ -466,7 +466,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Work Mode</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={workMode}
                 onChange={(e) => setWorkMode(e.target.value)}
               >
@@ -478,7 +478,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Type</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
@@ -493,7 +493,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Status</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
@@ -509,7 +509,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
           <div className="space-y-1">
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Description *</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-28 resize-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-28 resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Full details about the job role..."
@@ -521,7 +521,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Requirements</label>
               <textarea
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
                 value={requirements}
                 onChange={(e) => setRequirements(e.target.value)}
                 placeholder="Required skills, degree, etc. (markdown/text)"
@@ -530,7 +530,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Responsibilities</label>
               <textarea
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
                 value={responsibilities}
                 onChange={(e) => setResponsibilities(e.target.value)}
                 placeholder="Key day-to-day duties..."
@@ -543,7 +543,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Min</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={salaryMin}
                 onChange={(e) => setSalaryMin(e.target.value)}
                 placeholder="e.g. 500000"
@@ -553,7 +553,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Max</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={salaryMax}
                 onChange={(e) => setSalaryMax(e.target.value)}
                 placeholder="e.g. 1000000"
@@ -563,7 +563,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Currency</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 placeholder="INR"
@@ -576,7 +576,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Experience Level</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={experienceLevel}
                 onChange={(e) => setExperienceLevel(e.target.value)}
                 placeholder="e.g. 2-5 years"
@@ -586,7 +586,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Openings Count</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={openings}
                 onChange={(e) => setOpenings(e.target.value)}
                 placeholder="e.g. 3"
@@ -598,7 +598,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
                   type="checkbox"
                   checked={featured}
                   onChange={(e) => setFeatured(e.target.checked)}
-                  className="rounded border-zinc-750 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                  className="rounded border-zinc-750 bg-zinc-800 text-indigo-500 focus:ring-indigo-500"
                 />
                 Mark as Featured
               </label>
@@ -610,7 +610,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Required Skills (Comma separated)</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={skillsRequiredText}
                 onChange={(e) => setSkillsRequiredText(e.target.value)}
                 placeholder="React, Node.js, TypeScript"
@@ -620,7 +620,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>External Application URL</label>
               <input
                 type="url"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-indigo-500 focus:outline-none transition"
                 value={applyUrl}
                 onChange={(e) => setApplyUrl(e.target.value)}
                 placeholder="https://company.com/careers/apply"
@@ -747,7 +747,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
       <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Plus size={18} className="text-emerald-400" />
+            <Plus size={18} className="text-indigo-400" />
             Post New Job (Admin Console)
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
@@ -760,7 +760,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
           <div ref={dropdownRef} className="space-y-1 relative">
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Select Company *</label>
             {selectedCompany ? (
-              <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs">
+              <div className="flex items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2 text-xs">
                 <div className="flex items-center gap-2">
                   {cleanLogoUrl(selectedCompany.logoUrl) ? (
                     <img src={cleanLogoUrl(selectedCompany.logoUrl)!} alt="" className="h-6 w-6 rounded object-contain" />
@@ -787,7 +787,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                 <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
                 <input
                   type="text"
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 pl-9 py-2 text-sm text-zinc-100 placeholder-zinc-550 focus:border-emerald-500 focus:outline-none transition"
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 pl-9 py-2 text-sm text-zinc-100 placeholder-zinc-550 focus:border-indigo-500 focus:outline-none transition"
                   placeholder="Type to search and select verified company..."
                   value={companySearch}
                   onChange={(e) => {
@@ -801,7 +801,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                   <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border shadow-2xl py-1 animate-in fade-in duration-100" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
                     {companiesQuery.isPending ? (
                       <div className="flex items-center justify-center py-4 text-zinc-500 gap-2 text-xs">
-                        <Loader2 size={12} className="animate-spin text-emerald-500" />
+                        <Loader2 size={12} className="animate-spin text-indigo-500" />
                         Searching companies...
                       </div>
                     ) : companies.length === 0 ? (
@@ -839,7 +839,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Title *</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Senior Fullstack Developer"
@@ -850,7 +850,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Remote, or New York, NY"
@@ -862,7 +862,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Work Mode</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={workMode}
                 onChange={(e) => setWorkMode(e.target.value)}
               >
@@ -874,7 +874,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Type</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
@@ -889,7 +889,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Initial Status</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
@@ -903,7 +903,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-1">
             <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Description *</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-28 resize-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-28 resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide a detailed description of the role..."
@@ -915,7 +915,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Requirements</label>
               <textarea
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
                 value={requirements}
                 onChange={(e) => setRequirements(e.target.value)}
                 placeholder="Skills, qualifications, prerequisites..."
@@ -924,7 +924,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-1">
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Responsibilities</label>
               <textarea
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-indigo-500 focus:outline-none transition h-20 resize-none"
                 value={responsibilities}
                 onChange={(e) => setResponsibilities(e.target.value)}
                 placeholder="Key expectations and tasks..."
@@ -937,7 +937,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Min</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={salaryMin}
                 onChange={(e) => setSalaryMin(e.target.value)}
                 placeholder="e.g. 60000"
@@ -947,7 +947,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Max</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={salaryMax}
                 onChange={(e) => setSalaryMax(e.target.value)}
                 placeholder="e.g. 120000"
@@ -957,7 +957,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Currency</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 placeholder="INR"
@@ -970,7 +970,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Experience Level</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={experienceLevel}
                 onChange={(e) => setExperienceLevel(e.target.value)}
                 placeholder="e.g. Entry Level, Senior"
@@ -980,7 +980,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Openings Count</label>
               <input
                 type="number"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition"
                 value={openings}
                 onChange={(e) => setOpenings(e.target.value)}
                 placeholder="1"
@@ -992,7 +992,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                   type="checkbox"
                   checked={featured}
                   onChange={(e) => setFeatured(e.target.checked)}
-                  className="rounded border-zinc-750 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                  className="rounded border-zinc-750 bg-zinc-800 text-indigo-500 focus:ring-indigo-500"
                 />
                 Mark as Featured
               </label>
@@ -1004,7 +1004,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Required Skills (Comma separated)</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-indigo-500 focus:outline-none transition"
                 value={skillsRequiredText}
                 onChange={(e) => setSkillsRequiredText(e.target.value)}
                 placeholder="React, CSS, GraphQL"
@@ -1014,7 +1014,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>External Application URL</label>
               <input
                 type="url"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-indigo-500 focus:outline-none transition"
                 value={applyUrl}
                 onChange={(e) => setApplyUrl(e.target.value)}
                 placeholder="https://company.com/jobs/apply"

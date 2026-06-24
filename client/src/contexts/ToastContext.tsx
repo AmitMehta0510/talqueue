@@ -32,11 +32,11 @@ const TOAST_CONFIG: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    bg: "dark:bg-[#0d1f16] bg-white",
-    border: "dark:border-emerald-800/60 border-emerald-200",
-    text: "dark:text-emerald-100 text-emerald-900",
-    progress: "bg-emerald-500",
-    iconColor: "dark:text-emerald-400 text-emerald-600",
+    bg: "dark:bg-[#0e0d1f] bg-white",
+    border: "dark:border-indigo-800/60 border-indigo-200",
+    text: "dark:text-indigo-100 text-indigo-900",
+    progress: "bg-indigo-500",
+    iconColor: "dark:text-indigo-400 text-indigo-600",
   },
   error: {
     icon: XCircle,

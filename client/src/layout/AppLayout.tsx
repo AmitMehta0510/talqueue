@@ -139,7 +139,7 @@ export function AppLayout() {
           {/* Logo & Search */}
           <div className="flex items-center gap-3 flex-1 md:flex-initial">
             <Link to="/feed" className="flex items-center gap-2 shrink-0">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-glow-sm hover:bg-emerald-600 transition-all duration-200 hover:scale-105">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-700 text-white shadow-glow-sm hover:bg-indigo-600 transition-all duration-200 hover:scale-105">
                 <Code2 size={20} />
               </div>
               <div className="hidden sm:block">
@@ -192,7 +192,7 @@ export function AppLayout() {
                   className={({ isActive }) =>
                     `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none ${
                       isActive
-                        ? "border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400"
+                        ? "border-indigo-600 dark:border-indigo-400 text-indigo-700 dark:text-indigo-400"
                         : "border-transparent hover:border-[color:var(--border-strong)]"
                     }`
                   }
@@ -213,7 +213,7 @@ export function AppLayout() {
                 type="button"
                 className={`flex flex-col items-center justify-center gap-1 px-3.5 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none focus:outline-none ${
                   moreMenuOpen
-                    ? "border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400"
+                    ? "border-indigo-600 dark:border-indigo-400 text-indigo-700 dark:text-indigo-400"
                     : "border-transparent"
                 }`}
                 style={{ color: moreMenuOpen ? undefined : "var(--text-muted)" }}
@@ -241,7 +241,7 @@ export function AppLayout() {
                           state={locked ? { from: { pathname: section.to } } : undefined}
                           className={({ isActive }) =>
                             `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 ${
-                              isActive ? "text-emerald-700 dark:text-emerald-400 font-bold" : ""
+                              isActive ? "text-indigo-700 dark:text-indigo-400 font-bold" : ""
                             }`
                           }
                           style={({ isActive }) => ({
@@ -270,7 +270,7 @@ export function AppLayout() {
                 className="hidden xl:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xxs font-medium border"
                 style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}
               >
-                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${apiOnline ? "bg-emerald-500" : "bg-rose-500 animate-ping"}`} />
+                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${apiOnline ? "bg-indigo-500" : "bg-rose-500 animate-ping"}`} />
                 <span>{apiStatus === "checking" ? "Ping…" : apiOnline ? "API OK" : "API Offline"}</span>
               </div>
             )}
@@ -313,7 +313,7 @@ export function AppLayout() {
                         <p className="text-xxs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>
                           @{user.username}
                         </p>
-                        <p className="text-xxs font-semibold truncate mt-1 text-emerald-600 dark:text-emerald-400">
+                        <p className="text-xxs font-semibold truncate mt-1 text-indigo-600 dark:text-indigo-400">
                           {userHeadline(user) || "Developer"}
                         </p>
                       </div>
@@ -348,7 +348,7 @@ export function AppLayout() {
                     <div className="space-y-0.5 py-3 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                       <Link
                         to="/profile"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400"
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
@@ -363,7 +363,7 @@ export function AppLayout() {
                       {user.primaryRole === "STUDENT" && (
                         <Link
                           to="/placements"
-                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
@@ -372,7 +372,7 @@ export function AppLayout() {
                       )}
                       <Link
                         to="/referrals"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400"
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
@@ -380,7 +380,7 @@ export function AppLayout() {
                       </Link>
                       <Link
                         to="/reputation"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-emerald-700 dark:hover:text-emerald-400"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400"
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
@@ -389,7 +389,7 @@ export function AppLayout() {
                       {user.primaryRole === "RECRUITER" && (
                         <Link
                           to="/recruiter"
-                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold hover:text-emerald-700 dark:hover:text-emerald-400"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold hover:text-indigo-700 dark:hover:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
@@ -400,11 +400,11 @@ export function AppLayout() {
                         <Link
                           key={adminship.id}
                           to={`/companies/${adminship.company?.slug || adminship.companyId}/admin`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
-                          <ShieldCheck size={13} className="text-emerald-600" />
+                          <ShieldCheck size={13} className="text-indigo-600" />
                           {adminship.company?.name || "Company"} Console
                         </Link>
                       ))}
@@ -412,11 +412,11 @@ export function AppLayout() {
                         <Link
                           key={adminship.id}
                           to={`/colleges/${adminship.college?.normalizedKey || adminship.collegeId}`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
-                          <ShieldCheck size={13} className="text-emerald-600" />
+                          <ShieldCheck size={13} className="text-indigo-600" />
                           {adminship.college?.name || "College"} Admin Console
                         </Link>
                       ))}
@@ -424,11 +424,11 @@ export function AppLayout() {
                         <Link
                           key={membership.id}
                           to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}
-                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
-                          <ShieldCheck size={13} className="text-emerald-600" />
+                          <ShieldCheck size={13} className="text-indigo-600" />
                           {membership.college?.name || "College"} CDCR Console
                         </Link>
                       ))}
@@ -442,7 +442,7 @@ export function AppLayout() {
                       ) : user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN") ? (
                         <Link
                           to="/admin"
-                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-emerald-700 dark:text-emerald-400"
+                          className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
@@ -520,7 +520,7 @@ export function AppLayout() {
                     className={({ isActive }) =>
                       `flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-150 ${
                         isActive
-                          ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 font-extrabold"
+                          ? "border-indigo-500/40 text-indigo-700 dark:text-indigo-400 font-extrabold"
                           : ""
                       }`
                     }

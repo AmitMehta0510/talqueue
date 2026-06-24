@@ -209,7 +209,7 @@ export function BusinessOnboardingPage() {
   return (
     <div className="min-h-screen bg-surface text-primary flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Dynamic Background Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0f2e24] rounded-full blur-[120px] opacity-40 pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0f0e2e] rounded-full blur-[120px] opacity-40 pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-950 rounded-full blur-[120px] opacity-35 pointer-events-none" />
 
       {/* Main Container */}
@@ -217,11 +217,11 @@ export function BusinessOnboardingPage() {
         
         {/* Page Header */}
         <div className="text-center space-y-2">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
             <Sparkles size={12} /> B2B SaaS Enterprise Portal
           </span>
           <h1 className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">
-            Engineering Platform <span className="text-emerald-400">For Business</span>
+            Engineering Platform <span className="text-indigo-400">For Business</span>
           </h1>
           <p className="max-w-2xl mx-auto text-sm text-secondary">
             Select your path to request corporate access, recruit verified engineering talent, or claim ownership of your brand.
@@ -235,23 +235,23 @@ export function BusinessOnboardingPage() {
             {/* Card 1: Recruiter access */}
             <button
               onClick={() => setActiveFunnel("recruiter")}
-              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-emerald-500/50 hover:bg-[#11241f]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#11102a]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                <UserCheck size={120} className="text-emerald-400" />
+                <UserCheck size={120} className="text-indigo-400" />
               </div>
               <div className="space-y-4">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <UserCheck size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-primary group-hover:text-emerald-400 transition-colors">
+                <h3 className="text-2xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
                   Recruiter Access Console
                 </h3>
                 <p className="text-sm text-secondary leading-relaxed">
                   Join an existing company or create a shadow brand workspace. Post jobs, invite colleges, and evaluate candidates in a dedicated pipeline.
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 group-hover:translate-x-1 transition-transform">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400 group-hover:translate-x-1 transition-transform">
                 Get Recruiter License &rarr;
               </span>
             </button>
@@ -306,7 +306,7 @@ export function BusinessOnboardingPage() {
               <div className="rounded-2xl border border-base bg-surface-2/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
                 
                 <div className="flex items-center gap-3 border-b border-base pb-4">
-                  <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/25">
+                  <div className="h-10 w-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/25">
                     <UserCheck size={20} />
                   </div>
                   <div>
@@ -317,7 +317,7 @@ export function BusinessOnboardingPage() {
 
                 {recruiterSuccess ? (
                   <div className="py-8 text-center space-y-4">
-                    <div className="mx-auto h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/30 text-emerald-400 animate-bounce">
+                    <div className="mx-auto h-16 w-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/30 text-indigo-400 animate-bounce">
                       <CheckCircle2 size={36} />
                     </div>
                     <h3 className="text-xl font-bold text-primary">Application Received!</h3>
@@ -372,7 +372,7 @@ export function BusinessOnboardingPage() {
                                 setRecruiterValue("companyName", c.name, { shouldValidate: true });
                                 setSearchQuery(c.name);
                               }}
-                              className="w-full text-left px-3 py-2 text-xs text-secondary hover:bg-emerald-500/10 hover:text-primary transition flex items-center justify-between"
+                              className="w-full text-left px-3 py-2 text-xs text-secondary hover:bg-indigo-500/10 hover:text-primary transition flex items-center justify-between"
                             >
                               <span>{c.name}</span>
                               <span className="text-[9px] font-bold bg-surface-3 border border-base text-muted-fg px-1 rounded">MATCH</span>
@@ -638,7 +638,7 @@ export function BusinessOnboardingPage() {
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex justify-center items-center p-4">
           <div className="w-full max-w-sm rounded-2xl border border-base bg-surface-3 p-6 space-y-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
             <div className="text-center space-y-2">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+              <div className="mx-auto h-12 w-12 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
                 <Lock size={20} className="animate-pulse" />
               </div>
               <h3 className="text-lg font-bold text-primary">Enter Verification Code</h3>
@@ -652,7 +652,7 @@ export function BusinessOnboardingPage() {
                 <input
                   type="text"
                   maxLength={6}
-                  className="field text-center tracking-widest text-lg font-extrabold focus:border-emerald-500"
+                  className="field text-center tracking-widest text-lg font-extrabold focus:border-indigo-500"
                   placeholder="000000"
                   value={otpValue}
                   onChange={(e) => setOtpValue(e.target.value.replace(/[^0-9]/g, ""))}

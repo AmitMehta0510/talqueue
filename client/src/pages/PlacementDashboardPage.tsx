@@ -36,8 +36,8 @@ const STATUS_CONFIG: Record<
   },
   SHORTLISTED: {
     label: "Shortlisted",
-    bg: "bg-emerald-50 border-emerald-200",
-    text: "text-emerald-700",
+    bg: "bg-indigo-50 border-indigo-200",
+    text: "text-indigo-700",
     icon: CheckCircle2,
   },
   INTERVIEW_R1: {
@@ -180,7 +180,7 @@ export function PlacementDashboardPage() {
         </div>
 
         <div className="panel p-5 border rounded-2xl flex items-center gap-4" style={{ borderColor: "var(--border)" }}>
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shrink-0">
             <TrendingUp size={22} />
           </div>
           <div>

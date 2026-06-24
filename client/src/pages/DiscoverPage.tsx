@@ -606,7 +606,7 @@ export function DiscoverPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <Compass className="text-emerald-700" size={20} />
+                <Compass className="text-indigo-700" size={20} />
                 <h1 className="text-xl font-bold text-primary">Discover</h1>
               </div>
               <p className="mt-1 text-sm text-muted-fg">
@@ -636,8 +636,8 @@ export function DiscoverPage() {
               <button
                 className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                   filtersOpen || hasActiveFilters
-                    ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400"
-                    : "border-base bg-surface text-secondary hover:border-emerald-500/50"
+                    ? "border-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400"
+                    : "border-base bg-surface text-secondary hover:border-indigo-500/50"
                 }`}
                 type="button"
                 onClick={() => setFiltersOpen((v) => !v)}
@@ -645,7 +645,7 @@ export function DiscoverPage() {
                 <SlidersHorizontal size={15} />
                 Filters
                 {hasActiveFilters && (
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
                 )}
               </button>
             )}
@@ -664,8 +664,8 @@ export function DiscoverPage() {
                 <button
                   className={`inline-flex min-w-max items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition ${
                     active
-                      ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400"
-                      : "hover:border-emerald-200 hover:text-emerald-800"
+                      ? "border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400"
+                      : "hover:border-indigo-200 hover:text-indigo-800"
                   }`}
                   key={tab.key}
                   type="button"
@@ -690,7 +690,7 @@ export function DiscoverPage() {
                 <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
                   <Filter size={14} />
                   Filters
-                  {hasActiveFilters && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">Active</span>}
+                  {hasActiveFilters && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">Active</span>}
                 </div>
                 {hasActiveFilters && (
                   <button className="text-xs text-red-500 hover:underline" type="button" onClick={clearFilters}>
@@ -1128,7 +1128,7 @@ function DiscoverySection({
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Icon className="text-emerald-700" size={18} />
+          <Icon className="text-indigo-700" size={18} />
           <h2 className="text-base font-semibold text-primary">{title}</h2>
         </div>
         <span className="chip">{formatCount(count)}</span>
@@ -1255,7 +1255,7 @@ function CompanySuggestionCard({ company }: { company: Company }) {
         )}
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-primary">
-            <Link className="hover:text-emerald-700" to={`/companies/${company.slug}`}>
+            <Link className="hover:text-indigo-700" to={`/companies/${company.slug}`}>
               {company.name}
             </Link>
           </h3>
@@ -1266,7 +1266,7 @@ function CompanySuggestionCard({ company }: { company: Company }) {
             {company.tagline || company.description}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {company.verified && <span className="chip text-emerald-700">Verified</span>}
+            {company.verified && <span className="chip text-indigo-700">Verified</span>}
             {company.hiringEnabled && <span className="chip">Hiring</span>}
             {company.referralEnabled && <span className="chip">Referrals</span>}
           </div>
@@ -1283,13 +1283,13 @@ function CommunitySuggestionCard({ community }: { community: Community }) {
         {community.avatarUrl ? (
           <img className="h-11 w-11 rounded-md object-cover" src={community.avatarUrl} alt={community.name} />
         ) : (
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800">
             <Hash size={20} />
           </div>
         )}
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-primary">
-            <Link className="hover:text-emerald-700" to={`/communities/${community.slug}`}>
+            <Link className="hover:text-indigo-700" to={`/communities/${community.slug}`}>
               {community.name}
             </Link>
           </h3>
@@ -1351,7 +1351,7 @@ function FeedSuggestionCard({ item }: { item: FeedItem }) {
     JOB: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
     POST: "bg-surface-3 text-secondary border-base",
     HACKATHON: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    COMPANY: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    COMPANY: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     COMMUNITY: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
   };
   const chipClass = typeColors[item.type] ?? "bg-surface-3 text-secondary border-base";
@@ -1363,7 +1363,7 @@ function FeedSuggestionCard({ item }: { item: FeedItem }) {
   return (
     <article
       className={`panel p-4 transition ${
-        route ? "cursor-pointer hover:border-emerald-300 hover:shadow-md" : ""
+        route ? "cursor-pointer hover:border-indigo-300 hover:shadow-md" : ""
       }`}
       role={route ? "button" : undefined}
       tabIndex={route ? 0 : undefined}

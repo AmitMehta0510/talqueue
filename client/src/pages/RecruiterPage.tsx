@@ -125,8 +125,8 @@ export function RecruiterPage() {
 
       {/* Recruiter Stats Overview Row */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-emerald-50/40 dark:from-emerald-900/10 to-teal-50/40 dark:to-teal-900/10">
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
+        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-indigo-50/40 dark:from-indigo-900/10 to-teal-50/40 dark:to-teal-900/10">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400">
             <BriefcaseBusiness size={20} />
           </div>
           <div>
@@ -172,7 +172,7 @@ export function RecruiterPage() {
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <h4 className="font-bold text-base truncate" style={{ color: "var(--text-primary)" }}>{job.title}</h4>
-                    <span className="chip uppercase text-[9px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                    <span className="chip uppercase text-[9px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
                       {job.type}
                     </span>
                   </div>
@@ -182,7 +182,7 @@ export function RecruiterPage() {
                   </p>
 
                   <div className="flex items-center gap-4 text-xs font-semibold mt-2.5">
-                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                       <CheckCircle size={14} />
                       {job.applicationsCount || 0} Candidates
                     </span>
@@ -259,7 +259,7 @@ export function RecruiterPage() {
                     </div>
                     <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       invite.status === "PENDING" ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700" :
-                      invite.status === "ACCEPTED" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700" :
+                      invite.status === "ACCEPTED" ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700" :
                       invite.status === "REJECTED" ? "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-700" :
                       ""
                     }`} style={invite.status !== "PENDING" && invite.status !== "ACCEPTED" && invite.status !== "REJECTED" ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" } : {}}>{invite.status}</span>
@@ -280,7 +280,7 @@ export function RecruiterPage() {
                     </button>
                   )}
                   {invite.status === "ACCEPTED" && invite.placementDrive && (
-                    <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
                       <CheckCircle size={10} /> Drive is live!
                     </p>
                   )}
@@ -325,7 +325,7 @@ export function RecruiterPage() {
                         {drive.driveTitle}
                       </h4>
                       <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[9px] font-bold ${
-                        drive.status === "ONGOING" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700" :
+                        drive.status === "ONGOING" ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700" :
                         drive.status === "UPCOMING" ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700" :
                         ""
                       }`} style={drive.status !== "ONGOING" && drive.status !== "UPCOMING" ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" } : {}}>

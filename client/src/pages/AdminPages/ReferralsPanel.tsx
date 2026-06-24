@@ -23,7 +23,7 @@ export function ReferralsPanel() {
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
-          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
+          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div>
         ) : (
           <>
             <DataTable

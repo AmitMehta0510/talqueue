@@ -58,7 +58,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
         <button
           id="run-company-scraper"
           type="button"
-          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50 whitespace-nowrap"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50 whitespace-nowrap"
           onClick={() => triggerDiscovery.mutate()}
           disabled={triggerDiscovery.isPending}
         >
@@ -79,7 +79,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Company Management</h2>
         <button
-          className="flex items-center gap-1.5 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition"
+          className="flex items-center gap-1.5 rounded-lg border border-indigo-600/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20 transition"
           onClick={() => { setShowForm(!showForm); onSelectCompany(null); }}
         >
           <Plus size={12} /> Add Company
@@ -89,17 +89,17 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
       <SearchBar value={search} onChange={setSearch} placeholder="Search companies by name, description, industry..." />
 
       {showForm && (
-        <div className="rounded-xl border border-emerald-600/20 bg-zinc-900/60 p-5">
+        <div className="rounded-xl border border-indigo-600/20 bg-zinc-900/60 p-5">
           <h3 className="mb-4 text-sm font-bold text-zinc-300">New Partner Company</h3>
           <form onSubmit={handleSubmit} className="space-y-3">
             <label className="block">
               <span className="mb-1 block text-[11px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>Company Name *</span>
-              <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition" value={name} onChange={(e) => setName(e.target.value)} placeholder="Google, Microsoft..." required />
+              <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition" value={name} onChange={(e) => setName(e.target.value)} placeholder="Google, Microsoft..." required />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1 block text-[11px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>Website URL</span>
-                <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
+                <input className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
               </label>
               <div className="block">
                 <span className="mb-1 block text-[11px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>Company Logo</span>
@@ -113,7 +113,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
                   )}
                   <label className="relative cursor-pointer rounded-lg bg-zinc-800 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/50 px-3 py-1.5 text-xs font-bold text-zinc-300 shadow-sm transition select-none flex-1 text-center">
                     {uploadingLogo ? (
-                      <span className="flex items-center justify-center gap-1"><Loader2 size={12} className="animate-spin text-emerald-400" /> Uploading...</span>
+                      <span className="flex items-center justify-center gap-1"><Loader2 size={12} className="animate-spin text-indigo-400" /> Uploading...</span>
                     ) : (
                       "Choose Logo"
                     )}
@@ -124,10 +124,10 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
             </div>
             <label className="block">
               <span className="mb-1 block text-[11px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>Description</span>
-              <textarea className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition min-h-16 resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief company description..." />
+              <textarea className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-500 focus:outline-none transition min-h-16 resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief company description..." />
             </label>
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={createCompany.isPending || uploadingLogo}>
+              <button className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-500 transition disabled:opacity-50" type="submit" disabled={createCompany.isPending || uploadingLogo}>
                 {createCompany.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
                 Add Company
               </button>
@@ -140,7 +140,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-2">
           {companiesQuery.isPending ? (
-            <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
+            <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div>
           ) : companies.length === 0 ? (
             <div className="flex flex-col items-center py-16">
               <Building2 size={28} className="mb-3 text-zinc-600" />
@@ -151,7 +151,7 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
               key={c.id}
               onClick={() => onSelectCompany(selectedCompany?.id === c.id ? null : c)}
               className={`cursor-pointer rounded-xl border p-4 transition hover:shadow-md
-                ${selectedCompany?.id === c.id ? "border-emerald-600/50 bg-emerald-500/5" : "border-zinc-700/50 bg-zinc-800/40 hover:border-zinc-600"}`}
+                ${selectedCompany?.id === c.id ? "border-indigo-600/50 bg-indigo-500/5" : "border-zinc-700/50 bg-zinc-800/40 hover:border-zinc-600"}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -169,11 +169,11 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
                 </div>
                 <div className="flex items-center gap-2">
                   {c.websiteUrl && (
-                    <a href={c.websiteUrl} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-emerald-400 transition" onClick={(e) => e.stopPropagation()}>
+                    <a href={c.websiteUrl} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-indigo-400 transition" onClick={(e) => e.stopPropagation()}>
                       <ExternalLink size={12} />
                     </a>
                   )}
-                  <ChevronRight size={12} className={`text-zinc-600 transition-transform ${selectedCompany?.id === c.id ? "rotate-90 text-emerald-400" : ""}`} />
+                  <ChevronRight size={12} className={`text-zinc-600 transition-transform ${selectedCompany?.id === c.id ? "rotate-90 text-indigo-400" : ""}`} />
                 </div>
               </div>
             </div>
@@ -246,7 +246,7 @@ function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
               onClick={() => { setAdminType("GLOBAL"); setOfficeCity(""); }}
               className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
                 adminType === "GLOBAL"
-                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-600/30"
+                  ? "bg-indigo-600/20 text-indigo-400 border-indigo-600/30"
                   : "text-zinc-500 border-zinc-700 hover:text-zinc-200"
               }`}
             >
@@ -257,7 +257,7 @@ function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
               onClick={() => setAdminType("OFFICE")}
               className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
                 adminType === "OFFICE"
-                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-600/30"
+                  ? "bg-indigo-600/20 text-indigo-400 border-indigo-600/30"
                   : "text-zinc-500 border-zinc-700 hover:text-zinc-200"
               }`}
             >
@@ -276,7 +276,7 @@ function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
 
           {adminType === "OFFICE" && (
             <input
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition animate-in slide-in-from-top-1 duration-150"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-indigo-500 focus:outline-none transition animate-in slide-in-from-top-1 duration-150"
               value={officeCity}
               onChange={(e) => setOfficeCity(e.target.value)}
               placeholder="Office City Scope (e.g. Bangalore, SF)..."
@@ -284,7 +284,7 @@ function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
             />
           )}
 
-          <button className="w-full flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition" type="submit">
+          <button className="w-full flex items-center justify-center gap-1 rounded-lg bg-indigo-600 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition" type="submit">
             <Plus size={11} /> Assign Admin
           </button>
         </form>
@@ -292,14 +292,14 @@ function CompanyAdminPanel({ company, onClose, onRevoke, onAssign }: {
         <div>
           <div className="text-[10px] font-black uppercase tracking-wider text-zinc-650 mb-2">Assigned Admins ({admins.length})</div>
           {adminsQuery.isPending ? (
-            <div className="flex justify-center py-4"><Loader2 size={14} className="animate-spin text-emerald-500" /></div>
+            <div className="flex justify-center py-4"><Loader2 size={14} className="animate-spin text-indigo-500" /></div>
           ) : admins.length === 0 ? (
             <p className="text-xs text-zinc-600 italic">No administrators assigned.</p>
           ) : (
             <div className="max-h-60 overflow-y-auto space-y-3">
               {globalAdmins.length > 0 && (
                 <div className="space-y-1">
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/80 mb-1">Global Admins ({globalAdmins.length})</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-indigo-500/80 mb-1">Global Admins ({globalAdmins.length})</div>
                   {globalAdmins.map((admin: any) => {
                     const u = admin.user;
                     const label = userName(u);

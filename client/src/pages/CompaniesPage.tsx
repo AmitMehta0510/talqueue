@@ -108,7 +108,7 @@ function CompanyCard({ company }: { company: Company }) {
             <h3 className="truncate text-sm font-bold transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" style={{ color: "var(--text-primary)" }}>
               {company.name}
             </h3>
-            {company.verified && <ShieldCheck size={13} className="shrink-0 text-emerald-500" />}
+            {company.verified && <ShieldCheck size={13} className="shrink-0 text-indigo-500" />}
           </div>
           <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text-muted)" }}>
             {company.tagline || company.industry || "Technology Company"}
@@ -129,7 +129,7 @@ function CompanyCard({ company }: { company: Company }) {
           </span>
         )}
         {company.hiringEnabled && (
-          <span className="rounded-full border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+          <span className="rounded-full border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
             Hiring
           </span>
         )}
@@ -510,7 +510,7 @@ function CompanyDetail({ slug }: { slug: string }) {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{company.name}</h1>
-                {company.verified && <ShieldCheck size={18} className="text-emerald-500" />}
+                {company.verified && <ShieldCheck size={18} className="text-indigo-500" />}
                 {company.type && (
                   <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${TYPE_COLOR[company.type] ?? TYPE_COLOR.OTHER}`}>
                     {titleCase(company.type)}
@@ -629,7 +629,7 @@ function CompanyDetail({ slug }: { slug: string }) {
                       <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(emp.user)}</p>
                       <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{emp.title || userHeadline(emp.user)}</p>
                       <div className="mt-1.5 flex flex-wrap gap-1">
-                        {emp.verified && <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">✓ Verified</span>}
+                        {emp.verified && <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">✓ Verified</span>}
                         {emp.user?.acceptingReferrals && (
                           <button
                             type="button"
@@ -682,7 +682,7 @@ function CompanyDetail({ slug }: { slug: string }) {
             </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
               {company.hiringEnabled && (
-                <span className="rounded-full border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="rounded-full border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300">
                   Hiring
                 </span>
               )}
@@ -844,8 +844,8 @@ export function CompaniesPage() {
             onClick={() => setHiringOnly((v) => !v)}
             className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
               hiringOnly
-                ? "border-emerald-400 bg-emerald-600 text-white"
-                : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-emerald-300"
+                ? "border-indigo-400 bg-indigo-600 text-white"
+                : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-300"
             }`}
             style={!hiringOnly ? { background: "var(--bg-surface)" } : {}}
           >

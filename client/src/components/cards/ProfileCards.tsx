@@ -6,7 +6,7 @@ import { formatMonthYear, titleCase } from "../../lib/format";
 const LEVEL_COLORS: Record<string, string> = {
   BEGINNER:     "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/60",
   INTERMEDIATE: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40",
-  ADVANCED:     "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/40",
+  ADVANCED:     "bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/40",
   EXPERT:       "bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900/40",
 };
 
@@ -44,7 +44,7 @@ export function ExperienceCard({
   const isVerified = experience.verified || experience.workEmailVerified;
 
   return (
-    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-emerald-500/40 dark:hover:border-emerald-400/40">
+    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-indigo-500/40 dark:hover:border-indigo-400/40">
       <div className="flex gap-4">
         {/* Action buttons */}
         {(onEdit || onDelete) && (
@@ -82,7 +82,7 @@ export function ExperienceCard({
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-1.5 pr-12">
               {isVerified && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:ring-indigo-900/40">
                   <ShieldCheck size={11} />
                   Verified
                 </span>
@@ -252,7 +252,7 @@ export function EducationCard({
     .join(" · ");
 
   return (
-    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-emerald-500/40 dark:hover:border-emerald-400/40">
+    <article className="group relative flex flex-col gap-4 panel hover-lift p-5 hover:border-indigo-500/40 dark:hover:border-indigo-400/40">
       <div className="flex gap-4">
         {/* Action buttons */}
         {(onEdit || onDelete) && (
@@ -278,7 +278,7 @@ export function EducationCard({
           </div>
         )}
 
-        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-50 to-teal-100 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-900/60 dark:text-emerald-400">
+        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-teal-100 text-indigo-700 dark:from-indigo-950/60 dark:to-teal-900/60 dark:text-indigo-400">
           <GraduationCap size={20} />
         </div>
         <div className="min-w-0 flex-1">
@@ -292,8 +292,8 @@ export function EducationCard({
               )}
             </div>
             {education.collegeEmailVerified && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
-                <ShieldCheck size={11} className="text-emerald-600 dark:text-emerald-400" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:ring-indigo-900/40">
+                <ShieldCheck size={11} className="text-indigo-600 dark:text-indigo-400" />
                 Verified
               </span>
             )}
@@ -410,7 +410,7 @@ export function SkillPill({
   const levelLabel = skill.level ? titleCase(skill.level) : null;
 
   const verifiedBadge = skill.verified && (
-    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-900/60">
+    <span className="inline-flex items-center gap-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 px-1 py-0.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-400 ring-1 ring-indigo-300 dark:ring-indigo-900/60">
       <ShieldCheck size={10} />
       Verified
     </span>
@@ -461,7 +461,7 @@ export function SkillPill({
     >
       {skill.skill?.name || skill.skill?.normalizedName || "Skill"}
       {levelLabel && <span className="opacity-60">· {levelLabel}</span>}
-      {skill.verified && <ShieldCheck size={11} className="text-emerald-600 dark:text-emerald-400 shrink-0" />}
+      {skill.verified && <ShieldCheck size={11} className="text-indigo-600 dark:text-indigo-400 shrink-0" />}
     </span>
   );
 }

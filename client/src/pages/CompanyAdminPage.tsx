@@ -287,7 +287,7 @@ export function CompanyAdminPage() {
   if (companyQuery.isLoading || (companyId && statsQuery.isLoading)) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3" style={{ color: "var(--text-muted)" }}>
-        <Loader2 className="animate-spin text-emerald-500" size={32} />
+        <Loader2 className="animate-spin text-indigo-500" size={32} />
         <p className="text-sm font-semibold">Loading Admin Dashboard...</p>
       </div>
     );
@@ -338,7 +338,7 @@ export function CompanyAdminPage() {
             <div>
               <h1 className="text-xl font-black tracking-tight flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                 {company.name} Admin Portal
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400 dark:text-indigo-300">
                   <ShieldCheck size={10} /> Global Scope
                 </span>
               </h1>
@@ -375,7 +375,7 @@ export function CompanyAdminPage() {
                   onClick={() => { setActiveTab(id); setShowAddForm(false); setManagedJobId(null); }}
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap md:whitespace-normal
                     ${activeTab === id
-                      ? "bg-emerald-600/10 text-emerald-600 border border-emerald-600/20 dark:text-emerald-400"
+                      ? "bg-indigo-600/10 text-indigo-600 border border-indigo-600/20 dark:text-indigo-400"
                       : "border border-transparent hover:bg-[var(--bg-surface-2)]"
                     }`}
                   style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
@@ -400,7 +400,7 @@ export function CompanyAdminPage() {
                     { label: "Job Postings", value: stats.jobsCount, icon: Briefcase, color: "from-blue-500/20 to-indigo-500/20 text-blue-400" },
                     { label: "Pipeline Applicants", value: stats.applicantsCount, icon: Users, color: "from-purple-500/20 to-violet-500/20 text-purple-400" },
                     { label: "Office Scopes", value: stats.officeManagersCount, icon: MapPin, color: "from-amber-500/20 to-orange-500/20 text-amber-400" },
-                    { label: "Recruiter Seats", value: stats.recruitersCount, icon: Shield, color: "from-emerald-500/20 to-teal-500/20 text-emerald-400" }
+                    { label: "Recruiter Seats", value: stats.recruitersCount, icon: Shield, color: "from-indigo-500/20 to-teal-500/20 text-indigo-400" }
                   ].map((m, idx) => (
                     <div key={idx} className="relative overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:border-[var(--border-strong)]" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
                       <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${m.color}`}>
@@ -417,7 +417,7 @@ export function CompanyAdminPage() {
                   <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                     <div>
                       <h3 className="text-sm font-bold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-                        <Sparkles size={14} className="text-emerald-500" />
+                        <Sparkles size={14} className="text-indigo-500" />
                         Recruitment Pipeline Funnel
                       </h3>
                       <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>Visual stage-by-stage conversion analysis of current job applications.</p>
@@ -449,7 +449,7 @@ export function CompanyAdminPage() {
                             <div>
                               <div className="flex items-center justify-between">
                                 <span className={`text-[9px] font-black uppercase tracking-widest ${
-                                  status === "HIRED" ? "text-emerald-500 dark:text-emerald-400" :
+                                  status === "HIRED" ? "text-indigo-500 dark:text-indigo-400" :
                                   status === "INTERVIEW" ? "text-amber-500 dark:text-amber-400" :
                                   status === "SHORTLISTED" ? "text-indigo-500 dark:text-indigo-400" : ""
                                 }`}
@@ -468,7 +468,7 @@ export function CompanyAdminPage() {
                               <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                                 <div 
                                   className={`h-full rounded-full transition-all duration-500 ${
-                                    status === "HIRED" ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
+                                    status === "HIRED" ? "bg-gradient-to-r from-indigo-500 to-teal-400" :
                                     status === "INTERVIEW" ? "bg-amber-500" :
                                     status === "SHORTLISTED" ? "bg-indigo-500" : "bg-[var(--text-muted)]"
                                   }`}
@@ -478,7 +478,7 @@ export function CompanyAdminPage() {
                               <div className="flex items-center justify-between text-[9px] font-bold" style={{ color: "var(--text-muted)" }}>
                                 <span>{pctOfTotal}% of total</span>
                                 {index > 0 && (
-                                  <span className="text-emerald-500">
+                                  <span className="text-indigo-500">
                                     ↑ {stepConversion}% conv.
                                   </span>
                                 )}
@@ -533,7 +533,7 @@ export function CompanyAdminPage() {
                                   <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>Applied for {app.job?.title}</div>
                                 </div>
                               </div>
-                              <span className="chip text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
+                              <span className="chip text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
                                 {app.status}
                               </span>
                             </div>
@@ -563,7 +563,7 @@ export function CompanyAdminPage() {
                 {showAddForm && (
                   <form onSubmit={handleAddManagerSubmit} className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface)" }}>
                     <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-                      <UserPlus size={13} className="text-emerald-500" />
+                      <UserPlus size={13} className="text-indigo-500" />
                       Add Office Manager
                     </div>
 
@@ -599,7 +599,7 @@ export function CompanyAdminPage() {
                   {/* Global Admins read-only preview */}
                   {globalAdmins.length > 0 && (
                     <div className="rounded-xl border p-4 space-y-2" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
-                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1 mb-2">
+                      <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1 mb-2">
                         <ShieldCheck size={11} />
                         Global Admins ({globalAdmins.length})
                       </div>
@@ -615,7 +615,7 @@ export function CompanyAdminPage() {
                                 <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{u.username}</div>
                               </div>
                             </div>
-                            <span className="chip text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
+                            <span className="chip text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20 text-[9px] font-bold uppercase tracking-wider">
                               Global Privileges
                             </span>
                           </div>
@@ -700,7 +700,7 @@ export function CompanyAdminPage() {
                 {showAddForm && (
                   <form onSubmit={handleAddRecruiterSubmit} className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface)" }}>
                     <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-                      <UserPlus size={13} className="text-emerald-500" />
+                      <UserPlus size={13} className="text-indigo-500" />
                       Add Recruiter Seat
                     </div>
 
@@ -806,7 +806,7 @@ export function CompanyAdminPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>All Company Job Postings</h3>
                     {companyJobsQuery.isLoading ? (
                       <div className="flex justify-center py-8">
-                        <Loader2 className="animate-spin text-emerald-500" size={20} />
+                        <Loader2 className="animate-spin text-indigo-500" size={20} />
                       </div>
                     ) : !companyJobsQuery.data || companyJobsQuery.data.jobs.length === 0 ? (
                       <div className="flex flex-col items-center justify-center border border-dashed rounded-xl p-8 text-center" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
@@ -832,7 +832,7 @@ export function CompanyAdminPage() {
                               <div>
                                 <div className="text-xs font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
                                   {job.title}
-                                  <span className="chip text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 text-[8px] font-bold">
+                                  <span className="chip text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20 text-[8px] font-bold">
                                     {job.status || "OPEN"}
                                   </span>
                                 </div>
@@ -926,7 +926,7 @@ export function CompanyAdminPage() {
                     className="rounded-xl border p-5 space-y-4 max-w-lg" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface)" }}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-                      <MapPin size={13} className="text-emerald-500" />
+                      <MapPin size={13} className="text-indigo-500" />
                       Add New Office Location
                     </div>
 
@@ -1006,7 +1006,7 @@ export function CompanyAdminPage() {
                             <Building2 size={13} style={{ color: "var(--text-muted)" }} />
                             {office.name}
                           </h4>
-                          <span className="chip text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
+                          <span className="chip text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20 text-[9px] font-bold uppercase tracking-wider">
                             {office.city}
                           </span>
                         </div>
@@ -1063,7 +1063,7 @@ export function CompanyAdminPage() {
                     className="rounded-xl border p-5 space-y-4 max-w-lg" style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface)" }}
                   >
                     <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-                      <Building2 size={13} className="text-emerald-500" />
+                      <Building2 size={13} className="text-indigo-500" />
                       Add New Brand Department
                     </div>
 
@@ -1123,7 +1123,7 @@ export function CompanyAdminPage() {
                             {dept.name}
                           </h4>
                           {dept.code && (
-                            <span className="chip text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider">
+                            <span className="chip text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20 text-[9px] font-bold uppercase tracking-wider">
                               {dept.code}
                             </span>
                           )}
@@ -1139,7 +1139,7 @@ export function CompanyAdminPage() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-sm font-bold flex items-center gap-1.5 uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
-                    <Settings size={14} className="text-emerald-500" />
+                    <Settings size={14} className="text-indigo-500" />
                     Company Profile Settings
                   </h2>
                   <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>Update branding details, media covers, and recruitment coordinates.</p>
@@ -1161,7 +1161,7 @@ export function CompanyAdminPage() {
                         )}
                         <label className="relative cursor-pointer btn-secondary text-xs px-3 py-2">
                           {uploadingLogo ? (
-                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-emerald-500" /> Uploading...</span>
+                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-indigo-500" /> Uploading...</span>
                           ) : (
                             "Choose Logo"
                           )}
@@ -1184,7 +1184,7 @@ export function CompanyAdminPage() {
                         )}
                         <label className="self-start relative cursor-pointer btn-secondary text-xs px-3 py-2">
                           {uploadingCover ? (
-                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-emerald-500" /> Uploading...</span>
+                            <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin text-indigo-500" /> Uploading...</span>
                           ) : (
                             "Choose Cover Banner"
                           )}
@@ -1268,11 +1268,11 @@ export function CompanyAdminPage() {
 
                     <div className="flex gap-6 text-xs pt-2 border-t" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                       <label className="flex cursor-pointer items-center gap-2 select-none">
-                        <input type="checkbox" checked={settingsForm.hiringEnabled} onChange={(e) => updateSetting("hiringEnabled", e.target.checked)} className="accent-emerald-600 h-3.5 w-3.5" />
+                        <input type="checkbox" checked={settingsForm.hiringEnabled} onChange={(e) => updateSetting("hiringEnabled", e.target.checked)} className="accent-indigo-600 h-3.5 w-3.5" />
                         Hiring active
                       </label>
                       <label className="flex cursor-pointer items-center gap-2 select-none">
-                        <input type="checkbox" checked={settingsForm.referralEnabled} onChange={(e) => updateSetting("referralEnabled", e.target.checked)} className="accent-emerald-600 h-3.5 w-3.5" />
+                        <input type="checkbox" checked={settingsForm.referralEnabled} onChange={(e) => updateSetting("referralEnabled", e.target.checked)} className="accent-indigo-600 h-3.5 w-3.5" />
                         Referral coordinates open
                       </label>
                     </div>

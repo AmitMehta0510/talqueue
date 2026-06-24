@@ -57,7 +57,7 @@ function ConnectionRequestPanel() {
           const connectionId = connectionIdFromNotification(notification);
 
           return (
-            <article className="rounded-md border border-emerald-200 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-900/20 p-4" key={notification.id}>
+            <article className="rounded-md border border-indigo-200 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-900/20 p-4" key={notification.id}>
               <div className="flex items-center gap-3">
                 <Avatar user={notification.actor} size="sm" />
                 <div className="min-w-0">
@@ -73,7 +73,7 @@ function ConnectionRequestPanel() {
               {notification.metadata?.connectionStatus === "ACCEPTED" || notification.metadata?.connectionStatus === "REJECTED" ? (
                 <div className="mt-4 flex items-center gap-1.5 text-sm font-semibold">
                   {notification.metadata.connectionStatus === "ACCEPTED" ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1 text-indigo-700 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-2.5 py-1 rounded-full text-xs font-semibold">
                       <UserCheck size={13} />
                       Accepted
                     </span>
@@ -367,8 +367,8 @@ export function SocialPage() {
             <button
               className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
                 activeTab === tab.id
-                  ? "bg-emerald-700 text-white"
-                  : "border hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
+                  ? "bg-indigo-700 text-white"
+                  : "border hover:border-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400"
               }`}
               style={activeTab !== tab.id ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}
               key={tab.id}

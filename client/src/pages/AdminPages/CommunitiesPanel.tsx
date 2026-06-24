@@ -21,7 +21,7 @@ export function CommunitiesPanel() {
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
-          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
+          <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div>
         ) : (
           <>
             <DataTable
@@ -35,8 +35,8 @@ export function CommunitiesPanel() {
                       {c.avatarUrl ? (
                         <img src={c.avatarUrl} alt={c.name} className="h-7 w-7 rounded-full object-cover" />
                       ) : (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border border-emerald-600/20">
-                          <Hash size={12} className="text-emerald-500 dark:text-emerald-400" />
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/20 to-teal-600/20 border border-indigo-600/20">
+                          <Hash size={12} className="text-indigo-500 dark:text-indigo-400" />
                         </div>
                       )}
                       <div>
@@ -51,7 +51,7 @@ export function CommunitiesPanel() {
                   <td className="px-4 py-3 text-center" style={{ color: "var(--text-secondary)" }}>{c.memberCount || c._count?.members || 0}</td>
                   <td className="px-4 py-3">
                     {c.verified ? (
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold"><BadgeCheck size={11} /> Verified</span>
+                      <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold"><BadgeCheck size={11} /> Verified</span>
                     ) : (
                       <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>Unverified</span>
                     )}
@@ -63,7 +63,7 @@ export function CommunitiesPanel() {
                     <div className="flex gap-1">
                       {!c.verified && (
                         <button
-                          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                           onClick={() => updateCommunity.mutateAsync({ communityId: c.id, verified: true })}
                         >
                           <BadgeCheck size={9} /> Verify
@@ -78,7 +78,7 @@ export function CommunitiesPanel() {
                         </button>
                       ) : (
                         <button
-                          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                           onClick={() => updateCommunity.mutateAsync({ communityId: c.id, archived: false })}
                         >
                           <CheckCircle size={9} /> Restore

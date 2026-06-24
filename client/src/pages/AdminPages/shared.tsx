@@ -18,7 +18,7 @@ export const fmtRelative = (d: string) => {
 // ─── STATUS BADGE ──────────────────────────────────────────────────────────────
 export function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, string> = {
-    ACTIVE: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30",
+    ACTIVE: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 ring-indigo-500/30",
     BANNED: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-rose-500/30",
     INACTIVE: "bg-slate-500/15 text-slate-600 dark:text-slate-400 ring-slate-500/30",
     OPEN: "bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-blue-500/30",
@@ -26,7 +26,7 @@ export function StatusBadge({ status }: { status: string }) {
     CLOSED: "bg-slate-500/15 text-slate-600 dark:text-slate-400 ring-slate-500/30",
     COMPLETED: "bg-purple-500/15 text-purple-600 dark:text-purple-400 ring-purple-500/30",
     ARCHIVED: "bg-slate-600/15 text-slate-600 dark:text-slate-500 ring-slate-600/30",
-    ACCEPTED: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30",
+    ACCEPTED: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 ring-indigo-500/30",
     REJECTED: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-rose-500/30",
     PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30",
   };
@@ -181,7 +181,7 @@ export function UserSearchAutocomplete({
   return (
     <div ref={containerRef} className="relative w-full">
       {selectedUser ? (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs transition duration-150">
+        <div className="flex items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2 text-xs transition duration-150">
           <div className="flex items-center gap-2">
             <Avatar user={{ username: selectedUser.username, profile: { avatarUrl: selectedUser.avatarUrl } } as any} size="sm" />
             <div>
@@ -226,7 +226,7 @@ export function UserSearchAutocomplete({
             <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border shadow-2xl py-1 animate-in fade-in duration-105" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
               {usersQuery.isPending ? (
                 <div className="flex items-center justify-center py-4 gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-                  <Loader2 size={12} className="animate-spin text-emerald-500" />
+                  <Loader2 size={12} className="animate-spin text-indigo-500" />
                   Searching users...
                 </div>
               ) : matchedUsers.length === 0 ? (

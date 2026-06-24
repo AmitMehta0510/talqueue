@@ -88,13 +88,13 @@ function isSuperOrPlatformAdmin(user: any): boolean {
 }
 
 const TYPE_GRADIENT: Record<CommunityType, string> = {
-  COLLEGE: "from-emerald-600 to-teal-700",
+  COLLEGE: "from-indigo-600 to-teal-700",
   COMPANY: "from-blue-600 to-indigo-700",
   GENERAL: "from-violet-600 to-purple-700",
 };
 
 const TYPE_ICON_BG: Record<CommunityType, string> = {
-  COLLEGE: "bg-emerald-600",
+  COLLEGE: "bg-indigo-600",
   COMPANY: "bg-blue-600",
   GENERAL: "bg-violet-600",
 };
@@ -102,7 +102,7 @@ const TYPE_ICON_BG: Record<CommunityType, string> = {
 const CATEGORY_COLORS: Record<CommunityCategory, string> = {
   GENERAL:      "bg-slate-100 text-slate-600",
   CODING:       "bg-violet-100 text-violet-700",
-  PLACEMENTS:   "bg-emerald-100 text-emerald-700",
+  PLACEMENTS:   "bg-indigo-100 text-indigo-700",
   INTERNSHIPS:  "bg-teal-100 text-teal-700",
   REFERRALS:    "bg-amber-100 text-amber-700",
   INTERVIEWS:   "bg-blue-100 text-blue-700",
@@ -237,7 +237,7 @@ function PostCard({ post }: { post: FeedPost }) {
           <span>{timeAgo(post.createdAt)}</span>
         </div>
 
-        <h3 className="mt-2 text-sm font-semibold leading-snug group-hover:text-emerald-800 transition-colors" style={{ color: "var(--text-primary)" }}>
+        <h3 className="mt-2 text-sm font-semibold leading-snug group-hover:text-indigo-800 transition-colors" style={{ color: "var(--text-primary)" }}>
           {post.title || post.content?.slice(0, 120) || "Untitled post"}
         </h3>
 
@@ -354,7 +354,7 @@ function CommunityBrowseCard({
   };
 
   return (
-    <div className="group overflow-hidden rounded-xl border transition hover:border-emerald-300 hover:shadow-md" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+    <div className="group overflow-hidden rounded-xl border transition hover:border-indigo-300 hover:shadow-md" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {/* Mini banner */}
       <Link to={`/communities/${community.slug}`}>
         <div
@@ -388,14 +388,14 @@ function CommunityBrowseCard({
           <div className="min-w-0 flex-1 pt-1">
             <Link
               to={`/communities/${community.slug}`}
-              className="block truncate text-sm font-bold hover:text-emerald-700 transition-colors" style={{ color: "var(--text-primary)" }}
+              className="block truncate text-sm font-bold hover:text-indigo-700 transition-colors" style={{ color: "var(--text-primary)" }}
             >
               r/{community.slug}
             </Link>
             <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{communityScope(community)}</p>
           </div>
           {community.verified && (
-            <ShieldCheck size={14} className="mt-1.5 shrink-0 text-emerald-500" />
+            <ShieldCheck size={14} className="mt-1.5 shrink-0 text-indigo-500" />
           )}
         </div>
 
@@ -455,14 +455,14 @@ function CommunityBrowseCard({
                     leaveMutation.mutate(community.id);
                   }
                 }}
-                className="w-full rounded-full border border-emerald-300 bg-white py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                className="w-full rounded-full border border-indigo-300 bg-white py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
               >
                 {leaveMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : "✓ Joined"}
               </button>
             ) : isMember && isOwner ? (
               <Link
                 to={`/communities/${community.slug}`}
-                className="block w-full rounded-full border border-emerald-300 bg-white py-1.5 text-center text-xs font-bold text-emerald-700 transition hover:bg-emerald-50"
+                className="block w-full rounded-full border border-indigo-300 bg-white py-1.5 text-center text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
               >
                 View
               </Link>
@@ -480,7 +480,7 @@ function CommunityBrowseCard({
                 type="button"
                 disabled={joinMutation.isPending}
                 onClick={() => joinMutation.mutate(community.id)}
-                className="w-full rounded-full bg-emerald-700 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+                className="w-full rounded-full bg-indigo-700 py-1.5 text-xs font-bold text-white transition hover:bg-indigo-800 disabled:opacity-50"
               >
                 {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : "Join"}
               </button>
@@ -635,7 +635,7 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
             </div>
           </div>
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
-            <input type="checkbox" checked={form.autoJoinEligible} onChange={(e) => set("autoJoinEligible", e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-emerald-600" />
+            <input type="checkbox" checked={form.autoJoinEligible} onChange={(e) => set("autoJoinEligible", e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-indigo-600" />
             <div>
               <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Enable auto-join</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>Members added automatically when they register</p>
@@ -697,7 +697,7 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
           <button
             type="button"
             onClick={() => { setExpanded(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
-            className="flex-1 rounded-lg border px-4 py-2.5 text-left text-sm transition hover:border-emerald-300 hover:bg-white hover:text-slate-600" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
+            className="flex-1 rounded-lg border px-4 py-2.5 text-left text-sm transition hover:border-indigo-300 hover:bg-white hover:text-slate-600" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
           >
             Share something with this community…
           </button>
@@ -864,7 +864,7 @@ function CommunityDetail({ slug }: { slug: string }) {
             <div className="pb-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{community.name}</h1>
-                {community.verified && <ShieldCheck size={16} className="text-emerald-500" />}
+                {community.verified && <ShieldCheck size={16} className="text-indigo-500" />}
               </div>
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>r/{community.slug} · {communityScope(community)}</p>
             </div>
@@ -886,7 +886,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                   type="button"
                   disabled={leaveMutation.isPending}
                   onClick={() => { if (window.confirm(`Leave r/${community.slug}?`)) leaveMutation.mutate(community.id); }}
-                  className="rounded-full border border-emerald-600 bg-white px-5 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                  className="rounded-full border border-indigo-600 bg-white px-5 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50"
                 >
                   {leaveMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : "✓ Joined"}
                 </button>
@@ -898,7 +898,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                   className={`rounded-full px-6 py-2 text-sm font-bold text-white transition disabled:opacity-50 ${
                     community.type === "COLLEGE" || community.type === "COMPANY"
                       ? "bg-amber-600 hover:bg-amber-700"
-                      : "bg-emerald-700 hover:bg-emerald-800"
+                      : "bg-indigo-700 hover:bg-indigo-800"
                   }`}
                 >
                   {joinMutation.isPending ? <Loader2 className="animate-spin" size={15} /> : (community.type === "COLLEGE" || community.type === "COMPANY" ? "Request to Join" : "Join")}
@@ -970,9 +970,9 @@ function CommunityDetail({ slug }: { slug: string }) {
                   <Link
                     key={conv.id}
                     to={`/chat/${conv.id}`}
-                    className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition hover:bg-emerald-50 hover:text-emerald-800" style={{ color: "var(--text-secondary)" }}
+                    className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition hover:bg-indigo-50 hover:text-indigo-800" style={{ color: "var(--text-secondary)" }}
                   >
-                    <Hash size={14} className="text-slate-400 group-hover:text-emerald-600" />
+                    <Hash size={14} className="text-slate-400 group-hover:text-indigo-600" />
                     <span className="font-medium">{conv.title || "general"}</span>
                     <span className="ml-auto text-xs text-slate-300">{conv.updatedAt ? timeAgo(conv.updatedAt) : ""}</span>
                   </Link>
@@ -1061,7 +1061,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                     <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600">Private</span>
                   )}
                   {community.visibility === "PUBLIC" && (
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Public</span>
+                    <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">Public</span>
                   )}
                   {community.autoJoinEligible && (
                     <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700">Auto-join</span>
@@ -1097,7 +1097,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                       className={`w-full rounded-full py-2 text-xs font-bold text-white transition disabled:opacity-50 ${
                         community.type === "COLLEGE" || community.type === "COMPANY"
                           ? "bg-amber-600 hover:bg-amber-700"
-                          : "bg-emerald-700 hover:bg-emerald-800"
+                          : "bg-indigo-700 hover:bg-indigo-800"
                       }`}
                     >
                       {joinMutation.isPending ? <Loader2 className="mx-auto animate-spin" size={13} /> : (community.type === "COLLEGE" || community.type === "COMPANY" ? "Request to Join" : "Join Community")}
@@ -1126,7 +1126,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                         u/{m.user?.username || "user"}
                       </p>
                       {m.role && m.role !== "MEMBER" && (
-                        <p className="text-[10px] font-bold text-emerald-600">{titleCase(m.role)}</p>
+                        <p className="text-[10px] font-bold text-indigo-600">{titleCase(m.role)}</p>
                       )}
                     </div>
                   </div>
@@ -1202,7 +1202,7 @@ function ReviewJoinRequestPanel({ slug }: { slug: string }) {
                   type="button"
                   disabled={reviewMutation.isPending}
                   onClick={() => reviewMutation.mutate({ pendingUserId: req.userId, action: "approve" })}
-                  className="flex-1 rounded-lg bg-emerald-600 py-1 text-[10px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-indigo-600 py-1 text-[10px] font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
                 >
                   Approve
                 </button>
@@ -1327,7 +1327,7 @@ export function CommunitiesPage() {
                 onClick={() => setActiveTab(key)}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
                   activeTab === key
-                    ? "bg-emerald-700 text-white shadow"
+                    ? "bg-indigo-700 text-white shadow"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                 }`}
               >
@@ -1358,7 +1358,7 @@ export function CommunitiesPage() {
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
-              className={`icon-btn gap-1 px-3 text-xs font-semibold ${showFilters || categoryFilter || typeFilter ? "border-emerald-400 text-emerald-700" : ""}`}
+              className={`icon-btn gap-1 px-3 text-xs font-semibold ${showFilters || categoryFilter || typeFilter ? "border-indigo-400 text-indigo-700" : ""}`}
               disabled={!user}
             >
               <ChevronDown size={14} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
@@ -1371,7 +1371,7 @@ export function CommunitiesPage() {
                 <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>TYPE</span>
                 {(["", "GENERAL", "COLLEGE", "COMPANY"] as (CommunityType | "")[]).map((t) => (
                   <button key={t || "all"} type="button" onClick={() => setTypeFilter(t)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${typeFilter === t ? "border-emerald-500 bg-emerald-600 text-white" : "hover:border-emerald-300"}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${typeFilter === t ? "border-indigo-500 bg-indigo-600 text-white" : "hover:border-indigo-300"}`}
                     style={typeFilter !== t ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}>
                     {t ? titleCase(t) : "All"}
                   </button>
@@ -1381,7 +1381,7 @@ export function CommunitiesPage() {
                 <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>TOPIC</span>
                 {(["", "CODING", "PLACEMENTS", "INTERNSHIPS", "REFERRALS", "INTERVIEWS"] as (CommunityCategory | "")[]).map((c) => (
                   <button key={c || "all"} type="button" onClick={() => setCategoryFilter(c)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${categoryFilter === c ? "border-emerald-500 bg-emerald-600 text-white" : "hover:border-emerald-300"}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${categoryFilter === c ? "border-indigo-500 bg-indigo-600 text-white" : "hover:border-indigo-300"}`}
                     style={categoryFilter !== c ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}>
                     {c ? titleCase(c) : "All"}
                   </button>

@@ -8,19 +8,19 @@ export default {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
-        // Primary emerald palette — unchanged, extended
+        // Primary brand palette — Electric Indigo / Violet
         brand: {
-          50:  "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          300: "#6ee7b7",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
-          950: "#022c22",
+          50:  "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5",
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
+          950: "#1e1b4b",
         },
       },
       boxShadow: {
@@ -28,8 +28,8 @@ export default {
         card:   "0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
         glass:  "0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.15)",
         "glass-dark": "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
-        glow:   "0 0 20px rgba(16, 185, 129, 0.25)",
-        "glow-sm": "0 0 10px rgba(16, 185, 129, 0.15)",
+        glow:   "0 0 20px rgba(99, 102, 241, 0.30)",
+        "glow-sm": "0 0 10px rgba(99, 102, 241, 0.18)",
         toast:  "0 16px 48px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.10)",
       },
       borderRadius: {

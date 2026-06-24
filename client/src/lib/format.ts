@@ -62,7 +62,7 @@ export const formatDate = (value?: string, includeYear = true) => {
 };
 
 export const STATUS_CHIP_CLASSES: Record<string, string> = {
-  LIVE: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  LIVE: "bg-indigo-50 text-indigo-700 border border-indigo-200",
   OPEN: "bg-blue-50 text-blue-700 border border-blue-200",
   COMPLETED: "bg-slate-100 text-slate-500 border border-slate-200",
   DRAFT: "bg-amber-50 text-amber-700 border border-amber-200",

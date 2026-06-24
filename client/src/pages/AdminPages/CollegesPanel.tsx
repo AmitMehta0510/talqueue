@@ -142,7 +142,7 @@ export function CollegesPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-5">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Building2 className="text-emerald-500" size={22} />
+            <Building2 className="text-indigo-500" size={22} />
             Colleges Catalog
           </h2>
           <p className="text-xs text-zinc-500 mt-1">Manage institutional details, administrators, and departments.</p>
@@ -151,7 +151,7 @@ export function CollegesPanel({
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-2.5 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white transition duration-200">
             {importColleges.isPending ? (
-              <Loader2 size={14} className="animate-spin text-emerald-500" />
+              <Loader2 size={14} className="animate-spin text-indigo-500" />
             ) : (
               <Upload size={14} className="text-zinc-400" />
             )}
@@ -165,7 +165,7 @@ export function CollegesPanel({
             />
           </label>
           <button
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-900/20 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-900/30 transition duration-200"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-900/20 hover:from-indigo-500 hover:to-teal-500 hover:shadow-indigo-900/30 transition duration-200"
             onClick={() => { setShowForm(!showForm); onSelectCollege(null); }}
           >
             <Plus size={14} /> Add Institution
@@ -186,28 +186,28 @@ export function CollegesPanel({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="md:col-span-2 block">
                 <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Institution Name *</span>
-                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={name} onChange={(e) => setName(e.target.value)} placeholder="IIT Delhi, IIM Ahmedabad..." required />
+                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 focus:outline-none transition duration-200" value={name} onChange={(e) => setName(e.target.value)} placeholder="IIT Delhi, IIM Ahmedabad..." required />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>City</span>
-                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={city} onChange={(e) => setCity(e.target.value)} placeholder="New Delhi" />
+                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 focus:outline-none transition duration-200" value={city} onChange={(e) => setCity(e.target.value)} placeholder="New Delhi" />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>State</span>
-                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={state} onChange={(e) => setState(e.target.value)} placeholder="Delhi" />
+                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 focus:outline-none transition duration-200" value={state} onChange={(e) => setState(e.target.value)} placeholder="Delhi" />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Website URL</span>
-                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
+                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 focus:outline-none transition duration-200" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Logo Image URL</span>
-                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." type="url" />
+                <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 focus:outline-none transition duration-200" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." type="url" />
               </label>
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-zinc-900">
               <button type="button" className="rounded-xl border border-zinc-800 px-4 py-2.5 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition duration-200" onClick={() => setShowForm(false)}>Cancel</button>
-              <button className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 transition duration-200 disabled:opacity-50" type="submit" disabled={createCollege.isPending}>
+              <button className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-500 transition duration-200 disabled:opacity-50" type="submit" disabled={createCollege.isPending}>
                 {createCollege.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
                 Add College
               </button>
@@ -245,7 +245,7 @@ export function CollegesPanel({
         <div className="space-y-4">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
-              <Loader2 size={24} className="animate-spin text-emerald-500" />
+              <Loader2 size={24} className="animate-spin text-indigo-500" />
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>Retrieving institutions...</p>
             </div>
           ) : colleges.length === 0 ? (
@@ -263,7 +263,7 @@ export function CollegesPanel({
                     onClick={() => onSelectCollege(selectedCollege?.id === c.id ? null : c)}
                     className={`group cursor-pointer rounded-2xl border p-4.5 transition-all duration-300 hover:shadow-lg
                       ${selectedCollege?.id === c.id 
-                        ? "border-emerald-500/50 bg-emerald-500/5 shadow-emerald-950/10" 
+                        ? "border-indigo-500/50 bg-indigo-500/5 shadow-indigo-950/10" 
                         : "border-zinc-800/80 bg-zinc-900/30 hover:border-zinc-700/80 hover:bg-zinc-800/40 hover:-translate-y-0.5"}`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -276,7 +276,7 @@ export function CollegesPanel({
                           </div>
                         )}
                         <div className="min-w-0">
-                          <div className="font-bold text-sm text-white truncate group-hover:text-emerald-400 transition">{c.name}</div>
+                          <div className="font-bold text-sm text-white truncate group-hover:text-indigo-400 transition">{c.name}</div>
                           <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1.5">
                             <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ") || "Unknown Location"}</span>
                             {c.country && (
@@ -296,7 +296,7 @@ export function CollegesPanel({
                         </div>
                         <div className="flex items-center gap-2">
                           {c.website && (
-                            <a href={c.website} target="_blank" rel="noreferrer" className="p-1.5 text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition" onClick={(e) => e.stopPropagation()} title="Open Website">
+                            <a href={c.website} target="_blank" rel="noreferrer" className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition" onClick={(e) => e.stopPropagation()} title="Open Website">
                               <ExternalLink size={13} />
                             </a>
                           )}
@@ -317,7 +317,7 @@ export function CollegesPanel({
                               <Trash2 size={13} />
                             )}
                           </button>
-                          <ChevronRight size={14} className={`text-zinc-500 group-hover:text-zinc-300 transition-transform duration-300 ${selectedCollege?.id === c.id ? "rotate-90 text-emerald-400 group-hover:text-emerald-400" : ""}`} />
+                          <ChevronRight size={14} className={`text-zinc-500 group-hover:text-zinc-300 transition-transform duration-300 ${selectedCollege?.id === c.id ? "rotate-90 text-indigo-400 group-hover:text-indigo-400" : ""}`} />
                         </div>
                       </div>
                     </div>
@@ -432,7 +432,7 @@ function CollegeDetailPanel({
           <button
             key={s}
             className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-all
-              ${activeSection === s ? "border-b border-emerald-500 text-emerald-400 bg-emerald-500/5" : "text-zinc-500 hover:text-zinc-200"}`}
+              ${activeSection === s ? "border-b border-indigo-500 text-indigo-400 bg-indigo-500/5" : "text-zinc-500 hover:text-zinc-200"}`}
             onClick={() => setActiveSection(s)}
           >
             {s === "admins" ? `Admins (${admins.length})` : `Departments (${departments.length})`}
@@ -455,7 +455,7 @@ function CollegeDetailPanel({
                   placeholder="Assign user as admin..."
                 />
               </div>
-              <button className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-md shadow-emerald-950/20" type="submit">
+              <button className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition shadow-md shadow-indigo-950/20" type="submit">
                 <Plus size={12} /> Assign
               </button>
             </form>
@@ -464,7 +464,7 @@ function CollegeDetailPanel({
               <div className="text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Assigned Administrators</div>
               
               {adminsQuery.isPending ? (
-                <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
+                <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-indigo-500" /></div>
               ) : admins.length === 0 ? (
                 <div className="flex flex-col items-center py-6 border border-dashed border-zinc-850 rounded-xl bg-zinc-900/10">
                   <ShieldAlert size={18} className="text-zinc-650 mb-1.5" />
@@ -502,19 +502,19 @@ function CollegeDetailPanel({
             <form onSubmit={handleCreateDept} className="space-y-2.5 bg-zinc-900/10 border border-zinc-850/60 rounded-2xl p-4">
               <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500 mb-1">Create Department</div>
               <input
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none transition"
                 value={deptName}
                 onChange={(e) => setDeptName(e.target.value)}
                 placeholder="Department name (e.g. Computer Science)"
                 required
               />
               <input
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none transition"
                 value={deptHod}
                 onChange={(e) => setDeptHod(e.target.value)}
                 placeholder="Head of Department (optional)"
               />
-              <button className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50" type="submit" disabled={createDept.isPending}>
+              <button className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition disabled:opacity-50" type="submit" disabled={createDept.isPending}>
                 {createDept.isPending ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Create Department
               </button>
             </form>
@@ -523,7 +523,7 @@ function CollegeDetailPanel({
               <div className="text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Departments</div>
               
               {deptQuery.isPending ? (
-                <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
+                <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-indigo-500" /></div>
               ) : departments.length === 0 ? (
                 <div className="flex flex-col items-center py-6 border border-dashed border-zinc-850 rounded-xl bg-zinc-900/10">
                   <GraduationCap size={18} className="text-zinc-650 mb-1.5" />

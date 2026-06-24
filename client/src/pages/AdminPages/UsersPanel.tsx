@@ -37,7 +37,7 @@ export function UsersPanel({
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {usersQuery.isPending ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 size={24} className="animate-spin text-emerald-500" />
+            <Loader2 size={24} className="animate-spin text-indigo-500" />
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
@@ -119,7 +119,7 @@ export function UsersPanel({
 
                       {isBanned ? (
                         <button
-                          className="flex items-center gap-1 rounded-lg border border-emerald-700/50 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition"
+                          className="flex items-center gap-1 rounded-lg border border-indigo-700/50 bg-indigo-500/10 px-2.5 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition"
                           onClick={() => onAction("activate", u.id, label)}
                         >
                           <CheckCircle size={11} /> Activate

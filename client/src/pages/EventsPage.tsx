@@ -47,7 +47,7 @@ const EVENT_TYPE_CONFIG: Record<
 };
 
 const RSVP_CONFIG = {
-  GOING: { label: "Going", activeClass: "bg-emerald-700 text-white", inactiveClass: "btn-secondary" },
+  GOING: { label: "Going", activeClass: "bg-indigo-700 text-white", inactiveClass: "btn-secondary" },
   MAYBE: { label: "Maybe", activeClass: "bg-amber-600 text-white border-amber-600", inactiveClass: "btn-secondary" },
   DECLINED: { label: "Decline", activeClass: "bg-rose-600 text-white border-rose-600", inactiveClass: "btn-secondary" },
 };
@@ -64,7 +64,7 @@ function EventTypeChip({ type }: { type: EventType }) {
 
 function RSVPChip({ status }: { status: RSVPStatus }) {
   const colorMap: Record<RSVPStatus, string> = {
-    GOING: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700",
+    GOING: "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700",
     MAYBE: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
     DECLINED: "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700",
   };
@@ -329,7 +329,7 @@ function EventCard({ event, onEdit, onDelete, onRsvp }: {
               href={event.meetingUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-0.5 font-semibold text-emerald-700 hover:underline"
+              className="inline-flex items-center gap-0.5 font-semibold text-indigo-700 hover:underline"
             >
               Join Online <ExternalLink size={10} />
             </a>
@@ -512,8 +512,8 @@ export function EventsPage() {
               onClick={() => setFilterType(tab.id)}
               className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition ${
                 filterType === tab.id
-                  ? "bg-emerald-700 text-white"
-                  : "border hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
+                  ? "bg-indigo-700 text-white"
+                  : "border hover:border-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400"
               }`}
               style={filterType !== tab.id ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}
             >

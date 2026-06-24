@@ -62,8 +62,8 @@ const STATUS_CONFIG: Record<
   },
   SHORTLISTED: {
     label: "Shortlisted",
-    bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40",
-    text: "text-emerald-700 dark:text-emerald-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/40",
+    text: "text-indigo-700 dark:text-indigo-400",
     icon: CheckCircle,
   },
   INTERVIEW_R1: {

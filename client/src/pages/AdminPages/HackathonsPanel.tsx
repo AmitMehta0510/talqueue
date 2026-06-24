@@ -68,7 +68,7 @@ export function HackathonsPanel() {
         </div>
         <button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-teal-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
           onClick={() => runScraper.mutate()}
           disabled={runScraper.isPending}
         >
@@ -99,7 +99,7 @@ export function HackathonsPanel() {
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
-            <Loader2 size={20} className="animate-spin text-emerald-500" />
+            <Loader2 size={20} className="animate-spin text-indigo-500" />
           </div>
         ) : (
           <>
@@ -120,7 +120,7 @@ export function HackathonsPanel() {
                         {h.sourcePlatform || "External"}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
                         <ShieldCheck size={10} />
                         Internal
                       </span>
@@ -135,7 +135,7 @@ export function HackathonsPanel() {
                       onClick={() => handleToggleVerified(h)}
                       className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition ${
                         h.verified
-                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                          ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20"
                           : "hover:bg-[var(--bg-surface-2)]"
                       }`}
                       style={!h.verified ? { borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}
@@ -173,7 +173,7 @@ export function HackathonsPanel() {
                       {h.status === "DRAFT" && (
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                          className="rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                           onClick={() => updateStatus.mutateAsync({ hackathonId: h.id, status: "OPEN" })}
                         >
                           Activate
@@ -309,7 +309,7 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
       <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-            <Trophy size={16} className="text-emerald-500 dark:text-emerald-400" />
+            <Trophy size={16} className="text-indigo-500 dark:text-indigo-400" />
             Edit Hackathon Details
           </h3>
           <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>

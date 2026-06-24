@@ -936,7 +936,7 @@ function LeaderboardPanel({ hackathon }: { hackathon: Hackathon }) {
           <div className="mt-3 space-y-2">
             {winners.map((winner) => (
               <div className="flex items-center gap-3 rounded-md p-3" style={{ background: "rgba(16,185,129,0.08)" }} key={winner.id}>
-                <Medal className="text-emerald-600 dark:text-emerald-400" size={17} />
+                <Medal className="text-indigo-600 dark:text-indigo-400" size={17} />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     #{winner.position} {winner.submission?.project?.title || winner.team?.name}
@@ -1077,7 +1077,7 @@ function HackathonDetail({ hackathonId }: { hackathonId: string }) {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{hackathon.title}</h2>
                 {hackathon.verified && hackathon.status !== "DRAFT" && (
-                  <span className="chip text-emerald-700">
+                  <span className="chip text-indigo-700">
                     <ShieldCheck size={13} />
                     Verified
                   </span>

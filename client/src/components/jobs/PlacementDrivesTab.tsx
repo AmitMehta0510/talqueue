@@ -59,7 +59,7 @@ const STATUS_STYLES: Record<
   },
   ONGOING: {
     label: "Registrations Open",
-    chip: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60",
+    chip: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60",
     dot: "bg-brand animate-pulse",
   },
   CLOSED: {
@@ -71,7 +71,7 @@ const STATUS_STYLES: Record<
 
 const APP_STATUS_STYLES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   APPLIED: { label: "Applied", color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60", icon: <CheckCircle2 size={11} /> },
-  SHORTLISTED: { label: "Shortlisted", color: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/60", icon: <CheckCircle2 size={11} /> },
+  SHORTLISTED: { label: "Shortlisted", color: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/60", icon: <CheckCircle2 size={11} /> },
   INTERVIEW_R1: { label: "Round 1 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },
   INTERVIEW_R2: { label: "Round 2 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },
   INTERVIEW_R3: { label: "Round 3 Interview", color: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60", icon: <Clock size={11} /> },

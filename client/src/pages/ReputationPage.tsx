@@ -85,20 +85,20 @@ export function ReputationPage() {
   return (
     <div className="space-y-6">
       {/* Top Banner Overview */}
-      <div className="relative overflow-hidden rounded-xl border border-emerald-700/10 bg-emerald-950 px-6 py-8 text-white shadow-lg">
+      <div className="relative overflow-hidden rounded-xl border border-indigo-700/10 bg-indigo-950 px-6 py-8 text-white shadow-lg">
         {/* Background gradient flares */}
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-emerald-700/25 blur-3xl" />
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-indigo-700/25 blur-3xl" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 rounded-full bg-teal-600/15 blur-3xl" />
 
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-emerald-800 px-3 py-1 text-xxs font-bold uppercase tracking-wider text-emerald-300">
+              <span className="rounded-full bg-indigo-800 px-3 py-1 text-xxs font-bold uppercase tracking-wider text-indigo-300">
                 Score Rank Portfolio
               </span>
             </div>
             <h2 className="mt-3 text-2xl font-bold text-white tracking-tight">Your Engineering Trust Standing</h2>
-            <p className="mt-1 text-xs text-emerald-100/70 max-w-xl">
+            <p className="mt-1 text-xs text-indigo-100/70 max-w-xl">
               Reputation points measure code quality, collaboration signals, verification metrics, and contributions across teams.
             </p>
           </div>
@@ -106,19 +106,19 @@ export function ReputationPage() {
           {/* Metric cards container */}
           <div className="grid grid-cols-3 gap-4 shrink-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
             <div className="text-center px-2">
-              <div className="text-2xl font-black text-emerald-400 flex items-center justify-center gap-1">
-                <Zap className="fill-emerald-400/20" size={18} />
+              <div className="text-2xl font-black text-indigo-400 flex items-center justify-center gap-1">
+                <Zap className="fill-indigo-400/20" size={18} />
                 {formatCount(reputation?.reputationScore || 0)}
               </div>
-              <div className="text-[10px] uppercase font-bold text-emerald-200/60 mt-1">Reputation</div>
+              <div className="text-[10px] uppercase font-bold text-indigo-200/60 mt-1">Reputation</div>
             </div>
 
             <div className="text-center px-2 border-x border-white/10">
               <div className="text-2xl font-black text-white flex items-center justify-center gap-1">
-                <TrendingUp size={18} className="text-emerald-400" />
+                <TrendingUp size={18} className="text-indigo-400" />
                 {Math.round(reputation?.engineeringScore || 0)}
               </div>
-              <div className="text-[10px] uppercase font-bold text-emerald-200/60 mt-1">Eng Score</div>
+              <div className="text-[10px] uppercase font-bold text-indigo-200/60 mt-1">Eng Score</div>
             </div>
 
             <div className="text-center px-2">
@@ -126,7 +126,7 @@ export function ReputationPage() {
                 <ShieldCheck size={18} className="text-amber-400" />
                 {titleCase(reputation?.trustLevel || "BEGINNER")}
               </div>
-              <div className="text-[10px] uppercase font-bold text-emerald-200/60 mt-1">Trust Level</div>
+              <div className="text-[10px] uppercase font-bold text-indigo-200/60 mt-1">Trust Level</div>
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@ export function ReputationPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
             <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-              <Award size={16} className="text-emerald-600 dark:text-emerald-400" />
+              <Award size={16} className="text-indigo-600 dark:text-indigo-400" />
               Badges Directory ({unlockedCount}/{allBadges.length} Unlocked)
             </h3>
             <span className="text-xxs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
@@ -155,7 +155,7 @@ export function ReputationPage() {
                   key={badge.id}
                   className={`panel relative flex flex-col p-4 border transition duration-150 ${
                     isUnlocked
-                      ? "border-emerald-200 dark:border-emerald-700"
+                      ? "border-indigo-200 dark:border-indigo-700"
                       : "opacity-70"
                   }`}
                 >
@@ -169,12 +169,12 @@ export function ReputationPage() {
                     <div
                       className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${
                         isUnlocked
-                          ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
                           : "text-slate-400 dark:text-slate-500"
                       }`}
                       style={!isUnlocked ? { background: "var(--bg-surface-2)" } : {}}
                     >
-                      {isUnlocked ? <Star size={20} className="fill-emerald-100 dark:fill-emerald-900/50" /> : <Lock size={16} />}
+                      {isUnlocked ? <Star size={20} className="fill-indigo-100 dark:fill-indigo-900/50" /> : <Lock size={16} />}
                     </div>
                   </div>
 
@@ -189,13 +189,13 @@ export function ReputationPage() {
 
                   <div className="mt-3.5 border-t pt-2 flex items-center justify-between text-[10px]" style={{ borderColor: "var(--border)" }}>
                     <span style={{ color: "var(--text-muted)" }}>Award Weight</span>
-                    <span className={`font-semibold ${isUnlocked ? "text-emerald-600 dark:text-emerald-400" : ""}`} style={!isUnlocked ? { color: "var(--text-muted)" } : {}}>
+                    <span className={`font-semibold ${isUnlocked ? "text-indigo-600 dark:text-indigo-400" : ""}`} style={!isUnlocked ? { color: "var(--text-muted)" } : {}}>
                       +{badge.points || 10} pts
                     </span>
                   </div>
 
                   {isUnlocked && (
-                    <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+                    <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
                       <CheckCircle2 size={10} className="stroke-[3px]" />
                     </div>
                   )}
@@ -209,7 +209,7 @@ export function ReputationPage() {
         <aside className="space-y-4">
           <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
             <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-              <History size={16} className="text-emerald-600 dark:text-emerald-400" />
+              <History size={16} className="text-indigo-600 dark:text-indigo-400" />
               Points Activity Log
             </h3>
           </div>
@@ -224,7 +224,7 @@ export function ReputationPage() {
                     <div key={item.id} className="relative group">
                       {/* Timeline dot */}
                       <span className={`absolute -left-[21px] top-1 h-2 w-2 rounded-full border border-white ${
-                        isPositive ? "bg-emerald-500" : "bg-rose-500"
+                        isPositive ? "bg-indigo-500" : "bg-rose-500"
                       }`} />
 
                       <div className="flex items-start justify-between gap-3">
@@ -238,7 +238,7 @@ export function ReputationPage() {
                         </div>
 
                         <span className={`text-xs font-extrabold shrink-0 ${
-                          isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                          isPositive ? "text-indigo-600 dark:text-indigo-400" : "text-rose-600 dark:text-rose-400"
                         }`}>
                           {isPositive ? "+" : ""}
                           {item.points}

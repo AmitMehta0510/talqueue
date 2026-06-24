@@ -88,7 +88,7 @@ function InviteCard({
   onReject: () => void;
 }) {
   return (
-    <article className="rounded-md border border-emerald-200 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-900/20 p-4">
+    <article className="rounded-md border border-indigo-200 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-900/20 p-4">
       <div className="flex items-center gap-3">
         <Avatar user={invite.invitedBy || invite.project?.owner} size="sm" />
         <div className="min-w-0">
@@ -443,7 +443,7 @@ function InviteUserPanel({ project }: { project: Project }) {
                   type="button"
                   disabled
                 >
-                  <CheckCircle2 size={15} className="text-emerald-600" />
+                  <CheckCircle2 size={15} className="text-indigo-600" />
                   Invitation sent
                 </button>
               ) : (
@@ -541,13 +541,13 @@ function ProjectJoinPanel({ project }: { project: Project }) {
 
   if (pendingRequest) {
     return (
-      <div className="panel border-emerald-100 bg-emerald-50/40 p-5">
+      <div className="panel border-indigo-100 bg-indigo-50/40 p-5">
         <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Join request pending</h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           The owner can review your request from their project workspace.
         </p>
         {pendingRequest.message && (
-          <p className="mt-3 rounded-md border border-emerald-100 bg-white p-3 text-sm text-slate-600">
+          <p className="mt-3 rounded-md border border-indigo-100 bg-white p-3 text-sm text-slate-600">
             {pendingRequest.message}
           </p>
         )}
@@ -663,7 +663,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-900" to="/projects">
+      <Link className="text-sm font-semibold text-indigo-700 hover:text-indigo-900" to="/projects">
         Back to projects
       </Link>
 
@@ -673,7 +673,7 @@ function ProjectDetail({ projectId }: { projectId: string }) {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{project.title}</h2>
               {project.verified && (
-                <span className="chip text-emerald-700">
+                <span className="chip text-indigo-700">
                   <Check size={13} />
                   Verified
                 </span>

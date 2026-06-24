@@ -8,6 +8,8 @@ import {
   getJobBySlug,
   getCompanyJobs,
   getRecruiterJobs,
+  getJobSkillsAutocomplete,
+  getJobLocationsAutocomplete,
   seedJobs,
 } from "./jobs.service";
 import { createJobSchema } from "./jobs.validation";
@@ -29,10 +31,38 @@ export const createJobHandler = asyncHandler(async (req: any, res: Response) => 
   return res.status(202).json(successResponse(result, result.message));
 });
 
+//
+// GET JOBS — supports server-side filtering via query params
+//
 export const getJobsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 20;
-  const jobs = await getJobs(page, limit);
+  const page  = Math.max(1, parseInt(req.query.page  as string, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+
+  // Parse multi-value params (sent as comma-separated strings or repeated keys)
+  const parseMulti = (val: unknown): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return (val as string[]).filter(Boolean);
+    return (val as string).split(",").map((s) => s.trim()).filter(Boolean);
+  };
+
+  const workMode  = parseMulti(req.query.workMode);
+  const jobType   = parseMulti(req.query.jobType);
+  const skills    = parseMulti(req.query.skills);
+  const location  = parseMulti(req.query.location);
+  const search    = (req.query.search as string | undefined)?.trim() || undefined;
+  const freshness = (req.query.freshness as string | undefined) || undefined;
+
+  const jobs = await getJobs({
+    page,
+    limit,
+    search,
+    workMode:  workMode.length  ? workMode  : undefined,
+    jobType:   jobType.length   ? jobType   : undefined,
+    skills:    skills.length    ? skills    : undefined,
+    location:  location.length  ? location  : undefined,
+    freshness: (freshness as any) || null,
+  });
+
   res.json(successResponse(jobs));
 });
 
@@ -61,3 +91,27 @@ export const seedJobsHandler = asyncHandler(async (req: any, res: Response) => {
   const result = await seedJobs(req.user.id);
   res.json(successResponse(result, "Jobs seeded successfully"));
 });
+
+//
+// SKILLS AUTOCOMPLETE — GET /jobs/skills/autocomplete?q=react&limit=10
+//
+export const getJobSkillsAutocompleteHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const q     = ((req.query.q as string) || "").trim();
+    const limit = Math.min(50, parseInt(req.query.limit as string, 10) || 15);
+    const skills = await getJobSkillsAutocomplete(q, limit);
+    res.json(successResponse(skills));
+  },
+);
+
+//
+// LOCATIONS AUTOCOMPLETE — GET /jobs/locations/autocomplete?q=beng&limit=10
+//
+export const getJobLocationsAutocompleteHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const q     = ((req.query.q as string) || "").trim();
+    const limit = Math.min(50, parseInt(req.query.limit as string, 10) || 15);
+    const locations = await getJobLocationsAutocomplete(q, limit);
+    res.json(successResponse(locations));
+  },
+);

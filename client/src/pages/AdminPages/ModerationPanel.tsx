@@ -37,7 +37,7 @@ export function ModerationPanel() {
           <button
             key={id}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all border
-              ${sub === id ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20" : "border-transparent hover:bg-[var(--bg-surface-2)]"}`}
+              ${sub === id ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20" : "border-transparent hover:bg-[var(--bg-surface-2)]"}`}
             style={sub !== id ? { color: "var(--text-muted)" } : {}}
             onClick={() => { setSub(id); setQ(""); }}
           >
@@ -69,7 +69,7 @@ function PostsModerationTab({ q }: { q: string }) {
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
-      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
+      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div> : (
         <>
           <DataTable headers={["Author", "Content Preview", "Engagement", "Date", "Action"]} empty={posts.length === 0}>
             {posts.map((post: any) => (
@@ -132,7 +132,7 @@ function ProjectsModerationTab({ q }: { q: string }) {
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
-      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
+      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div> : (
         <>
           <DataTable headers={["Project", "Owner", "Status", "Visibility", "Members", "Actions"]} empty={projects.length === 0}>
             {projects.map((p: any) => (
@@ -168,7 +168,7 @@ function ProjectsModerationTab({ q }: { q: string }) {
                     )}
                     {p.status === "ARCHIVED" && (
                       <button
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                        className="rounded px-2 py-1 text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-700/30 hover:bg-indigo-500/20 transition"
                         onClick={() => updateStatus.mutateAsync({ projectId: p.id, status: "OPEN" })}
                       >Restore</button>
                     )}
@@ -202,7 +202,7 @@ function JobsModerationTab({ q }: { q: string }) {
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
-      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
+      {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-indigo-500" /></div> : (
         <>
           <DataTable headers={["Job", "Company", "Type", "Status", "Applications", "Action"]} empty={jobs.length === 0}>
             {jobs.map((j: any) => (

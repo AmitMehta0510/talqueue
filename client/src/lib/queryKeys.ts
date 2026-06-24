@@ -88,10 +88,12 @@ export const queryKeys = {
   },
   jobs: {
     all: ["jobs"] as const,
-    list: () => ["jobs", "list"] as const,
+    list: (params?: Record<string, unknown>) => ["jobs", "list", params ?? {}] as const,
     detail: (slug: string) => ["jobs", "detail", slug] as const,
     company: (companyId: string) => ["jobs", "company", companyId] as const,
     recruiter: () => ["jobs", "recruiter"] as const,
+    skillsAutocomplete: (q: string) => ["jobs", "skills", "autocomplete", q] as const,
+    locationsAutocomplete: (q: string) => ["jobs", "locations", "autocomplete", q] as const,
   },
   jobApplications: {
     all: ["job-applications"] as const,

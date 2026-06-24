@@ -70,10 +70,10 @@ const ChartCard = React.memo(function ChartCard({
         <div className="flex items-center gap-2">
           <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${
             isRegistrations
-              ? "from-emerald-500/20 to-teal-500/20 border border-emerald-600/20"
+              ? "from-indigo-500/20 to-teal-500/20 border border-indigo-600/20"
               : "from-blue-500/20 to-indigo-500/20 border border-blue-600/20"
           }`}>
-            <Icon size={13} className={isRegistrations ? "text-emerald-500 dark:text-emerald-400" : "text-blue-500 dark:text-blue-400"} />
+            <Icon size={13} className={isRegistrations ? "text-indigo-500 dark:text-indigo-400" : "text-blue-500 dark:text-blue-400"} />
           </div>
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{title}</h3>
@@ -162,7 +162,7 @@ function AnalyticsCharts() {
               onClick={() => setRange(r)}
               className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all border
                 ${range === r
-                  ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20"
+                  ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20"
                   : "hover:bg-[var(--bg-surface-2)]"
                 }`}
               style={range !== r ? { borderColor: "var(--border)", color: "var(--text-muted)" } : {}}
@@ -177,7 +177,7 @@ function AnalyticsCharts() {
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2].map((i) => (
             <div key={i} className="rounded-xl border p-5 h-64 flex flex-col items-center justify-center gap-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
-              <Loader2 className="animate-spin text-emerald-500" size={24} />
+              <Loader2 className="animate-spin text-indigo-500" size={24} />
               <p className="text-[10px] italic font-semibold" style={{ color: "var(--text-muted)" }}>Aggregating timeline telemetry...</p>
             </div>
           ))}
@@ -204,8 +204,8 @@ function AnalyticsCharts() {
             icon={Users}
             series={formattedData?.userRegistrations || []}
             isRegistrations={true}
-            colorClass="bg-gradient-to-t from-emerald-600/60 to-teal-500/80"
-            hoverColorClass="hover:from-emerald-500 hover:to-teal-400"
+            colorClass="bg-gradient-to-t from-indigo-600/60 to-teal-500/80"
+            hoverColorClass="hover:from-indigo-500 hover:to-teal-400"
           />
           <ChartCard
             title="Daily Visitors"
@@ -235,7 +235,7 @@ export function OverviewPanel({
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="flex flex-col items-center gap-3">
-        <Loader2 size={32} className="animate-spin text-emerald-500" />
+        <Loader2 size={32} className="animate-spin text-indigo-500" />
         <p className="text-sm text-zinc-500">Loading platform statistics...</p>
       </div>
     </div>
@@ -251,13 +251,13 @@ export function OverviewPanel({
       <div>
         <h2 className="mb-3 text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Platform Overview</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          <KpiCard label="Total Users" value={stats.userCount} icon={Users} gradient="from-emerald-500 to-teal-600" sub={`+${stats.newUsersToday} today`} />
+          <KpiCard label="Total Users" value={stats.userCount} icon={Users} gradient="from-indigo-500 to-teal-600" sub={`+${stats.newUsersToday} today`} />
           <KpiCard label="Active Users" value={activeUsers} icon={UserCheck} gradient="from-blue-500 to-indigo-600" sub={`${stats.newUsersThisWeek} this week`} />
           <KpiCard label="Posts" value={stats.postCount} icon={FileText} gradient="from-violet-500 to-purple-600" />
           <KpiCard label="Projects" value={stats.projectCount} icon={GitBranch} gradient="from-amber-500 to-orange-600" sub={`${stats.openProjectCount} open`} />
           <KpiCard label="Hackathons" value={stats.hackathonCount} icon={Trophy} gradient="from-pink-500 to-rose-600" />
           <KpiCard label="Jobs" value={stats.jobCount} icon={Briefcase} gradient="from-cyan-500 to-blue-600" sub={`${stats.activeJobCount} active`} />
-          <KpiCard label="Communities" value={stats.communityCount} icon={Hash} gradient="from-emerald-600 to-green-700" />
+          <KpiCard label="Communities" value={stats.communityCount} icon={Hash} gradient="from-indigo-600 to-green-700" />
           <KpiCard label="Referrals" value={stats.referralCount} icon={Award} gradient="from-yellow-500 to-amber-600" />
         </div>
       </div>
@@ -268,7 +268,7 @@ export function OverviewPanel({
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Colleges" value={stats.collegeCount} icon={GraduationCap} gradient="from-indigo-500 to-blue-600" />
           <KpiCard label="Companies" value={stats.companyCount} icon={Building2} gradient="from-purple-500 to-violet-600" />
-          <KpiCard label="Connections" value={stats.connectionCount} icon={Users} gradient="from-teal-500 to-emerald-600" />
+          <KpiCard label="Connections" value={stats.connectionCount} icon={Users} gradient="from-teal-500 to-indigo-600" />
           <KpiCard label="Messages" value={stats.messageCount} icon={MessageSquare} gradient="from-rose-500 to-pink-600" />
         </div>
       </div>
@@ -281,8 +281,8 @@ export function OverviewPanel({
         {/* Status Distribution */}
         <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-600/20">
-              <Activity size={13} className="text-emerald-500 dark:text-emerald-400" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/20 to-teal-500/20 border border-indigo-600/20">
+              <Activity size={13} className="text-indigo-500 dark:text-indigo-400" />
             </div>
             <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Account Status</h3>
           </div>
@@ -293,7 +293,7 @@ export function OverviewPanel({
                 label={item.status}
                 count={item.count}
                 total={stats.userCount}
-                color={item.status === "ACTIVE" ? "bg-emerald-500" : item.status === "BANNED" ? "bg-rose-500" : "bg-zinc-500"}
+                color={item.status === "ACTIVE" ? "bg-indigo-500" : item.status === "BANNED" ? "bg-rose-500" : "bg-zinc-500"}
               />
             ))}
           </div>

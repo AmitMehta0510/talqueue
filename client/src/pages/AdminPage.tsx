@@ -121,7 +121,7 @@ export function AdminPage() {
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-black tracking-tight flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-teal-600">
                 <ShieldCheck size={16} className="text-white" />
               </div>
               Platform Admin Console
@@ -136,7 +136,7 @@ export function AdminPage() {
               <RefreshCw size={12} className={statsQuery.isFetching ? "animate-spin" : ""} />
               Refresh
             </button>
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="flex items-center gap-2 rounded-lg border border-indigo-600/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
               <ShieldCheck size={12} />
               {isSuperAdmin ? "Super Admin" : "Platform Admin"}
             </div>
@@ -152,7 +152,7 @@ export function AdminPage() {
                   key={id}
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all border
                     ${activeTab === id
-                      ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20"
+                      ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20"
                       : "border-transparent hover:bg-[var(--bg-surface-2)]"
                     }`}
                   style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
@@ -175,7 +175,7 @@ export function AdminPage() {
               <button
                 key={id}
                 className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all border
-                  ${activeTab === id ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20" : "hover:bg-[var(--bg-surface-2)]"}`}
+                  ${activeTab === id ? "bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border-indigo-600/20" : "hover:bg-[var(--bg-surface-2)]"}`}
                 style={activeTab !== id ? { borderColor: "var(--border)", color: "var(--text-muted)" } : {}}
                 onClick={() => { setActiveTab(id); setSelectedCollege(null); setSelectedCompany(null); }}
               >

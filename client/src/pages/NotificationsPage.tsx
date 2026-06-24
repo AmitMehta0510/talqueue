@@ -74,7 +74,7 @@ function NotificationGlyph({ type }: { type: PlatformNotification["type"] }) {
   }
   if (t.includes("JOB") || t.includes("HACKATHON") || t.includes("REFERRAL")) {
     return (
-      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50">
+      <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 transition group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50">
         <ShieldCheck size={17} />
       </div>
     );
@@ -113,8 +113,8 @@ const ToggleSwitch = ({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-        checked ? "bg-emerald-600" : "bg-slate-200 dark:bg-slate-600"
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+        checked ? "bg-indigo-600" : "bg-slate-200 dark:bg-slate-600"
       }`}
     >
       <span
@@ -229,7 +229,7 @@ export function NotificationsPage() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-emerald-200/50 shadow-md">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-indigo-200/50 shadow-md">
               <Bell size={20} className="animate-pulse" />
             </div>
             <div>
@@ -247,12 +247,12 @@ export function NotificationsPage() {
             type="button"
             onClick={() => markAllRead.mutate()}
             disabled={serverUnreadCount === 0 || markAllRead.isPending}
-            className="btn-secondary transition duration-150 ease-in-out hover:bg-emerald-50 hover:border-emerald-200"
+            className="btn-secondary transition duration-150 ease-in-out hover:bg-indigo-50 hover:border-indigo-200"
           >
             {markAllRead.isPending ? (
-              <Loader2 size={16} className="animate-spin text-emerald-600" />
+              <Loader2 size={16} className="animate-spin text-indigo-600" />
             ) : (
-              <CheckCheck size={16} className="text-emerald-600" />
+              <CheckCheck size={16} className="text-indigo-600" />
             )}
             <span>Mark all read</span>
           </button>
@@ -292,7 +292,7 @@ export function NotificationsPage() {
                   >
                     {tab.label}
                     {tab.id === "unread" && serverUnreadCount > 0 && (
-                      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
+                      <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
                         {serverUnreadCount}
                       </span>
                     )}
@@ -306,7 +306,7 @@ export function NotificationsPage() {
           <div className="space-y-3">
             {notificationsQuery.isLoading ? (
               <div className="panel flex flex-col items-center justify-center py-16 text-slate-500">
-                <Loader2 className="animate-spin text-emerald-600 mb-3" size={32} />
+                <Loader2 className="animate-spin text-indigo-600 mb-3" size={32} />
                 <span className="text-sm font-medium">Retrieving notifications...</span>
               </div>
             ) : filteredNotifications.length > 0 ? (
@@ -317,8 +317,8 @@ export function NotificationsPage() {
                     key={notification.id}
                     className={`panel group overflow-hidden transition-all duration-200 hover:shadow-md ${
                       isItemRead
-                        ? "hover:border-emerald-200/80"
-                        : "border-emerald-200 dark:border-emerald-700 shadow-[inset_4px_0_0_0_#059669]"
+                        ? "hover:border-indigo-200/80"
+                        : "border-indigo-200 dark:border-indigo-700 shadow-[inset_4px_0_0_0_#6366f1]"
                     }`}
                   >
                     <div className="p-4 flex gap-4">
@@ -330,7 +330,7 @@ export function NotificationsPage() {
                           <NotificationGlyph type={notification.type} />
                         )}
                         {!isItemRead && (
-                          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-600" />
+                          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-indigo-600" />
                         )}
                       </div>
 
@@ -341,9 +341,9 @@ export function NotificationsPage() {
                             <Link
                               to={notificationTarget(notification)}
                               onClick={() => handleMarkAsRead(notification.id, isItemRead)}
-                              className="group-hover:text-emerald-700 transition"
+                              className="group-hover:text-indigo-700 transition"
                             >
-                              <h4 className="text-sm font-bold group-hover:text-emerald-700 dark:group-hover:text-emerald-400 line-clamp-1 transition" style={{ color: "var(--text-primary)" }}>
+                              <h4 className="text-sm font-bold group-hover:text-indigo-700 dark:group-hover:text-indigo-400 line-clamp-1 transition" style={{ color: "var(--text-primary)" }}>
                                 {notification.title}
                               </h4>
                             </Link>
@@ -367,7 +367,7 @@ export function NotificationsPage() {
                           <div className="flex shrink-0 gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                             {!isItemRead && (
                               <button
-                                className="icon-btn h-8 w-8 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-150"
+                                className="icon-btn h-8 w-8 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-150"
                                 type="button"
                                 title="Mark as read"
                                 disabled={markRead.isPending}
@@ -468,7 +468,7 @@ export function NotificationsPage() {
           {/* Preferences Card */}
           <section className="panel p-5 relative overflow-hidden" aria-labelledby="preferences-title">
             <div className="flex items-center gap-2 pb-4 mb-4 border-b" style={{ borderColor: "var(--border)" }}>
-              <Sliders size={18} className="text-emerald-600" />
+              <Sliders size={18} className="text-indigo-600" />
               <h2 id="preferences-title" className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
                 Preferences
               </h2>
@@ -476,7 +476,7 @@ export function NotificationsPage() {
 
             {/* Local storage sync confirmation banner */}
             {savedMessage && (
-              <div className="mb-4 flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-700 p-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 transition duration-150 animate-fade-in">
+              <div className="mb-4 flex items-center gap-2 rounded-md bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-700 p-2 text-xs font-semibold text-indigo-800 dark:text-indigo-300 transition duration-150 animate-fade-in">
                 <CheckCircle size={14} />
                 <span>{savedMessage}</span>
               </div>
@@ -536,15 +536,15 @@ export function NotificationsPage() {
           </section>
 
           {/* Quick Help Card */}
-          <div className="panel p-5 bg-gradient-to-br from-emerald-950 to-slate-900 text-white border-0 shadow-lg">
+          <div className="panel p-5 bg-gradient-to-br from-indigo-950 to-slate-900 text-white border-0 shadow-lg">
             <div className="flex items-start gap-3">
-              <Info size={18} className="text-emerald-400 mt-0.5 shrink-0" />
+              <Info size={18} className="text-indigo-400 mt-0.5 shrink-0" />
               <div>
                 <h4 className="text-sm font-semibold text-white">Local Sync Sandbox</h4>
-                <p className="mt-2 text-xs leading-relaxed text-emerald-100/80">
+                <p className="mt-2 text-xs leading-relaxed text-indigo-100/80">
                   Settings toggles automatically manage notifications locally. Unsubscribed notifications will be filtered from view instantly.
                 </p>
-                <div className="mt-4 flex items-center gap-1.5 text-[10px] text-emerald-300 font-semibold">
+                <div className="mt-4 flex items-center gap-1.5 text-[10px] text-indigo-300 font-semibold">
                   <Mail size={12} />
                   <span>Channel: {preferences.emailAlerts ? "Email Enabled" : "Email Disabled"}</span>
                 </div>

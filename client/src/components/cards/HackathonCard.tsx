@@ -82,10 +82,10 @@ const getTimelineInfo = (hackathon: Hackathon) => {
 
   return {
     phase: "Open",
-    colorClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50",
+    colorClass: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
     progress: pct,
     text,
-    progressColor: "bg-gradient-to-r from-emerald-500 to-teal-400",
+    progressColor: "bg-gradient-to-r from-indigo-500 to-teal-400",
   };
 };
 
@@ -102,7 +102,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
   const topAccentClass = isHackathonLive
     ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500"
     : isHackathonOpen
-    ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"
+    ? "bg-gradient-to-r from-indigo-500 via-teal-500 to-cyan-500"
     : "bg-slate-300";
 
   return (
@@ -203,7 +203,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
               <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
                 <span className="text-muted-fg font-medium">Team Size</span>
                 <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
-                  <Users size={13} className="text-emerald-500" />
+                  <Users size={13} className="text-indigo-500" />
                   {(() => {
                     const min = hackathon.minTeamSize ?? 1;
                     const max = hackathon.maxTeamSize ?? 1;
@@ -218,7 +218,7 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
               <div className="rounded-lg border border-base p-2.5 bg-surface-2/20 hover:bg-surface-2/70 transition-colors flex flex-col justify-center">
                 <span className="text-muted-fg font-medium">Participation</span>
                 <div className="flex items-center gap-1 mt-0.5 font-semibold text-secondary">
-                  <Users size={13} className="text-emerald-500" />
+                  <Users size={13} className="text-indigo-500" />
                   {formatCount(registrationTotal)} {registrationTotal === 1 ? "Team" : "Teams"}
                 </div>
               </div>

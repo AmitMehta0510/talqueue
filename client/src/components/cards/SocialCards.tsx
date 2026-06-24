@@ -80,7 +80,7 @@ export function EngineerCard({
 
   return (
     <article
-      className={`panel p-5 hover-lift ${onOpenProfile ? "cursor-pointer hover:border-emerald-500/40 dark:hover:border-emerald-400/40" : ""}`}
+      className={`panel p-5 hover-lift ${onOpenProfile ? "cursor-pointer hover:border-indigo-500/40 dark:hover:border-indigo-400/40" : ""}`}
       role={onOpenProfile ? "button" : undefined}
       tabIndex={onOpenProfile ? 0 : undefined}
       onClick={() => onOpenProfile?.(user)}

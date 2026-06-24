@@ -59,7 +59,7 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
     { key: "VIEWED", label: "Viewed", color: "border-t-indigo-500", headerBg: "bg-indigo-50/50 dark:bg-indigo-950/20", countBg: "bg-indigo-100/80 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30", barColor: "bg-indigo-400" },
     { key: "SHORTLISTED", label: "Shortlisted", color: "border-t-amber-500", headerBg: "bg-amber-50/50 dark:bg-amber-950/20", countBg: "bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30", barColor: "bg-amber-400" },
     { key: "INTERVIEW", label: "Interviewing", color: "border-t-purple-500", headerBg: "bg-purple-50/50 dark:bg-purple-950/20", countBg: "bg-purple-100/80 dark:bg-purple-950/60 text-purple-800 dark:text-purple-400 border border-purple-200/50 dark:border-purple-900/30", barColor: "bg-purple-400" },
-    { key: "HIRED", label: "Hired", color: "border-t-emerald-500", headerBg: "bg-emerald-50/50 dark:bg-emerald-950/20", countBg: "bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30", barColor: "bg-emerald-400" },
+    { key: "HIRED", label: "Hired", color: "border-t-indigo-500", headerBg: "bg-indigo-50/50 dark:bg-indigo-950/20", countBg: "bg-indigo-100/80 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30", barColor: "bg-indigo-400" },
     { key: "REJECTED", label: "Rejected", color: "border-t-rose-500", headerBg: "bg-rose-50/50 dark:bg-rose-950/20", countBg: "bg-rose-100/80 dark:bg-rose-950/60 text-rose-800 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30", barColor: "bg-rose-400" },
   ];
 
@@ -114,7 +114,7 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
           {[
             { label: "Total Applied", value: totalApplicants, color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100/60 dark:border-blue-900/30" },
             { label: "In Progress", value: inProgress, color: "text-purple-700 dark:text-purple-400", bg: "bg-purple-50/50 dark:bg-purple-950/20 border-purple-100/60 dark:border-purple-900/30" },
-            { label: "Hired", value: hired, color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100/60 dark:border-emerald-900/30" },
+            { label: "Hired", value: hired, color: "text-indigo-700 dark:text-indigo-400", bg: "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100/60 dark:border-indigo-900/30" },
             { label: "Conversion", value: `${conversionRate}%`, color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50/50 dark:bg-amber-950/20 border-amber-100/60 dark:border-amber-900/30" },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={`rounded-xl border p-4 ${bg}`}>
@@ -169,13 +169,13 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
                               </div>
                             </div>
                             <div className="mt-2 flex items-center justify-between text-[10px]">
-                              <span className="rounded bg-emerald-55/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 px-1.5 py-0.5 font-bold">⚡{card.candidate.engineeringScore || 0}</span>
+                              <span className="rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 px-1.5 py-0.5 font-bold">⚡{card.candidate.engineeringScore || 0}</span>
                               <span className="text-muted-fg">{daysSince((card as any).appliedAt || (card as any).createdAt)}</span>
                             </div>
                             {(card.skillsMatch?.matchPercentage ?? 0) > 0 && (
                               <div className="mt-1.5 flex items-center gap-1.5">
                                 <div className="h-1 flex-1 rounded-full bg-surface-3">
-                                  <div className="h-1 rounded-full bg-emerald-400" style={{ width: `${card.skillsMatch?.matchPercentage}%` }} />
+                                  <div className="h-1 rounded-full bg-indigo-400" style={{ width: `${card.skillsMatch?.matchPercentage}%` }} />
                                 </div>
                                 <span className="text-[10px] text-muted-fg">{card.skillsMatch?.matchPercentage}%</span>
                               </div>
@@ -196,7 +196,7 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
                               </div>
                             )}
                             {col.key === "HIRED" && (
-                              <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                              <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-indigo-700 dark:text-indigo-400">
                                 <UserCheck size={11} /> Hired
                               </div>
                             )}
@@ -221,9 +221,9 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
         <ErrorState title="Failed to load rankings" text={rankingsQuery.error?.message} onRetry={() => rankingsQuery.refetch()} />
       ) : (
         <div className="space-y-4">
-          <div className="panel p-5 bg-gradient-to-r from-emerald-50/10 to-teal-50/10 dark:from-emerald-950/10 dark:to-teal-950/10 border border-emerald-500/20">
+          <div className="panel p-5 bg-gradient-to-r from-indigo-50/10 to-teal-50/10 dark:from-indigo-950/10 dark:to-teal-950/10 border border-indigo-500/20">
             <div className="flex items-start gap-3">
-              <Sparkles className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" size={18} />
+              <Sparkles className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={18} />
               <div>
                 <h3 className="text-sm font-semibold text-primary">Cosine Similarity Candidate Matcher</h3>
                 <p className="text-xs text-secondary mt-0.5">Candidates ranked by skill similarity and complementary capabilities relative to job requirements.</p>
@@ -271,7 +271,7 @@ function RankingCard({
       <div className="flex flex-wrap items-center justify-between gap-4">
         {/* Left Side: Avatar, Name, Rank */}
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-sm font-bold text-emerald-850 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-sm font-bold text-indigo-800 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30">
             #{rank}
           </div>
           <Avatar user={user} size="md" />
@@ -288,7 +288,7 @@ function RankingCard({
         {/* Right Side: Score, Quick Action dropdown */}
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-xs font-bold text-emerald-850 dark:text-emerald-400 border border-emerald-150/40 dark:border-emerald-900/30 inline-flex items-center gap-1">
+            <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 text-xs font-bold text-indigo-800 dark:text-indigo-400 border border-indigo-200/40 dark:border-indigo-900/30 inline-flex items-center gap-1">
               <Sparkles size={12} />
               Fit: {candidate.fitScore || scorePct}%
             </span>
@@ -325,7 +325,7 @@ function RankingCard({
           {candidate.reasons && candidate.reasons.length > 0 && (
             <div>
               <h5 className="text-xs font-semibold text-primary mb-1.5 flex items-center gap-1">
-                <Sparkles size={12} className="text-emerald-600 dark:text-emerald-450" /> Match Insights
+                <Sparkles size={12} className="text-indigo-600 dark:text-indigo-400" /> Match Insights
               </h5>
               <ul className="list-disc pl-5 text-xs text-secondary space-y-1">
                 {candidate.reasons.map((reason: string, rIdx: number) => (
@@ -351,7 +351,7 @@ function RankingCard({
               <div className="font-semibold text-primary mb-1">Trust Profile</div>
               <div className="space-y-1.5 mt-2">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-emerald-650 dark:text-emerald-400" />
+                  <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400" />
                   <span>Trust Score Level: {titleCase(user.trustLevel || "BEGINNER")}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -387,7 +387,7 @@ function CandidateDetailsOverlay({
         {/* Drawer Header */}
         <div className="px-5 py-4 border-b border-base flex items-center justify-between bg-surface-2 shrink-0">
           <div className="flex items-center gap-2">
-            <UserCheck size={18} className="text-emerald-600 dark:text-emerald-450" />
+            <UserCheck size={18} className="text-indigo-600 dark:text-indigo-400" />
             <span className="font-semibold text-sm text-primary">Applicant Details</span>
           </div>
           <button
@@ -416,7 +416,7 @@ function CandidateDetailsOverlay({
             <div>
               <h3 className="font-bold text-base text-primary">{candidate.fullName}</h3>
               <p className="text-xs text-muted-fg">@{candidate.username}</p>
-              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-400 mt-1">{candidate.headline}</p>
+              <p className="text-xs font-medium text-indigo-800 dark:text-indigo-400 mt-1">{candidate.headline}</p>
             </div>
           </div>
 
@@ -434,12 +434,12 @@ function CandidateDetailsOverlay({
               </div>
               <div>
                 <span className="text-muted-fg block">Avg Verification Score</span>
-                <span className="font-bold text-emerald-800 dark:text-emerald-400">
+                <span className="font-bold text-indigo-800 dark:text-indigo-400">
                   {card.verificationMetrics?.averageVerificationScore || 0}/100
                 </span>
               </div>
-              <div className="col-span-2 pt-2 border-t border-base flex items-center gap-1.5 text-emerald-800 dark:text-emerald-400">
-                <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-450" />
+              <div className="col-span-2 pt-2 border-t border-base flex items-center gap-1.5 text-indigo-800 dark:text-indigo-400">
+                <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400" />
                 <span className="font-semibold">
                   {card.verificationMetrics?.isVerifiedEngineer ? "Verified Engineer Profile" : "Unverified Profile"}
                 </span>
@@ -450,14 +450,14 @@ function CandidateDetailsOverlay({
           {/* Skills match */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">Required Skills Match</h4>
-            <div className="bg-emerald-50/20 dark:bg-emerald-950/20 rounded-xl p-4 border border-emerald-250/30 dark:border-emerald-900/30 text-xs space-y-2">
-              <div className="flex justify-between font-bold text-emerald-800 dark:text-emerald-400">
+            <div className="bg-indigo-50/20 dark:bg-indigo-950/20 rounded-xl p-4 border border-indigo-200/30 dark:border-indigo-900/30 text-xs space-y-2">
+              <div className="flex justify-between font-bold text-indigo-800 dark:text-indigo-400">
                 <span>Match score:</span>
                 <span>{card.skillsMatch?.matchPercentage || 0}%</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {(card.skillsMatch?.matched || []).map((skill: string) => (
-                  <span key={skill} className="rounded bg-emerald-100/60 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30 px-1.5 py-0.5 text-xxs font-medium">
+                  <span key={skill} className="rounded bg-indigo-100/60 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30 px-1.5 py-0.5 text-xxs font-medium">
                     {skill}
                   </span>
                 ))}

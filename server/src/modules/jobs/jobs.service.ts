@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 import { syncJobsToElasticBulk } from "services/elasticSync";
@@ -15,15 +16,43 @@ import { generateSlug } from "shared/utils/slugify";
 
 import redis from "shared/database/redis";
 
-// ─── Per-page Redis cache for jobs listing ────────────────────────────────────
+// ─── Jobs listing Redis cache ────────────────────────────────────────────────
 const JOBS_PAGE_CACHE_PREFIX = "jobs:page";
 const JOBS_LISTING_TTL_SECONDS = 60;
+const JOBS_AUTOCOMPLETE_TTL_SECONDS = 3600; // 1 hour
 
-const getJobsPageCacheKey = (page: number, limit: number) =>
-  `${JOBS_PAGE_CACHE_PREFIX}:${page}:${limit}`;
+// Filter params accepted by getJobs
+export interface JobsFilterParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  workMode?: string[]; // e.g. ["REMOTE","ONSITE"]
+  jobType?: string[];  // e.g. ["FULL_TIME","INTERNSHIP"]
+  skills?: string[];   // e.g. ["React","Node.js"]
+  location?: string[]; // e.g. ["Bengaluru"]
+  freshness?: "24h" | "3d" | "7d" | "15d" | "30d" | null;
+}
 
-// Invalidates ALL page-keyed cache entries for the jobs listing.
-// Called after any mutation (create / archive / delete).
+/**
+ * Builds a stable, deterministic Redis cache key that encodes all active
+ * filter params so each unique filter combination gets its own cache slot.
+ */
+const getJobsFilterCacheKey = (params: JobsFilterParams): string => {
+  const p = params;
+  const parts: string[] = [
+    `p${p.page ?? 1}`,
+    `l${Math.min(p.limit ?? 20, 50)}`,
+  ];
+  if (p.search)                  parts.push(`q=${p.search.trim().toLowerCase().slice(0, 60)}`);
+  if (p.workMode?.length)        parts.push(`wm=${[...p.workMode].sort().join(",")}`);
+  if (p.jobType?.length)         parts.push(`jt=${[...p.jobType].sort().join(",")}`);
+  if (p.skills?.length)          parts.push(`sk=${[...p.skills].sort().join(",").slice(0, 120)}`);
+  if (p.location?.length)        parts.push(`lo=${[...p.location].sort().join(",").slice(0, 120)}`);
+  if (p.freshness)               parts.push(`fr=${p.freshness}`);
+  return `${JOBS_PAGE_CACHE_PREFIX}:${parts.join(":")}`;
+};
+
+// Invalidates ALL jobs listing cache entries (called on create/archive/delete).
 const invalidateJobsListingCache = async (): Promise<void> => {
   try {
     let cursor = "0";
@@ -332,14 +361,15 @@ export const createJob = async (userId: string, data: any) => {
 };
 
 //
-// GET JOBS
+// GET JOBS — server-side filtered, paginated
 //
-export const getJobs = async (page = 1, limit = 20) => {
-  const safeLimit = Math.min(limit, 50);
-  const skip = (page - 1) * safeLimit;
-  const cacheKey = getJobsPageCacheKey(page, safeLimit);
+export const getJobs = async (params: JobsFilterParams = {}) => {
+  const safeLimit = Math.min(params.limit ?? 20, 50);
+  const safePage  = Math.max(params.page ?? 1, 1);
+  const skip      = (safePage - 1) * safeLimit;
+  const cacheKey  = getJobsFilterCacheKey({ ...params, page: safePage, limit: safeLimit });
 
-  // ── Cache-aside: per-page key ─────────────────────────────────────────────
+  // ── Cache-aside: filter-aware key ────────────────────────────────────────
   try {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
@@ -347,11 +377,96 @@ export const getJobs = async (page = 1, limit = 20) => {
     console.warn("[Jobs Cache] Redis read failed, falling back to Prisma:", cacheErr?.message || cacheErr);
   }
 
-  // ── Cache miss: DB-level pagination (LIMIT/OFFSET pushed to Postgres) ─────
+  // ── Build Prisma where clause from active filters ─────────────────────────
+  const where: Prisma.JobWhereInput = { status: "OPEN", deletedAt: null };
+
+  // Full-text search across title, description, company name via subquery
+  if (params.search?.trim()) {
+    const q = params.search.trim().toLowerCase();
+    where.OR = [
+      { title:       { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+      { company:     { name: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  // Work mode filter (multi-select)
+  if (params.workMode?.length) {
+    where.workMode = { in: params.workMode as any };
+  }
+
+  // Job type filter (multi-select)
+  if (params.jobType?.length) {
+    where.type = { in: params.jobType as any };
+  }
+
+  // Skills filter — job must contain at least one of the selected skills
+  if (params.skills?.length) {
+    where.skillsRequired = { hasSome: params.skills };
+  }
+
+  // Location filter (multi-select, case-insensitive substring match)
+  if (params.location?.length) {
+    where.OR = [
+      ...(where.OR ?? []),
+      ...params.location.map((loc) => ({
+        location: { contains: loc, mode: "insensitive" as const },
+      })),
+    ];
+    // When location filter is combined with other ORs from search, we need
+    // to restructure: wrap search ORs in AND + location OR.
+    if (params.search?.trim() && params.location.length) {
+      const searchOr = [
+        { title:       { contains: params.search.trim(), mode: "insensitive" as const } },
+        { description: { contains: params.search.trim(), mode: "insensitive" as const } },
+        { company:     { name: { contains: params.search.trim(), mode: "insensitive" as const } } },
+      ];
+      const locationOr = params.location.map((loc) => ({
+        location: { contains: loc, mode: "insensitive" as const },
+      }));
+      delete where.OR;
+      (where as any).AND = [
+        { OR: searchOr },
+        { OR: locationOr },
+      ];
+    } else if (params.location.length) {
+      where.OR = params.location.map((loc) => ({
+        location: { contains: loc, mode: "insensitive" as const },
+      }));
+    }
+  }
+
+  // Freshness filter — compare against postedAt (ATS source date), fallback to createdAt
+  if (params.freshness) {
+    const freshnessMap: Record<string, number> = {
+      "24h":  1,
+      "3d":   3,
+      "7d":   7,
+      "15d": 15,
+      "30d": 30,
+    };
+    const days = freshnessMap[params.freshness];
+    if (days) {
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      // Use postedAt if set (ATS source date), otherwise fall back to createdAt.
+      // We check: (postedAt >= cutoff) OR (postedAt is null AND createdAt >= cutoff)
+      (where as any).AND = [
+        ...((where as any).AND ?? []),
+        {
+          OR: [
+            { postedAt: { gte: cutoff, not: null } },
+            { AND: [{ postedAt: null }, { createdAt: { gte: cutoff } }] },
+          ],
+        },
+      ];
+    }
+  }
+
+  // ── DB-level pagination (LIMIT/OFFSET pushed to Postgres) ─────────────────
   const [total, jobs] = await Promise.all([
-    prisma.job.count({ where: { status: "OPEN", deletedAt: null } }),
+    prisma.job.count({ where }),
     prisma.job.findMany({
-      where: { status: "OPEN", deletedAt: null },
+      where,
       select: {
         id: true,
         title: true,
@@ -363,6 +478,7 @@ export const getJobs = async (page = 1, limit = 20) => {
         salaryMin: true,
         salaryMax: true,
         createdAt: true,
+        postedAt: true,
         featured: true,
         description: true,
         requirements: true,
@@ -372,11 +488,16 @@ export const getJobs = async (page = 1, limit = 20) => {
         applyUrl: true,
         currency: true,
         openings: true,
+        applicationsCount: true,
         company: {
           select: { id: true, name: true, logoUrl: true, verified: true, slug: true },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { featured: "desc" },
+        { postedAt: "desc" },
+        { createdAt: "desc" },
+      ],
       skip,
       take: safeLimit,
     }),
@@ -385,12 +506,12 @@ export const getJobs = async (page = 1, limit = 20) => {
   const result = {
     jobs,
     total,
-    page,
+    page: safePage,
     limit: safeLimit,
     totalPages: Math.ceil(total / safeLimit),
   };
 
-  // Populate this page's cache entry — do not block the HTTP response
+  // Populate cache — do not block the HTTP response
   redis
     .setex(cacheKey, JOBS_LISTING_TTL_SECONDS, JSON.stringify(result))
     .catch((err: any) => {
@@ -398,6 +519,108 @@ export const getJobs = async (page = 1, limit = 20) => {
     });
 
   return result;
+};
+
+// ─── SKILLS AUTOCOMPLETE ──────────────────────────────────────────────────────
+
+/**
+ * Returns a deduplicated list of skill strings from active jobs that match
+ * the query prefix. Results are cached in Redis for 1 hour to avoid
+ * repeated expensive array-unnest queries.
+ *
+ * Implementation uses a two-level cache:
+ *  1. If full warm list exists in Redis → filter in-memory (O(n) over strings).
+ *  2. Otherwise → raw SQL unnest → cache result.
+ */
+export const getJobSkillsAutocomplete = async (
+  q: string,
+  limit = 15,
+): Promise<string[]> => {
+  const warmKey = "jobs:skills:all";
+  const safeLimit = Math.min(limit, 50);
+
+  // Try warm list first
+  try {
+    const warm = await redis.get(warmKey);
+    if (warm) {
+      const all: string[] = JSON.parse(warm);
+      const lower = q.toLowerCase();
+      return all
+        .filter((s) => s.toLowerCase().includes(lower))
+        .slice(0, safeLimit);
+    }
+  } catch { /* fall through to DB */ }
+
+  // Warm list missing → fetch all unique skills from DB via raw SQL unnest
+  const rows = await prisma.$queryRaw<{ skill: string }[]>`
+    SELECT DISTINCT UNNEST("skillsRequired") AS skill
+    FROM "Job"
+    WHERE status = 'OPEN' AND "deletedAt" IS NULL
+    ORDER BY skill
+  `;
+  const all = rows.map((r) => r.skill).filter(Boolean);
+
+  // Populate warm list (non-blocking)
+  redis
+    .setex(warmKey, JOBS_AUTOCOMPLETE_TTL_SECONDS, JSON.stringify(all))
+    .catch((err: any) =>
+      console.warn("[Jobs Cache] Failed to cache skills list:", err?.message || err),
+    );
+
+  const lower = q.toLowerCase();
+  return all
+    .filter((s) => s.toLowerCase().includes(lower))
+    .slice(0, safeLimit);
+};
+
+// ─── LOCATIONS AUTOCOMPLETE ──────────────────────────────────────────────────
+
+/**
+ * Returns a deduplicated list of unique location strings from active jobs
+ * that contain the query string. Redis-cached for 1 hour.
+ */
+export const getJobLocationsAutocomplete = async (
+  q: string,
+  limit = 15,
+): Promise<string[]> => {
+  const warmKey = "jobs:locations:all";
+  const safeLimit = Math.min(limit, 50);
+
+  // Try warm list first
+  try {
+    const warm = await redis.get(warmKey);
+    if (warm) {
+      const all: string[] = JSON.parse(warm);
+      const lower = q.toLowerCase();
+      return all
+        .filter((l) => l.toLowerCase().includes(lower))
+        .slice(0, safeLimit);
+    }
+  } catch { /* fall through to DB */ }
+
+  // Warm list missing → fetch all unique locations from DB
+  const rows = await prisma.$queryRaw<{ location: string }[]>`
+    SELECT DISTINCT "location"
+    FROM "Job"
+    WHERE status = 'OPEN'
+      AND "deletedAt" IS NULL
+      AND "location" IS NOT NULL
+      AND "location" <> ''
+    ORDER BY "location"
+  `;
+  const all = rows.map((r) => r.location).filter(Boolean);
+
+  // Populate warm list (non-blocking)
+  redis
+    .setex(warmKey, JOBS_AUTOCOMPLETE_TTL_SECONDS, JSON.stringify(all))
+    .catch((err: any) =>
+      console.warn("[Jobs Cache] Failed to cache locations list:", err?.message || err),
+    );
+
+  const lower = q.toLowerCase();
+  return all
+    .filter((l) => l.toLowerCase().includes(lower))
+    .slice(0, safeLimit);
 };
 
 //

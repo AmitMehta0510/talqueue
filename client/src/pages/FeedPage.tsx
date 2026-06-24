@@ -222,7 +222,7 @@ export function FeedPage() {
           {user ? (
             <div className="panel overflow-hidden">
               {/* Cover gradient */}
-              <div className="h-16 w-full" style={{ background: "linear-gradient(135deg, #047857, #0d9488)" }} />
+              <div className="h-16 w-full" style={{ background: "linear-gradient(135deg, #4f46e5, #6366f1)" }} />
               <div className="p-4 relative">
                 {/* Avatar overlapping cover */}
                 <div
@@ -417,7 +417,7 @@ export function FeedPage() {
                     {cat.label}
                     {cat.id === "recommended" && feed.some((item) => item.reason) && (
                       <span
-                        className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500"
+                        className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-indigo-500"
                         style={{ border: "2px solid var(--bg-surface)" }}
                       />
                     )}
@@ -548,7 +548,7 @@ export function FeedPage() {
                           )}
                         </div>
                       </div>
-                      <span className="chip text-[10px] font-bold py-0.5 px-2 text-emerald-700 dark:text-emerald-400" style={{ background: "var(--brand-light)", borderColor: "transparent" }}>
+                      <span className="chip text-[10px] font-bold py-0.5 px-2 text-indigo-700 dark:text-indigo-400" style={{ background: "var(--brand-light)", borderColor: "transparent" }}>
                         {lead.reputationScore} rep
                       </span>
                     </div>
@@ -713,9 +713,9 @@ export function FeedPage() {
 
           {/* Telemetry Snapshot Monitor Widget — intentionally dark in both modes */}
           <div className="panel p-4 bg-slate-950 text-white border-0 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-20 w-20 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-20 w-20 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
             <div className="flex items-center gap-2 pb-3 mb-3 border-b border-white/10">
-              <Activity size={16} className="text-emerald-400" />
+              <Activity size={16} className="text-indigo-400" />
               <h3 className="text-[10px] font-bold uppercase tracking-wider text-white">
                 Telemetry Monitor
               </h3>
@@ -724,15 +724,15 @@ export function FeedPage() {
               <div className="flex justify-between items-center">
                 <span>API MONITOR STATUS:</span>
                 <span className="flex items-center gap-1">
-                  <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-emerald-400" : "bg-rose-400 animate-ping"}`} />
-                  <span className={apiOnline ? "text-emerald-400" : "text-rose-400"}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-indigo-400" : "bg-rose-400 animate-ping"}`} />
+                  <span className={apiOnline ? "text-indigo-400" : "text-rose-400"}>
                     {apiOnline ? "ONLINE" : "OFFLINE"}
                   </span>
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span>LOCAL LATENCY SPEED:</span>
-                <span className="text-emerald-400">12 ms</span>
+                <span className="text-indigo-400">12 ms</span>
               </div>
               <div className="flex justify-between items-center">
                 <span>CACHED STREAM ITEMS:</span>
@@ -740,7 +740,7 @@ export function FeedPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span>INTEGRITY PIPELINE:</span>
-                <span className="text-emerald-400 flex items-center gap-0.5">
+                <span className="text-indigo-400 flex items-center gap-0.5">
                   <CheckCircle size={10} />
                   <span>SECURE</span>
                 </span>

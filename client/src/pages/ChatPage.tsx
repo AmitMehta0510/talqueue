@@ -136,7 +136,7 @@ function ConversationAvatar({ conversation, currentUserId }: { conversation?: Co
   }
 
   return (
-    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
       <Users size={20} />
     </div>
   );
@@ -310,7 +310,7 @@ function StartConversationPanel() {
                 <div className="min-w-0">
                   <Link
                     to={userProfileUrl(foundUser.id, user?.id, foundUser.username)}
-                    className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                    className="truncate text-sm font-semibold hover:text-indigo-800 hover:underline transition block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {userName(foundUser)}
@@ -875,7 +875,7 @@ function ConversationSettings({
                 <div className="min-w-0">
                   <Link
                     to={userProfileUrl(member.userId, currentUserId, member.user?.username)}
-                    className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                    className="truncate text-sm font-semibold hover:text-indigo-800 hover:underline transition block"
                     style={{ color: "var(--text-primary)" }}
                   >
                     {userName(member.user)}
@@ -928,7 +928,7 @@ function ConversationSettings({
                     <div className="min-w-0">
                       <Link
                         to={userProfileUrl(foundUser.id, currentUserId, foundUser.username)}
-                        className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                        className="truncate text-sm font-semibold hover:text-indigo-800 hover:underline transition block"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {userName(foundUser)}
@@ -1162,7 +1162,7 @@ function ActiveConversation({
                 {conversation.type === "DIRECT" ? (
                   <Link
                     to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id, otherParticipants(conversation, user?.id)[0]?.user?.username)}
-                    className="hover:text-emerald-800 hover:underline transition"
+                    className="hover:text-indigo-800 hover:underline transition"
                   >
                     {conversationName(conversation, user?.id)}
                   </Link>
@@ -1170,7 +1170,7 @@ function ActiveConversation({
                   conversationName(conversation, user?.id)
                 )}
               </h2>
-              <p className={`truncate text-xs ${typingOthers.length > 0 ? "text-emerald-600 font-medium animate-pulse" : ""}`}
+              <p className={`truncate text-xs ${typingOthers.length > 0 ? "text-indigo-600 font-medium animate-pulse" : ""}`}
                 style={typingOthers.length > 0 ? {} : { color: "var(--text-muted)" }}>
                 {typingOthers.length > 0
                   ? (conversation.type === "DIRECT"
@@ -1191,7 +1191,7 @@ function ActiveConversation({
               onClick={() => setShowSettings((s) => !s)}
               className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xxs font-bold uppercase transition ${
                 showSettings
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-850 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300"
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-800 dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300"
                   : "hover:bg-[var(--bg-surface-2)]"
               }`}
               style={showSettings ? {} : { borderColor: "var(--border)", color: "var(--text-secondary)" }}

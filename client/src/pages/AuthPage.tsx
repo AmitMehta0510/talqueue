@@ -151,27 +151,27 @@ export function AuthPage() {
           LEFT — Branding panel (hidden on small screens, shown md+)
           ============================================================ */}
       <aside className="hidden md:flex md:w-[48%] xl:w-[45%] relative flex-col overflow-hidden">
-        {/* Dark emerald gradient background */}
+        {/* Dark indigo gradient background */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(145deg, #052e1a 0%, #0d3d26 40%, #113d28 70%, #0a2e1c 100%)",
+              "linear-gradient(145deg, #0d0c2e 0%, #1e1a6e 40%, #231e80 70%, #120e4a 100%)",
           }}
         />
 
         {/* Animated glow orbs */}
         <div
           className="absolute top-[-80px] left-[-60px] h-72 w-72 rounded-full opacity-25 blur-3xl"
-          style={{ background: "radial-gradient(circle, #34d399, transparent)" }}
+          style={{ background: "radial-gradient(circle, #818cf8, transparent)" }}
         />
         <div
           className="absolute bottom-[-60px] right-[-40px] h-64 w-64 rounded-full opacity-20 blur-3xl"
-          style={{ background: "radial-gradient(circle, #059669, transparent)" }}
+          style={{ background: "radial-gradient(circle, #4f46e5, transparent)" }}
         />
         <div
           className="absolute top-[40%] right-[10%] h-48 w-48 rounded-full opacity-10 blur-2xl"
-          style={{ background: "radial-gradient(circle, #6ee7b7, transparent)" }}
+          style={{ background: "radial-gradient(circle, #a5b4fc, transparent)" }}
         />
 
         {/* Content */}
@@ -179,14 +179,14 @@ export function AuthPage() {
           {/* Logo */}
           <div>
             <div className="inline-flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 text-emerald-950 shadow-glow">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-400 text-indigo-950 shadow-glow">
                 <Code2 size={22} />
               </div>
               <div>
                 <div className="text-base font-black tracking-tight leading-none">
                   Engineering
                 </div>
-                <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-emerald-300/80 leading-none mt-0.5">
+                <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-indigo-300/80 leading-none mt-0.5">
                   Hub
                 </div>
               </div>
@@ -194,9 +194,9 @@ export function AuthPage() {
 
             <h1 className="mt-8 text-3xl xl:text-4xl font-bold leading-tight tracking-tight">
               Build your engineering{" "}
-              <span className="text-emerald-400">legacy</span>
+              <span className="text-indigo-400">legacy</span>
             </h1>
-            <p className="mt-3 text-sm leading-relaxed text-emerald-50/70 max-w-xs">
+            <p className="mt-3 text-sm leading-relaxed text-indigo-50/70 max-w-xs">
               The professional network built exclusively for engineers — from
               college to career and beyond.
             </p>
@@ -205,10 +205,10 @@ export function AuthPage() {
             <div className="mt-6 flex items-center gap-6">
               {stats.map((s) => (
                 <div key={s.label}>
-                  <div className="text-lg font-black text-emerald-400 leading-none">
+                  <div className="text-lg font-black text-indigo-400 leading-none">
                     {s.value}
                   </div>
-                  <div className="text-[10px] font-semibold text-emerald-100/60 uppercase tracking-wider mt-0.5">
+                  <div className="text-[10px] font-semibold text-indigo-100/60 uppercase tracking-wider mt-0.5">
                     {s.label}
                   </div>
                 </div>
@@ -221,16 +221,16 @@ export function AuthPage() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className="rounded-xl border border-white/8 p-3.5 transition-all duration-200 hover:border-emerald-400/30 hover:bg-white/5 group"
+                className="rounded-xl border border-white/8 p-3.5 transition-all duration-200 hover:border-indigo-400/30 hover:bg-white/5 group"
                 style={{ background: "rgba(255,255,255,0.04)" }}
               >
-                <div className="text-emerald-400 group-hover:scale-110 transition-transform duration-200 inline-block">
+                <div className="text-indigo-400 group-hover:scale-110 transition-transform duration-200 inline-block">
                   {f.icon}
                 </div>
                 <div className="mt-2 text-xs font-bold text-white/90 leading-tight">
                   {f.title}
                 </div>
-                <div className="mt-0.5 text-[10px] text-emerald-100/50 leading-snug">
+                <div className="mt-0.5 text-[10px] text-indigo-100/50 leading-snug">
                   {f.desc}
                 </div>
               </div>
@@ -244,10 +244,10 @@ export function AuthPage() {
           >
             {/* Stacked avatar circles */}
             <div className="flex -space-x-2">
-              {["#34d399", "#10b981", "#059669", "#047857"].map((c, i) => (
+              {["#818cf8", "#6366f1", "#4f46e5", "#4338ca"].map((c, i) => (
                 <div
                   key={i}
-                  className="h-7 w-7 rounded-full border-2 border-[#0d3d26] flex items-center justify-center text-[9px] font-black text-white"
+                  className="h-7 w-7 rounded-full border-2 border-[#1e1a6e] flex items-center justify-center text-[9px] font-black text-white"
                   style={{ background: c }}
                 >
                   {["AK", "SR", "PM", "NK"][i]}
@@ -260,7 +260,7 @@ export function AuthPage() {
                   <Trophy key={i} size={10} className="text-amber-400 fill-amber-400" />
                 ))}
               </div>
-              <div className="text-[10px] text-emerald-100/60 mt-0.5">
+              <div className="text-[10px] text-indigo-100/60 mt-0.5">
                 Trusted by engineers at IITs, NITs & top companies
               </div>
             </div>
@@ -278,7 +278,7 @@ export function AuthPage() {
         <div className="w-full max-w-md">
           {/* Mobile-only logo */}
           <div className="md:hidden flex items-center gap-2.5 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-glow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white shadow-glow-sm">
               <Code2 size={20} />
             </div>
             <div>

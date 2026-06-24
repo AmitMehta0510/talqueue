@@ -1525,9 +1525,18 @@ export const useHackathonLifecycleMutation = (hackathonId?: string) => {
   });
 };
 
-export const useJobsQuery = (params?: { page?: number; limit?: number }) =>
+export const useJobsQuery = (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  workMode?: string[];
+  jobType?: string[];
+  skills?: string[];
+  location?: string[];
+  freshness?: string | null;
+}) =>
   useQuery({
-    queryKey: [...queryKeys.jobs.list(), params],
+    queryKey: queryKeys.jobs.list(params as Record<string, unknown> | undefined),
     queryFn: async ({ signal }) => {
       const result = await api.jobs(params, { signal });
       return result.data || { jobs: [], total: 0, page: 1, limit: 20, totalPages: 0 };
@@ -1535,6 +1544,42 @@ export const useJobsQuery = (params?: { page?: number; limit?: number }) =>
     staleTime: 2 * 60_000,   // job listings: fresh for 2min
     gcTime: 10 * 60_000,
   });
+
+/**
+ * Debounce-aware autocomplete hook for job skills.
+ * Query only fires when `q` has at least 1 character.
+ * Results are stale for 5 minutes (warm Redis cache makes this fast).
+ */
+export const useJobSkillsAutocompleteQuery = (q: string, limit = 15) =>
+  useQuery({
+    queryKey: queryKeys.jobs.skillsAutocomplete(q),
+    queryFn: async ({ signal }) => {
+      const result = await api.jobSkillsAutocomplete(q, limit, { signal });
+      return result.data || [];
+    },
+    enabled: true, // Fire even with empty string to pre-warm; backend handles empty q
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
+    placeholderData: (prev) => prev,
+  });
+
+/**
+ * Debounce-aware autocomplete hook for job locations.
+ * Same caching strategy as skills autocomplete.
+ */
+export const useJobLocationsAutocompleteQuery = (q: string, limit = 15) =>
+  useQuery({
+    queryKey: queryKeys.jobs.locationsAutocomplete(q),
+    queryFn: async ({ signal }) => {
+      const result = await api.jobLocationsAutocomplete(q, limit, { signal });
+      return result.data || [];
+    },
+    enabled: true,
+    staleTime: 5 * 60_000,
+    gcTime: 15 * 60_000,
+    placeholderData: (prev) => prev,
+  });
+
 
 export const useMyFullProfileQuery = () => {
   const { user } = useAuth();
