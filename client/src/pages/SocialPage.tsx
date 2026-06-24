@@ -49,36 +49,36 @@ function ConnectionRequestPanel() {
   return (
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">Connection requests</h3>
-        {notificationsQuery.isFetching && <Loader2 className="animate-spin text-slate-400" size={15} />}
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Connection requests</h3>
+        {notificationsQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
       </div>
       <div className="mt-4 grid gap-3 xl:grid-cols-2">
         {requests.map((notification) => {
           const connectionId = connectionIdFromNotification(notification);
 
           return (
-            <article className="rounded-md border border-emerald-100 bg-emerald-50/70 p-4" key={notification.id}>
+            <article className="rounded-md border border-emerald-200 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-900/20 p-4" key={notification.id}>
               <div className="flex items-center gap-3">
                 <Avatar user={notification.actor} size="sm" />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-950">
+                  <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                     {userName(notification.actor)}
                   </div>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {userHeadline(notification.actor) || formatDate(notification.createdAt)}
                   </div>
                 </div>
               </div>
-              <p className="mt-3 text-sm text-slate-600">{notification.message}</p>
+              <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>{notification.message}</p>
               {notification.metadata?.connectionStatus === "ACCEPTED" || notification.metadata?.connectionStatus === "REJECTED" ? (
                 <div className="mt-4 flex items-center gap-1.5 text-sm font-semibold">
                   {notification.metadata.connectionStatus === "ACCEPTED" ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-1 rounded-full text-xs font-semibold">
                       <UserCheck size={13} />
                       Accepted
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-100/80 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/40 px-2.5 py-1 rounded-full text-xs font-semibold">
                       <X size={13} />
                       Rejected
                     </span>
@@ -257,7 +257,7 @@ function NetworkList({ activeTab }: { activeTab: SocialTab }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <Loader2 className="animate-spin" size={16} />
         Loading network
       </div>
@@ -336,23 +336,23 @@ export function SocialPage() {
       <div className="panel p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-950">Social graph</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Social graph</h2>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Follow engineers, request connections, and review relationship signals.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3 text-xs">
-            <div className="rounded-md border border-slate-100 p-3">
-              <div className="font-semibold text-slate-900">{user.followersCount || 0}</div>
-              <div className="mt-1 text-slate-500">Followers</div>
+            <div className="rounded-md border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{user.followersCount || 0}</div>
+              <div className="mt-1" style={{ color: "var(--text-muted)" }}>Followers</div>
             </div>
-            <div className="rounded-md border border-slate-100 p-3">
-              <div className="font-semibold text-slate-900">{user.followingCount || 0}</div>
-              <div className="mt-1 text-slate-500">Following</div>
+            <div className="rounded-md border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{user.followingCount || 0}</div>
+              <div className="mt-1" style={{ color: "var(--text-muted)" }}>Following</div>
             </div>
-            <div className="rounded-md border border-slate-100 p-3">
-              <div className="font-semibold text-slate-900">{user.connectionCount || 0}</div>
-              <div className="mt-1 text-slate-500">Connections</div>
+            <div className="rounded-md border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{user.connectionCount || 0}</div>
+              <div className="mt-1" style={{ color: "var(--text-muted)" }}>Connections</div>
             </div>
           </div>
         </div>
@@ -368,8 +368,9 @@ export function SocialPage() {
               className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
                 activeTab === tab.id
                   ? "bg-emerald-700 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-800"
+                  : "border hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
               }`}
+              style={activeTab !== tab.id ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}

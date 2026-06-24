@@ -76,22 +76,23 @@ export function ReferralsPage() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-2" style={{ borderColor: "var(--border)" }}>
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Referral Request Console</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Referral Request Console</h2>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
             Send, track, and manage employee referrals for career openings.
           </p>
         </div>
 
         {/* Tab switch control */}
-        <div className="flex rounded-lg bg-slate-100 p-1">
+        <div className="flex rounded-lg p-1" style={{ background: "var(--bg-surface-2)" }}>
           <button
             className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 ${
               activeTab === "received"
-                ? "bg-white text-slate-950 shadow-sm"
-                : "text-slate-600 hover:text-slate-950"
+                ? "bg-white dark:bg-slate-700 shadow-sm"
+                : "hover:text-slate-950 dark:hover:text-slate-100"
             }`}
+            style={activeTab !== "received" ? { color: "var(--text-secondary)" } : { color: "var(--text-primary)" }}
             onClick={() => setActiveTab("received")}
           >
             <Inbox size={14} />
@@ -100,9 +101,10 @@ export function ReferralsPage() {
           <button
             className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition flex items-center gap-1.5 ${
               activeTab === "sent"
-                ? "bg-white text-slate-950 shadow-sm"
-                : "text-slate-600 hover:text-slate-950"
+                ? "bg-white dark:bg-slate-700 shadow-sm"
+                : "hover:text-slate-950 dark:hover:text-slate-100"
             }`}
+            style={activeTab !== "sent" ? { color: "var(--text-secondary)" } : { color: "var(--text-primary)" }}
             onClick={() => setActiveTab("sent")}
           >
             <Send size={14} />
@@ -132,10 +134,10 @@ export function ReferralsPage() {
                   <div className="flex items-center gap-3">
                     <Avatar user={req.requester} size="md" />
                     <div>
-                      <h4 className="font-bold text-sm text-slate-950">
+                      <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
                         {userName(req.requester)}
                       </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {req.requester?.profile?.headline || `@${req.requester?.username}`}
                       </p>
                     </div>
@@ -143,27 +145,27 @@ export function ReferralsPage() {
 
                   <div className="flex items-center gap-3">
                     {renderStatusBadge(req.status)}
-                    <span className="text-xxs text-slate-400">
+                    <span className="text-xxs" style={{ color: "var(--text-muted)" }}>
                       {req.createdAt && formatDate(req.createdAt)}
                     </span>
                   </div>
                 </div>
 
-                <hr className="border-slate-100" />
+                  <hr style={{ borderColor: "var(--border)" }} />
 
                 {/* Job / Company Details */}
                 <div className="grid gap-4 md:grid-cols-2 text-xs">
                   <div className="space-y-2">
-                    <span className="block font-semibold text-slate-500 uppercase tracking-wider text-[10px]">
+                    <span className="block font-semibold uppercase tracking-wider text-[10px]" style={{ color: "var(--text-muted)" }}>
                       Opening Information
                     </span>
-                    <div className="flex items-start gap-2.5 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                    <div className="flex items-start gap-2.5 border rounded-lg p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                       <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 mt-0.5">
                         <Building2 size={18} />
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-950">{req.jobRole}</div>
-                        <div className="text-slate-500 mt-0.5">
+                        <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{req.jobRole}</div>
+                        <div className="mt-0.5" style={{ color: "var(--text-muted)" }}>
                           {req.companyName || req.company?.name || "Company Details"}
                         </div>
                         {req.jobUrl && (
@@ -182,10 +184,10 @@ export function ReferralsPage() {
 
                   {/* Pitch / Message */}
                   <div className="space-y-2">
-                    <span className="block font-semibold text-slate-500 uppercase tracking-wider text-[10px]">
+                    <span className="block font-semibold uppercase tracking-wider text-[10px]" style={{ color: "var(--text-muted)" }}>
                       Candidate Pitch
                     </span>
-                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 leading-5 text-slate-600 min-h-20 whitespace-pre-wrap">
+                    <div className="border rounded-lg p-3 leading-5 min-h-20 whitespace-pre-wrap" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
                       {req.message || "Candidate did not leave a pitch message."}
                     </div>
                   </div>
@@ -239,7 +241,7 @@ export function ReferralsPage() {
                       </a>
                     )}
                     {!req.resumeUrl && !req.githubUrl && !req.linkedinUrl && !req.portfolioUrl && (
-                      <span className="text-slate-400 text-xxs italic">
+                      <span className="text-xxs italic" style={{ color: "var(--text-muted)" }}>
                         No links attached. Check their main profile for details.
                       </span>
                     )}
@@ -248,7 +250,7 @@ export function ReferralsPage() {
 
                 {/* Referrer Action Buttons */}
                 {req.status === "PENDING" && (
-                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3.5">
+                  <div className="flex justify-end gap-2 border-t pt-3.5" style={{ borderColor: "var(--border)" }}>
                     <button
                       className="btn-secondary py-1 text-xs hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300"
                       type="button"
@@ -311,10 +313,10 @@ export function ReferralsPage() {
                   <div className="flex items-center gap-3">
                     <Avatar user={req.referrer} size="md" />
                     <div>
-                      <h4 className="font-bold text-sm text-slate-950">
+                      <h4 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>
                         Referrer: {userName(req.referrer)}
                       </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {req.referrer?.profile?.headline || `@${req.referrer?.username}`}
                       </p>
                     </div>
@@ -322,27 +324,27 @@ export function ReferralsPage() {
 
                   <div className="flex items-center gap-3">
                     {renderStatusBadge(req.status)}
-                    <span className="text-xxs text-slate-400">
+                    <span className="text-xxs" style={{ color: "var(--text-muted)" }}>
                       {req.createdAt && formatDate(req.createdAt)}
                     </span>
                   </div>
                 </div>
 
-                <hr className="border-slate-100" />
+                  <hr style={{ borderColor: "var(--border)" }} />
 
                 {/* Job requested for */}
                 <div className="text-xs space-y-3">
-                  <div className="font-semibold text-slate-500 uppercase tracking-wider text-[10px]">
+                  <div className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: "var(--text-muted)" }}>
                     Requested Target
                   </div>
 
-                  <div className="flex items-start gap-3 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                  <div className="flex items-start gap-3 border rounded-lg p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
                     <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 mt-0.5">
                       <Sparkles size={16} />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-950">{req.jobRole}</div>
-                      <div className="text-slate-500 mt-0.5">
+                      <div className="font-bold" style={{ color: "var(--text-primary)" }}>{req.jobRole}</div>
+                      <div className="mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {req.companyName || req.company?.name || "Company Name"}
                       </div>
                       {req.jobUrl && (
@@ -360,10 +362,10 @@ export function ReferralsPage() {
 
                   {req.message && (
                     <div className="space-y-1 mt-2">
-                      <span className="block font-semibold text-slate-500 text-[10px] uppercase">
+                      <span className="block font-semibold text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
                         Your Pitch
                       </span>
-                      <p className="bg-white border border-slate-100 rounded-md p-2 text-slate-600">
+                      <p className="border rounded-md p-2" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}>
                         {req.message}
                       </p>
                     </div>

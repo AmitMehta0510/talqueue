@@ -133,13 +133,13 @@ export function PlacementDashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             to="/jobs"
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition shrink-0"
+            className="flex h-10 w-10 items-center justify-center rounded-xl transition shrink-0" style={{ background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
           >
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Placement Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Placement Dashboard</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Track your campus placement rounds, check scheduling details, and view corporate offers.
             </p>
           </div>
@@ -149,43 +149,43 @@ export function PlacementDashboardPage() {
       {/* Stats Board */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className="panel p-5 bg-white border border-slate-200 rounded-2xl flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shrink-0">
+        <div className="panel p-5 border rounded-2xl flex items-center gap-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shrink-0">
             <Briefcase size={22} />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Applied Drives</span>
-            <span className="text-2xl font-bold text-slate-950">{stats.total}</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Applied Drives</span>
+            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.total}</span>
           </div>
         </div>
 
-        <div className="panel p-5 bg-white border border-slate-200 rounded-2xl flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shrink-0">
+        <div className="panel p-5 border rounded-2xl flex items-center gap-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 shrink-0">
             <Clock size={22} className="animate-spin duration-3000" style={{ animationDuration: "10s" }} />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">In Progress</span>
-            <span className="text-2xl font-bold text-slate-950">{stats.inProgress}</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>In Progress</span>
+            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.inProgress}</span>
           </div>
         </div>
 
-        <div className="panel p-5 bg-white border border-slate-200 rounded-2xl flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 shrink-0">
+        <div className="panel p-5 border rounded-2xl flex items-center gap-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 shrink-0">
             <Trophy size={22} />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Offers Received</span>
-            <span className="text-2xl font-bold text-slate-950">{stats.offers}</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Offers Received</span>
+            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.offers}</span>
           </div>
         </div>
 
-        <div className="panel p-5 bg-white border border-slate-200 rounded-2xl flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shrink-0">
+        <div className="panel p-5 border rounded-2xl flex items-center gap-4" style={{ borderColor: "var(--border)" }}>
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
             <TrendingUp size={22} />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Ratio</span>
-            <span className="text-2xl font-bold text-slate-950">{stats.successRate}%</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Active Ratio</span>
+            <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.successRate}%</span>
           </div>
         </div>
 
@@ -198,7 +198,7 @@ export function PlacementDashboardPage() {
         <div className="lg:col-span-8 space-y-6">
           
           {/* Tab Selection */}
-          <div className="panel p-1.5 overflow-x-auto bg-slate-50 border border-slate-200 rounded-2xl">
+          <div className="panel p-1.5 overflow-x-auto rounded-2xl" style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border)" }}>
             <nav className="flex space-x-1">
               {(
                 [
@@ -216,9 +216,10 @@ export function PlacementDashboardPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`rounded-xl px-4 py-2 text-xs font-bold transition shrink-0 ${
                       isActive
-                        ? "bg-slate-950 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-200"
+                        ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm"
+                        : "hover:text-slate-900 dark:hover:text-slate-100"
                     }`}
+                    style={!isActive ? { color: "var(--text-secondary)" } : {}}
                   >
                     {tab.label}
                   </button>
@@ -230,7 +231,7 @@ export function PlacementDashboardPage() {
           {/* Applications list */}
           <div className="space-y-4">
             {appsQuery.isLoading ? (
-              <div className="panel p-20 flex flex-col items-center justify-center bg-white border border-slate-200 rounded-2xl text-slate-400 gap-2">
+              <div className="panel p-20 flex flex-col items-center justify-center rounded-2xl gap-2" style={{ color: "var(--text-muted)" }}>
                 <Loader2 className="animate-spin text-indigo-600" size={32} />
                 <span className="text-sm font-semibold">Loading placement pipeline...</span>
               </div>
@@ -255,7 +256,7 @@ export function PlacementDashboardPage() {
                 return (
                   <article
                     key={app.id}
-                    className="panel bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-md transition group"
+                    className="panel rounded-2xl overflow-hidden hover:shadow-md transition group"
                   >
                     {/* Header line */}
                     <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 to-indigo-600" />
@@ -277,15 +278,15 @@ export function PlacementDashboardPage() {
                             </div>
                           )}
                           <div>
-                            <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition flex items-center gap-1.5">
+                            <h3 className="text-sm font-bold group-hover:text-indigo-600 transition flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                               {drive?.driveTitle}
                               {drive?.isDreamCompany && (
-                                <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                                <span className="text-[9px] bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
                                   Dream
                                 </span>
                               )}
                             </h3>
-                            <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                            <p className="text-xs font-semibold mt-0.5" style={{ color: "var(--text-muted)" }}>
                               {company?.name} · {drive?.driveType === "PLACEMENT" ? "Placement Drive" : "Internship Drive"}
                             </p>
                           </div>
@@ -307,7 +308,7 @@ export function PlacementDashboardPage() {
                           </span>
                           <div className="relative flex items-center justify-between">
                             {/* Connector line */}
-                            <div className="absolute left-0 right-0 h-1 bg-slate-100 -z-10 rounded-full" />
+                            <div className="absolute left-0 right-0 h-1 -z-10 rounded-full" style={{ background: "var(--bg-surface-2)" }} />
                             <div
                               className="absolute left-0 h-1 bg-indigo-600 -z-10 rounded-full transition-all duration-500"
                               style={{ width: `${((funnelStep - 1) / 3) * 100}%` }}
@@ -327,19 +328,21 @@ export function PlacementDashboardPage() {
                                     className={`h-5 w-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition shadow-sm ${
                                       isPassed
                                         ? "bg-indigo-600 border-indigo-600 text-white"
-                                        : "bg-white border-slate-200 text-slate-400"
-                                    } ${isCurrent ? "ring-4 ring-indigo-100" : ""}`}
+                                        : "border-slate-200 dark:border-slate-600 text-slate-400"
+                                    } ${isCurrent ? "ring-4 ring-indigo-100 dark:ring-indigo-900/50" : ""}`}
+                                  style={!isPassed ? { background: "var(--bg-surface)" } : {}}
                                   >
                                     {isPassed && funnelStep > s.step ? "✓" : s.step}
                                   </div>
                                   <span
                                     className={`text-[9px] font-bold ${
                                       isCurrent
-                                        ? "text-indigo-600"
+                                        ? "text-indigo-600 dark:text-indigo-400"
                                         : isPassed
-                                        ? "text-slate-800"
-                                        : "text-slate-400"
+                                        ? ""
+                                        : ""
                                     }`}
+                                  style={{ color: isCurrent ? undefined : isPassed ? "var(--text-primary)" : "var(--text-muted)" }}
                                   >
                                     {s.label}
                                   </span>
@@ -349,23 +352,23 @@ export function PlacementDashboardPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2.5 text-xs font-semibold text-slate-500 select-none">
-                          <XCircle size={15} className="text-slate-400" />
+                        <div className="border rounded-xl p-3 flex items-center gap-2.5 text-xs font-semibold select-none" style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
+                          <XCircle size={15} style={{ color: "var(--text-muted)" } as React.CSSProperties} />
                           <span>This recruitment pipeline is completed or withdrawn.</span>
                         </div>
                       )}
 
                       {/* Drive details */}
-                      <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-4 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
                         {drive?.driveDate && (
                           <span className="flex items-center gap-1.5">
-                            <Calendar size={13} className="text-slate-400" />
+                            <Calendar size={13} style={{ color: "var(--text-muted)" } as React.CSSProperties} />
                             Drive Date: {formatDate(drive.driveDate)}
                           </span>
                         )}
                         {(drive?.stipendMin || drive?.salaryMin) && (
-                          <span className="flex items-center gap-1.5 font-semibold text-slate-700">
-                            <IndianRupee size={13} className="text-slate-400" />
+                          <span className="flex items-center gap-1.5 font-semibold" style={{ color: "var(--text-secondary)" }}>
+                            <IndianRupee size={13} style={{ color: "var(--text-muted)" } as React.CSSProperties} />
                             Compensation:{" "}
                             {drive.driveType === "PLACEMENT"
                               ? `${((drive.salaryMin || 0) / 100000).toFixed(1)} LPA`
@@ -415,11 +418,11 @@ export function PlacementDashboardPage() {
             </div>
           </div>
 
-          <div className="panel p-5 bg-white border border-slate-200 rounded-2xl space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <div className="panel p-5 rounded-2xl space-y-3" style={{ background: "var(--bg-surface)", border: "1px solid var(--border)" }}>
+            <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
               <FileText size={14} className="text-indigo-500" /> Need Assistance?
             </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
               If your academic credentials, year of study, CGPA, or backlog indicators are incorrect, please contact your designated College Admin or TPO coordinator immediately to request updates.
             </p>
           </div>

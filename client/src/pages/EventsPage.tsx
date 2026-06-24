@@ -32,17 +32,17 @@ const EVENT_TYPE_CONFIG: Record<
   COLLEGE: {
     label: "Campus Event",
     icon: GraduationCap,
-    chipClass: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    chipClass: "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700",
   },
   COMPANY: {
     label: "Corporate Event",
     icon: Building2,
-    chipClass: "bg-amber-50 text-amber-700 border border-amber-200",
+    chipClass: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
   },
   GENERAL: {
     label: "General Session",
     icon: Globe,
-    chipClass: "bg-teal-50 text-teal-700 border border-teal-200",
+    chipClass: "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700",
   },
 };
 
@@ -64,9 +64,9 @@ function EventTypeChip({ type }: { type: EventType }) {
 
 function RSVPChip({ status }: { status: RSVPStatus }) {
   const colorMap: Record<RSVPStatus, string> = {
-    GOING: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    MAYBE: "bg-amber-50 text-amber-700 border border-amber-200",
-    DECLINED: "bg-rose-50 text-rose-700 border border-rose-200",
+    GOING: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700",
+    MAYBE: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700",
+    DECLINED: "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700",
   };
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${colorMap[status]}`}>
@@ -132,13 +132,13 @@ function EventForm({
 
   return (
     <form onSubmit={handleSubmit} className="panel p-5 space-y-4">
-      <h2 className="text-base font-bold text-slate-950">
+      <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
         {isEditing ? "Edit Event" : "Create a New Event"}
       </h2>
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
             Title *
           </label>
           <input
@@ -244,7 +244,7 @@ function EventForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <div className="flex justify-end gap-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
         <button type="button" className="btn-secondary" onClick={onCancel}>
           Cancel
         </button>
@@ -304,14 +304,14 @@ function EventCard({ event, onEdit, onDelete, onRsvp }: {
 
       {/* Title & description */}
       <div>
-        <h3 className="text-base font-bold text-slate-950 leading-snug">{event.title}</h3>
+        <h3 className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{event.title}</h3>
         {event.description && (
-          <p className="mt-1 text-xs text-slate-500 line-clamp-2">{event.description}</p>
+          <p className="mt-1 text-xs line-clamp-2" style={{ color: "var(--text-muted)" }}>{event.description}</p>
         )}
       </div>
 
       {/* Meta */}
-      <div className="space-y-1.5 text-xs text-slate-500">
+      <div className="space-y-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
         <div className="flex items-center gap-2">
           <Calendar size={12} className="shrink-0 text-slate-400" />
           <span>{formatEventDate(event.startDate)}</span>
@@ -352,8 +352,8 @@ function EventCard({ event, onEdit, onDelete, onRsvp }: {
       </div>
 
       {/* Organiser & RSVP */}
-      <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <span className="text-xs text-slate-400 truncate">
+      <div className="border-t pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "var(--border)" }}>
+        <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
           {event.createdBy?.profile?.fullName
             ? `By ${event.createdBy.profile.fullName}`
             : `@${event.createdBy?.username ?? "unknown"}`}
@@ -452,8 +452,8 @@ export function EventsPage() {
       <div className="panel p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-950">Ecosystem Events</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Ecosystem Events</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Explore college hackathons, company presentations, and general coding meetups.
             </p>
           </div>
@@ -513,8 +513,9 @@ export function EventsPage() {
               className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold transition ${
                 filterType === tab.id
                   ? "bg-emerald-700 text-white"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-800"
+                  : "border hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
               }`}
+              style={filterType !== tab.id ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}
             >
               {tab.label}
             </button>
@@ -524,7 +525,7 @@ export function EventsPage() {
 
       {/* Events list */}
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
           <Loader2 className="animate-spin" size={16} />
           Loading events…
         </div>

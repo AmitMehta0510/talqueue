@@ -105,10 +105,10 @@ export function RecruiterPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-2" style={{ borderColor: "var(--border)" }}>
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Recruiter Console</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Recruiter Console</h2>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
             Evaluate engineering applicants, track fit ratios, and coordinate pipeline updates.
           </p>
         </div>
@@ -125,41 +125,41 @@ export function RecruiterPage() {
 
       {/* Recruiter Stats Overview Row */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-emerald-50/40 to-teal-50/40">
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-emerald-50/40 dark:from-emerald-900/10 to-teal-50/40 dark:to-teal-900/10">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400">
             <BriefcaseBusiness size={20} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-950">{stats.totalJobs}</div>
-            <div className="text-xs text-slate-500">Active Job Postings</div>
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.totalJobs}</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Active Job Postings</div>
           </div>
         </div>
 
-        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-blue-50/40 to-indigo-50/40">
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-800">
+        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-blue-50/40 dark:from-blue-900/10 to-indigo-50/40 dark:to-indigo-900/10">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
             <Users size={20} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-950">{stats.totalApplicants}</div>
-            <div className="text-xs text-slate-500">Total Applicants In Pipeline</div>
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.totalApplicants}</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Total Applicants In Pipeline</div>
           </div>
         </div>
 
-        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-amber-50/40 to-orange-50/40">
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+        <div className="panel p-5 flex items-center gap-4 bg-gradient-to-br from-amber-50/40 dark:from-amber-900/10 to-orange-50/40 dark:to-orange-900/10">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400">
             <Sparkles size={20} />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-950">{stats.avgMatchRate}%</div>
-            <div className="text-xs text-slate-500">Avg Candidate Skill Fit</div>
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.avgMatchRate}%</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Avg Candidate Skill Fit</div>
           </div>
         </div>
       </div>
 
       {/* Main Jobs Directory Table / List */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-1.5">
+        <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+          <h3 className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
             <FolderKanban size={15} />
             Your Open Positions ({activeJobs.length})
           </h3>
@@ -171,23 +171,23 @@ export function RecruiterPage() {
               <article key={job.id} className="panel p-5 flex flex-col justify-between hover:shadow-md transition">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
-                    <h4 className="font-bold text-base text-slate-950 truncate">{job.title}</h4>
-                    <span className="chip uppercase text-[9px] font-bold bg-emerald-50 text-emerald-800">
+                    <h4 className="font-bold text-base truncate" style={{ color: "var(--text-primary)" }}>{job.title}</h4>
+                    <span className="chip uppercase text-[9px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
                       {job.type}
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                     {[job.location || "Remote", titleCase(job.workMode || "")].filter(Boolean).join(" &bull; ")}
                   </p>
 
                   <div className="flex items-center gap-4 text-xs font-semibold mt-2.5">
-                    <span className="text-emerald-700 flex items-center gap-1">
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <CheckCircle size={14} />
                       {job.applicationsCount || 0} Candidates
                     </span>
                     {job.createdAt && (
-                      <span className="text-slate-400 flex items-center gap-1 font-normal">
+                      <span className="flex items-center gap-1 font-normal" style={{ color: "var(--text-muted)" }}>
                         <Clock size={14} />
                         Posted {new Date(job.createdAt).toLocaleDateString()}
                       </span>
@@ -195,7 +195,7 @@ export function RecruiterPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 mt-4 shrink-0">
+                <div className="flex justify-end gap-2 border-t pt-3 mt-4 shrink-0" style={{ borderColor: "var(--border)" }}>
                   <button
                     className="btn-primary py-1 px-3 text-xs flex items-center gap-1 font-semibold"
                     type="button"
@@ -230,8 +230,8 @@ export function RecruiterPage() {
       {/* Campus Drive Invitations */}
       {companyId && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-1.5">
+          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+            <h3 className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
               <GraduationCap size={15} />
               Campus Drive Invitations
             </h3>
@@ -252,20 +252,20 @@ export function RecruiterPage() {
                 <div key={invite.id} className="panel p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{invite.driveTitle}</p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                      <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{invite.driveTitle}</p>
+                      <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--text-muted)" }}>
                         <Building2 size={10} />{invite.college?.name}
                       </p>
                     </div>
                     <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                      invite.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                      "bg-slate-100 text-slate-500 border-slate-200"
-                    }`}>{invite.status}</span>
+                      invite.status === "PENDING" ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700" :
+                      invite.status === "ACCEPTED" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700" :
+                      invite.status === "REJECTED" ? "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-700" :
+                      ""
+                    }`} style={invite.status !== "PENDING" && invite.status !== "ACCEPTED" && invite.status !== "REJECTED" ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" } : {}}>{invite.status}</span>
                   </div>
                   {invite.driveDate && (
-                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <p className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
                       <Clock size={9} /> {formatDate(invite.driveDate)}
                     </p>
                   )}
@@ -274,7 +274,7 @@ export function RecruiterPage() {
                       type="button"
                       onClick={() => withdrawInviteMutation.mutate(invite.id)}
                       disabled={withdrawInviteMutation.isPending}
-                      className="text-[10px] font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 transition disabled:opacity-50"
+                      className="text-[10px] font-bold hover:text-rose-600 flex items-center gap-1 transition disabled:opacity-50" style={{ color: "var(--text-muted)" }}
                     >
                       <X size={10} /> Withdraw
                     </button>
@@ -308,8 +308,8 @@ export function RecruiterPage() {
       {/* Active Campus Placement Drives */}
       {companyId && (
         <div className="space-y-4 mt-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="font-semibold text-sm text-slate-700 flex items-center gap-1.5">
+          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+            <h3 className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
               <Sparkles size={15} className="text-indigo-600" />
               Active Campus Drives ({postedDrives.length})
             </h3>
@@ -321,28 +321,28 @@ export function RecruiterPage() {
                 <article key={drive.id} className="panel p-5 flex flex-col justify-between hover:shadow-md transition">
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-3">
-                      <h4 className="font-bold text-sm text-slate-900 leading-snug truncate">
+                      <h4 className="font-bold text-sm leading-snug truncate" style={{ color: "var(--text-primary)" }}>
                         {drive.driveTitle}
                       </h4>
                       <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[9px] font-bold ${
-                        drive.status === "ONGOING" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                        drive.status === "UPCOMING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                        "bg-slate-100 text-slate-500 border-slate-200"
-                      }`}>
+                        drive.status === "ONGOING" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700" :
+                        drive.status === "UPCOMING" ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700" :
+                        ""
+                      }`} style={drive.status !== "ONGOING" && drive.status !== "UPCOMING" ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" } : {}}>
                         {drive.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                      <Building2 size={11} className="text-slate-400" />
+                    <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--text-muted)" }}>
+                      <Building2 size={11} style={{ color: "var(--text-muted)" } as React.CSSProperties} />
                       {drive.college?.name}
                     </p>
                     {drive.driveDate && (
-                      <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <p className="text-[10px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
                         <Clock size={10} /> Drive Date: {formatDate(drive.driveDate)}
                       </p>
                     )}
                   </div>
-                  <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 mt-4 shrink-0">
+                  <div className="flex justify-end gap-2 border-t pt-3 mt-4 shrink-0" style={{ borderColor: "var(--border)" }}>
                     <button
                       type="button"
                       onClick={() => setSelectedDriveForApplicants({ id: drive.id, title: drive.driveTitle })}

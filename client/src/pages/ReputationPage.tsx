@@ -135,12 +135,12 @@ export function ReputationPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         {/* Left Column: Badges Collection Catalog */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <Award size={16} className="text-emerald-700" />
+          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+            <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+              <Award size={16} className="text-emerald-600 dark:text-emerald-400" />
               Badges Directory ({unlockedCount}/{allBadges.length} Unlocked)
             </h3>
-            <span className="text-xxs text-slate-500 font-semibold uppercase tracking-wider">
+            <span className="text-xxs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
               {lockedCount} Locked Remaining
             </span>
           </div>
@@ -155,8 +155,8 @@ export function ReputationPage() {
                   key={badge.id}
                   className={`panel relative flex flex-col p-4 border transition duration-150 ${
                     isUnlocked
-                      ? "border-emerald-200 bg-white shadow-sm"
-                      : "border-slate-200 bg-slate-50/50 opacity-70"
+                      ? "border-emerald-200 dark:border-emerald-700"
+                      : "opacity-70"
                   }`}
                 >
                   {/* Badge Rarity tag */}
@@ -169,26 +169,27 @@ export function ReputationPage() {
                     <div
                       className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${
                         isUnlocked
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-200 text-slate-400"
+                          ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                          : "text-slate-400 dark:text-slate-500"
                       }`}
+                      style={!isUnlocked ? { background: "var(--bg-surface-2)" } : {}}
                     >
-                      {isUnlocked ? <Star size={20} className="fill-emerald-100" /> : <Lock size={16} />}
+                      {isUnlocked ? <Star size={20} className="fill-emerald-100 dark:fill-emerald-900/50" /> : <Lock size={16} />}
                     </div>
                   </div>
 
                   <div className="mt-4 flex-1">
-                    <h4 className={`text-xs font-bold ${isUnlocked ? "text-slate-900" : "text-slate-500"}`}>
+                    <h4 className={`text-xs font-bold ${isUnlocked ? "" : ""}`} style={{ color: isUnlocked ? "var(--text-primary)" : "var(--text-muted)" }}>
                       {badge.name}
                     </h4>
-                    <p className="mt-1 text-[11px] text-slate-500 leading-4">
+                    <p className="mt-1 text-[11px] leading-4" style={{ color: "var(--text-muted)" }}>
                       {badge.description || "Unlocked by completing quality developer tasks."}
                     </p>
                   </div>
 
-                  <div className="mt-3.5 border-t border-slate-100 pt-2 flex items-center justify-between text-[10px]">
-                    <span className="text-slate-400">Award Weight</span>
-                    <span className={`font-semibold ${isUnlocked ? "text-emerald-700" : "text-slate-500"}`}>
+                  <div className="mt-3.5 border-t pt-2 flex items-center justify-between text-[10px]" style={{ borderColor: "var(--border)" }}>
+                    <span style={{ color: "var(--text-muted)" }}>Award Weight</span>
+                    <span className={`font-semibold ${isUnlocked ? "text-emerald-600 dark:text-emerald-400" : ""}`} style={!isUnlocked ? { color: "var(--text-muted)" } : {}}>
                       +{badge.points || 10} pts
                     </span>
                   </div>
@@ -206,16 +207,16 @@ export function ReputationPage() {
 
         {/* Right Column: Reputation History Timeline Log */}
         <aside className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <History size={16} className="text-emerald-700" />
+          <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "var(--border)" }}>
+            <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+              <History size={16} className="text-emerald-600 dark:text-emerald-400" />
               Points Activity Log
             </h3>
           </div>
 
-          <div className="panel p-5 bg-white space-y-4 max-h-[600px] overflow-y-auto">
+          <div className="panel p-5 space-y-4 max-h-[600px] overflow-y-auto">
             {history.length > 0 ? (
-              <div className="relative border-l border-slate-100 pl-4 ml-1 space-y-5 py-1">
+              <div className="relative border-l pl-4 ml-1 space-y-5 py-1" style={{ borderColor: "var(--border)" }}>
                 {history.map((item) => {
                   const isPositive = (item.points || 0) >= 0;
 
@@ -228,16 +229,16 @@ export function ReputationPage() {
 
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h4 className="font-semibold text-xs text-slate-900 leading-4">
+                          <h4 className="font-semibold text-xs leading-4" style={{ color: "var(--text-primary)" }}>
                             {item.reason || titleCase(item.type || "Reputation Award")}
                           </h4>
-                          <span className="block text-[10px] text-slate-400 mt-1">
+                          <span className="block text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
                             {item.createdAt && formatDate(item.createdAt)}
                           </span>
                         </div>
 
                         <span className={`text-xs font-extrabold shrink-0 ${
-                          isPositive ? "text-emerald-700" : "text-rose-600"
+                          isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                         }`}>
                           {isPositive ? "+" : ""}
                           {item.points}
