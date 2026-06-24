@@ -58,14 +58,14 @@ const ChartCard = React.memo(function ChartCard({
 
   if (!series || series.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 h-64 flex items-center justify-center text-xs text-zinc-550 italic">
+      <div className="rounded-xl border p-5 h-64 flex items-center justify-center text-xs italic" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
         No telemetry available for this timeframe.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 space-y-4">
+    <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${
@@ -73,16 +73,16 @@ const ChartCard = React.memo(function ChartCard({
               ? "from-emerald-500/20 to-teal-500/20 border border-emerald-600/20"
               : "from-blue-500/20 to-indigo-500/20 border border-blue-600/20"
           }`}>
-            <Icon size={13} className={isRegistrations ? "text-emerald-400" : "text-blue-400"} />
+            <Icon size={13} className={isRegistrations ? "text-emerald-500 dark:text-emerald-400" : "text-blue-500 dark:text-blue-400"} />
           </div>
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">{title}</h3>
-            <p className="text-[10px] text-zinc-500 font-medium">Aggregated counts by day</p>
+            <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>{title}</h3>
+            <p className="text-[10px] font-medium" style={{ color: "var(--text-muted)" }}>Aggregated counts by day</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs font-black text-white">{totalSum.toLocaleString()}</div>
-          <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Total in range</div>
+          <div className="text-xs font-black" style={{ color: "var(--text-primary)" }}>{totalSum.toLocaleString()}</div>
+          <div className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Total in range</div>
         </div>
       </div>
 
@@ -91,8 +91,8 @@ const ChartCard = React.memo(function ChartCard({
         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-[20px]">
           {yGridValues.map((val, idx) => (
             <div key={idx} className="w-full flex items-center gap-2">
-              <span className="text-[8px] font-bold text-zinc-650 w-6 text-right select-none">{val}</span>
-              <div className="flex-1 border-t border-dashed border-zinc-800/40" />
+              <span className="text-[8px] font-bold w-6 text-right select-none" style={{ color: "var(--text-muted)" }}>{val}</span>
+              <div className="flex-1 border-t border-dashed" style={{ borderColor: "var(--border)" }} />
             </div>
           ))}
         </div>
@@ -109,11 +109,11 @@ const ChartCard = React.memo(function ChartCard({
                 />
                 {/* Tooltip */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-30 pointer-events-none">
-                  <div className="rounded-lg bg-zinc-950 border border-zinc-700/80 px-2.5 py-1.5 shadow-2xl text-[9px] whitespace-nowrap text-center animate-in fade-in slide-in-from-bottom-1 duration-100">
-                    <div className="font-extrabold text-white">
+                  <div className="rounded-lg border px-2.5 py-1.5 shadow-2xl text-[9px] whitespace-nowrap text-center animate-in fade-in slide-in-from-bottom-1 duration-100" style={{ background: "var(--bg-surface)", borderColor: "var(--border-strong)" }}>
+                    <div className="font-extrabold" style={{ color: "var(--text-primary)" }}>
                       {d.count.toLocaleString()} {isRegistrations ? "new users" : "views"}
                     </div>
-                    <div className="text-zinc-550 font-semibold mt-0.5">{formatDate(d.date)}</div>
+                    <div className="font-semibold mt-0.5" style={{ color: "var(--text-muted)" }}>{formatDate(d.date)}</div>
                   </div>
                 </div>
               </div>
@@ -122,7 +122,7 @@ const ChartCard = React.memo(function ChartCard({
         </div>
 
         {/* X-Axis Labels */}
-        <div className="flex justify-between pl-8 pr-2 text-[9px] font-bold text-zinc-550 uppercase tracking-wider">
+        <div className="flex justify-between pl-8 pr-2 text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
           <span>{formatDate(series[0]?.date)}</span>
           <span>{formatDate(series[Math.floor(series.length / 2)]?.date)}</span>
           <span>{formatDate(series[series.length - 1]?.date)}</span>
@@ -148,23 +148,24 @@ function AnalyticsCharts() {
   return (
     <div className="space-y-4">
       {/* Analytics Header & Range Selector */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-zinc-800/80 pt-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t pt-6" style={{ borderColor: "var(--border)" }}>
         <div>
-          <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">Platform Analytics & Growth</h2>
-          <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">Track registration rates and daily page traffic trends.</p>
+          <h2 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Platform Analytics & Growth</h2>
+          <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--text-muted)" }}>Track registration rates and daily page traffic trends.</p>
         </div>
         <div className="flex items-center gap-1.5 self-start sm:self-center">
-          <Calendar size={11} className="text-zinc-505" />
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-1">Timeframe:</span>
+          <Calendar size={11} style={{ color: "var(--text-muted)" }} />
+          <span className="text-[10px] font-bold uppercase tracking-wider mr-1" style={{ color: "var(--text-muted)" }}>Timeframe:</span>
           {([7, 30, 90] as const).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all
+              className={`rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all border
                 ${range === r
-                  ? "bg-emerald-600/15 text-emerald-400 border border-emerald-600/30"
-                  : "bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
+                  ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20"
+                  : "hover:bg-[var(--bg-surface-2)]"
                 }`}
+              style={range !== r ? { borderColor: "var(--border)", color: "var(--text-muted)" } : {}}
             >
               {r}D
             </button>
@@ -175,22 +176,22 @@ function AnalyticsCharts() {
       {isPending ? (
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl border border-zinc-700/50 bg-zinc-800/20 p-5 h-64 flex flex-col items-center justify-center gap-3">
+            <div key={i} className="rounded-xl border p-5 h-64 flex flex-col items-center justify-center gap-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
               <Loader2 className="animate-spin text-emerald-500" size={24} />
-              <p className="text-[10px] text-zinc-650 italic font-semibold">Aggregating timeline telemetry...</p>
+              <p className="text-[10px] italic font-semibold" style={{ color: "var(--text-muted)" }}>Aggregating timeline telemetry...</p>
             </div>
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-zinc-850 bg-zinc-900/40 p-6 flex flex-col items-center justify-center text-center gap-3">
+        <div className="rounded-xl border p-6 flex flex-col items-center justify-center text-center gap-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
           <AlertCircle className="text-rose-500" size={24} />
           <div>
-            <p className="text-xs font-bold text-zinc-350">Failed to sync timeline telemetry</p>
-            <p className="text-[10px] text-zinc-600 font-semibold mt-0.5">Could not fetch server-side user registration or visitor aggregates.</p>
+            <p className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Failed to sync timeline telemetry</p>
+            <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--text-muted)" }}>Could not fetch server-side user registration or visitor aggregates.</p>
           </div>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-750 bg-zinc-800/80 px-3 py-1.5 text-[10px] font-bold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition"
+            className="btn-secondary text-[10px] px-3 py-1.5"
           >
             <RefreshCw size={10} />
             Retry Sync
@@ -248,7 +249,7 @@ export function OverviewPanel({
     <div className="space-y-6">
       {/* ── Quick KPI Grid ── */}
       <div>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-wider text-zinc-500">Platform Overview</h2>
+        <h2 className="mb-3 text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Platform Overview</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           <KpiCard label="Total Users" value={stats.userCount} icon={Users} gradient="from-emerald-500 to-teal-600" sub={`+${stats.newUsersToday} today`} />
           <KpiCard label="Active Users" value={activeUsers} icon={UserCheck} gradient="from-blue-500 to-indigo-600" sub={`${stats.newUsersThisWeek} this week`} />
@@ -263,7 +264,7 @@ export function OverviewPanel({
 
       {/* ── Institutions Row ── */}
       <div>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-wider text-zinc-500">Institutions & Engagement</h2>
+        <h2 className="mb-3 text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Institutions & Engagement</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           <KpiCard label="Colleges" value={stats.collegeCount} icon={GraduationCap} gradient="from-indigo-500 to-blue-600" />
           <KpiCard label="Companies" value={stats.companyCount} icon={Building2} gradient="from-purple-500 to-violet-600" />
@@ -278,12 +279,12 @@ export function OverviewPanel({
       {/* ── Distribution Cards ── */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* Status Distribution */}
-        <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 space-y-4">
+        <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-600/20">
-              <Activity size={13} className="text-emerald-400" />
+              <Activity size={13} className="text-emerald-500 dark:text-emerald-400" />
             </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">Account Status</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Account Status</h3>
           </div>
           <div className="space-y-3">
             {stats.statusDistribution?.map((item: any) => (
@@ -299,12 +300,12 @@ export function OverviewPanel({
         </div>
 
         {/* Trust Level */}
-        <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 space-y-4">
+        <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-600/20">
-              <Star size={13} className="text-amber-400" />
+              <Star size={13} className="text-amber-500 dark:text-amber-400" />
             </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">Trust Levels</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Trust Levels</h3>
           </div>
           <div className="space-y-3">
             {stats.trustLevelDistribution?.map((item: any) => (
@@ -314,12 +315,12 @@ export function OverviewPanel({
         </div>
 
         {/* Platform Roles */}
-        <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 space-y-4">
+        <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-600/20">
-              <ShieldCheck size={13} className="text-violet-400" />
+              <ShieldCheck size={13} className="text-violet-500 dark:text-violet-400" />
             </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">Platform Roles</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Platform Roles</h3>
           </div>
           <div className="space-y-3">
             {stats.platformRoleDistribution?.length > 0 ? (
@@ -327,25 +328,25 @@ export function OverviewPanel({
                 <DistBar key={item.roleName} label={item.roleName} count={item.count} total={stats.userCount} color="bg-violet-500" />
               ))
             ) : (
-              <p className="text-xs text-zinc-650 italic">No special roles assigned</p>
+              <p className="text-xs italic" style={{ color: "var(--text-muted)" }}>No special roles assigned</p>
             )}
           </div>
         </div>
       </div>
 
       {/* ── User Role Distribution ── */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 p-5 space-y-4">
+      <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-600/20">
-            <Layers size={13} className="text-blue-400" />
+            <Layers size={13} className="text-blue-500 dark:text-blue-400" />
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">User Role Distribution</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>User Role Distribution</h3>
         </div>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           {stats.userRoleDistribution?.map((item: any) => (
-            <div key={item.role} className="rounded-lg border border-zinc-700/50 bg-zinc-900/60 px-4 py-3 text-center">
-              <div className="text-xl font-black text-white">{item.count}</div>
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-550">{titleCase(item.role)}</div>
+            <div key={item.role} className="rounded-lg border px-4 py-3 text-center" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="text-xl font-black" style={{ color: "var(--text-primary)" }}>{item.count}</div>
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{titleCase(item.role)}</div>
             </div>
           ))}
         </div>

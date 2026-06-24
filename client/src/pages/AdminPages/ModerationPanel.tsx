@@ -29,15 +29,16 @@ export function ModerationPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">Content Moderation</h2>
+        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Content Moderation</h2>
       </div>
 
-      <div className="flex gap-1 border-b border-zinc-800/60 pb-3">
+      <div className="flex gap-1 border-b pb-3" style={{ borderColor: "var(--border)" }}>
         {SUB_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all
-              ${sub === id ? "bg-emerald-600/20 text-emerald-400 border border-emerald-600/30" : "text-zinc-500 hover:text-zinc-200 border border-transparent"}`}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all border
+              ${sub === id ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20" : "border-transparent hover:bg-[var(--bg-surface-2)]"}`}
+            style={sub !== id ? { color: "var(--text-muted)" } : {}}
             onClick={() => { setSub(id); setQ(""); }}
           >
             <Icon size={12} />
@@ -67,46 +68,46 @@ function PostsModerationTab({ q }: { q: string }) {
   const posts = query.data?.pages.flatMap((p) => p?.posts ?? []) ?? [];
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
         <>
           <DataTable headers={["Author", "Content Preview", "Engagement", "Date", "Action"]} empty={posts.length === 0}>
             {posts.map((post: any) => (
-              <tr key={post.id} className="hover:bg-zinc-800/40 transition">
+              <tr key={post.id} className="transition hover:bg-[var(--bg-surface-2)]">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Avatar user={post.author} size="sm" />
                     <div>
-                      <div className="font-semibold text-white">{post.author?.profile?.fullName || post.author?.username}</div>
-                      <div className="text-zinc-500">@{post.author?.username}</div>
+                      <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{post.author?.profile?.fullName || post.author?.username}</div>
+                      <div style={{ color: "var(--text-muted)" }}>@{post.author?.username}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 max-w-xs">
-                  <p className="text-zinc-300 line-clamp-2 leading-relaxed">{post.content}</p>
+                  <p className="line-clamp-2 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{post.content}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3 text-zinc-500">
+                  <div className="flex gap-3" style={{ color: "var(--text-muted)" }}>
                     <span>❤️ {post._count?.likes ?? 0}</span>
                     <span>💬 {post._count?.comments ?? 0}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{fmtRelative(post.createdAt)}</td>
+                <td className="px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{fmtRelative(post.createdAt)}</td>
                 <td className="px-4 py-3">
                   {confirmDelete === post.id ? (
                     <div className="flex gap-1">
                       <button
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition"
+                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/20 text-rose-500 hover:bg-rose-500/30 transition"
                         onClick={async () => { await deletePost.mutateAsync(post.id); setConfirmDelete(null); }}
                         disabled={deletePost.isPending}
                       >
                         {deletePost.isPending ? <Loader2 size={10} className="animate-spin" /> : "Confirm"}
                       </button>
-                      <button className="rounded px-2 py-1 text-[10px] text-zinc-500 hover:text-zinc-200" onClick={() => setConfirmDelete(null)}>Cancel</button>
+                      <button className="rounded px-2 py-1 text-[10px] transition" style={{ color: "var(--text-muted)" }} onClick={() => setConfirmDelete(null)}>Cancel</button>
                     </div>
                   ) : (
                     <button
-                      className="flex items-center gap-1 rounded-lg border border-rose-700/40 px-2.5 py-1.5 text-[10px] font-bold text-rose-400 hover:bg-rose-500/10 transition"
+                      className="flex items-center gap-1 rounded-lg border border-rose-700/40 px-2.5 py-1.5 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 transition"
                       onClick={() => setConfirmDelete(post.id)}
                     >
                       <Trash2 size={10} /> Remove
@@ -130,18 +131,18 @@ function ProjectsModerationTab({ q }: { q: string }) {
   const projects = query.data?.pages.flatMap((p) => p?.projects ?? []) ?? [];
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
         <>
           <DataTable headers={["Project", "Owner", "Status", "Visibility", "Members", "Actions"]} empty={projects.length === 0}>
             {projects.map((p: any) => (
-              <tr key={p.id} className="hover:bg-zinc-800/40 transition">
+              <tr key={p.id} className="transition hover:bg-[var(--bg-surface-2)]">
                 <td className="px-4 py-3">
-                  <div className="font-semibold text-white">{p.title}</div>
+                  <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{p.title}</div>
                   {p.techStack?.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {p.techStack.slice(0, 3).map((t: string) => (
-                        <span key={t} className="rounded px-1 text-[9px] bg-zinc-800 text-zinc-500">{t}</span>
+                        <span key={t} className="chip text-[9px] px-1">{t}</span>
                       ))}
                     </div>
                   )}
@@ -149,17 +150,17 @@ function ProjectsModerationTab({ q }: { q: string }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Avatar user={p.owner} size="sm" />
-                    <span className="text-zinc-400">@{p.owner?.username}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>@{p.owner?.username}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                <td className="px-4 py-3 text-zinc-500">{p.visibility}</td>
-                <td className="px-4 py-3 text-center text-zinc-300">{p._count?.members ?? 0}</td>
+                <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{p.visibility}</td>
+                <td className="px-4 py-3 text-center" style={{ color: "var(--text-secondary)" }}>{p._count?.members ?? 0}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {p.status !== "ARCHIVED" && (
                       <button
-                        className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 transition"
+                        className="btn-secondary text-[10px] px-2 py-1"
                         onClick={() => updateStatus.mutateAsync({ projectId: p.id, status: "ARCHIVED" })}
                       >
                         <Archive size={9} /> Archive
@@ -167,7 +168,7 @@ function ProjectsModerationTab({ q }: { q: string }) {
                     )}
                     {p.status === "ARCHIVED" && (
                       <button
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                        className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
                         onClick={() => updateStatus.mutateAsync({ projectId: p.id, status: "OPEN" })}
                       >Restore</button>
                     )}
@@ -200,42 +201,42 @@ function JobsModerationTab({ q }: { q: string }) {
   const jobs = query.data?.jobs ?? [];
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {query.isPending ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div> : (
         <>
           <DataTable headers={["Job", "Company", "Type", "Status", "Applications", "Action"]} empty={jobs.length === 0}>
             {jobs.map((j: any) => (
-              <tr key={j.id} className="hover:bg-zinc-800/40 transition">
+              <tr key={j.id} className="transition hover:bg-[var(--bg-surface-2)]">
                 <td className="px-4 py-3">
-                  <div className="font-semibold text-white">{j.title}</div>
-                  <div className="text-zinc-500">{j.location}</div>
+                  <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{j.title}</div>
+                  <div style={{ color: "var(--text-muted)" }}>{j.location}</div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {cleanLogoUrl(j.company?.logoUrl) && (
                       <img src={cleanLogoUrl(j.company.logoUrl)!} alt="" className="h-5 w-5 rounded object-contain" />
                     )}
-                    <span className="text-zinc-300">{j.company?.name}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>{j.company?.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-zinc-500">{j.type} · {j.workMode}</td>
+                <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{j.type} · {j.workMode}</td>
                 <td className="px-4 py-3"><StatusBadge status={j.status} /></td>
-                <td className="px-4 py-3 text-center text-zinc-300">{j._count?.applications ?? 0}</td>
+                <td className="px-4 py-3 text-center" style={{ color: "var(--text-secondary)" }}>{j._count?.applications ?? 0}</td>
                 <td className="px-4 py-3">
                   {confirmDelete === j.id ? (
                     <div className="flex gap-1">
                       <button
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition"
+                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/20 text-rose-500 hover:bg-rose-500/30 transition"
                         onClick={async () => { await deleteJob.mutateAsync(j.id); setConfirmDelete(null); }}
                         disabled={deleteJob.isPending}
                       >
                         {deleteJob.isPending ? <Loader2 size={10} className="animate-spin" /> : "Confirm"}
                       </button>
-                      <button className="rounded px-2 py-1 text-[10px] text-zinc-500 hover:text-zinc-200" onClick={() => setConfirmDelete(null)}>Cancel</button>
+                      <button className="rounded px-2 py-1 text-[10px] transition" style={{ color: "var(--text-muted)" }} onClick={() => setConfirmDelete(null)}>Cancel</button>
                     </div>
                   ) : (
                     <button
-                      className="flex items-center gap-1 rounded-lg border border-rose-700/40 px-2.5 py-1.5 text-[10px] font-bold text-rose-400 hover:bg-rose-500/10 transition"
+                      className="flex items-center gap-1 rounded-lg border border-rose-700/40 px-2.5 py-1.5 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 transition"
                       onClick={() => setConfirmDelete(j.id)}
                     >
                       <Trash2 size={10} /> Remove
@@ -245,8 +246,8 @@ function JobsModerationTab({ q }: { q: string }) {
               </tr>
             ))}
           </DataTable>
-          <div className="flex items-center justify-between border-t border-zinc-800/60 px-4 py-3 bg-zinc-900/40">
-            <div className="text-xs font-semibold text-zinc-500">
+          <div className="flex items-center justify-between border-t px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+            <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               Page {history.length + 1}
             </div>
             <div className="flex items-center gap-2">
@@ -258,7 +259,7 @@ function JobsModerationTab({ q }: { q: string }) {
                   setCursor(prev);
                 }}
                 disabled={history.length === 0 || query.isFetching}
-                className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                className="btn-secondary text-xs disabled:opacity-40"
               >
                 Previous
               </button>
@@ -269,7 +270,7 @@ function JobsModerationTab({ q }: { q: string }) {
                   setCursor(query.data?.nextCursor || undefined);
                 }}
                 disabled={!query.data?.hasNextPage || query.isFetching}
-                className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                className="btn-secondary text-xs disabled:opacity-40"
               >
                 Next
               </button>

@@ -204,7 +204,7 @@ export function JobsPanel() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
             <Loader2 size={20} className="animate-spin text-emerald-500" />
@@ -216,7 +216,7 @@ export function JobsPanel() {
               empty={jobs.length === 0}
             >
               {jobs.map((j: any) => (
-                <tr key={j.id} className="hover:bg-zinc-800/40 transition">
+                <tr key={j.id} className="transition hover:bg-[var(--bg-surface-2)]">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-white max-w-xs truncate">{j.title}</div>
                     {j.location && <div className="text-[10px] text-zinc-550">{j.location}</div>}
@@ -239,7 +239,7 @@ export function JobsPanel() {
                   </td>
                   <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
                     <span className="rounded px-1.5 py-0.5 text-[9px] font-bold bg-zinc-800 text-zinc-400 mr-1.5">{j.type}</span>
-                    <span className="text-[10px] text-zinc-500">{j.workMode}</span>
+                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{j.workMode}</span>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={j.status} />
@@ -279,7 +279,7 @@ export function JobsPanel() {
                       {j.status === "OPEN" && (
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 transition"
+                          className="btn-secondary text-[10px] px-2 py-1"
                           onClick={() => handleToggleStatus(j, "CLOSED")}
                         >
                           Close
@@ -287,7 +287,7 @@ export function JobsPanel() {
                       )}
                       <button
                         type="button"
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-350 border border-zinc-700 hover:bg-zinc-700 transition"
+                        className="btn-secondary text-[10px] px-2 py-1"
                         onClick={() => setEditingJob(j)}
                       >
                         Edit
@@ -311,8 +311,8 @@ export function JobsPanel() {
                 </tr>
               ))}
             </DataTable>
-            <div className="flex items-center justify-between border-t border-zinc-800/60 px-4 py-3 bg-zinc-900/40">
-              <div className="text-xs font-semibold text-zinc-500">
+            <div className="flex items-center justify-between border-t px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 Page {history.length + 1}
               </div>
               <div className="flex items-center gap-2">
@@ -324,7 +324,7 @@ export function JobsPanel() {
                     setCursor(prev);
                   }}
                   disabled={history.length === 0 || query.isFetching}
-                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                  className="btn-secondary text-xs disabled:opacity-40"
                 >
                   Previous
                 </button>
@@ -335,7 +335,7 @@ export function JobsPanel() {
                     setCursor(query.data?.nextCursor || undefined);
                   }}
                   disabled={!query.data?.hasNextPage || query.isFetching}
-                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                  className="btn-secondary text-xs disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -426,13 +426,13 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
             <Briefcase size={16} className="text-emerald-400" />
             Edit Job Details
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
@@ -440,7 +440,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Job Title *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Title *</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -451,7 +451,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Location</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -464,7 +464,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Work Mode</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Work Mode</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={workMode}
@@ -476,7 +476,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Job Type</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Type</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={type}
@@ -491,7 +491,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Status</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Status</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={status}
@@ -507,7 +507,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Job Description *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Description *</label>
             <textarea
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-28 resize-none"
               value={description}
@@ -519,7 +519,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Requirements</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Requirements</label>
               <textarea
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
                 value={requirements}
@@ -528,7 +528,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Responsibilities</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Responsibilities</label>
               <textarea
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
                 value={responsibilities}
@@ -540,7 +540,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Salary Min</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Min</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -550,7 +550,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Salary Max</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Max</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -560,7 +560,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Currency</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Currency</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -573,7 +573,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Experience Level</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Experience Level</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -583,7 +583,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Openings Count</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Openings Count</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -607,7 +607,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Required Skills (Comma separated)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Required Skills (Comma separated)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -617,7 +617,7 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">External Application URL</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>External Application URL</label>
               <input
                 type="url"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
@@ -631,14 +631,14 @@ function EditJobModal({ job, onClose }: { job: any; onClose: () => void }) {
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
             <button
               type="button"
-              className="rounded-lg border border-zinc-700 bg-zinc-850 px-4 py-2 text-xs font-semibold text-zinc-350 hover:bg-zinc-800 transition"
+              className="btn-secondary px-4 py-2 text-xs"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
               disabled={updateJob.isPending}
             >
               {updateJob.isPending && <Loader2 size={12} className="animate-spin" />}
@@ -744,13 +744,13 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
             <Plus size={18} className="text-emerald-400" />
             Post New Job (Admin Console)
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
@@ -758,7 +758,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Autocomplete Company Selector */}
           <div ref={dropdownRef} className="space-y-1 relative">
-            <label className="text-xs font-bold text-zinc-400">Select Company *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Select Company *</label>
             {selectedCompany ? (
               <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs">
                 <div className="flex items-center gap-2">
@@ -771,7 +771,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                   )}
                   <div>
                     <div className="font-semibold text-white leading-tight">{selectedCompany.name}</div>
-                    {selectedCompany.industry && <div className="text-[10px] text-zinc-500">{selectedCompany.industry}</div>}
+                    {selectedCompany.industry && <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{selectedCompany.industry}</div>}
                   </div>
                 </div>
                 <button
@@ -798,7 +798,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                   required
                 />
                 {showCompanyDropdown && companySearch.trim().length > 0 && (
-                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl py-1 animate-in fade-in duration-100">
+                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border shadow-2xl py-1 animate-in fade-in duration-100" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
                     {companiesQuery.isPending ? (
                       <div className="flex items-center justify-center py-4 text-zinc-500 gap-2 text-xs">
                         <Loader2 size={12} className="animate-spin text-emerald-500" />
@@ -836,7 +836,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Job Title *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Title *</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -847,7 +847,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Location</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -860,7 +860,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Work Mode</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Work Mode</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={workMode}
@@ -872,7 +872,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Job Type</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Type</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={type}
@@ -887,7 +887,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Initial Status</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Initial Status</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={status}
@@ -901,7 +901,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Job Description *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Job Description *</label>
             <textarea
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-28 resize-none"
               value={description}
@@ -913,7 +913,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Requirements</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Requirements</label>
               <textarea
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
                 value={requirements}
@@ -922,7 +922,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Responsibilities</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Responsibilities</label>
               <textarea
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
                 value={responsibilities}
@@ -934,7 +934,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Salary Min</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Min</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -944,7 +944,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Salary Max</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Salary Max</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -954,7 +954,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Currency</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Currency</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -967,7 +967,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Experience Level</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Experience Level</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -977,7 +977,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Openings Count</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Openings Count</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
@@ -1001,7 +1001,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Required Skills (Comma separated)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Required Skills (Comma separated)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -1011,7 +1011,7 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">External Application URL</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>External Application URL</label>
               <input
                 type="url"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
@@ -1025,14 +1025,14 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
             <button
               type="button"
-              className="rounded-lg border border-zinc-700 bg-zinc-850 px-4 py-2 text-xs font-semibold text-zinc-350 hover:bg-zinc-800 transition"
+              className="btn-secondary px-4 py-2 text-xs"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
               disabled={createJob.isPending}
             >
               {createJob.isPending && <Loader2 size={12} className="animate-spin" />}

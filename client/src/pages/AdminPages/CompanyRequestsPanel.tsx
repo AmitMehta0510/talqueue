@@ -72,23 +72,24 @@ export function CompanyRequestsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">Enterprise Claim & Onboarding Requests</h2>
+        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Enterprise Claim & Onboarding Requests</h2>
         <div className="flex items-center gap-2">
           {["PENDING", "APPROVED", "REJECTED"].map((s) => (
             <button
               key={s}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                statusFilter === s
-                  ? "bg-emerald-600/20 text-emerald-400 border border-emerald-600/30"
-                  : "text-zinc-500 border border-zinc-700 hover:text-zinc-200"
-              }`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition border
+                ${statusFilter === s
+                  ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-600/20"
+                  : "hover:bg-[var(--bg-surface-2)]"
+                }`}
+              style={statusFilter !== s ? { borderColor: "var(--border)", color: "var(--text-muted)" } : {}}
               onClick={() => { setStatusFilter(s); }}
             >
               {s}
             </button>
           ))}
           <button
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition"
+            className="btn-secondary text-xs"
             onClick={loadRequests}
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
@@ -97,13 +98,13 @@ export function CompanyRequestsPanel() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-750 bg-zinc-900/60 overflow-hidden">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
         ) : requests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-3 rounded-full bg-zinc-800 p-4"><CheckCircle2 size={20} className="text-zinc-500" /></div>
-            <p className="text-sm text-zinc-500">No {statusFilter.toLowerCase()} requests pending review</p>
+            <div className="mb-3 rounded-full p-4" style={{ background: "var(--bg-surface-2)" }}><CheckCircle2 size={20} style={{ color: "var(--text-muted)" }} /></div>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No {statusFilter.toLowerCase()} requests pending review</p>
           </div>
         ) : (
           <DataTable
@@ -124,23 +125,23 @@ export function CompanyRequestsPanel() {
               const isRecruiter = r.requestType === "RECRUITER_ONBOARDING" && r.businessEmail;
               
               return (
-                <tr key={r.id} className="hover:bg-zinc-800/40 transition">
+                <tr key={r.id} className="transition hover:bg-[var(--bg-surface-2)]">
                   {/* TYPE COLUMN */}
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      isClaim ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20" :
-                      isRecruiter ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
-                      "bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                    }`}>
+                      isClaim ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20" :
+                      isRecruiter ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                      "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                    }}`}>
                       {isClaim ? "KYC CLAIM" : isRecruiter ? "RECRUITER" : "LEGACY CO"}
                     </span>
                   </td>
 
                   {/* COMPANY NAME COLUMN */}
                   <td className="px-4 py-3">
-                    <div className="font-bold text-white flex items-center gap-1.5">
+                    <div className="font-bold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
                       {r.company?.logoUrl && (
-                        <img src={r.company.logoUrl} className="h-5 w-5 rounded object-contain bg-zinc-950 p-0.5" />
+                        <img src={r.company.logoUrl} className="h-5 w-5 rounded object-contain p-0.5" style={{ background: "var(--bg-surface-2)" }} />
                       )}
                       {r.companyName}
                     </div>
@@ -150,16 +151,16 @@ export function CompanyRequestsPanel() {
                   <td className="px-4 py-3">
                     <div className="text-xs space-y-0.5">
                       {r.businessEmail && (
-                        <div className="text-zinc-300 font-semibold">{r.businessEmail}</div>
+                        <div className="font-semibold" style={{ color: "var(--text-secondary)" }}>{r.businessEmail}</div>
                       )}
                       {isClaim && r.company && (
-                        <div className="text-[10px] text-zinc-500 flex flex-col font-mono">
+                        <div className="text-[10px] flex flex-col font-mono" style={{ color: "var(--text-muted)" }}>
                           <span>GSTIN: {r.company.gstin || "—"}</span>
                           <span>CIN: {r.company.cin || "—"}</span>
                         </div>
                       )}
                       {!r.businessEmail && !isClaim && (
-                        <span className="text-zinc-600">—</span>
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
                     </div>
                   </td>
@@ -169,23 +170,23 @@ export function CompanyRequestsPanel() {
                     <div className="flex items-center gap-2">
                       <Avatar user={r.requestedBy} size="sm" />
                       <div>
-                        <div className="font-semibold text-white text-xs">
+                        <div className="font-semibold text-xs" style={{ color: "var(--text-primary)" }}>
                           {r.requestedBy?.profile?.fullName || r.requestedBy?.username}
                         </div>
-                        <div className="text-zinc-500 text-[10px]">@{r.requestedBy?.username}</div>
+                        <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{r.requestedBy?.username}</div>
                       </div>
                     </div>
                   </td>
 
                   {/* DETAILS & DOCUMENTS COLUMN */}
                   <td className="px-4 py-3">
-                    <div className="text-xs text-zinc-300">
+                    <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
                       {isClaim && r.corporateDoc ? (
                         <a
                           href={r.corporateDoc}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-bold hover:underline"
+                          className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
                         >
                           <FileText size={13} />
                           View PDF Doc
@@ -194,7 +195,7 @@ export function CompanyRequestsPanel() {
                       ) : !isClaim && !isRecruiter ? (
                         <span>Job: {jobData.title || "—"}</span>
                       ) : (
-                        <span className="text-zinc-650">—</span>
+                        <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
                     </div>
                   </td>
@@ -203,14 +204,14 @@ export function CompanyRequestsPanel() {
                   <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
 
                   {/* DATE */}
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap text-xs">{fmtRelative(r.createdAt)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: "var(--text-muted)" }}>{fmtRelative(r.createdAt)}</td>
 
                   {/* ACTIONS COLUMN */}
                   <td className="px-4 py-3">
                     {r.status === "PENDING" ? (
                       <div className="flex items-center gap-2">
                         <button
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600/20 border border-emerald-600/30 px-2.5 py-1.5 text-[10px] font-bold text-emerald-400 hover:bg-emerald-600/30 transition disabled:opacity-50"
+                          className="flex items-center gap-1 rounded-lg bg-emerald-600/10 border border-emerald-600/20 px-2.5 py-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20 transition disabled:opacity-50"
                           onClick={() => handleApprove(r)}
                           disabled={actionPending === r.id}
                         >
@@ -218,7 +219,7 @@ export function CompanyRequestsPanel() {
                           Approve
                         </button>
                         <button
-                          className="flex items-center gap-1 rounded-lg bg-rose-600/20 border border-rose-600/30 px-2.5 py-1.5 text-[10px] font-bold text-rose-400 hover:bg-rose-600/30 transition disabled:opacity-50"
+                          className="flex items-center gap-1 rounded-lg bg-rose-600/10 border border-rose-600/20 px-2.5 py-1.5 text-[10px] font-bold text-rose-500 hover:bg-rose-600/20 transition disabled:opacity-50"
                           onClick={() => handleReject(r)}
                           disabled={actionPending === r.id}
                         >
@@ -227,7 +228,7 @@ export function CompanyRequestsPanel() {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {r.reviewNotes || (r.status === "APPROVED" ? "Approved & Assigned" : "—")}
                       </span>
                     )}

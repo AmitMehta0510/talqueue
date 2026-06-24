@@ -18,21 +18,21 @@ export const fmtRelative = (d: string) => {
 // ─── STATUS BADGE ──────────────────────────────────────────────────────────────
 export function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, string> = {
-    ACTIVE: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
-    BANNED: "bg-rose-500/15 text-rose-400 ring-rose-500/30",
-    INACTIVE: "bg-zinc-500/15 text-zinc-400 ring-zinc-500/30",
-    OPEN: "bg-blue-500/15 text-blue-400 ring-blue-500/30",
-    DRAFT: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
-    CLOSED: "bg-zinc-500/15 text-zinc-400 ring-zinc-500/30",
-    COMPLETED: "bg-purple-500/15 text-purple-400 ring-purple-500/30",
-    ARCHIVED: "bg-zinc-600/15 text-zinc-500 ring-zinc-600/30",
-    ACCEPTED: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
-    REJECTED: "bg-rose-500/15 text-rose-400 ring-rose-500/30",
-    PENDING: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
+    ACTIVE: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30",
+    BANNED: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-rose-500/30",
+    INACTIVE: "bg-slate-500/15 text-slate-600 dark:text-slate-400 ring-slate-500/30",
+    OPEN: "bg-blue-500/15 text-blue-600 dark:text-blue-400 ring-blue-500/30",
+    DRAFT: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30",
+    CLOSED: "bg-slate-500/15 text-slate-600 dark:text-slate-400 ring-slate-500/30",
+    COMPLETED: "bg-purple-500/15 text-purple-600 dark:text-purple-400 ring-purple-500/30",
+    ARCHIVED: "bg-slate-600/15 text-slate-600 dark:text-slate-500 ring-slate-600/30",
+    ACCEPTED: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30",
+    REJECTED: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-rose-500/30",
+    PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30",
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${variants[status] || "bg-zinc-500/15 text-zinc-400 ring-zinc-500/30"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${variants[status] || "bg-slate-500/15 text-slate-500 ring-slate-500/30"}`}>
       {status}
     </span>
   );
@@ -42,9 +42,9 @@ export function StatusBadge({ status }: { status: string }) {
 export function SearchBar({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+      <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: "var(--text-muted)" }} />
       <input
-        className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 pl-9 pr-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
+        className="field pl-9"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -58,14 +58,14 @@ export function KpiCard({ label, value, icon: Icon, gradient, sub }: {
   label: string; value: number | string; icon: any; gradient: string; sub?: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-4">
+    <div className="relative overflow-hidden rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br ${gradient} opacity-10`} />
       <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${gradient}`}>
         <Icon size={16} className="text-white" />
       </div>
-      <div className="text-2xl font-black text-white leading-none">{typeof value === "number" ? value.toLocaleString() : value}</div>
-      <div className="mt-1 text-xs font-semibold text-zinc-400 uppercase tracking-wider">{label}</div>
-      {sub && <div className="mt-1 text-[10px] text-zinc-500">{sub}</div>}
+      <div className="text-2xl font-black leading-none" style={{ color: "var(--text-primary)" }}>{typeof value === "number" ? value.toLocaleString() : value}</div>
+      <div className="mt-1 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</div>
+      {sub && <div className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>{sub}</div>}
     </div>
   );
 }
@@ -76,10 +76,10 @@ export function DistBar({ label, count, total, color }: { label: string; count: 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span className="font-semibold text-zinc-300">{titleCase(label)}</span>
-        <span className="text-zinc-500">{count.toLocaleString()} ({pct}%)</span>
+        <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>{titleCase(label)}</span>
+        <span style={{ color: "var(--text-muted)" }}>{count.toLocaleString()} ({pct}%)</span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-zinc-700/60">
+      <div className="h-1.5 w-full rounded-full" style={{ background: "var(--border)" }}>
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%`, transition: "width 0.6s ease" }} />
       </div>
     </div>
@@ -91,8 +91,8 @@ export function DataTable({ headers, children, empty }: { headers: string[]; chi
   if (empty) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 rounded-full bg-zinc-800 p-4"><Search size={20} className="text-zinc-500" /></div>
-        <p className="text-sm text-zinc-500">No records found</p>
+        <div className="mb-3 rounded-full p-4" style={{ background: "var(--bg-surface-2)" }}><Search size={20} style={{ color: "var(--text-muted)" }} /></div>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>No records found</p>
       </div>
     );
   }
@@ -100,13 +100,13 @@ export function DataTable({ headers, children, empty }: { headers: string[]; chi
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="border-b border-zinc-700/50">
+          <tr className="border-b" style={{ borderColor: "var(--border)" }}>
             {headers.map((h) => (
-              <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-zinc-500">{h}</th>
+              <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{h}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/80 text-xs text-zinc-300">
+        <tbody className="divide-y text-xs" style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}>
           {children}
         </tbody>
       </table>
@@ -120,7 +120,7 @@ export function LoadMoreBtn({ query }: { query: any }) {
   return (
     <div className="flex justify-center pt-3">
       <button
-        className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-50"
+        className="btn-secondary text-xs disabled:opacity-50"
         onClick={() => query.fetchNextPage()}
         disabled={query.isFetchingNextPage}
       >
@@ -185,24 +185,24 @@ export function UserSearchAutocomplete({
           <div className="flex items-center gap-2">
             <Avatar user={{ username: selectedUser.username, profile: { avatarUrl: selectedUser.avatarUrl } } as any} size="sm" />
             <div>
-              <div className="font-semibold text-white leading-tight">{selectedUser.name}</div>
-              <div className="text-[10px] text-zinc-550 leading-tight">@{selectedUser.username}</div>
+              <div className="font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{selectedUser.name}</div>
+              <div className="text-[10px] leading-tight" style={{ color: "var(--text-muted)" }}>@{selectedUser.username}</div>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClear}
-            className="rounded-full p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+            className="icon-btn h-6 w-6"
           >
             <X size={14} />
           </button>
         </div>
       ) : (
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: "var(--text-muted)" }} />
           <input
             type="text"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/60 pl-9 pr-8 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
+            className="field pl-9 pr-8 text-xs"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -215,21 +215,22 @@ export function UserSearchAutocomplete({
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 transition"
+              style={{ color: "var(--text-muted)" }}
             >
               <X size={12} />
             </button>
           )}
 
           {showDropdown && search.trim().length >= 1 && (
-            <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl py-1 animate-in fade-in duration-105">
+            <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border shadow-2xl py-1 animate-in fade-in duration-105" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
               {usersQuery.isPending ? (
-                <div className="flex items-center justify-center py-4 text-zinc-500 gap-2 text-xs">
+                <div className="flex items-center justify-center py-4 gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
                   <Loader2 size={12} className="animate-spin text-emerald-500" />
                   Searching users...
                 </div>
               ) : matchedUsers.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-zinc-600 italic">No users found</div>
+                <div className="px-3 py-3 text-center text-xs italic" style={{ color: "var(--text-muted)" }}>No users found</div>
               ) : (
                 matchedUsers.map((user: any) => {
                   const label = userName(user);
@@ -238,12 +239,13 @@ export function UserSearchAutocomplete({
                       key={user.id}
                       type="button"
                       onClick={() => handleSelect(user)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition hover:bg-[var(--bg-surface-2)]"
+                      style={{ color: "var(--text-secondary)" }}
                     >
                       <Avatar user={user} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold truncate text-white leading-tight">{label}</div>
-                        <div className="text-[10px] text-zinc-500 truncate leading-tight">@{user.username} · {user.email}</div>
+                        <div className="font-semibold truncate leading-tight" style={{ color: "var(--text-primary)" }}>{label}</div>
+                        <div className="text-[10px] truncate leading-tight" style={{ color: "var(--text-muted)" }}>@{user.username} · {user.email}</div>
                       </div>
                     </button>
                   );

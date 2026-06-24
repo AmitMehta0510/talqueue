@@ -133,7 +133,7 @@ export function EventsPanel() {
       </div>
 
       {/* Table Content */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
             <Loader2 size={20} className="animate-spin text-emerald-500" />
@@ -144,10 +144,10 @@ export function EventsPanel() {
             empty={events.length === 0}
           >
             {events.map((e: any) => (
-              <tr key={e.id} className="hover:bg-zinc-800/40 transition">
+              <tr key={e.id} className="transition hover:bg-[var(--bg-surface-2)]">
                 <td className="px-4 py-3">
                   <div className="font-semibold text-white max-w-xs truncate">{e.title}</div>
-                  <div className="flex items-center gap-1 mt-0.5 text-[10px] text-zinc-500">
+                  <div className="flex items-center gap-1 mt-0.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
                     {getOrganizerIcon(e)}
                     <span className="truncate">{getOrganizerText(e)}</span>
                   </div>
@@ -195,7 +195,7 @@ export function EventsPanel() {
                     </button>
                     <button
                       type="button"
-                      className="rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-350 border border-zinc-700 hover:bg-zinc-700 transition"
+                      className="btn-secondary text-[10px] px-2 py-1"
                       onClick={() => setEditingEvent(e)}
                     >
                       Edit
@@ -255,20 +255,20 @@ function AuditAttendeesModal({ event, onClose }: { event: any; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="relative w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
             <Users size={16} className="text-emerald-400" />
             RSVPs Auditing Directory
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
           <div className="bg-zinc-800/40 rounded-lg p-3 border border-zinc-700/50">
-            <div className="text-xs font-bold text-zinc-400">Event Auditing Scope:</div>
+            <div className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Auditing Scope:</div>
             <div className="text-sm font-semibold text-white mt-0.5">{event.title}</div>
             <div className="text-[10px] text-zinc-500 mt-1 flex items-center gap-2">
               <span>{fmtDate(event.startDate)}</span>
@@ -317,7 +317,7 @@ function AuditAttendeesModal({ event, onClose }: { event: any; onClose: () => vo
 
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[10px] font-semibold text-zinc-500">Page {page} of {pagination.totalPages}</span>
+              <span className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Page {page} of {pagination.totalPages}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -395,23 +395,23 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="relative w-full max-w-xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
             <Calendar size={16} className="text-emerald-400" />
             Edit Event Parameters
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Event Title *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Title *</label>
             <input
               type="text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+              className="field"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -419,7 +419,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Description</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Description</label>
             <textarea
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
               value={description}
@@ -429,20 +429,20 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Start Date & Time *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Start Date & Time *</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field text-xs"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">End Date & Time *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>End Date & Time *</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field text-xs"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
@@ -452,7 +452,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Location (Physical)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location (Physical)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -462,7 +462,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Meeting Link (Virtual)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Meeting Link (Virtual)</label>
               <input
                 type="url"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -475,7 +475,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Capacity Limit</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Capacity Limit</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -485,7 +485,7 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Event Scope Type</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Scope Type</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={type}
@@ -501,14 +501,14 @@ function EditEventModal({ event, onClose }: { event: any; onClose: () => void })
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
             <button
               type="button"
-              className="rounded-lg border border-zinc-700 bg-zinc-850 px-4 py-2 text-xs font-semibold text-zinc-350 hover:bg-zinc-800 transition"
+              className="btn-secondary px-4 py-2 text-xs"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
               disabled={updateEvent.isPending}
             >
               {updateEvent.isPending && <Loader2 size={12} className="animate-spin" />}
@@ -564,20 +564,20 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
+      <div className="relative w-full max-w-xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
             <Plus size={18} className="text-emerald-400" />
             Post New Compliance Event
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Event Title *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Title *</label>
             <input
               type="text"
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -589,7 +589,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Description</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Description</label>
             <textarea
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition h-20 resize-none"
               value={description}
@@ -600,20 +600,20 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Start Date & Time *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Start Date & Time *</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field text-xs"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">End Date & Time *</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>End Date & Time *</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field text-xs"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
@@ -623,7 +623,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Location (Physical)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location (Physical)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -633,7 +633,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Meeting Link (Virtual)</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Meeting Link (Virtual)</label>
               <input
                 type="url"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-655 focus:border-emerald-500 focus:outline-none transition"
@@ -646,7 +646,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Capacity Limit</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Capacity Limit</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-650 focus:border-emerald-500 focus:outline-none transition"
@@ -656,7 +656,7 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Event Scope Type</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Event Scope Type</label>
               <select
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
                 value={type}
@@ -672,14 +672,14 @@ function CreateEventModal({ onClose }: { onClose: () => void }) {
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
             <button
               type="button"
-              className="rounded-lg border border-zinc-700 bg-zinc-850 px-4 py-2 text-xs font-semibold text-zinc-350 hover:bg-zinc-800 transition"
+              className="btn-secondary px-4 py-2 text-xs"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
               disabled={createEvent.isPending}
             >
               {createEvent.isPending && <Loader2 size={12} className="animate-spin" />}

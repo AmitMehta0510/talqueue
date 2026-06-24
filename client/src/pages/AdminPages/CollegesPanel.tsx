@@ -177,7 +177,7 @@ export function CollegesPanel({
       {showForm && (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-6 backdrop-blur-md shadow-2xl ring-1 ring-white/5 transition-all">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-sm font-bold text-white">Add New College</h3>
+            <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Add New College</h3>
             <button className="text-zinc-500 hover:text-zinc-300 transition" onClick={() => setShowForm(false)}>
               <X size={16} />
             </button>
@@ -185,23 +185,23 @@ export function CollegesPanel({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="md:col-span-2 block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">Institution Name *</span>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Institution Name *</span>
                 <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={name} onChange={(e) => setName(e.target.value)} placeholder="IIT Delhi, IIM Ahmedabad..." required />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">City</span>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>City</span>
                 <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={city} onChange={(e) => setCity(e.target.value)} placeholder="New Delhi" />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">State</span>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>State</span>
                 <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={state} onChange={(e) => setState(e.target.value)} placeholder="Delhi" />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">Website URL</span>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Website URL</span>
                 <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." type="url" />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">Logo Image URL</span>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Logo Image URL</span>
                 <input className="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition duration-200" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." type="url" />
               </label>
             </div>
@@ -246,7 +246,7 @@ export function CollegesPanel({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <Loader2 size={24} className="animate-spin text-emerald-500" />
-              <p className="text-xs text-zinc-500">Retrieving institutions...</p>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Retrieving institutions...</p>
             </div>
           ) : colleges.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/20">
@@ -290,7 +290,7 @@ export function CollegesPanel({
                       </div>
 
                       <div className="flex items-center gap-3.5 shrink-0 text-[11px]">
-                        <div className="hidden sm:flex items-center gap-3 text-zinc-500">
+                        <div className="hidden sm:flex items-center gap-3" style={{ color: "var(--text-muted)" }}>
                           <span className="px-2 py-0.5 rounded-full bg-zinc-800/80 border border-zinc-800 text-zinc-400">{c._count?.departments ?? 0} depts</span>
                           <span className="px-2 py-0.5 rounded-full bg-zinc-800/80 border border-zinc-800 text-zinc-400">{c._count?.profiles ?? 0} students</span>
                         </div>
@@ -335,7 +335,7 @@ export function CollegesPanel({
                   >
                     <ChevronLeft size={14} /> Previous
                   </button>
-                  <span className="text-xs text-zinc-500">Page {history.length + 1}</span>
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>Page {history.length + 1}</span>
                   <button
                     onClick={handleNext}
                     disabled={!collegesQuery.data?.hasNextPage}
@@ -461,7 +461,7 @@ function CollegeDetailPanel({
             </form>
 
             <div className="space-y-2">
-              <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Assigned Administrators</div>
+              <div className="text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Assigned Administrators</div>
               
               {adminsQuery.isPending ? (
                 <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
@@ -520,7 +520,7 @@ function CollegeDetailPanel({
             </form>
 
             <div className="space-y-2">
-              <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Departments</div>
+              <div className="text-[10px] font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Departments</div>
               
               {deptQuery.isPending ? (
                 <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>

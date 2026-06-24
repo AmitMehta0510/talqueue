@@ -86,7 +86,7 @@ export function DiscoveredCompaniesPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">
+          <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
             Discovered Companies
           </h2>
           <p className="text-xs text-zinc-500 mt-0.5">
@@ -125,7 +125,7 @@ export function DiscoveredCompaniesPanel() {
 
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/40 px-4 py-3">
+        <div className="rounded-xl border  px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">Pending Review</div>
           <div className="text-2xl font-black text-white">{total}</div>
         </div>
@@ -197,7 +197,7 @@ export function DiscoveredCompaniesPanel() {
           <p className="text-sm text-zinc-500 max-w-xs">
             The nightly discovery cron hasn't found any new companies yet, or all discovered companies have been reviewed.
           </p>
-          <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-3 py-2 text-xs text-zinc-500">
+          <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>
             <AlertTriangle size={11} className="text-amber-400" />
             Discovery runs at midnight IST daily
           </div>
@@ -327,7 +327,7 @@ export function DiscoveredCompaniesPanel() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Page {page} of {totalPages} — {total} total
               </span>
               <div className="flex items-center gap-2">

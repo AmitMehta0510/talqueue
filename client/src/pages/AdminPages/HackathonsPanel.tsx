@@ -61,10 +61,10 @@ export function HackathonsPanel() {
   return (
     <div className="space-y-4">
       {/* Scraper Control & Title */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-zinc-700/50 bg-zinc-900/40 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div>
-          <h2 className="text-sm font-black uppercase tracking-wider text-zinc-350">Scraper Control Panel</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">Run scrapers to pull and update hackathons from public platforms.</p>
+          <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Scraper Control Panel</h2>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Run scrapers to pull and update hackathons from public platforms.</p>
         </div>
         <button
           type="button"
@@ -87,7 +87,7 @@ export function HackathonsPanel() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">Hackathon List</h2>
+        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Hackathon List</h2>
       </div>
 
       <SearchBar
@@ -96,7 +96,7 @@ export function HackathonsPanel() {
         placeholder="Search hackathons by title or organizer..."
       />
 
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10">
             <Loader2 size={20} className="animate-spin text-emerald-500" />
@@ -108,19 +108,19 @@ export function HackathonsPanel() {
               empty={hackathons.length === 0}
             >
               {hackathons.map((h: any) => (
-                <tr key={h.id} className="hover:bg-zinc-800/40 transition">
+                <tr key={h.id} className="transition hover:bg-[var(--bg-surface-2)]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-white max-w-xs truncate">{h.title}</div>
-                    {h.organizerName && <div className="text-[10px] text-zinc-500">{h.organizerName}</div>}
+                    <div className="font-semibold max-w-xs truncate" style={{ color: "var(--text-primary)" }}>{h.title}</div>
+                    {h.organizerName && <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{h.organizerName}</div>}
                   </td>
-                  <td className="px-4 py-3 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <td className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px]" style={{ color: "var(--text-muted)" }}>
                     {h.isExternal ? (
-                      <span className="flex items-center gap-1 text-zinc-400">
+                      <span className="flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
                         <Globe size={10} />
                         {h.sourcePlatform || "External"}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-emerald-400">
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                         <ShieldCheck size={10} />
                         Internal
                       </span>
@@ -135,9 +135,10 @@ export function HackathonsPanel() {
                       onClick={() => handleToggleVerified(h)}
                       className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition ${
                         h.verified
-                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                          : "border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                          : "hover:bg-[var(--bg-surface-2)]"
                       }`}
+                      style={!h.verified ? { borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}
                       title={h.verified ? "Verified" : "Click to Verify"}
                       disabled={updateHackathon.isPending}
                     >
@@ -150,19 +151,20 @@ export function HackathonsPanel() {
                       onClick={() => handleToggleFeatured(h)}
                       className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition ${
                         h.featured
-                          ? "border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                          : "border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-500 dark:text-amber-400 hover:bg-amber-500/20"
+                          : "hover:bg-[var(--bg-surface-2)]"
                       }`}
+                      style={!h.featured ? { borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}
                       title={h.featured ? "Featured" : "Click to Feature"}
                       disabled={updateHackathon.isPending}
                     >
                       <Star size={12} fill={h.featured ? "currentColor" : "none"} />
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-center text-zinc-300">
+                  <td className="px-4 py-3 text-center" style={{ color: "var(--text-secondary)" }}>
                     {h._count?.registrations ?? 0}
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 text-[11px] whitespace-nowrap">
+                  <td className="px-4 py-3 text-[11px] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
                     {h.startDate ? fmtDate(h.startDate) : "—"}
                     {h.endDate ? ` → ${fmtDate(h.endDate)}` : ""}
                   </td>
@@ -171,7 +173,7 @@ export function HackathonsPanel() {
                       {h.status === "DRAFT" && (
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
+                          className="rounded px-2 py-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-700/30 hover:bg-emerald-500/20 transition"
                           onClick={() => updateStatus.mutateAsync({ hackathonId: h.id, status: "OPEN" })}
                         >
                           Activate
@@ -180,7 +182,7 @@ export function HackathonsPanel() {
                       {h.status !== "CLOSED" && h.status !== "COMPLETED" && (
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 transition"
+                          className="btn-secondary text-[10px] px-2 py-1"
                           onClick={() => updateStatus.mutateAsync({ hackathonId: h.id, status: "CLOSED" })}
                         >
                           Close
@@ -188,14 +190,14 @@ export function HackathonsPanel() {
                       )}
                       <button
                         type="button"
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-zinc-800 text-zinc-350 border border-zinc-700 hover:bg-zinc-700 transition"
+                        className="btn-secondary text-[10px] px-2 py-1"
                         onClick={() => setEditingHackathon(h)}
                       >
                         Edit
                       </button>
                       <button
                         type="button"
-                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-700/30 hover:bg-rose-500/20 transition"
+                        className="rounded px-2 py-1 text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-700/30 hover:bg-rose-500/20 transition"
                         onClick={() => {
                           if (confirm("Are you sure you want to delete this hackathon?")) {
                             handleDelete(h.id);
@@ -209,8 +211,8 @@ export function HackathonsPanel() {
                 </tr>
               ))}
             </DataTable>
-            <div className="flex items-center justify-between border-t border-zinc-800/60 px-4 py-3 bg-zinc-900/40">
-              <div className="text-xs font-semibold text-zinc-500">
+            <div className="flex items-center justify-between border-t px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
+              <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
                 Page {history.length + 1}
               </div>
               <div className="flex items-center gap-2">
@@ -222,7 +224,7 @@ export function HackathonsPanel() {
                     setCursor(prev);
                   }}
                   disabled={history.length === 0 || query.isFetching}
-                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                  className="btn-secondary text-xs disabled:opacity-40"
                 >
                   Previous
                 </button>
@@ -233,7 +235,7 @@ export function HackathonsPanel() {
                     setCursor(query.data?.nextCursor || undefined);
                   }}
                   disabled={!query.data?.hasNextPage || query.isFetching}
-                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition disabled:opacity-40 disabled:hover:border-zinc-700 disabled:hover:text-zinc-300"
+                  className="btn-secondary text-xs disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -303,24 +305,24 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Trophy size={16} className="text-emerald-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" style={{ background: "rgba(0,0,0,0.7)" }}>
+      <div className="relative w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+        <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+            <Trophy size={16} className="text-emerald-500 dark:text-emerald-400" />
             Edit Hackathon Details
           </h3>
-          <button type="button" className="text-zinc-400 hover:text-white" onClick={onClose}>
+          <button type="button" className="icon-btn h-8 w-8" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Title *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Title *</label>
             <input
               type="text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+              className="field"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Hackathon title"
@@ -328,10 +330,10 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Short Description</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Short Description</label>
             <input
               type="text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+              className="field"
               value={shortDescription}
               onChange={(e) => setShortDescription(e.target.value)}
               placeholder="Short summary tagline"
@@ -339,9 +341,9 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-zinc-400">Description *</label>
+            <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Description *</label>
             <textarea
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition h-28 resize-none"
+              className="field h-28 resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Full hackathon details"
@@ -350,10 +352,10 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
 
           {hackathon.isExternal && (
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">External Organizer URL</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>External Organizer URL</label>
               <input
                 type="url"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition"
+                className="field"
                 value={externalUrl}
                 onChange={(e) => setExternalUrl(e.target.value)}
                 placeholder="https://..."
@@ -363,9 +365,9 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Mode</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Mode</label>
               <select
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field"
                 value={mode}
                 onChange={(e) => setMode(e.target.value as any)}
               >
@@ -376,10 +378,10 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Location</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Location</label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none transition disabled:opacity-50"
+                className="field disabled:opacity-50"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. San Francisco, CA"
@@ -390,22 +392,22 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Min Team Size</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Min Team Size</label>
               <input
                 type="number"
                 min={1}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field"
                 value={minTeamSize}
                 onChange={(e) => setMinTeamSize(e.target.value)}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Max Team Size</label>
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Max Team Size</label>
               <input
                 type="number"
                 min={1}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
+                className="field"
                 value={maxTeamSize}
                 onChange={(e) => setMaxTeamSize(e.target.value)}
               />
@@ -414,47 +416,32 @@ function EditHackathonModal({ hackathon, onClose }: { hackathon: any; onClose: (
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Start Date</label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Start Date</label>
+              <input type="datetime-local" className="field text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">End Date</label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>End Date</label>
+              <input type="datetime-local" className="field text-xs" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400">Regn. Deadline</label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none transition"
-                value={registrationDeadline}
-                onChange={(e) => setRegistrationDeadline(e.target.value)}
-              />
+              <label className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>Regn. Deadline</label>
+              <input type="datetime-local" className="field text-xs" value={registrationDeadline} onChange={(e) => setRegistrationDeadline(e.target.value)} />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
+          <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
             <button
               type="button"
-              className="rounded-lg border border-zinc-700 bg-zinc-850 px-4 py-2 text-xs font-semibold text-zinc-350 hover:bg-zinc-800 transition"
+              className="btn-secondary px-4 py-2 text-xs"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
               disabled={updateHackathon.isPending}
             >
               {updateHackathon.isPending && <Loader2 size={12} className="animate-spin" />}

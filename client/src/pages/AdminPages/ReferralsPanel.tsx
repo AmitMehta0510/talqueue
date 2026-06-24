@@ -13,15 +13,15 @@ export function ReferralsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-wider text-zinc-400">Referral Monitoring</h2>
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Referral Monitoring</h2>
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
           <Eye size={12} />
           Read-only monitoring view
         </div>
       </div>
       <SearchBar value={q} onChange={setQ} placeholder="Search by company or role..." />
 
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/60 overflow-hidden">
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         {query.isPending ? (
           <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-emerald-500" /></div>
         ) : (
@@ -31,13 +31,13 @@ export function ReferralsPanel() {
               empty={referrals.length === 0}
             >
               {referrals.map((r: any) => (
-                <tr key={r.id} className="hover:bg-zinc-800/40 transition">
+                <tr key={r.id} className="transition hover:bg-[var(--bg-surface-2)]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Avatar user={r.requester} size="sm" />
                       <div>
-                        <div className="font-semibold text-white">{r.requester?.profile?.fullName || r.requester?.username}</div>
-                        <div className="text-zinc-500">@{r.requester?.username}</div>
+                        <div className="font-semibold" style={{ color: "var(--text-primary)" }}>{r.requester?.profile?.fullName || r.requester?.username}</div>
+                        <div style={{ color: "var(--text-muted)" }}>@{r.requester?.username}</div>
                       </div>
                     </div>
                   </td>
@@ -45,14 +45,14 @@ export function ReferralsPanel() {
                     {r.referrer ? (
                       <div className="flex items-center gap-2">
                         <Avatar user={r.referrer} size="sm" />
-                        <span className="text-zinc-300">@{r.referrer?.username}</span>
+                        <span style={{ color: "var(--text-secondary)" }}>@{r.referrer?.username}</span>
                       </div>
-                    ) : <span className="text-zinc-600">—</span>}
+                    ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                   </td>
-                  <td className="px-4 py-3 font-semibold text-white">{r.companyName}</td>
-                  <td className="px-4 py-3 text-zinc-400">{r.jobRole || "—"}</td>
+                  <td className="px-4 py-3 font-semibold" style={{ color: "var(--text-primary)" }}>{r.companyName}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{r.jobRole || "—"}</td>
                   <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{fmtRelative(r.createdAt)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{fmtRelative(r.createdAt)}</td>
                 </tr>
               ))}
             </DataTable>
