@@ -136,7 +136,7 @@ function ConversationAvatar({ conversation, currentUserId }: { conversation?: Co
   }
 
   return (
-    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
       <Users size={20} />
     </div>
   );
@@ -158,8 +158,10 @@ function ConversationRow({
 
   return (
     <Link
-      className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-all hover:bg-slate-100 ${
-        active ? "bg-blue-50 border-l-4 border-blue-600" : "border-l-4 border-transparent"
+      className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-all ${
+        active
+          ? "bg-blue-50 border-l-4 border-blue-600 dark:bg-blue-900/20 dark:border-blue-400"
+          : "border-l-4 border-transparent hover:bg-[var(--bg-surface-2)]"
       }`}
       to={`/chat/${conversation.id}`}
     >
@@ -173,19 +175,25 @@ function ConversationRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className={`truncate text-sm ${unread > 0 ? "font-bold text-slate-900" : "font-semibold text-slate-700"}`}>
+          <span
+            className="truncate text-sm"
+            style={{ fontWeight: unread > 0 ? 700 : 600, color: unread > 0 ? "var(--text-primary)" : "var(--text-secondary)" }}
+          >
             {conversationName(conversation, currentUserId)}
           </span>
-          <span className="shrink-0 text-[10px] text-slate-400 whitespace-nowrap">
+          <span className="shrink-0 text-[10px] whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
             {formatDate(conversation.lastMessageAt || conversation.updatedAt || "")}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className={`truncate text-xs flex-1 ${unread > 0 ? "font-semibold text-slate-700" : "text-slate-400"}`}>
+          <p
+            className="truncate text-xs flex-1"
+            style={{ fontWeight: unread > 0 ? 600 : 400, color: unread > 0 ? "var(--text-secondary)" : "var(--text-muted)" }}
+          >
             {conversationSubtitle(conversation, currentUserId)}
           </p>
           {participant?.pinned && (
-            <Pin size={12} className="shrink-0 text-slate-400 -rotate-45 fill-slate-400/50" />
+            <Pin size={12} className="shrink-0 -rotate-45" style={{ color: "var(--text-muted)" }} />
           )}
         </div>
       </div>
@@ -243,7 +251,7 @@ function StartConversationPanel() {
             className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
               mode === item
                 ? "bg-blue-600 text-white"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700"
+                : "btn-secondary"
             }`}
             key={item}
             type="button"
@@ -267,7 +275,7 @@ function StartConversationPanel() {
       </form>
 
       {mode === "group" && selectedUsers.length > 0 && (
-        <form className="mt-3 space-y-3 rounded-md border border-slate-100 p-3" onSubmit={createGroup}>
+        <form className="mt-3 space-y-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} onSubmit={createGroup}>
           <input
             className="field"
             value={groupTitle}
@@ -294,7 +302,7 @@ function StartConversationPanel() {
           const selected = selectedUsers.some((user) => user.id === foundUser.id);
 
           return (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={foundUser.id}>
               <div className="flex min-w-0 items-center gap-3">
                 <Link to={userProfileUrl(foundUser.id, user?.id, foundUser.username)} className="shrink-0 hover:opacity-85 transition">
                   <Avatar user={foundUser} size="sm" />
@@ -302,11 +310,12 @@ function StartConversationPanel() {
                 <div className="min-w-0">
                   <Link
                     to={userProfileUrl(foundUser.id, user?.id, foundUser.username)}
-                    className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
+                    className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                    style={{ color: "var(--text-primary)" }}
                   >
                     {userName(foundUser)}
                   </Link>
-                  <div className="truncate text-xs text-slate-500">
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
                     {userHeadline(foundUser) || `@${foundUser.username}`}
                   </div>
                 </div>
@@ -344,7 +353,8 @@ function MessageAttachments({ attachments }: { attachments?: ChatAttachment[] | 
           return (
             <a href={attachment.url || attachment.dataUrl} key={attachment.id || attachment.name} rel="noreferrer" target="_blank">
               <img
-                className="max-h-56 rounded-md border border-slate-200 object-cover"
+                className="max-h-56 rounded-md border object-cover"
+                style={{ borderColor: "var(--border)" }}
                 src={attachment.url || attachment.dataUrl}
                 alt={attachment.name}
               />
@@ -354,7 +364,8 @@ function MessageAttachments({ attachments }: { attachments?: ChatAttachment[] | 
 
         return (
           <a
-            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition hover:border-[var(--brand)]"
+            style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
             href={attachment.url || attachment.dataUrl}
             key={attachment.id || attachment.name}
             rel="noreferrer"
@@ -373,9 +384,9 @@ function MessageAttachments({ attachments }: { attachments?: ChatAttachment[] | 
 function DateDivider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-4">
-      <div className="flex-1 h-px bg-slate-200" />
-      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-2">{label}</span>
-      <div className="flex-1 h-px bg-slate-200" />
+      <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+      <span className="text-[11px] font-semibold uppercase tracking-wide px-2" style={{ color: "var(--text-muted)" }}>{label}</span>
+      <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
     </div>
   );
 }
@@ -402,7 +413,8 @@ function ReactionPicker({
   return (
     <div
       ref={ref}
-      className="absolute bottom-full mb-2 flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-xl z-30 animate-in fade-in slide-in-from-bottom-2 duration-150"
+      className="absolute bottom-full mb-2 flex items-center gap-1 rounded-full border px-2 py-1.5 shadow-xl z-30 animate-in fade-in slide-in-from-bottom-2 duration-150"
+      style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
     >
       {ALL_QUICK_REACTIONS.map((emoji) => (
         <button
@@ -472,7 +484,7 @@ function MessageBubble({
         {!mine && isGroup && (
           <Link
             to={userProfileUrl(message.senderId, currentUserId, message.sender?.username)}
-            className="mb-1 ml-1 text-[11px] font-semibold text-blue-700 hover:text-blue-900 hover:underline transition"
+            className="mb-1 ml-1 text-[11px] font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 hover:underline transition"
           >
             {userName(message.sender)}
           </Link>
@@ -482,9 +494,9 @@ function MessageBubble({
         {message.replyToMessage && (
           <div className={`mb-1.5 rounded-lg px-3 py-1.5 text-[11px] border-l-2 max-w-full ${
             mine
-              ? "border-blue-300 bg-blue-100/50 text-slate-600"
-              : "border-slate-300 bg-slate-100 text-slate-500"
-          }`}>
+              ? "border-blue-300 bg-blue-100/50 dark:bg-blue-900/20 dark:border-blue-700"
+              : "border-[var(--border-strong)] bg-[var(--bg-surface-2)]"
+          }`} style={{ color: "var(--text-secondary)" }}>
             <span className="font-semibold">{userName(message.replyToMessage.sender)}: </span>
             <span className="line-clamp-1">{message.replyToMessage.content || titleCase(message.replyToMessage.type)}</span>
           </div>
@@ -492,7 +504,7 @@ function MessageBubble({
 
         {/* Forwarded indicator */}
         {message.forwardedFromMessageId && (
-          <div className="mb-1 flex items-center gap-1 text-[10px] text-slate-400">
+          <div className="mb-1 flex items-center gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
             <Forward size={10} />
             <span>Forwarded</span>
           </div>
@@ -502,12 +514,13 @@ function MessageBubble({
         <div
           className={`relative rounded-2xl px-4 py-2.5 ${
             mine
-              ? "rounded-tr-sm bg-blue-50 text-slate-800 border border-blue-100/70"
-              : "rounded-tl-sm border border-slate-200 bg-white text-slate-800"
+              ? "rounded-tr-sm bg-blue-50 dark:bg-blue-900/25 border border-blue-100/70 dark:border-blue-800/50"
+              : "rounded-tl-sm border"
           } ${deleted ? "opacity-60" : ""}`}
+          style={mine ? { color: "var(--text-primary)" } : { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
         >
           {deleted ? (
-            <p className="italic text-sm">🚫 This message was deleted</p>
+            <p className="italic text-sm" style={{ color: "var(--text-muted)" }}>🚫 This message was deleted</p>
           ) : (
             <>
               {message.content && (
@@ -518,13 +531,13 @@ function MessageBubble({
           )}
 
           {/* Time + read receipt */}
-          <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+          <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
             {message.editedAt && !deleted && <span className="italic">edited</span>}
             <span className="tabular-nums">{pending ? <Clock size={9} className="inline" /> : formatMessageTime(message.createdAt)}</span>
             {mine && !pending && (
               readCount > 1
                 ? <CheckCheck size={12} className="text-sky-500" />
-                : <CheckCheck size={12} className="text-slate-300" />
+                : <CheckCheck size={12} style={{ color: "var(--text-muted)" }} />
             )}
           </div>
         </div>
@@ -537,10 +550,11 @@ function MessageBubble({
                 key={emoji}
                 type="button"
                 onClick={() => onReact(message, emoji)}
-                className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs shadow-sm hover:border-blue-300 hover:bg-blue-50 transition"
+                className="flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-xs shadow-sm transition hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
               >
                 <span>{emoji}</span>
-                {count > 1 && <span className="text-slate-500 font-semibold">{count}</span>}
+                {count > 1 && <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>{count}</span>}
               </button>
             ))}
           </div>
@@ -549,7 +563,8 @@ function MessageBubble({
         {/* Floating action bar — appears on hover */}
         {!deleted && !pending && (
           <div
-            className={`absolute ${mine ? "right-full mr-2" : "left-full ml-2"} top-0 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20`}
+            className={`absolute ${mine ? "right-full mr-2" : "left-full ml-2"} top-0 flex items-center gap-0.5 rounded-full border px-1.5 py-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20`}
+            style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
           >
             {/* Emoji reaction picker trigger */}
             <div className="relative">
@@ -563,7 +578,8 @@ function MessageBubble({
                 type="button"
                 title="React"
                 onClick={() => setShowReactions((s) => !s)}
-                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition"
+                className="rounded-full p-1.5 transition hover:bg-[var(--bg-surface-2)] hover:text-blue-600"
+                style={{ color: "var(--text-muted)" }}
               >
                 <Smile size={14} />
               </button>
@@ -573,7 +589,8 @@ function MessageBubble({
               type="button"
               title="Reply"
               onClick={() => onReply(message)}
-              className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition"
+              className="rounded-full p-1.5 transition hover:bg-[var(--bg-surface-2)] hover:text-blue-600"
+              style={{ color: "var(--text-muted)" }}
             >
               <Reply size={14} />
             </button>
@@ -582,7 +599,8 @@ function MessageBubble({
               type="button"
               title="Forward"
               onClick={() => onForward(message)}
-              className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition"
+              className="rounded-full p-1.5 transition hover:bg-[var(--bg-surface-2)] hover:text-blue-600"
+              style={{ color: "var(--text-muted)" }}
             >
               <Forward size={14} />
             </button>
@@ -593,7 +611,8 @@ function MessageBubble({
                   type="button"
                   title="Edit"
                   onClick={() => onEdit(message)}
-                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 transition"
+                  className="rounded-full p-1.5 transition hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   <Edit3 size={14} />
                 </button>
@@ -601,7 +620,8 @@ function MessageBubble({
                   type="button"
                   title="Delete"
                   onClick={() => onDelete(message)}
-                  className="rounded-full p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition"
+                  className="rounded-full p-1.5 transition hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -688,13 +708,17 @@ function Composer({
   };
 
   return (
-    <form className="border-t border-slate-100 bg-white px-4 py-3" onSubmit={submit}>
+    <form
+      className="border-t px-4 py-3"
+      style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
+      onSubmit={submit}
+    >
       {/* Reply banner */}
       {replyTo && (
-        <div className="mb-2 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20 px-3 py-2">
           <div className="min-w-0 flex-1 text-xs">
-            <span className="font-semibold text-slate-700">Replying to {userName(replyTo.sender)}: </span>
-            <span className="truncate text-slate-500">{replyTo.content || titleCase(replyTo.type)}</span>
+            <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>Replying to {userName(replyTo.sender)}: </span>
+            <span className="truncate" style={{ color: "var(--text-muted)" }}>{replyTo.content || titleCase(replyTo.type)}</span>
           </div>
           <button className="icon-btn h-6 w-6" type="button" onClick={onClearReply}><X size={13} /></button>
         </div>
@@ -704,7 +728,11 @@ function Composer({
       {attachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {attachments.map((att) => (
-            <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600" key={att.id || att.name}>
+            <span
+              className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+              style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
+              key={att.id || att.name}
+            >
               {att.type === "IMAGE" ? <Image size={11} /> : <FileIcon size={11} />}
               {att.name}
               <button type="button" onClick={() => setAttachments((c) => c.filter((a) => a !== att))}>
@@ -718,14 +746,19 @@ function Composer({
       {/* LinkedIn-style pill input row */}
       <div className="flex items-end gap-2">
         {/* Attach */}
-        <label className={`shrink-0 cursor-pointer rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 ${fileUpload.uploading ? "pointer-events-none" : ""}`} title="Attach files">
+        <label
+          className={`shrink-0 cursor-pointer rounded-full p-2 transition hover:bg-[var(--bg-surface-2)] hover:text-blue-600 ${fileUpload.uploading ? "pointer-events-none" : ""}`}
+          style={{ color: "var(--text-muted)" }}
+          title="Attach files"
+        >
           {fileUpload.uploading ? <Loader2 className="animate-spin text-blue-600" size={18} /> : <Paperclip size={18} />}
           <input className="hidden" type="file" multiple onChange={handleFiles} disabled={fileUpload.uploading} />
         </label>
 
         {/* Textarea pill */}
         <textarea
-          className="flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          className="flex-1 resize-none rounded-2xl border px-4 py-2.5 text-sm placeholder-[var(--text-muted)] outline-none transition focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--brand-glow)]"
+          style={{ borderColor: "var(--border-strong)", background: "var(--bg-surface-2)", color: "var(--text-primary)" }}
           value={content}
           onChange={(e) => updateContent(e.target.value)}
           onBlur={onStopTyping}
@@ -739,8 +772,9 @@ function Composer({
           className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-full transition ${
             (content.trim() || attachments.length) && !fileUpload.uploading
               ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              : "cursor-not-allowed"
           }`}
+          style={(content.trim() || attachments.length) && !fileUpload.uploading ? {} : { background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
           type="submit"
           disabled={sendMessage.isPending || fileUpload.uploading || (!content.trim() && !attachments.length)}
         >
@@ -783,7 +817,7 @@ function ConversationSettings({
   return (
     <aside className="space-y-5">
       <div className="panel p-5">
-        <h3 className="text-sm font-semibold text-slate-950">Conversation</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Conversation</h3>
         <div className="mt-4 grid grid-cols-3 gap-3">
           <Metric label="Members" value={conversation.participants?.length || 0} />
           <Metric label="Messages" value={formatCount(conversation.messageCount)} />
@@ -815,7 +849,7 @@ function ConversationSettings({
             {participant?.archived ? "Unarchive" : "Archive"}
           </button>
           <button
-            className="btn-secondary justify-start text-red-600 hover:bg-red-50"
+            className="btn-secondary justify-start text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
             type="button"
             onClick={handleDelete}
             disabled={deleteConversation.isPending}
@@ -827,10 +861,10 @@ function ConversationSettings({
       </div>
 
       <div className="panel p-5">
-        <h3 className="text-sm font-semibold text-slate-950">Participants</h3>
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Participants</h3>
         <div className="mt-4 space-y-3">
           {(conversation.participants || []).map((member) => (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={member.id}>
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={member.id}>
               <div className="flex min-w-0 items-center gap-3">
                 <Link
                   to={userProfileUrl(member.userId, currentUserId, member.user?.username)}
@@ -841,11 +875,12 @@ function ConversationSettings({
                 <div className="min-w-0">
                   <Link
                     to={userProfileUrl(member.userId, currentUserId, member.user?.username)}
-                    className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
+                    className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                    style={{ color: "var(--text-primary)" }}
                   >
                     {userName(member.user)}
                   </Link>
-                  <div className="truncate text-xs text-slate-500">{userHeadline(member.user) || formatDate(member.joinedAt)}</div>
+                  <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(member.user) || formatDate(member.joinedAt)}</div>
                 </div>
               </div>
               {isGroupConversation(conversation) && member.userId !== currentUserId && (
@@ -865,7 +900,7 @@ function ConversationSettings({
 
       {isGroupConversation(conversation) && (
         <div className="panel p-5">
-          <h3 className="text-sm font-semibold text-slate-950">Add participant</h3>
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Add participant</h3>
           <form className="mt-4 flex gap-2" onSubmit={submit}>
             <input
               className="field"
@@ -882,7 +917,7 @@ function ConversationSettings({
               const exists = conversation.participants?.some((participant) => participant.userId === foundUser.id);
 
               return (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 p-3" key={foundUser.id}>
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={foundUser.id}>
                   <div className="flex min-w-0 items-center gap-3">
                     <Link
                       to={userProfileUrl(foundUser.id, currentUserId, foundUser.username)}
@@ -893,11 +928,12 @@ function ConversationSettings({
                     <div className="min-w-0">
                       <Link
                         to={userProfileUrl(foundUser.id, currentUserId, foundUser.username)}
-                        className="truncate text-sm font-semibold text-slate-900 hover:text-emerald-800 hover:underline transition block"
+                        className="truncate text-sm font-semibold hover:text-emerald-800 hover:underline transition block"
+                        style={{ color: "var(--text-primary)" }}
                       >
                         {userName(foundUser)}
                       </Link>
-                      <div className="truncate text-xs text-slate-500">{userHeadline(foundUser) || `@${foundUser.username}`}</div>
+                      <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{userHeadline(foundUser) || `@${foundUser.username}`}</div>
                     </div>
                   </div>
                   <button
@@ -926,7 +962,7 @@ function MessageSearchPanel({ conversationId }: { conversationId: string }) {
   return (
     <div className="panel p-4">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: "var(--text-muted)" }} />
         <input
           className="field pl-9"
           value={query}
@@ -937,15 +973,15 @@ function MessageSearchPanel({ conversationId }: { conversationId: string }) {
       {query.trim().length >= 2 && (
         <div className="mt-4 space-y-2">
           {searchQuery.isFetching && (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
               <Loader2 className="animate-spin" size={15} />
               Searching
             </div>
           )}
           {(searchQuery.data || []).slice(0, 5).map((message) => (
-            <div className="rounded-md border border-slate-100 p-3" key={message.id}>
-              <div className="text-xs font-semibold text-slate-500">{userName(message.sender)}</div>
-              <div className="mt-1 line-clamp-2 text-sm text-slate-700">{message.content || titleCase(message.type)}</div>
+            <div className="rounded-md border p-3" style={{ borderColor: "var(--border)" }} key={message.id}>
+              <div className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{userName(message.sender)}</div>
+              <div className="mt-1 line-clamp-2 text-sm" style={{ color: "var(--text-secondary)" }}>{message.content || titleCase(message.type)}</div>
             </div>
           ))}
         </div>
@@ -1101,11 +1137,12 @@ function ActiveConversation({
   return (
     <section className="grid h-full gap-5 xl:grid-cols-[1fr_23rem] overflow-x-hidden min-h-0">
       <div className="panel flex h-full flex-col overflow-hidden">
-        <header className="flex items-center justify-between gap-4 border-b border-slate-200 p-4">
+        <header className="flex items-center justify-between gap-4 border-b p-4" style={{ borderColor: "var(--border)" }}>
           <div className="flex min-w-0 items-center gap-3">
             <Link
               to="/chat"
-              className="lg:hidden text-slate-600 hover:text-emerald-805 p-1 -ml-1 mr-1 rounded-md transition hover:bg-slate-105 flex items-center justify-center shrink-0"
+              className="lg:hidden p-1 -ml-1 mr-1 rounded-md transition hover:bg-[var(--bg-surface-2)] flex items-center justify-center shrink-0"
+              style={{ color: "var(--text-secondary)" }}
               title="Back to conversations"
             >
               <ChevronLeft size={20} />
@@ -1121,7 +1158,7 @@ function ActiveConversation({
               <ConversationAvatar conversation={conversation} currentUserId={user?.id} />
             )}
             <div className="min-w-0">
-              <h2 className="truncate text-base font-bold text-slate-950">
+              <h2 className="truncate text-base font-bold" style={{ color: "var(--text-primary)" }}>
                 {conversation.type === "DIRECT" ? (
                   <Link
                     to={userProfileUrl(otherParticipants(conversation, user?.id)[0]?.userId, user?.id, otherParticipants(conversation, user?.id)[0]?.user?.username)}
@@ -1133,7 +1170,8 @@ function ActiveConversation({
                   conversationName(conversation, user?.id)
                 )}
               </h2>
-              <p className={`truncate text-xs ${typingOthers.length > 0 ? "text-emerald-600 font-medium animate-pulse" : "text-slate-500"}`}>
+              <p className={`truncate text-xs ${typingOthers.length > 0 ? "text-emerald-600 font-medium animate-pulse" : ""}`}
+                style={typingOthers.length > 0 ? {} : { color: "var(--text-muted)" }}>
                 {typingOthers.length > 0
                   ? (conversation.type === "DIRECT"
                       ? "typing..."
@@ -1153,9 +1191,10 @@ function ActiveConversation({
               onClick={() => setShowSettings((s) => !s)}
               className={`xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xxs font-bold uppercase transition ${
                 showSettings
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-850"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-850 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300"
+                  : "hover:bg-[var(--bg-surface-2)]"
               }`}
+              style={showSettings ? {} : { borderColor: "var(--border)", color: "var(--text-secondary)" }}
               type="button"
             >
               <MoreHorizontal size={14} />
@@ -1167,18 +1206,18 @@ function ActiveConversation({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-slate-50/70 p-4" ref={scrollRef}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar p-4" style={{ background: "var(--bg-surface-2)" }} ref={scrollRef}>
           {/* Sentinel for IntersectionObserver – sits at the top of the scroll container */}
           <div ref={sentinelRef} className="h-px w-full" />
           {messagesQuery.isFetchingNextPage && (
-            <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
+            <div className="flex items-center justify-center gap-2 py-2 text-xs" style={{ color: "var(--text-muted)" }}>
               <Loader2 className="animate-spin" size={14} />
               Loading older messages…
             </div>
           )}
 
           {messagesQuery.isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
               <Loader2 className="animate-spin" size={16} />
               Loading messages
             </div>
@@ -1215,12 +1254,12 @@ function ActiveConversation({
               })}
               {typingNames.length > 0 && (
                 <div className="flex items-center gap-2 pl-1 pt-2">
-                  <div className="flex h-8 items-center gap-1 rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-2">
-                    <span className="animate-bounce h-1.5 w-1.5 rounded-full bg-slate-400 [animation-delay:0ms]" />
-                    <span className="animate-bounce h-1.5 w-1.5 rounded-full bg-slate-400 [animation-delay:160ms]" />
-                    <span className="animate-bounce h-1.5 w-1.5 rounded-full bg-slate-400 [animation-delay:320ms]" />
+                  <div className="flex h-8 items-center gap-1 rounded-2xl rounded-tl-sm border px-4 py-2" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+                    <span className="animate-bounce h-1.5 w-1.5 rounded-full [animation-delay:0ms]" style={{ background: "var(--text-muted)" }} />
+                    <span className="animate-bounce h-1.5 w-1.5 rounded-full [animation-delay:160ms]" style={{ background: "var(--text-muted)" }} />
+                    <span className="animate-bounce h-1.5 w-1.5 rounded-full [animation-delay:320ms]" style={{ background: "var(--text-muted)" }} />
                   </div>
-                  <span className="text-[10px] text-slate-400">{typingNames.join(", ")} typing…</span>
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{typingNames.join(", ")} typing…</span>
                 </div>
               )}
             </div>
@@ -1244,9 +1283,9 @@ function ActiveConversation({
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/30 p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "var(--bg-overlay)" }}>
           <form className="panel w-full max-w-lg p-5" onSubmit={submitEdit}>
-            <h3 className="text-sm font-semibold text-slate-950">Edit message</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Edit message</h3>
             <textarea
               className="field mt-4 min-h-28"
               value={editContent}
@@ -1267,15 +1306,16 @@ function ActiveConversation({
       )}
 
       {forwarding && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/30 p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "var(--bg-overlay)" }}>
           <div className="panel w-full max-w-lg p-5">
-            <h3 className="text-sm font-semibold text-slate-950">Forward message</h3>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Forward message</h3>
             <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
               {conversations
                 .filter((item) => item.id !== conversation.id)
                 .map((target) => (
                   <button
-                    className="flex w-full items-center gap-3 rounded-md border border-slate-100 p-3 text-left transition hover:border-emerald-300"
+                    className="flex w-full items-center gap-3 rounded-md border p-3 text-left transition hover:border-[var(--brand)]"
+                    style={{ borderColor: "var(--border)" }}
                     key={target.id}
                     type="button"
                     onClick={() => {
@@ -1289,10 +1329,10 @@ function ActiveConversation({
                   >
                     <ConversationAvatar conversation={target} currentUserId={user?.id} />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">
+                      <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                         {conversationName(target, user?.id)}
                       </div>
-                      <div className="truncate text-xs text-slate-500">{conversationSubtitle(target, user?.id)}</div>
+                      <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{conversationSubtitle(target, user?.id)}</div>
                     </div>
                   </button>
                 ))}
@@ -1374,7 +1414,7 @@ export function ChatPage() {
 
         <div className="panel flex-1 flex flex-col p-4 overflow-hidden min-h-0">
           <div className="relative shrink-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: "var(--text-muted)" }} />
             <input
               className="field pl-9"
               value={filter}
@@ -1384,7 +1424,7 @@ export function ChatPage() {
           </div>
           <div className="mt-4 flex-1 overflow-y-auto no-scrollbar space-y-2">
             {showArchived ? archivedConversationsQuery.isLoading : conversationsQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
                 <Loader2 className="animate-spin" size={16} />
                 Loading conversations
               </div>
@@ -1399,7 +1439,7 @@ export function ChatPage() {
                 />
               ))
             ) : (
-              <div className="rounded-md border border-slate-100 p-4 text-sm text-slate-500">
+              <div className="rounded-md border p-4 text-sm" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
                 {showArchived ? "No archived conversations." : "No conversations yet."}
               </div>
             )}
@@ -1410,7 +1450,7 @@ export function ChatPage() {
           <div className="panel px-4 py-3 shrink-0">
             <button
               onClick={() => setShowArchived(true)}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="btn-secondary w-full"
             >
               View Archived
             </button>
@@ -1421,7 +1461,7 @@ export function ChatPage() {
           <div className="panel px-4 py-3 shrink-0">
             <button
               onClick={() => setShowArchived(false)}
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="btn-secondary w-full"
             >
               View Active
             </button>
@@ -1437,7 +1477,7 @@ export function ChatPage() {
             conversations={sortedConversations}
           />
         ) : conversationsQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
             <Loader2 className="animate-spin" size={16} />
             Loading chat
           </div>
