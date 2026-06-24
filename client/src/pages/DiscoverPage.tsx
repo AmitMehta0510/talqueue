@@ -189,18 +189,15 @@ function ReferralModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full max-w-lg rounded-2xl p-6 shadow-2xl" style={{ background: "var(--bg-surface)" }} onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Ask Referral</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>Ask Referral</h2>
+            <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>
               Requesting from <strong>{userName(target.user)}</strong>
             </p>
           </div>
-          <button className="rounded-lg p-2 hover:bg-slate-100" type="button" onClick={onClose}>
+          <button className="rounded-lg p-2" style={{ background: "transparent" }} type="button" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
@@ -253,7 +250,7 @@ function ReferralModal({
             Note: The referrer must currently work at the requested company. Your engineering score must be ≥ 20 to send referral requests.
           </p>
 
-          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <button className="btn-secondary" type="button" onClick={onClose}>Cancel</button>
             <button className="btn-primary" type="submit" disabled={submitting || !jobRole.trim() || !companyName.trim()}>
               {submitting ? <Loader2 className="animate-spin" size={15} /> : <Gift size={15} />}
@@ -553,12 +550,12 @@ export function DiscoverPage() {
 
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)}>
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }} onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
               <div className="flex items-center gap-2">
                 <ShieldCheck size={18} className="text-amber-600" />
-                <h3 className="font-bold text-slate-900">
+                <h3 className="font-bold" style={{ color: "var(--text-primary)" }}>
                   Upgrade to Recruiter Premium
                 </h3>
               </div>
@@ -576,8 +573,8 @@ export function DiscoverPage() {
                 <ShieldCheck size={24} />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-base font-bold text-slate-900">Unlock Verified Candidate Search</h4>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                <h4 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Unlock Verified Candidate Search</h4>
+                <p className="text-xs max-w-xs mx-auto leading-relaxed" style={{ color: "var(--text-muted)" }}>
                   Recruiter Premium allows you to filter search results to only show candidates with verified skills and code repositories. Tap below to simulate upgrading.
                 </p>
               </div>
@@ -610,9 +607,9 @@ export function DiscoverPage() {
             <div>
               <div className="flex items-center gap-2">
                 <Compass className="text-emerald-700" size={20} />
-                <h1 className="text-xl font-bold text-slate-950">Discover</h1>
+                <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Discover</h1>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                 Search, filter and explore. Results adapt to your interests.
               </p>
             </div>
@@ -627,7 +624,7 @@ export function DiscoverPage() {
           {/* Search bar */}
           <form className="mt-5 flex flex-wrap gap-3" onSubmit={submit}>
             <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={17} />
+              <Search className="pointer-events-none absolute left-3 top-2.5" size={17} style={{ color: "var(--text-muted)" }} />
               <input
                 className="field pl-9"
                 value={query}
@@ -639,7 +636,7 @@ export function DiscoverPage() {
               <button
                 className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                   filtersOpen || hasActiveFilters
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                    ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400"
                     : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200"
                 }`}
                 type="button"
@@ -667,8 +664,8 @@ export function DiscoverPage() {
                 <button
                   className={`inline-flex min-w-max items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition ${
                     active
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-emerald-800"
+                      ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400"
+                      : "hover:border-emerald-200 hover:text-emerald-800"
                   }`}
                   key={tab.key}
                   type="button"
@@ -677,7 +674,7 @@ export function DiscoverPage() {
                   <Icon size={15} />
                   {tab.label}
                   {searchResults && tab.key !== "all" && (
-                    <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
+                    <span className="ml-1 rounded-full px-1.5 py-0.5 text-xs" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                       {searchSections.find((s) => s.key === tab.key)?.count || 0}
                     </span>
                   )}
@@ -688,9 +685,9 @@ export function DiscoverPage() {
 
           {/* Filter panel */}
           {isFilterableTab && filtersOpen && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mt-4 rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
               <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
                   <Filter size={14} />
                   Filters
                   {hasActiveFilters && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">Active</span>}
@@ -722,15 +719,15 @@ export function DiscoverPage() {
                       <option value="PROFESSIONAL">🧑‍💻 Working Professional</option>
                     </select>
                   </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={peopleF.openToWork} onChange={(e) => setPeopleF({ ...peopleF, openToWork: e.target.checked })} />
                     Open to work
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={peopleF.acceptingReferrals} onChange={(e) => setPeopleF({ ...peopleF, acceptingReferrals: e.target.checked })} />
                     Accepting referrals
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={peopleF.verifiedSkillsOnly} onChange={handleVerifiedSkillsOnlyChange} />
                     <span className="flex items-center gap-1.5 font-medium">
                       Verified skills only
@@ -756,7 +753,7 @@ export function DiscoverPage() {
                       <option value="ARCHIVED">Archived</option>
                     </select>
                   </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={projectF.acceptingCollaborators} onChange={(e) => setProjectF({ ...projectF, acceptingCollaborators: e.target.checked })} />
                     Accepting collaborators
                   </label>
@@ -815,7 +812,7 @@ export function DiscoverPage() {
                   <FilterField label="Tags (comma separated)">
                     <input className="field" value={hackF.tags} onChange={(e) => setHackF({ ...hackF, tags: e.target.value })} placeholder="AI, Web3, Mobile..." />
                   </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={hackF.upcomingOnly} onChange={(e) => setHackF({ ...hackF, upcomingOnly: e.target.checked })} />
                     Upcoming only
                   </label>
@@ -830,11 +827,11 @@ export function DiscoverPage() {
                   <FilterField label="Location / HQ">
                     <input className="field" value={companyF.location} onChange={(e) => setCompanyF({ ...companyF, location: e.target.value })} placeholder="Bangalore, Mumbai..." />
                   </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={companyF.hiringEnabled} onChange={(e) => setCompanyF({ ...companyF, hiringEnabled: e.target.checked })} />
                     Currently hiring
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <input type="checkbox" checked={companyF.referralEnabled} onChange={(e) => setCompanyF({ ...companyF, referralEnabled: e.target.checked })} />
                     Referrals enabled
                   </label>
@@ -1035,7 +1032,7 @@ function PersonalizedDiscovery({
       {/* ── Connect & Collaborate (merged collaborators + teammates) ── */}
       {connectPool.length > 0 && (
         <DiscoverySection count={connectPool.length} icon={Users} title="Connect &amp; Collaborate">
-          <p className="-mt-1 mb-3 text-xs text-slate-500">
+          <p className="-mt-1 mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
             Engineers matched to your skills and projects — potential collaborators and teammates.
           </p>
           <div className="grid gap-5 xl:grid-cols-2">
@@ -1132,7 +1129,7 @@ function DiscoverySection({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Icon className="text-emerald-700" size={18} />
-          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{title}</h2>
         </div>
         <span className="chip">{formatCount(count)}</span>
       </div>
@@ -1257,15 +1254,15 @@ function CompanySuggestionCard({ company }: { company: Company }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-950">
+          <h3 className="truncate text-base font-semibold" style={{ color: "var(--text-primary)" }}>
             <Link className="hover:text-emerald-700" to={`/companies/${company.slug}`}>
               {company.name}
             </Link>
           </h3>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             {[company.industry, company.headquarters, titleCase(company.size)].filter(Boolean).join(" · ") || "Company"}
           </p>
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 line-clamp-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
             {company.tagline || company.description}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1291,15 +1288,15 @@ function CommunitySuggestionCard({ community }: { community: Community }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-950">
+          <h3 className="truncate text-base font-semibold" style={{ color: "var(--text-primary)" }}>
             <Link className="hover:text-emerald-700" to={`/communities/${community.slug}`}>
               {community.name}
             </Link>
           </h3>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             {[titleCase(community.type), titleCase(community.category)].filter(Boolean).join(" · ")}
           </p>
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 line-clamp-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
             {community.shortDescription || community.description}
           </p>
           <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
@@ -1321,13 +1318,13 @@ function PostSuggestionCard({ post }: { post: FeedPost }) {
       <div className="flex items-start gap-3">
         <Avatar user={author} />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-950">{userName(author)}</div>
-          <div className="truncate text-xs text-slate-500">
+          <div className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{userName(author)}</div>
+          <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
             {titleCase(post.type)} {post.createdAt ? `· ${formatDate(post.createdAt)}` : ""}
           </div>
         </div>
       </div>
-      <p className="mt-4 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-700">
+      <p className="mt-4 line-clamp-4 whitespace-pre-line text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
         {post.content || post.description || post.title}
       </p>
       {tags.length > 0 && (
@@ -1337,7 +1334,7 @@ function PostSuggestionCard({ post }: { post: FeedPost }) {
           ))}
         </div>
       )}
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
+      <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
         <span>{formatCount(post.likesCount)} likes</span>
         <span>{formatCount(post.commentsCount)} comments</span>
       </div>
@@ -1380,10 +1377,10 @@ function FeedSuggestionCard({ item }: { item: FeedItem }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 text-sm font-semibold text-slate-950">
+          <div className="line-clamp-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {feedTitle(item) || titleCase(item.type)}
           </div>
-          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+          <p className="mt-2 line-clamp-2 text-xs leading-5" style={{ color: "var(--text-muted)" }}>
             {item.reason || "Recommended from your profile and activity."}
           </p>
         </div>
@@ -1405,7 +1402,7 @@ function FeedSuggestionCard({ item }: { item: FeedItem }) {
 function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold text-slate-500">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{label}</span>
       {children}
     </label>
   );

@@ -205,7 +205,7 @@ function VoteWidget({ postId, count = 0 }: { postId: string; count: number }) {
       >
         <ArrowUp size={16} strokeWidth={voted ? 2.5 : 2} />
       </button>
-      <span className={`text-xs font-bold tabular-nums ${voted ? "text-orange-500" : "text-slate-500"}`}>
+      <span className={`text-xs font-bold tabular-nums ${voted ? "text-orange-500" : ""}`} style={!voted ? { color: "var(--text-muted)" } : {}}>
         {formatCount(display)}
       </span>
     </div>
@@ -222,7 +222,7 @@ function PostCard({ post }: { post: FeedPost }) {
   const comments = post.commentsCount ?? 0;
 
   return (
-    <article className="group flex cursor-pointer gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:shadow-sm">
+    <article className="group flex cursor-pointer gap-3 rounded-lg border p-3 transition hover:shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {/* Vote column */}
       <div className="flex shrink-0 flex-col items-center pt-0.5">
         <VoteWidget postId={post.id} count={votes} />
@@ -232,17 +232,17 @@ function PostCard({ post }: { post: FeedPost }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
           <Avatar user={author} size="sm" />
-          <span className="font-semibold text-slate-600">u/{author?.username || "anonymous"}</span>
+          <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>u/{author?.username || "anonymous"}</span>
           <span>·</span>
           <span>{timeAgo(post.createdAt)}</span>
         </div>
 
-        <h3 className="mt-2 text-sm font-semibold leading-snug text-slate-900 group-hover:text-emerald-800 transition-colors">
+        <h3 className="mt-2 text-sm font-semibold leading-snug group-hover:text-emerald-800 transition-colors" style={{ color: "var(--text-primary)" }}>
           {post.title || post.content?.slice(0, 120) || "Untitled post"}
         </h3>
 
         {post.content && post.title && (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
+          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
             {post.content}
           </p>
         )}
@@ -251,7 +251,7 @@ function PostCard({ post }: { post: FeedPost }) {
         {(post.tags || []).length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {(post.tags as string[]).slice(0, 3).map((tag, i) => (
-              <span key={i} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+              <span key={i} className="rounded-full px-2 py-0.5 text-xs" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
                 #{tag}
               </span>
             ))}
@@ -267,9 +267,9 @@ function PostCard({ post }: { post: FeedPost }) {
             <MessageSquare size={13} />
             {formatCount(comments)} Comments
           </button>
-          <button
+            <button
             type="button"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold transition" style={{ color: "var(--text-muted)" }}
           >
             <Eye size={13} />
             View
@@ -286,7 +286,7 @@ function PostCard({ post }: { post: FeedPost }) {
 
 function SkeletonPost() {
   return (
-    <div className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3 animate-pulse">
+    <div className="flex gap-3 rounded-lg border p-3 animate-pulse" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       <div className="flex shrink-0 flex-col items-center gap-1 pt-1">
         <div className="h-7 w-7 rounded bg-slate-100" />
         <div className="h-4 w-5 rounded bg-slate-100" />
@@ -306,7 +306,7 @@ function SkeletonPost() {
 
 function SkeletonCommunityCard() {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white animate-pulse">
+    <div className="overflow-hidden rounded-xl border animate-pulse" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       <div className="h-16 bg-slate-100" />
       <div className="p-4 space-y-2">
         <div className="flex items-center gap-2">
@@ -354,7 +354,7 @@ function CommunityBrowseCard({
   };
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-emerald-300 hover:shadow-md">
+    <div className="group overflow-hidden rounded-xl border transition hover:border-emerald-300 hover:shadow-md" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {/* Mini banner */}
       <Link to={`/communities/${community.slug}`}>
         <div
@@ -388,11 +388,11 @@ function CommunityBrowseCard({
           <div className="min-w-0 flex-1 pt-1">
             <Link
               to={`/communities/${community.slug}`}
-              className="block truncate text-sm font-bold text-slate-900 hover:text-emerald-700 transition-colors"
+              className="block truncate text-sm font-bold hover:text-emerald-700 transition-colors" style={{ color: "var(--text-primary)" }}
             >
               r/{community.slug}
             </Link>
-            <p className="truncate text-xs text-slate-400">{communityScope(community)}</p>
+            <p className="truncate text-xs" style={{ color: "var(--text-muted)" }}>{communityScope(community)}</p>
           </div>
           {community.verified && (
             <ShieldCheck size={14} className="mt-1.5 shrink-0 text-emerald-500" />
@@ -400,15 +400,15 @@ function CommunityBrowseCard({
         </div>
 
         {/* Description */}
-        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-500">
+          <p className="mt-3 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
           {community.shortDescription || community.description || "A community for engineers."}
         </p>
 
         {/* Stats row */}
-        <div className="mt-3 flex items-center gap-3 text-xs text-slate-400">
+          <div className="mt-3 flex items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
           <span className="flex items-center gap-1">
             <Users size={11} />
-            <strong className="text-slate-700">{formatCount(members)}</strong> members
+             <strong style={{ color: "var(--text-secondary)" }}>{formatCount(members)}</strong> members
           </span>
           {isPrivate && (
             <span className="flex items-center gap-1 text-rose-500">
@@ -486,7 +486,7 @@ function CommunityBrowseCard({
               </button>
             )}
             {isOfficialCommunity && !isMember && !pendingApproval && !isPrivate && (
-              <p className="mt-1.5 text-center text-[10px] text-slate-400">
+              <p className="mt-1.5 text-center text-[10px]" style={{ color: "var(--text-muted)" }}>
                 Verified members of this {community.type === "COLLEGE" ? "college" : "company"} join instantly
               </p>
             )}
@@ -550,22 +550,22 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-base font-bold text-slate-900">Create a Community</h2>
+      <div className="relative w-full max-w-lg rounded-2xl border shadow-2xl" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+          <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)" }}>
+          <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Create a Community</h2>
           <button onClick={onClose} className="icon-btn" type="button"><X size={16} /></button>
         </div>
         <form className="space-y-4 p-6" onSubmit={submit}>
           <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Name *</label>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Name *</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">r/</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: "var(--text-muted)" }}>r/</span>
               <input className="field pl-7" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="community_name" required />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Type *</label>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Type *</label>
               <select className="field" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as CommunityType, collegeId: "", departmentId: "", companyId: "", city: "" }))}>
                 {/* Normal users can only create GENERAL communities */}
                 <option value="GENERAL">General</option>
@@ -577,11 +577,11 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
                 )}
               </select>
               {!isPlatformAdmin(user) && (
-                <p className="mt-1 text-[10px] text-slate-400">College &amp; Company communities are created by verified admins only.</p>
+              <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>College &amp; Company communities are created by verified admins only.</p>
               )}
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Category *</label>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Category *</label>
               <select className="field" value={form.category} onChange={(e) => set("category", e.target.value as CommunityCategory)}>
                 {communityCategories.map((c) => <option key={c} value={c}>{titleCase(c)}</option>)}
               </select>
@@ -634,11 +634,11 @@ function CreateCommunityModal({ open, onClose }: { open: boolean; onClose: () =>
               <input className="field" value={form.searchKeywords} onChange={(e) => set("searchKeywords", e.target.value)} placeholder="Search terms" />
             </div>
           </div>
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)" }}>
             <input type="checkbox" checked={form.autoJoinEligible} onChange={(e) => set("autoJoinEligible", e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-emerald-600" />
             <div>
-              <p className="text-sm font-semibold text-slate-800">Enable auto-join</p>
-              <p className="text-xs text-slate-400">Members added automatically when they register</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Enable auto-join</p>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Members added automatically when they register</p>
             </div>
           </label>
           <div className="flex justify-end gap-3 pt-1">
@@ -689,7 +689,7 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
       {/* Collapsed state — Reddit-style click-to-expand */}
       {!expanded ? (
         <div className="flex items-center gap-3 p-3">
@@ -697,7 +697,7 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
           <button
             type="button"
             onClick={() => { setExpanded(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
-            className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-left text-sm text-slate-400 transition hover:border-emerald-300 hover:bg-white hover:text-slate-600"
+            className="flex-1 rounded-lg border px-4 py-2.5 text-left text-sm transition hover:border-emerald-300 hover:bg-white hover:text-slate-600" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
           >
             Share something with this community…
           </button>
@@ -705,7 +705,7 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
       ) : (
         <form onSubmit={submit}>
           <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Create Post</p>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Create Post</p>
           </div>
           <div className="p-4 space-y-3">
             <textarea
@@ -854,7 +854,7 @@ function CommunityDetail({ slug }: { slug: string }) {
       </div>
 
       {/* ── Community identity bar ── */}
-      <div className="rounded-b-xl border border-t-0 border-slate-200 bg-white px-6 pb-4 pt-0">
+      <div className="rounded-b-xl border border-t-0 px-6 pb-4 pt-0" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex items-end gap-4">
             {/* Icon overlapping banner */}
@@ -863,10 +863,10 @@ function CommunityDetail({ slug }: { slug: string }) {
             </div>
             <div className="pb-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">{community.name}</h1>
+                <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{community.name}</h1>
                 {community.verified && <ShieldCheck size={16} className="text-emerald-500" />}
               </div>
-              <p className="text-sm text-slate-400">r/{community.slug} · {communityScope(community)}</p>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>r/{community.slug} · {communityScope(community)}</p>
             </div>
           </div>
 
@@ -927,7 +927,7 @@ function CommunityDetail({ slug }: { slug: string }) {
           />
 
           {/* Sort bar */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-2">
+          <div className="flex items-center gap-1 rounded-xl border p-2" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
             {([
               { key: "hot" as SortMode, icon: Flame, label: "Hot" },
               { key: "new" as SortMode, icon: Clock, label: "New" },
@@ -937,11 +937,8 @@ function CommunityDetail({ slug }: { slug: string }) {
                 key={key}
                 type="button"
                 onClick={() => setSortMode(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-                  sortMode === key
-                    ? "bg-slate-100 text-slate-900"
-                    : "text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-all ${sortMode === key ? "" : "hover:opacity-80"}`}
+                style={sortMode === key ? { background: "var(--bg-surface-2)", color: "var(--text-primary)" } : { color: "var(--text-muted)" }}
               >
                 <Icon size={15} />
                 {label}
@@ -955,25 +952,25 @@ function CommunityDetail({ slug }: { slug: string }) {
           ) : sortedPosts.length > 0 ? (
             sortedPosts.map((post) => <PostCard key={post.id} post={post} />)
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+            <div className="rounded-xl border p-12 text-center" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--bg-surface-2)" }}>
                 <MessageSquare size={22} className="text-slate-400" />
               </div>
-              <p className="text-sm font-semibold text-slate-600">No posts yet</p>
-              <p className="mt-1 text-xs text-slate-400">Be the first to share something with this community.</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>No posts yet</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>Be the first to share something with this community.</p>
             </div>
           )}
 
           {/* Chat channels */}
           {(community.conversations || []).length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Chat Channels</p>
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+              <p className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Chat Channels</p>
               <div className="space-y-1.5">
                 {(community.conversations || []).map((conv) => (
                   <Link
                     key={conv.id}
                     to={`/chat/${conv.id}`}
-                    className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+                    className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition hover:bg-emerald-50 hover:text-emerald-800" style={{ color: "var(--text-secondary)" }}
                   >
                     <Hash size={14} className="text-slate-400 group-hover:text-emerald-600" />
                     <span className="font-medium">{conv.title || "general"}</span>
@@ -988,46 +985,46 @@ function CommunityDetail({ slug }: { slug: string }) {
         {/* ── Right Sidebar ── */}
         <aside className="space-y-4">
           {/* About */}
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
             <div className={`bg-gradient-to-r ${TYPE_GRADIENT[community.type]} px-4 py-3`}>
               <p className="text-xs font-bold uppercase tracking-wide text-white/80">About Community</p>
             </div>
             <div className="p-4">
-              <p className="text-sm leading-relaxed text-slate-600">
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                 {community.description || community.shortDescription || "A community for engineers on the platform."}
               </p>
 
-              <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+              <div className="mt-4 space-y-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                     <Users size={15} className="text-slate-400" />
-                    <span className="font-bold text-slate-900">{formatCount(members)}</span>
+                    <span className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCount(members)}</span>
                     <span>Members</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <MessageSquare size={15} className="text-slate-400" />
-                    <span className="font-bold text-slate-900">{formatCount(posts)}</span>
+                    <span className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCount(posts)}</span>
                     <span>Posts</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Hash size={15} className="text-slate-400" />
-                    <span className="font-bold text-slate-900">{formatCount(chats)}</span>
+                    <span className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCount(chats)}</span>
                     <span>Channels</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Star size={15} className="text-slate-400" />
-                    <span className="font-bold text-slate-900">{Math.round(community.trendingScore ?? 0)}</span>
+                    <span className="font-bold" style={{ color: "var(--text-primary)" }}>{Math.round(community.trendingScore ?? 0)}</span>
                     <span>Trending</span>
                   </div>
                 </div>
                 {community.createdAt && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400 border-t border-slate-100 pt-3">
+                  <div className="flex items-center gap-2 text-xs border-t pt-3" style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}>
                     <Clock size={12} />
                     Created {formatDate(community.createdAt)}
                   </div>
@@ -1036,9 +1033,9 @@ function CommunityDetail({ slug }: { slug: string }) {
 
               {/* Tags */}
               {(community.tags || []).length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-1.5 border-t border-slate-100 pt-4">
+                  <div className="mt-4 flex flex-wrap gap-1.5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
                   {(community.tags || []).map((tag) => (
-                    <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                    <span key={tag} className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
                       #{tag}
                     </span>
                   ))}
@@ -1046,7 +1043,7 @@ function CommunityDetail({ slug }: { slug: string }) {
               )}
 
               {/* Scope */}
-              <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 text-xs text-slate-500">
+              <div className="mt-4 space-y-1 border-t pt-4 text-xs" style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}>
                 {community.college?.name && (
                   <div className="flex items-center gap-2"><GraduationCap size={12} className="text-slate-300" />{community.college.name}</div>
                 )}
@@ -1116,8 +1113,8 @@ function CommunityDetail({ slug }: { slug: string }) {
 
           {/* Moderators / Members */}
           {(community.members || []).length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
+              <p className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                 Moderators & Members
               </p>
               <div className="space-y-2.5">
@@ -1125,7 +1122,7 @@ function CommunityDetail({ slug }: { slug: string }) {
                   <div key={m.id} className="flex items-center gap-2.5">
                     <Avatar user={m.user} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-slate-800">
+                      <p className="truncate text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
                         u/{m.user?.username || "user"}
                       </p>
                       {m.role && m.role !== "MEMBER" && (
@@ -1161,14 +1158,14 @@ function ReviewJoinRequestPanel({ slug }: { slug: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
           Pending Join Requests
         </p>
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
           {requests.length}
         </span>
       </div>
-      <div className="space-y-3 divide-y divide-slate-100">
+      <div className="space-y-3 divide-y" style={{ borderColor: "var(--border)" }}>
         {requests.map((req: any, idx: number) => {
           const reqUser = req.user;
           const reqProfile = reqUser?.profile;
@@ -1177,17 +1174,17 @@ function ReviewJoinRequestPanel({ slug }: { slug: string }) {
               <div className="flex items-center gap-2.5">
                 <Avatar user={reqUser} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-slate-800">
+                  <p className="truncate text-xs font-bold" style={{ color: "var(--text-secondary)" }}>
                     {reqProfile?.fullName || reqUser?.username || "Anonymous"}
                   </p>
-                  <p className="truncate text-[10px] text-slate-400">
+                  <p className="truncate text-[10px]" style={{ color: "var(--text-muted)" }}>
                     @{reqUser?.username || "user"}
                   </p>
                 </div>
               </div>
 
               {reqProfile?.headline && (
-                <p className="text-[10px] italic text-slate-500 line-clamp-1 pl-1 border-l-2 border-slate-200 bg-slate-50/50 py-0.5 px-1.5 rounded">
+                <p className="text-[10px] italic line-clamp-1 pl-1 border-l-2 border-slate-200 py-0.5 px-1.5 rounded" style={{ color: "var(--text-muted)", background: "var(--bg-surface-2)" }}>
                   "{reqProfile.headline}"
                 </p>
               )}
@@ -1304,8 +1301,8 @@ export function CommunitiesPage() {
         {/* ── Header ── */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Communities</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Communities</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
               Your college and company spaces, plus communities built for engineers.
             </p>
           </div>
@@ -1319,7 +1316,7 @@ export function CommunitiesPage() {
 
         {/* ── Tabs ── */}
         {user && (
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="flex items-center gap-1 rounded-xl border p-1 shadow-sm" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
             {([
               { key: "joined" as Tab, icon: Users, label: "My Communities", count: joinedCommunities.length },
               { key: "explore" as Tab, icon: Compass, label: "Explore", count: suggestedCommunities.length },
@@ -1345,10 +1342,10 @@ export function CommunitiesPage() {
         )}
 
         {/* ── Search + Filters ── */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
               <input
                 ref={searchRef}
                 className="field pl-9"
@@ -1371,19 +1368,21 @@ export function CommunitiesPage() {
           {showFilters && user && (
             <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-400">TYPE</span>
+                <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>TYPE</span>
                 {(["", "GENERAL", "COLLEGE", "COMPANY"] as (CommunityType | "")[]).map((t) => (
                   <button key={t || "all"} type="button" onClick={() => setTypeFilter(t)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${typeFilter === t ? "border-emerald-500 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300"}`}>
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${typeFilter === t ? "border-emerald-500 bg-emerald-600 text-white" : "hover:border-emerald-300"}`}
+                    style={typeFilter !== t ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}>
                     {t ? titleCase(t) : "All"}
                   </button>
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-400">TOPIC</span>
+                <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>TOPIC</span>
                 {(["", "CODING", "PLACEMENTS", "INTERNSHIPS", "REFERRALS", "INTERVIEWS"] as (CommunityCategory | "")[]).map((c) => (
                   <button key={c || "all"} type="button" onClick={() => setCategoryFilter(c)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${categoryFilter === c ? "border-emerald-500 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300"}`}>
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${categoryFilter === c ? "border-emerald-500 bg-emerald-600 text-white" : "hover:border-emerald-300"}`}
+                    style={categoryFilter !== c ? { borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" } : {}}>
                     {c ? titleCase(c) : "All"}
                   </button>
                 ))}
