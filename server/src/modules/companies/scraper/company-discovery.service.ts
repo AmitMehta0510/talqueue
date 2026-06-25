@@ -6,6 +6,7 @@ import prisma from "shared/database/prisma";
 import { generateRandomAlphanumeric } from "shared/utils/random";
 import { processCompany, CompanyRow } from "./job-scraper.service";
 import { syncJobsToElasticBulk } from "services/elasticSync";
+import { enrichCompanyMeta } from "infra/enrichment/company-enrichment.service";
 
 // ---------------------------------------------------------------------------
 // CONSTANTS
@@ -142,15 +143,25 @@ async function autoCreateCompany(params: {
   const baseSlug = slugify(name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
   const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
 
+  // --- 3-stage metadata enrichment (fail-soft; never throws) ---
+  const meta = await enrichCompanyMeta(domain);
+
   const company = await prisma.company.create({
     data: {
       name,
       slug,
-      logoUrl: `https://logo.clearbit.com/${domain}`,
+      logoUrl: meta.logoUrl ?? `https://logo.clearbit.com/${domain}`,
       coverImageUrl: `https://picsum.photos/seed/${domain}/1200/400`,
       websiteUrl: `https://${domain}`,
       careersPageUrl: `https://${domain}/careers`,
-      industry,
+      // Enriched fields — only set if the pipeline returned them
+      description: meta.description ?? null,
+      tagline: meta.tagline ?? null,
+      type: meta.type ?? undefined,
+      size: meta.size ?? undefined,
+      totalEmployees: meta.totalEmployees ?? undefined,
+      // Industry: prefer enriched value, fall back to the seed file's classification
+      industry: meta.industry ?? industry,
       verified: false,
       discoveredVia,
       hiringEnabled: true,

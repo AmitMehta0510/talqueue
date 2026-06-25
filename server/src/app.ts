@@ -51,6 +51,12 @@ setImmediate(async () => {
   startCompanyDiscoveryCron();
 });
 
+setImmediate(async () => {
+  const { startJobLifecycleCron } = await import("infra/crons/job-lifecycle.cron");
+  startJobLifecycleCron();
+});
+
+
 app.get("/", (req, res) => {
   res.json(
     successResponse({

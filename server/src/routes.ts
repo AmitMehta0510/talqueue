@@ -39,6 +39,7 @@ import forumRoutes from "routes/forum.routes";
 import storageRoutes from "modules/storage/storage.routes";
 import growthLoopsRoutes from "modules/companies/growth-loops.routes";
 import tpoRoutes from "modules/companies/tpo.routes";
+import tpoDashboardRoutes from "modules/tpo/tpo-dashboard.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 
@@ -95,6 +96,8 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   // Growth Loops — company claim (domain match + Redis OTP) and TPO onboarding
   { key: "growthLoops", path: "/companies", router: growthLoopsRoutes },
   { key: "tpo", path: "/tpo", router: tpoRoutes },
+  // TPO Dashboard — authenticated portal for Training & Placement Officers
+  { key: "tpoDashboard", path: "/tpo", router: tpoDashboardRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(
