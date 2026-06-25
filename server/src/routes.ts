@@ -37,6 +37,8 @@ import resumeRoutes from "modules/resume/resume.routes";
 import resdexRoutes from "modules/resdex/resdex.routes";
 import forumRoutes from "routes/forum.routes";
 import storageRoutes from "modules/storage/storage.routes";
+import growthLoopsRoutes from "modules/companies/growth-loops.routes";
+import tpoRoutes from "modules/companies/tpo.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 
@@ -90,6 +92,9 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "resdex", path: "/resdex", router: resdexRoutes },
   { key: "forum", path: "/forum", router: forumRoutes },
   { key: "storage", path: "/storage", router: storageRoutes },
+  // Growth Loops — company claim (domain match + Redis OTP) and TPO onboarding
+  { key: "growthLoops", path: "/companies", router: growthLoopsRoutes },
+  { key: "tpo", path: "/tpo", router: tpoRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(

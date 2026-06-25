@@ -267,7 +267,7 @@ export interface CompanyRow {
   careersPageUrl?: string | null;
   /** ATS board token — when provided, used directly instead of the static slug-map lookup. */
   atsToken?: string | null;
-  /** ATS source discriminator: 'greenhouse' | 'lever' | 'ashby' */
+  /** ATS source discriminator: 'greenhouse' | 'lever' | 'ashby' | 'workday' */
   atsSource?: string | null;
 }
 
@@ -301,6 +301,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
   const leverToken =
     (company.atsSource === "lever" && company.atsToken) ? company.atsToken
     : LEVER_TOKENS[lookupKey];
+  const workdayToken =
+    (company.atsSource === "workday" && company.atsToken) ? company.atsToken
+    : null; // Workday tokens come exclusively from autonomous crawler discovery
 
   try {
     if (greenhouseToken) {
@@ -542,6 +545,18 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         }
       }
 
+    } else if (workdayToken) {
+      // ------------------------------------------------------------------
+      // Workday ATS
+      // ------------------------------------------------------------------
+      const workdayResult = await scrapeWorkdayJobs(workdayToken, company);
+      result.created += workdayResult.created;
+      result.updated += workdayResult.updated;
+      result.processedJobIds.push(...workdayResult.processedJobIds);
+      activeSlugs.push(
+        ...workdayResult.processedJobIds.map(() => "") // stale cleanup relies on slug list
+      );
+
     } else {
       // ------------------------------------------------------------------
       // Fallback: template mock jobs
@@ -618,6 +633,212 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
     // Inner catch: absorbs all network / Prisma / ATS API errors per company.
     console.error(`[Job Scraper] Failed to process jobs for company ${company.name}:`, err);
   }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// WORKDAY SCRAPER
+// ---------------------------------------------------------------------------
+
+/**
+ * Workday subdomain variants to try in order.
+ * Workday assigns each company a subdomain on one of these CDN tiers.
+ * We probe wd1 → wd5 until we get a 200 OK.
+ */
+const WORKDAY_TIERS = ["wd1", "wd2", "wd3", "wd4", "wd5"] as const;
+
+/** Max jobs to ingest per Workday company run (pagination cap). */
+const WORKDAY_MAX_JOBS = 50;
+const WORKDAY_PAGE_SIZE = 20;
+
+/**
+ * Scrapes jobs from a Workday career site.
+ *
+ * Strategy:
+ *  1. Iterate wd1 → wd5 until a variant responds with HTTP 200.
+ *  2. POST to the public Workday CXS search endpoint:
+ *     `POST https://<token>.<tier>.myworkdayjobs.com/wday/cxs/<token>/External_Career_Site/jobs`
+ *  3. Paginate via `offset` + `limit` fields in the request body.
+ *  4. Cap at WORKDAY_MAX_JOBS (50) total jobs per run.
+ *  5. Map job fields with full optional chaining — Workday payloads vary across
+ *     implementations and any field may be missing or null.
+ *  6. If all tiers fail, returns an empty ProcessResult (caller falls through to mock).
+ *
+ * @param token   - Workday company subdomain token (e.g. "amazon").
+ * @param company - Company row from the DB.
+ * @returns ProcessResult with created/updated counts and processed job IDs.
+ */
+export async function scrapeWorkdayJobs(
+  token: string,
+  company: CompanyRow
+): Promise<ProcessResult> {
+  const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
+
+  // ── Tier discovery — try wd1 through wd5 ─────────────────────────────────
+  let workingTier: string | null = null;
+
+  for (const tier of WORKDAY_TIERS) {
+    const probeUrl = `https://${token}.${tier}.myworkdayjobs.com/wday/cxs/${token}/External_Career_Site/jobs`;
+    try {
+      const probe = await axios.post(
+        probeUrl,
+        { limit: 1, offset: 0, searchText: "", appliedFacets: {} },
+        { timeout: 8000, validateStatus: (s) => s < 500 }
+      );
+      if (probe.status === 200) {
+        workingTier = tier;
+        break;
+      }
+    } catch {
+      // This tier unreachable — continue to next
+    }
+  }
+
+  if (!workingTier) {
+    console.warn(
+      `[Job Scraper] Workday: no working tier found for token "${token}" (wd1–wd5). Skipping.`
+    );
+    return result;
+  }
+
+  const baseUrl = `https://${token}.${workingTier}.myworkdayjobs.com/wday/cxs/${token}/External_Career_Site/jobs`;
+
+  // ── Paginated fetch ───────────────────────────────────────────────────────
+  let offset = 0;
+  let totalFetched = 0;
+
+  while (totalFetched < WORKDAY_MAX_JOBS) {
+    const remaining = WORKDAY_MAX_JOBS - totalFetched;
+    const pageSize = Math.min(WORKDAY_PAGE_SIZE, remaining);
+
+    let rawJobs: any[] = [];
+
+    try {
+      const response = await axios.post(
+        baseUrl,
+        { limit: pageSize, offset, searchText: "", appliedFacets: {} },
+        { timeout: 12000 }
+      );
+
+      // Workday wraps results in jobPostings (undocumented — varies by tenant)
+      const body = response.data ?? {};
+      rawJobs = body.jobPostings ?? body.jobPosting ?? body.jobs ?? [];
+
+      if (!Array.isArray(rawJobs) || rawJobs.length === 0) break;
+    } catch (err: any) {
+      console.warn(
+        `[Job Scraper] Workday page fetch failed for "${token}" at offset ${offset}: ${err.message}`
+      );
+      break;
+    }
+
+    // ── Filter and map each job ───────────────────────────────────────────
+    const techJobs = rawJobs
+      .filter((j: any) => isTechOrInternRole(j?.title ?? j?.jobPosting?.title ?? ""))
+      .slice(0, remaining);
+
+    for (const rawJob of techJobs) {
+      // Safe extraction — all Workday fields are accessed with optional chaining
+      const jobTitle: string =
+        rawJob?.title ??
+        rawJob?.jobPosting?.title ??
+        rawJob?.externalJobCode ??
+        "Engineering Role";
+
+      // Workday uses `externalPath` or `bulletFields[0]` as a unique identifier segment
+      const externalPath: string =
+        rawJob?.externalPath ??
+        rawJob?.jobPosting?.externalPath ??
+        rawJob?.id ??
+        `${token}-${offset}-${totalFetched}`;
+
+      const externalId = `workday-${token}-${externalPath.replace(/\//g, "-")}`;
+      const slug =
+        slugify(`${company.slug}-${jobTitle}-wd-${externalPath.slice(-8)}`, {
+          lower: true,
+          strict: true,
+        }) || `job-wd-${Date.now()}`;
+
+      // Location: Workday uses locationsText (string) or a nested locations array
+      const locationName: string =
+        rawJob?.locationsText ??
+        (Array.isArray(rawJob?.jobLocation) ? rawJob.jobLocation[0]?.descriptor : null) ??
+        company.headquarters ??
+        "Remote";
+
+      const workMode = parseWorkMode(locationName);
+      const type = parseJobType(jobTitle);
+      const { description, requirements, responsibilities } = getJobDescription(
+        jobTitle,
+        company.name
+      );
+      const skillsRequired = extractSkills(jobTitle, description);
+
+      // Apply URL — Workday public job links use externalPath as the slug segment
+      const applyUrl =
+        rawJob?.externalPath
+          ? `https://${token}.${workingTier}.myworkdayjobs.com${rawJob.externalPath}`
+          : `https://${token}.${workingTier}.myworkdayjobs.com/en-US/External_Career_Site`;
+
+      try {
+        const upserted = await prisma.job.upsert({
+          where: { slug },
+          create: {
+            companyId: company.id,
+            title: jobTitle,
+            slug,
+            description,
+            requirements,
+            responsibilities,
+            location: locationName,
+            type,
+            workMode,
+            applyUrl,
+            skillsRequired,
+            status: "OPEN",
+            externalJobId: externalId,
+            atsSource: "workday",
+          },
+          update: {
+            title: jobTitle,
+            description,
+            requirements,
+            responsibilities,
+            location: locationName,
+            type,
+            workMode,
+            applyUrl,
+            skillsRequired,
+            status: "OPEN",
+            atsSource: "workday",
+          },
+        });
+
+        result.processedJobIds.push(upserted.id);
+        if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
+          result.created++;
+        } else {
+          result.updated++;
+        }
+      } catch (upsertErr: any) {
+        console.warn(
+          `[Job Scraper] Workday upsert failed for "${jobTitle}" at ${company.name}: ${upsertErr.message}`
+        );
+      }
+
+      totalFetched++;
+    }
+
+    // If this page returned fewer results than the page size, we've exhausted all jobs
+    if (rawJobs.length < pageSize) break;
+
+    offset += pageSize;
+  }
+
+  console.log(
+    `[Job Scraper] Workday "${token}": ${result.created} created, ${result.updated} updated.`
+  );
 
   return result;
 }

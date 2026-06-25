@@ -140,7 +140,15 @@ export function syncJobToElastic(jobId: string): void {
       where: { id: jobId },
       include: {
         company: {
-          select: { name: true },
+          select: {
+            name: true,
+            isPromoted: true,
+            _count: {
+              select: {
+                adPlacements: { where: { isActive: true, expiresAt: { gt: new Date() } } },
+              },
+            },
+          },
         },
       },
     })
@@ -167,6 +175,9 @@ export function syncJobToElastic(jobId: string): void {
         return;
       }
 
+      const isPromoted: boolean = job.company?.isPromoted ?? false;
+      const hasActiveAd: boolean = (job.company?._count?.adPlacements ?? 0) > 0;
+
       await elasticClient.index({
         index: "jobs",
         id: job.id,
@@ -186,6 +197,8 @@ export function syncJobToElastic(jobId: string): void {
           ppoOffered: job.ppoOffered,
           featured: job.featured,
           createdAt: job.createdAt,
+          isPromoted,
+          hasActiveAd,
         },
       });
       console.log(`[ES Sync] Successfully synced job '${job.title}' (${job.id}) to Elasticsearch.`);
@@ -211,7 +224,15 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
       },
       include: {
         company: {
-          select: { name: true },
+          select: {
+            name: true,
+            isPromoted: true,
+            _count: {
+              select: {
+                adPlacements: { where: { isActive: true, expiresAt: { gt: new Date() } } },
+              },
+            },
+          },
         },
       },
     });
@@ -228,6 +249,9 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
       if (!j || j.deletedAt || j.status === "DELETED") {
         operations.push({ delete: { _index: "jobs", _id: id } });
       } else {
+        const isPromoted: boolean = j.company?.isPromoted ?? false;
+        const hasActiveAd: boolean = (j.company?._count?.adPlacements ?? 0) > 0;
+
         operations.push({ index: { _index: "jobs", _id: id } });
         operations.push({
           title: j.title,
@@ -245,6 +269,8 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
           ppoOffered: j.ppoOffered,
           featured: j.featured,
           createdAt: j.createdAt,
+          isPromoted,
+          hasActiveAd,
         });
       }
     }

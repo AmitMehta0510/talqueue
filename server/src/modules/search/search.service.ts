@@ -594,9 +594,33 @@ export const searchJobs = async (filters: SearchJobsFilters) => {
     if (mustClauses.length > 0) boolQuery.must = mustClauses;
     if (filterClauses.length > 0) boolQuery.filter = filterClauses;
 
-    const esQuery = Object.keys(boolQuery).length === 0
+    // Inner bool/match_all forms the relevance base
+    const innerQuery = Object.keys(boolQuery).length === 0
       ? { match_all: {} }
       : { bool: boolQuery };
+
+    // ── function_score: boost promoted companies and active ad placements ──
+    // score_mode: 'multiply' — if both filters match, weights multiply (2.0 × 1.5 = 3.0)
+    // boost_mode: 'multiply' — final score = original_relevance_score × combined_weight
+    // This ensures promoted/paid jobs float to the top without completely overriding
+    // text-relevance for highly-specific keyword searches.
+    const esQuery = {
+      function_score: {
+        query: innerQuery,
+        functions: [
+          {
+            filter: { term: { isPromoted: true } },
+            weight: 2.0,
+          },
+          {
+            filter: { term: { hasActiveAd: true } },
+            weight: 1.5,
+          },
+        ],
+        score_mode: "multiply" as const,
+        boost_mode: "multiply" as const,
+      },
+    };
 
     const esResponse = await elasticClient.search({
       index: "jobs",

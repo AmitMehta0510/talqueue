@@ -479,6 +479,28 @@ enum CommunityCategory {
   CAREER_GUIDANCE
 }
 
+// ---------------------------------------------------------------------------
+// MONETIZATION ENUMS
+// ---------------------------------------------------------------------------
+
+enum UserTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum CompanyTier {
+  FREE
+  ENTERPRISE
+}
+
+enum AdPlacementType {
+  BANNER
+  SIDEBAR
+  SPONSORED_JOB
+  EMAIL_BLAST
+}
+
 model User {
   id       String     @id @default(uuid())
   email    String     @unique
@@ -598,6 +620,12 @@ model User {
   openToWork Boolean @default(false)
 
   openToInternship Boolean @default(false)
+
+  // ── Monetization & Access Control ────────────────────────────────────────
+  tier                        UserTier @default(FREE)
+  dailyReferralCount          Int      @default(0)
+  maxDailyReferrals           Int      @default(5)
+  canAccessRecruiterDirectory Boolean  @default(false)
 
   badges UserBadge[]
 
@@ -788,6 +816,7 @@ model College {
   events          Event[]
   placementDrives PlacementDrive[]
   placementDriveInvites PlacementDriveInvite[]
+  adPlacements          AdPlacement[]
 
   @@index([name])
   @@index([city])
@@ -2237,6 +2266,14 @@ model Company {
   verificationStatus VerificationStatus  @default(UNVERIFIED)
   offices            CompanyOffice[]
   departments        CompanyDepartment[]
+
+  // ── Monetization & Promotion ─────────────────────────────────────────────
+  tier       CompanyTier @default(FREE)
+  isPromoted Boolean     @default(false)
+
+  adPlacements AdPlacement[]
+
+  @@unique([atsToken, atsSource])
 }
 
 model Job {
@@ -2314,6 +2351,8 @@ model Job {
   deletedAt  DateTime?
 
   companyRequest CompanyRequest?
+
+  adPlacements AdPlacement[]
 
   @@index([companyId, status])
   @@index([type, status])
@@ -3224,4 +3263,43 @@ model CompanyDepartment {
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name      String
   code      String?
+}
+
+// ---------------------------------------------------------------------------
+// ADVERTISING & PROMOTIONS
+// ---------------------------------------------------------------------------
+
+model AdPlacement {
+  id            String          @id @default(uuid())
+  title         String
+  bannerUrl     String?
+  redirectUrl   String
+  placementType AdPlacementType
+  impressions   Int             @default(0)
+  clicks        Int             @default(0)
+  isActive      Boolean         @default(true)
+  priority      Int             @default(0)
+  budgetInPaisa Int?
+  expiresAt     DateTime?
+  targetSkills  String[]        @default([])
+
+  // College-specific targeting (optional)
+  targetCollegeId String?
+  targetCollege   College? @relation(fields: [targetCollegeId], references: [id], onDelete: SetNull)
+
+  // Self-serve ad creation by a recruiter/company
+  createdByCompanyId String?
+  createdByCompany   Company? @relation(fields: [createdByCompanyId], references: [id], onDelete: SetNull)
+
+  // For SPONSORED_JOB type: links to existing Job record (zero data duplication)
+  jobId String?
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, placementType])
+  @@index([targetCollegeId])
+  @@index([expiresAt])
+  @@index([createdByCompanyId])
 }
