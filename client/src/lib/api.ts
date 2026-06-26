@@ -3087,7 +3087,44 @@ export const api = {
       `/recruiter/claim/jobs/${jobId}/applications/${appId}/status`,
       { method: "PATCH", body }
     ),
+
+  // ── Interview Module ────────────────────────────────────────────────────
+  interviews: (
+    params?: {
+      page?: number;
+      limit?: number;
+      roleTag?: string;
+      difficulty?: string;
+      companyTag?: string;
+      roundType?: string;
+      formatTag?: string;
+      langTag?: string;
+      search?: string;
+    },
+    options?: EndpointOptions
+  ) =>
+    request<InterviewListPage>(`/interviews${toQuery(params || {})}`, options),
+
+  interview: (id: string, options?: EndpointOptions) =>
+    request<InterviewResource>(`/interviews/${id}`, options),
+
+  toggleSaveInterview: (id: string) =>
+    request<{ saved: boolean }>(`/interviews/${id}/save`, { method: "POST" }),
+
+  // Admin
+  createInterview: (body: any) =>
+    request<InterviewResource>("/interviews", { method: "POST", body }),
+
+  updateInterview: (id: string, body: any) =>
+    request<InterviewResource>(`/interviews/${id}`, { method: "PUT", body }),
+
+  deleteInterview: (id: string) =>
+    request<{ deleted: boolean; id: string }>(`/interviews/${id}`, { method: "DELETE" }),
+
+  triggerInterviewScrape: (options?: EndpointOptions) =>
+    request<{ created: number; updated: number }>("/interviews/scrape", { method: "POST", ...options }),
 };
+
 
 export interface TpoDashboardStats {
   totalStudents: number;
@@ -3146,6 +3183,45 @@ export interface AlumniVerificationItem {
     } | null;
   };
 }
+
+// ─── Interview Module Types ────────────────────────────────────────────────────
+
+export type InterviewRoleTag =
+  | "SDE_1" | "SDE_2" | "FRONTEND" | "BACKEND" | "FULLSTACK"
+  | "DEVOPS" | "DATA_ML" | "MOBILE" | "SYSTEM_DESIGN" | "BEHAVIORAL";
+
+export type InterviewDifficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export type InterviewCompanyTag = "FAANG" | "STARTUP" | "MNC" | "ANY";
+export type InterviewRoundType = "CODING" | "SYSTEM_DESIGN" | "HR_BEHAVIORAL" | "APTITUDE";
+export type InterviewFormatTag = "MOCK_INTERVIEW" | "QA_ONLY" | "EXPLANATION" | "WHITEBOARD";
+
+export type InterviewResource = {
+  id: string;
+  title: string;
+  sourceUrl: string;
+  youtubeId: string;
+  channelName?: string | null;
+  thumbnailUrl?: string | null;
+  duration?: number | null;
+  roleTag: InterviewRoleTag;
+  difficulty: InterviewDifficulty;
+  companyTag: InterviewCompanyTag;
+  roundType?: InterviewRoundType | null;
+  langTags: string[];
+  formatTag?: InterviewFormatTag | null;
+  isActive: boolean;
+  isSaved?: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InterviewListPage = {
+  data: InterviewResource[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 export interface CompanyClaimSummary {
   id: string;

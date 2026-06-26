@@ -56,6 +56,11 @@ setImmediate(async () => {
   startJobLifecycleCron();
 });
 
+setImmediate(async () => {
+  const { startInterviewScraperCron } = await import("modules/interviews/interviews.cron");
+  startInterviewScraperCron();
+});
+
 
 app.get("/", (req, res) => {
   res.json(

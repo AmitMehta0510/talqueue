@@ -34,6 +34,7 @@ import { EventsPage } from "./pages/EventsPage";
 import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
 import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
 import { TpoDashboardPage } from "./pages/TpoDashboardPage";
+import { InterviewsPage } from "./pages/InterviewsPage";
 
 
 /** Syncs dark/light class to <html> based on OS preference. */
@@ -217,6 +218,7 @@ function AppRoutes() {
           <Route path="/hackathons" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
           <Route path="/hackathons/:hackathonSlug" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
           <Route path="/jobs" element={<PageTransitionWrapper><JobsPage /></PageTransitionWrapper>} />
+          <Route path="/interviews" element={<PageTransitionWrapper><InterviewsPage /></PageTransitionWrapper>} />
           <Route
             path="/placements"
             element={

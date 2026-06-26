@@ -40,6 +40,7 @@ import storageRoutes from "modules/storage/storage.routes";
 import growthLoopsRoutes from "modules/companies/growth-loops.routes";
 import tpoRoutes from "modules/companies/tpo.routes";
 import tpoDashboardRoutes from "modules/tpo/tpo-dashboard.routes";
+import interviewRoutes from "modules/interviews/interviews.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 
@@ -98,6 +99,8 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "tpo", path: "/tpo", router: tpoRoutes },
   // TPO Dashboard — authenticated portal for Training & Placement Officers
   { key: "tpoDashboard", path: "/tpo", router: tpoDashboardRoutes },
+  // Interview Module — aggregated content + future live P2P rooms
+  { key: "interviews", path: "/interviews", router: interviewRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(

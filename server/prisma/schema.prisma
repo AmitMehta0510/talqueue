@@ -501,6 +501,57 @@ enum AdPlacementType {
   EMAIL_BLAST
 }
 
+// ---------------------------------------------------------------------------
+// INTERVIEW MODULE ENUMS
+// ---------------------------------------------------------------------------
+
+enum InterviewDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum InterviewRoleTag {
+  SDE_1
+  SDE_2
+  FRONTEND
+  BACKEND
+  FULLSTACK
+  DEVOPS
+  DATA_ML
+  MOBILE
+  SYSTEM_DESIGN
+  BEHAVIORAL
+}
+
+enum InterviewCompanyTag {
+  FAANG
+  STARTUP
+  MNC
+  ANY
+}
+
+enum InterviewRoundType {
+  CODING
+  SYSTEM_DESIGN
+  HR_BEHAVIORAL
+  APTITUDE
+}
+
+enum InterviewFormatTag {
+  MOCK_INTERVIEW
+  QA_ONLY
+  EXPLANATION
+  WHITEBOARD
+}
+
+enum InterviewRoomStatus {
+  SCHEDULED
+  OPEN
+  ACTIVE
+  COMPLETED
+}
+
 model User {
   id       String     @id @default(uuid())
   email    String     @unique
@@ -664,6 +715,11 @@ model User {
   postedPlacementDrives           PlacementDrive[]
   placementDriveApplications      PlacementDriveApplication[]
   placementDriveInvitesCreated    PlacementDriveInvite[]      @relation("PlacementDriveInviteCreator")
+
+  // Interview Module
+  savedInterviewResources         SavedInterviewResource[]
+  hostedRooms                     InterviewRoom[]             @relation("RoomHost")
+  guestRooms                      InterviewRoom[]             @relation("RoomGuest")
 }
 
 model UserRecommendation {
@@ -3302,4 +3358,104 @@ model AdPlacement {
   @@index([targetCollegeId])
   @@index([expiresAt])
   @@index([createdByCompanyId])
+}
+
+// ---------------------------------------------------------------------------
+// INTERVIEW MODULE — PHASE 1: AGGREGATED CONTENT
+// ---------------------------------------------------------------------------
+
+model InterviewResource {
+  id           String   @id @default(uuid())
+
+  // Core metadata — zero storage cost (video hosted on YouTube)
+  title        String
+  sourceUrl    String   @unique      // canonical YouTube URL
+  youtubeId    String   @unique      // extracted video ID for embed
+
+  channelName  String?               // e.g. "NeetCode", "TechLead"
+  thumbnailUrl String?               // YouTube thumbnail CDN URL (not stored by us)
+  duration     Int?                  // seconds
+
+  // Filter dimensions
+  roleTag      InterviewRoleTag
+  difficulty   InterviewDifficulty
+  companyTag   InterviewCompanyTag  @default(ANY)
+  roundType    InterviewRoundType?
+  langTags     String[]             @default([])  // e.g. ["Node.js", "Spring Boot"]
+  formatTag    InterviewFormatTag?
+
+  // Governance
+  isActive     Boolean  @default(true)
+  addedById    String?              // userId of PLATFORM_ADMIN (null = cron-seeded)
+
+  // Relations
+  rooms        InterviewRoom[]
+  savedBy      SavedInterviewResource[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([roleTag])
+  @@index([difficulty])
+  @@index([companyTag])
+  @@index([roundType])
+  @@index([isActive, roleTag, difficulty])
+  @@index([isActive, companyTag])
+}
+
+model SavedInterviewResource {
+  id         String   @id @default(uuid())
+  userId     String
+  resourceId String
+
+  user       User              @relation(fields: [userId],     references: [id], onDelete: Cascade)
+  resource   InterviewResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, resourceId])
+  @@index([userId])
+  @@index([resourceId])
+}
+
+// ---------------------------------------------------------------------------
+// INTERVIEW MODULE — PHASE 2 STUB: LIVE P2P ROOMS
+// All live-session fields are nullable so Phase 1 rows carry zero overhead.
+// ---------------------------------------------------------------------------
+
+model InterviewRoom {
+  id          String              @id @default(uuid())
+
+  // Lifecycle
+  status      InterviewRoomStatus @default(SCHEDULED)
+
+  // Participants (populated in Phase 2)
+  hostId      String?
+  guestId     String?
+
+  // WebRTC signaling token (populated in Phase 2)
+  webrtcToken String?
+
+  // Scheduling & timing
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+
+  // AI feedback loop (Phase 2)
+  aiFeedback  Json?
+
+  // Optional link to an aggregated resource that seeded this room
+  resourceId  String?
+
+  host        User?              @relation("RoomHost",  fields: [hostId],     references: [id], onDelete: SetNull)
+  guest       User?              @relation("RoomGuest", fields: [guestId],    references: [id], onDelete: SetNull)
+  resource    InterviewResource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([hostId])
+  @@index([guestId])
+  @@index([resourceId])
 }
