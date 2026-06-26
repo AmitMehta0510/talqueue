@@ -297,6 +297,37 @@ export const recommendCollaborators = async (
       id: {
         not: userId,
       },
+      NOT: {
+        OR: [
+          { primaryRole: { in: ["SUPER_ADMIN", "PLATFORM_ADMIN"] } },
+          { primaryRole: { contains: "scraper", mode: "insensitive" } },
+          { username: { contains: "scraper", mode: "insensitive" } },
+          { email: { contains: "scraper", mode: "insensitive" } },
+          {
+            roles: {
+              some: {
+                role: {
+                  name: {
+                    in: ["SUPER_ADMIN", "PLATFORM_ADMIN", "SCRAPER"],
+                  },
+                },
+              },
+            },
+          },
+          {
+            roles: {
+              some: {
+                role: {
+                  name: {
+                    contains: "scraper",
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
     },
     include: {
       profile: true,

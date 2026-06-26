@@ -763,15 +763,37 @@ describe("Social Service — Suite 3: Suggested Connections & Block Safety", () 
         none: { senderId: USER_A },
       });
 
-      // Exclude platform admins
-      expect(where.targetUser.roles).toEqual({
-        none: {
-          role: {
-            name: {
-              in: ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+      // Exclude platform admins and scrapers
+      expect(where.targetUser.NOT).toEqual({
+        OR: [
+          { primaryRole: { in: ["SUPER_ADMIN", "PLATFORM_ADMIN"] } },
+          { primaryRole: { contains: "scraper", mode: "insensitive" } },
+          { username: { contains: "scraper", mode: "insensitive" } },
+          { email: { contains: "scraper", mode: "insensitive" } },
+          {
+            roles: {
+              some: {
+                role: {
+                  name: {
+                    in: ["SUPER_ADMIN", "PLATFORM_ADMIN", "SCRAPER"],
+                  },
+                },
+              },
             },
           },
-        },
+          {
+            roles: {
+              some: {
+                role: {
+                  name: {
+                    contains: "scraper",
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          },
+        ],
       });
     },
   );

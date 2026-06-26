@@ -8,12 +8,10 @@ import {
   Star,
   Award,
   ArrowUpRight,
-  Activity,
   Sparkles,
   Rocket,
   Briefcase,
   User as UserIcon,
-  CheckCircle,
   X,
   Send,
   Users,
@@ -83,7 +81,7 @@ const fallbackRepositories = [
 // ---------------------------------------------------------------------------
 
 export function FeedPage() {
-  const { user, apiOnline } = useAuth();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState<FeedCategory>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -735,43 +733,6 @@ export function FeedPage() {
                 No active hackathons available.
               </div>
             )}
-          </div>
-
-          {/* Telemetry Snapshot Monitor Widget — intentionally dark in both modes */}
-          <div className="panel p-4 bg-slate-950 text-white border-0 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-20 w-20 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
-            <div className="flex items-center gap-2 pb-3 mb-3 border-b border-white/10">
-              <Activity size={16} className="text-indigo-400" />
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-white">
-                Telemetry Monitor
-              </h3>
-            </div>
-            <div className="space-y-2 text-[10px] font-semibold text-slate-400">
-              <div className="flex justify-between items-center">
-                <span>API MONITOR STATUS:</span>
-                <span className="flex items-center gap-1">
-                  <span className={`h-1.5 w-1.5 rounded-full ${apiOnline ? "bg-indigo-400" : "bg-rose-400 animate-ping"}`} />
-                  <span className={apiOnline ? "text-indigo-400" : "text-rose-400"}>
-                    {apiOnline ? "ONLINE" : "OFFLINE"}
-                  </span>
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>LOCAL LATENCY SPEED:</span>
-                <span className="text-indigo-400">12 ms</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>CACHED STREAM ITEMS:</span>
-                <span>{feed.length} elements</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>INTEGRITY PIPELINE:</span>
-                <span className="text-indigo-400 flex items-center gap-0.5">
-                  <CheckCircle size={10} />
-                  <span>SECURE</span>
-                </span>
-              </div>
-            </div>
           </div>
         </aside>
       </div>

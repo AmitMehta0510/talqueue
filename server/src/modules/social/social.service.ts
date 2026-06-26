@@ -707,14 +707,36 @@ export const getSuggestedConnections = async (
             senderId: userId,
           },
         },
-        roles: {
-          none: {
-            role: {
-              name: {
-                in: ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+        NOT: {
+          OR: [
+            { primaryRole: { in: ["SUPER_ADMIN", "PLATFORM_ADMIN"] } },
+            { primaryRole: { contains: "scraper", mode: "insensitive" } },
+            { username: { contains: "scraper", mode: "insensitive" } },
+            { email: { contains: "scraper", mode: "insensitive" } },
+            {
+              roles: {
+                some: {
+                  role: {
+                    name: {
+                      in: ["SUPER_ADMIN", "PLATFORM_ADMIN", "SCRAPER"],
+                    },
+                  },
+                },
               },
             },
-          },
+            {
+              roles: {
+                some: {
+                  role: {
+                    name: {
+                      contains: "scraper",
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+            },
+          ],
         },
       },
     },
