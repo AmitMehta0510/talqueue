@@ -37,6 +37,7 @@ import {
   Users,
   X,
   Zap,
+  MessageSquare,
 } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { api, College, Department, Project, Skill, User as UserType, StandardDepartment } from "../lib/api";
@@ -82,12 +83,17 @@ import {
   useVerifyCollegeEmailMutation,
   useVerifyWorkEmailMutation,
   useStandardDepartmentsQuery,
+  useUserTimelineQuery,
+  usePostReactionMutation,
+  useCommentOnPostMutation,
+  useRepostMutation,
 } from "../hooks/usePlatformQueries";
+import { FeedCard } from "../components/cards/FeedCard";
 import { useFileUpload } from "../hooks/useFileUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "about" | "experience" | "skills" | "education" | "projects" | "settings";
+type Tab = "about" | "posts" | "experience" | "skills" | "education" | "projects" | "settings";
 
 const MAX_SKILLS = 30;
 
@@ -609,6 +615,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
     { id: "about", label: "About", icon: User },
+    { id: "posts", label: "Posts & Reposts", icon: MessageSquare },
     { id: "experience", label: "Experience", icon: Briefcase },
     { id: "skills", label: "Skills", icon: Code2 },
     { id: "education", label: "Education", icon: GraduationCap },
@@ -659,6 +666,11 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             completedTasks={completedTasks}
             tasks={profileTasks}
           />
+        )}
+
+        {/* POSTS & REPOSTS */}
+        {activeTab === "posts" && profile.id && (
+          <PostsTab userId={profile.id} />
         )}
 
         {/* EXPERIENCE */}
@@ -2322,6 +2334,78 @@ function EmptySection({
         <p className="mt-1 max-w-xs text-xs text-muted-fg">{text}</p>
       </div>
       {action}
+    </div>
+  );
+}
+
+// ─── Posts Tab ────────────────────────────────────────────────────────────────
+function PostsTab({ userId }: { userId: string }) {
+  const { user } = useAuth();
+  const timelineQuery = useUserTimelineQuery(userId);
+  const postReaction = usePostReactionMutation();
+  const commentOnPost = useCommentOnPostMutation();
+  const repost = useRepostMutation();
+
+  const handleLike = (id: string) => {
+    if (postReaction.isPending) return;
+    postReaction.mutate({ id, action: "like" });
+  };
+
+  const handleSave = (id: string) => {
+    if (postReaction.isPending) return;
+    postReaction.mutate({ id, action: "save" });
+  };
+
+  const handleComment = async (id: string, content: string, parentCommentId?: string) => {
+    try {
+      await commentOnPost.mutateAsync({ id, content, parentCommentId });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleRepost = async (id: string, caption?: string) => {
+    try {
+      await repost.mutateAsync({ id, caption });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const timeline = timelineQuery.data || [];
+  const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
+
+  if (timelineQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="animate-spin text-brand" size={24} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {timeline.length ? (
+        timeline.map((item, index) => (
+          <FeedCard
+            key={`${item.type}-${(item.data as any).id || index}`}
+            item={item}
+            position={index}
+            trackImpression={false}
+            canInteract={Boolean(user) && !interacting}
+            onLike={handleLike}
+            onSave={handleSave}
+            onComment={handleComment}
+            onRepost={handleRepost}
+          />
+        ))
+      ) : (
+        <div className="panel p-8 text-center text-muted-fg">
+          No posts or reposts published by this engineer yet.
+        </div>
+      )}
     </div>
   );
 }

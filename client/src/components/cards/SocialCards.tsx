@@ -1,5 +1,5 @@
-import { Check, CheckCheck, Gift, Link as LinkIcon, MessageSquare, UserPlus, Users } from "lucide-react";
-import { useState } from "react";
+import { Check, CheckCheck, Gift, MessageSquare, UserPlus, Users, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { SuggestedUser, User } from "../../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../../lib/format";
 import { Avatar } from "../ui";
@@ -16,6 +16,7 @@ export function EngineerCard({
   onMessage,
   onOpenProfile,
   onRequestReferral,
+  actionsInHeader = false,
 }: {
   user: User | SuggestedUser;
   context?: string;
@@ -26,6 +27,7 @@ export function EngineerCard({
   onMessage?: (user: User | SuggestedUser) => void;
   onOpenProfile?: (user: User | SuggestedUser) => void;
   onRequestReferral?: (user: User | SuggestedUser) => void;
+  actionsInHeader?: boolean;
 }) {
   const suggested = user as SuggestedUser;
 
@@ -42,21 +44,46 @@ export function EngineerCard({
     Boolean((user as any).isFollowing),
   );
 
+  const [isConnectingPending, setIsConnectingPending] = useState(false);
+  const [isFollowingPending, setIsFollowingPending] = useState(false);
+
+  useEffect(() => {
+    setConnectionStatus(((user as any).connectionStatus as ConnectionStatus) || "NONE");
+  }, [(user as any).connectionStatus]);
+
+  useEffect(() => {
+    setIsFollowing(Boolean((user as any).isFollowing));
+  }, [(user as any).isFollowing]);
+
   const isSelf = Boolean(currentUserId && user.id === currentUserId);
   const canMessage = connectionStatus === "ACCEPTED";
 
-  const handleConnect = (e: React.MouseEvent) => {
+  const handleConnect = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!onConnect || connectionStatus !== "NONE") return;
+    if (!onConnect || connectionStatus !== "NONE" || isConnectingPending) return;
     setConnectionStatus("PENDING");
-    onConnect(user);
+    setIsConnectingPending(true);
+    try {
+      await onConnect(user);
+    } catch {
+      setConnectionStatus("NONE");
+    } finally {
+      setIsConnectingPending(false);
+    }
   };
 
-  const handleFollow = (e: React.MouseEvent) => {
+  const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!onFollow || isFollowing) return;
+    if (!onFollow || isFollowing || isFollowingPending) return;
     setIsFollowing(true);
-    onFollow(user);
+    setIsFollowingPending(true);
+    try {
+      await onFollow(user);
+    } catch {
+      setIsFollowing(false);
+    } finally {
+      setIsFollowingPending(false);
+    }
   };
 
   const handleMessage = (e: React.MouseEvent) => {
@@ -76,6 +103,106 @@ export function EngineerCard({
     RECRUITER: "Recruiter",
     WORKING_PROFESSIONAL: "Professional",
     PROFESSIONAL: "Professional",
+  };
+
+  const renderActions = (compact = false) => {
+    if (isSelf) return null;
+    return (
+      <div className={`flex flex-wrap items-center gap-1.5 ${compact ? "mt-2 justify-start" : "mt-5 justify-end border-t border-base pt-4"}`}>
+        {/* Follow */}
+        {onFollow && (
+          isFollowing ? (
+            <button
+              className={`btn-secondary ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5"} text-brand bg-brand-light border-brand-light opacity-80`}
+              type="button"
+              disabled
+            >
+              <Check size={compact ? 12 : 15} />
+              Following
+            </button>
+          ) : (
+            <button
+              className={`btn-secondary ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5"}`}
+              type="button"
+              disabled={disabled || isFollowingPending}
+              onClick={handleFollow}
+            >
+              {isFollowingPending ? <Loader2 className="animate-spin" size={compact ? 12 : 15} /> : <UserPlus size={compact ? 12 : 15} />}
+              Follow
+            </button>
+          )
+        )}
+
+        {/* Connect */}
+        {onConnect && (
+          connectionStatus === "ACCEPTED" ? (
+            <button
+              className={`btn-secondary ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5"} text-brand bg-brand-light border-brand-light opacity-80`}
+              type="button"
+              disabled
+            >
+              <Check size={compact ? 12 : 15} />
+              Connected
+            </button>
+          ) : connectionStatus === "PENDING" ? (
+            <button
+              className={`btn-secondary ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5"} text-muted-fg`}
+              type="button"
+              disabled
+            >
+              <CheckCheck size={compact ? 12 : 15} />
+              Request Sent
+            </button>
+          ) : (
+            <button
+              className={`btn-primary ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5"}`}
+              type="button"
+              disabled={disabled || isConnectingPending}
+              onClick={handleConnect}
+            >
+              {isConnectingPending ? <Loader2 className="animate-spin" size={compact ? 12 : 15} /> : <LinkIcon size={compact ? 12 : 15} />}
+              Connect
+            </button>
+          )
+        )}
+
+        {/* Message */}
+        {onMessage && (
+          <button
+            className={`inline-flex items-center gap-1.5 rounded-lg border ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs"} font-semibold transition-all duration-150 active:scale-[0.97] ${
+              canMessage
+                ? "border-base bg-surface text-secondary hover:border-brand hover:bg-brand-light hover:text-brand"
+                : "cursor-not-allowed border-base bg-surface-2 text-muted-fg opacity-50"
+            }`}
+            type="button"
+            disabled={!canMessage || disabled}
+            title={canMessage ? "Open chat" : "Connect first to send messages"}
+            onClick={handleMessage}
+          >
+            <MessageSquare size={compact ? 11 : 14} />
+            Message
+          </button>
+        )}
+
+        {/* Ask Referral */}
+        {onRequestReferral &&
+          (
+            (user.primaryRole === "PROFESSIONAL" || user.primaryRole === "WORKING_PROFESSIONAL" || (user as any).role === "PROFESSIONAL" || (user as any).role === "WORKING_PROFESSIONAL") ||
+            (user.primaryRole === "RECRUITER" || (user as any).role === "RECRUITER")
+          ) &&
+          user.acceptingReferrals === true && (
+          <button
+            className={`inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs"} font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-100 dark:hover:bg-amber-950/50 hover:shadow-sm`}
+            type="button"
+            disabled={disabled}
+            onClick={handleReferral}
+          >
+            <Gift size={compact ? 11 : 14} />
+            Ask Referral
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -114,6 +241,9 @@ export function EngineerCard({
             <p className="truncate text-xs text-muted-fg">
               {userHeadline(user) || `@${user.username}`}
             </p>
+
+            {/* Display action controls compact inside the header block if requested */}
+            {actionsInHeader && renderActions(true)}
           </div>
         </div>
         {suggested.affinityScore !== undefined && (
@@ -158,92 +288,8 @@ export function EngineerCard({
         ))}
       </div>
 
-      {/* Actions */}
-      {!isSelf && (
-        <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-base pt-4">
-
-          {/* Follow */}
-          {onFollow && (
-            isFollowing ? (
-              <button className="btn-secondary px-3 py-1.5 text-brand bg-brand-light border-brand-light opacity-80" type="button" disabled>
-                <Check size={15} />
-                Following
-              </button>
-            ) : (
-              <button
-                className="btn-secondary px-3 py-1.5"
-                type="button"
-                disabled={disabled}
-                onClick={handleFollow}
-              >
-                <UserPlus size={15} />
-                Follow
-              </button>
-            )
-          )}
-
-          {/* Connect */}
-          {onConnect && (
-            connectionStatus === "ACCEPTED" ? (
-              <button className="btn-secondary px-3 py-1.5 text-brand bg-brand-light border-brand-light opacity-80" type="button" disabled>
-                <Check size={15} />
-                Connected
-              </button>
-            ) : connectionStatus === "PENDING" ? (
-              <button className="btn-secondary px-3 py-1.5 text-muted-fg" type="button" disabled>
-                <CheckCheck size={15} />
-                Request Sent
-              </button>
-            ) : (
-              <button
-                className="btn-primary px-3 py-1.5"
-                type="button"
-                disabled={disabled}
-                onClick={handleConnect}
-              >
-                <Link size={15} />
-                Connect
-              </button>
-            )
-          )}
-
-          {/* Message — show always when handler given, disabled until connected */}
-          {onMessage && (
-            <button
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-[0.97] ${
-                canMessage
-                  ? "border-base bg-surface text-secondary hover:border-brand hover:bg-brand-light hover:text-brand"
-                  : "cursor-not-allowed border-base bg-surface-2 text-muted-fg opacity-50"
-              }`}
-              type="button"
-              disabled={!canMessage || disabled}
-              title={canMessage ? "Open chat" : "Connect first to send messages"}
-              onClick={handleMessage}
-            >
-              <MessageSquare size={14} />
-              Message
-            </button>
-          )}
-
-          {/* Ask Referral — only show for Professionals/Recruiters who accept referrals */}
-          {onRequestReferral &&
-            (
-              (user.primaryRole === "PROFESSIONAL" || user.primaryRole === "WORKING_PROFESSIONAL" || (user as any).role === "PROFESSIONAL" || (user as any).role === "WORKING_PROFESSIONAL") ||
-              (user.primaryRole === "RECRUITER" || (user as any).role === "RECRUITER")
-            ) &&
-            user.acceptingReferrals === true && (
-            <button
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-400 transition hover:bg-amber-100 dark:hover:bg-amber-950/50 hover:shadow-sm"
-              type="button"
-              disabled={disabled}
-              onClick={handleReferral}
-            >
-               <Gift size={14} />
-              Ask Referral
-            </button>
-          )}
-        </div>
-      )}
+      {/* Actions (only if actionsInHeader is false) */}
+      {!actionsInHeader && renderActions(false)}
     </article>
   );
 }
@@ -258,7 +304,7 @@ export function TeamRoleBadge({ value }: { value?: string | null }) {
 }
 
 // Re-export Link icon fix
-function Link({ size }: { size: number }) {
+function LinkIcon({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />

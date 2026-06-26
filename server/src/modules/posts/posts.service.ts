@@ -1407,3 +1407,161 @@ export const deleteComment = async (userId: string, commentId: string) => {
     success: true,
   };
 };
+
+export const getUserTimeline = async (
+  requestingUserId: string | undefined,
+  targetUserId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const safeLimit = Math.min(limit, 50);
+
+  // Fetch posts by targetUserId
+  const posts = await prisma.post.findMany({
+    where: {
+      authorId: targetUserId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      authorId: true,
+      content: true,
+      type: true,
+      media: true,
+      attachments: true,
+      thumbnailUrl: true,
+      mentions: true,
+      visibility: true,
+      pinned: true,
+      featured: true,
+      shareCount: true,
+      saveCount: true,
+      commentsCount: true,
+      likesCount: true,
+      impressionCount: true,
+      engagementScore: true,
+      trendingScore: true,
+      createdAt: true,
+      updatedAt: true,
+      author: {
+        select: compactPostAuthorSelect,
+      },
+      tags: true,
+    },
+  });
+
+  // Fetch shares (reposts) by targetUserId
+  const shares = await prisma.postShare.findMany({
+    where: {
+      userId: targetUserId,
+    },
+    include: {
+      post: {
+        select: {
+          id: true,
+          authorId: true,
+          content: true,
+          type: true,
+          media: true,
+          attachments: true,
+          thumbnailUrl: true,
+          mentions: true,
+          visibility: true,
+          pinned: true,
+          featured: true,
+          shareCount: true,
+          saveCount: true,
+          commentsCount: true,
+          likesCount: true,
+          impressionCount: true,
+          engagementScore: true,
+          trendingScore: true,
+          createdAt: true,
+          updatedAt: true,
+          author: {
+            select: compactPostAuthorSelect,
+          },
+          tags: true,
+        },
+      },
+    },
+  });
+
+  // Map to unified feed items
+  const postItems = posts.map((post) => ({
+    type: "POST" as const,
+    score: 0,
+    reason: undefined,
+    data: post,
+    actionCreatedAt: post.createdAt,
+  }));
+
+  const shareItems = shares
+    .filter((s) => s.post !== null && (s.post as any).deletedAt === null)
+    .map((share) => ({
+      type: "POST" as const,
+      score: 0,
+      reason: "Reposted",
+      data: share.post,
+      actionCreatedAt: share.createdAt,
+    }));
+
+  // Combine and sort by actionCreatedAt
+  const combined = [...postItems, ...shareItems];
+  combined.sort((a, b) => new Date(b.actionCreatedAt).getTime() - new Date(a.actionCreatedAt).getTime());
+
+  // Paginate
+  const start = (page - 1) * safeLimit;
+  const paginated = combined.slice(start, start + safeLimit);
+
+  // Mark liked/saved for requesting user
+  let likedPostIds = new Set<string>();
+  let savedPostIds = new Set<string>();
+
+  if (requestingUserId && paginated.length > 0) {
+    const postIds = paginated.map((item) => item.data.id);
+    const [likes, saved] = await Promise.all([
+      prisma.like.findMany({
+        where: {
+          userId: requestingUserId,
+          postId: {
+            in: postIds,
+          },
+        },
+        select: {
+          postId: true,
+        },
+      }),
+      prisma.savedPost.findMany({
+        where: {
+          userId: requestingUserId,
+          postId: {
+            in: postIds,
+          },
+        },
+        select: {
+          postId: true,
+        },
+      }),
+    ]);
+
+    likedPostIds = new Set(likes.map((l) => l.postId));
+    savedPostIds = new Set(saved.map((s) => s.postId));
+  }
+
+  const items = paginated.map((item) => ({
+    type: item.type,
+    score: item.score,
+    reason: item.reason,
+    data: {
+      ...item.data,
+      isLiked: likedPostIds.has(item.data.id),
+      isSaved: savedPostIds.has(item.data.id),
+    },
+  }));
+
+  return {
+    items,
+    nextPage: combined.length > start + safeLimit ? page + 1 : null,
+  };
+};

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { EngineerCard } from "../components/cards/SocialCards";
 import {
   Compass,
   Loader2,
@@ -33,6 +34,11 @@ import {
   useMyReputationQuery,
   useReputationLeaderboardQuery,
   useHackathonsQuery,
+  useSuggestedConnectionsQuery,
+  useFollowUserMutation,
+  useConnectUserMutation,
+  useCreateDirectConversationMutation,
+  useRecommendedProjectsQuery,
 } from "../hooks/usePlatformQueries";
 import { titleCase, userName, formatCount, userHeadline, formatDate } from "../lib/format";
 
@@ -46,42 +52,13 @@ const ComposePost = lazy(() =>
 
 type FeedCategory = "all" | "recommended" | "discussions" | "projects" | "jobs";
 
-const fallbackRepositories = [
-  {
-    id: "fallback-react",
-    title: "facebook/react",
-    description: "The library for web and native user interfaces.",
-    shortDescription: "The library for web and native user interfaces.",
-    techStack: ["JavaScript", "TypeScript"],
-    slug: "react",
-    status: "ACTIVE",
-  },
-  {
-    id: "fallback-typescript",
-    title: "microsoft/TypeScript",
-    description: "TypeScript is a superset of JavaScript that compiles to clean JavaScript output.",
-    shortDescription: "TypeScript is a superset of JavaScript that compiles to clean JavaScript output.",
-    techStack: ["TypeScript"],
-    slug: "typescript",
-    status: "ACTIVE",
-  },
-  {
-    id: "fallback-nodejs",
-    title: "nodejs/node",
-    description: "Node.js JavaScript runtime ✨🐢🚀",
-    shortDescription: "Node.js JavaScript runtime ✨🐢🚀",
-    techStack: ["C++", "JavaScript"],
-    slug: "node",
-    status: "ACTIVE",
-  },
-];
-
 // ---------------------------------------------------------------------------
 // FeedPage
 // ---------------------------------------------------------------------------
 
 export function FeedPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<FeedCategory>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -92,7 +69,12 @@ export function FeedPage() {
   // API Queries & Mutations
   const feedQuery        = useFeedQuery(30);
   const projectsQuery    = useProjectsQuery(12);
+  const recommendedProjectsQuery = useRecommendedProjectsQuery();
   const jobsQuery        = useJobsQuery();
+  const suggestedConnectionsQuery = useSuggestedConnectionsQuery(3);
+  const followUser = useFollowUserMutation();
+  const connectUser = useConnectUserMutation();
+  const createDirectConversation = useCreateDirectConversationMutation();
   const leaderboardQuery = useReputationLeaderboardQuery();
   const myReputationQuery= useMyReputationQuery();
   const hackathonsQuery  = useHackathonsQuery({ status: "ACTIVE" });
@@ -104,14 +86,24 @@ export function FeedPage() {
 
   // Derived data (memoized — no expensive computation, just null-safety)
   const feed              = useMemo(() => feedQuery.data ?? [], [feedQuery.data]);
-  const projects          = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
+  const projects          = useMemo(() => {
+    if (user) {
+      return recommendedProjectsQuery.data || [];
+    }
+    return projectsQuery.data || [];
+  }, [user, recommendedProjectsQuery.data, projectsQuery.data]);
   const jobs              = useMemo(() => jobsQuery.data?.jobs ?? [], [jobsQuery.data]);
   const leaders           = useMemo(() => leaderboardQuery.data ?? [], [leaderboardQuery.data]);
   const featuredHackathons= useMemo(() => hackathonsQuery.data ?? [], [hackathonsQuery.data]);
+  const suggestedUsers    = useMemo(() => {
+    if (!suggestedConnectionsQuery.data?.pages) return [];
+    return suggestedConnectionsQuery.data.pages.flatMap((page) => page.users || []);
+  }, [suggestedConnectionsQuery.data?.pages]);
 
   const refreshing =
     feedQuery.isFetching      ||
     projectsQuery.isFetching  ||
+    recommendedProjectsQuery.isFetching ||
     jobsQuery.isFetching      ||
     leaderboardQuery.isFetching||
     myReputationQuery.isFetching||
@@ -590,6 +582,36 @@ export function FeedPage() {
             )}
           </div>
 
+          {/* Suggested Connections Widget */}
+          {user && suggestedUsers.length > 0 && (
+            <div className="panel p-4">
+              <div
+                className="flex items-center gap-2 pb-3 mb-3 border-b"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <Users size={16} className="text-indigo-500" />
+                <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
+                  Suggested Connections
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {suggestedUsers.slice(0, 3).map((sUser) => (
+                  <EngineerCard
+                    key={sUser.id}
+                    user={sUser}
+                    currentUserId={user.id}
+                    actionsInHeader={true}
+                    onConnect={(u) => connectUser.mutate(u.id)}
+                    onFollow={(u) => followUser.mutate(u.id)}
+                    onMessage={(u) => createDirectConversation.mutate(u.id)}
+                    onRequestReferral={(u) => navigate(`/discover?referral=${u.id}`)}
+                    onOpenProfile={(u) => navigate(`/users/${u.username || u.id}`)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Featured Projects */}
           <div className="panel p-4">
             <div
@@ -602,13 +624,13 @@ export function FeedPage() {
               </h3>
             </div>
 
-            {projectsQuery.isLoading ? (
+            {projectsQuery.isLoading || (user && recommendedProjectsQuery.isLoading) ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
-            ) : (projects.length > 0 ? projects : fallbackRepositories).length > 0 ? (
+            ) : projects.length > 0 ? (
               <div className="space-y-3.5">
-                {(projects.length > 0 ? projects : fallbackRepositories).slice(0, 3).map((project) => (
+                {projects.slice(0, 3).map((project) => (
                   <div key={project.id}>
                     <Link
                       to={`/projects/${project.slug || project.id}`}
@@ -638,7 +660,11 @@ export function FeedPage() {
                   </div>
                 ))}
               </div>
-            ) : null}
+            ) : (
+              <div className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
+                No customized projects matching your skills.
+              </div>
+            )}
           </div>
 
           {/* Featured Hackathons */}

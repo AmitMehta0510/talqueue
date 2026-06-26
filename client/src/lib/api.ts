@@ -2305,6 +2305,8 @@ export const api = {
     request<{ success: boolean }>(`/posts/comments/${commentId}`, {
       method: "DELETE",
     }),
+  userTimeline: (userId: string, options?: EndpointOptions) =>
+    request<FeedItem[]>(`/posts/user/${userId}`, options),
   projects: (limit = 12, options?: EndpointOptions) =>
     request<Project[]>(`/projects${toQuery({ limit })}`, options),
   project: (idOrSlug: string, options?: EndpointOptions) =>

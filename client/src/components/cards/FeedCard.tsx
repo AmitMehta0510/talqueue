@@ -8,6 +8,7 @@ import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName }
 import { Avatar } from "../ui";
 import { HackathonCard } from "./HackathonCard";
 import { JobCard } from "./JobCard";
+import { CompanyFeedCard } from "./CompanyFeedCard";
 
 const projectTags = (project: Project) =>
   Array.isArray(project.techStack) ? project.techStack.map(String) : project.searchTags || [];
@@ -112,6 +113,14 @@ export function FeedCard({
     return (
       <div ref={impressionRef as any}>
         <JobCard job={item.data as any} />
+      </div>
+    );
+  }
+
+  if (item.type === "COMPANY") {
+    return (
+      <div ref={impressionRef as any}>
+        <CompanyFeedCard company={item.data as any} />
       </div>
     );
   }

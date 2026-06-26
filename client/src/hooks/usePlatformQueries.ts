@@ -2150,6 +2150,7 @@ export const usePostReactionMutation = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+      queryClient.invalidateQueries({ queryKey: ["posts", "user"] });
     },
   });
 };
@@ -2176,6 +2177,7 @@ export const useCommentOnPostMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+      queryClient.invalidateQueries({ queryKey: ["posts", "user"] });
       queryClient.invalidateQueries({
         queryKey: queryKeys.feed.post(variables.id),
       });
@@ -2198,11 +2200,23 @@ export const useRepostMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
     onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed.all });
+      queryClient.invalidateQueries({ queryKey: ["posts", "user"] });
       queryClient.invalidateQueries({
         queryKey: queryKeys.feed.post(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
+  });
+};
+
+export const useUserTimelineQuery = (userId: string) => {
+  return useQuery({
+    queryKey: ["posts", "user", userId],
+    queryFn: async ({ signal }) => {
+      const result = await api.userTimeline(userId, { signal });
+      return result.data || [];
+    },
+    enabled: Boolean(userId),
   });
 };
 

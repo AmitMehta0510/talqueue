@@ -41,7 +41,12 @@ import {
   useMutualConnectionsQuery,
   useUserProfileQuery,
   useUpgradePremiumMutation,
+  useUserTimelineQuery,
+  usePostReactionMutation,
+  useCommentOnPostMutation,
+  useRepostMutation,
 } from "../hooks/usePlatformQueries";
+import { FeedCard } from "../components/cards/FeedCard";
 import { FollowingPage } from "../lib/api";
 import {
   formatCount,
@@ -51,7 +56,7 @@ import {
 } from "../lib/format";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 
-type Tab = "about" | "projects" | "experience" | "skills" | "education" | "connections";
+type Tab = "about" | "posts" | "projects" | "experience" | "skills" | "education" | "connections";
 
 const flattenFollowing = <T, K extends string>(pages: Array<Record<K, T[]>>, key: K) =>
   pages.flatMap((page) => page[key] || []);
@@ -131,12 +136,13 @@ export function UserProfilePage() {
   ].filter(Boolean) as string[];
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about",       label: "About",       icon: User },
-    { id: "projects",   label: "Projects",   icon: FolderKanban },
-    { id: "experience", label: "Experience", icon: Briefcase },
-    { id: "skills",     label: "Skills",     icon: Code2 },
-    { id: "education",  label: "Education",  icon: GraduationCap },
-    { id: "connections",label: "Mutual",      icon: Users },
+    { id: "about",       label: "About",           icon: User },
+    { id: "posts",       label: "Posts & Reposts", icon: MessageSquare },
+    { id: "projects",   label: "Projects",        icon: FolderKanban },
+    { id: "experience", label: "Experience",      icon: Briefcase },
+    { id: "skills",     label: "Skills",          icon: Code2 },
+    { id: "education",  label: "Education",       icon: GraduationCap },
+    { id: "connections",label: "Mutual",          icon: Users },
   ];
 
   return (
@@ -357,6 +363,11 @@ export function UserProfilePage() {
               </InfoPanel>
             </div>
           </div>
+        )}
+
+        {/* POSTS & REPOSTS */}
+        {activeTab === "posts" && profile.id && (
+          <PostsTab userId={profile.id} />
         )}
 
         {/* PROJECTS */}
@@ -753,6 +764,76 @@ function SkillVerificationModal({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Posts Tab ────────────────────────────────────────────────────────────────
+function PostsTab({ userId }: { userId: string }) {
+  const { user } = useAuth();
+  const timelineQuery = useUserTimelineQuery(userId);
+  const postReaction = usePostReactionMutation();
+  const commentOnPost = useCommentOnPostMutation();
+  const repost = useRepostMutation();
+
+  const handleLike = (id: string) => {
+    if (postReaction.isPending) return;
+    postReaction.mutate({ id, action: "like" });
+  };
+
+  const handleSave = (id: string) => {
+    if (postReaction.isPending) return;
+    postReaction.mutate({ id, action: "save" });
+  };
+
+  const handleComment = async (id: string, content: string, parentCommentId?: string) => {
+    try {
+      await commentOnPost.mutateAsync({ id, content, parentCommentId });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleRepost = async (id: string, caption?: string) => {
+    try {
+      await repost.mutateAsync({ id, caption });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const timeline = timelineQuery.data || [];
+  const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
+
+  if (timelineQuery.isLoading) {
+    return <InlineLoader label="Loading posts..." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {timeline.length ? (
+        timeline.map((item, index) => (
+          <FeedCard
+            key={`${item.type}-${(item.data as any).id || index}`}
+            item={item}
+            position={index}
+            trackImpression={false}
+            canInteract={Boolean(user) && !interacting}
+            onLike={handleLike}
+            onSave={handleSave}
+            onComment={handleComment}
+            onRepost={handleRepost}
+          />
+        ))
+      ) : (
+        <BlankSection
+          icon={MessageSquare}
+          title="No posts or reposts published"
+          text="This engineer hasn't published any posts or reposts yet."
+        />
+      )}
     </div>
   );
 }

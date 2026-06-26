@@ -17,6 +17,7 @@ import {
   repostPost,
   toggleSavePost,
   deleteComment,
+  getUserTimeline,
 
 } from "./posts.service";
 
@@ -254,23 +255,40 @@ export const repostPostHandler =  asyncHandler(
     }
   );
 
-export const deleteCommentHandler =  asyncHandler(
-    async (
-      req: any,
-      res: Response
-    ) => {
+export const deleteCommentHandler = asyncHandler(
+  async (
+    req: any,
+    res: Response
+  ) => {
+    const result = await deleteComment(
+      req.user.id,
+      req.params.commentId
+    );
 
-      const result =
-        await deleteComment(
-          req.user.id,
-          req.params.commentId
-        );
+    res.json(
+      successResponse(
+        result,
+        "Comment deleted"
+      )
+    );
+  }
+);
 
-      res.json(
-        successResponse(
-          result,
-          "Comment deleted"
-        )
-      );
-    }
-  );
+export const getUserTimelineHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { userId } = req.params;
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const safePage = isNaN(page as number) ? 1 : page;
+    const safeLimit = isNaN(limit as number) ? 20 : limit;
+
+    const timeline = await getUserTimeline(
+      req.user?.id,
+      userId,
+      safePage,
+      safeLimit
+    );
+
+    res.json(successResponse(timeline.items));
+  }
+);

@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { protect } from "modules/auth/auth.middleware";
+import { protect, optionalProtect } from "modules/auth/auth.middleware";
 
 import {
   createPostHandler,
@@ -12,8 +12,8 @@ import {
   toggleLikeHandler,
   repostPostHandler,
   toggleSavePostHandler,
-  deleteCommentHandler
-
+  deleteCommentHandler,
+  getUserTimelineHandler,
 } from "./posts.controller";
 
 const router = Router();
@@ -86,6 +86,12 @@ router.delete(
   "/comments/:commentId",
   protect,
   deleteCommentHandler
+);
+
+router.get(
+  "/user/:userId",
+  optionalProtect,
+  getUserTimelineHandler
 );
 
 export default router;
