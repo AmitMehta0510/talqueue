@@ -1401,14 +1401,23 @@ export type HackathonEvaluationPayload = {
   feedback?: string;
 };
 
+export type RankedUser      = { user: User;       relevanceScore: number; matchReasons: string[] };
+export type RankedProject   = { project: Project;   relevanceScore: number; matchReasons: string[] };
+export type RankedHackathon = { hackathon: Hackathon; relevanceScore: number; matchReasons: string[] };
+
 export type SearchResults = {
-  users?: User[];
-  projects?: Project[];
-  hackathons?: Hackathon[];
-  jobs?: Job[];
-  companies?: Company[];
+  /** Server returns either User[] or RankedUser[] — typed loosely for consumer compatibility */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  users?:       any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  projects?:    any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  hackathons?:  any[];
+  jobs?:        Job[];
+  companies?:   Company[];
   communities?: Community[];
-  colleges?: College[];
+  topResults?:  { type: string; score: number; data: unknown }[];
+  jobsTotal?:   number;
   [key: string]: unknown;
 };
 
@@ -2654,8 +2663,8 @@ export const api = {
     request<ReferralRequest[]>("/referrals/received", options),
   sentReferralRequests: (options?: EndpointOptions) =>
     request<ReferralRequest[]>("/referrals/sent", options),
-  searchGlobal: (q: string, options?: EndpointOptions) =>
-    request<SearchResults>(`/search/global${toQuery({ q })}`, options),
+  searchGlobal: (q: string, omni = false, options?: EndpointOptions) =>
+    request<SearchResults>(`/search/global${toQuery({ q, ...(omni && { omni: "true" }) })}`, options),
   searchUsers: (params: { q?: string; collegeIds?: string; collegeName?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; verifiedSkillsOnly?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<User[]>(`/search/users${toQuery({ ...params, limit: params.limit || 20 })}`, options),
   searchProjects: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>

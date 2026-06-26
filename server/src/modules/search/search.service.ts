@@ -773,15 +773,29 @@ export const searchCommunities = async (filters: SearchCommunitiesFilters) => {
 //
 // GLOBAL SEARCH
 //
-export const globalSearch = async (query: string) => {
+export const globalSearch = async (query: string, omniMode = false) => {
+  const limit = omniMode ? 3 : 6;
   const [users, projects, hackathons, jobs, companies, communities] = await Promise.all([
-    searchUsers({ query, limit: 6 }),
-    searchProjects({ query, limit: 6 }),
-    searchHackathons({ query, limit: 6 }),
-    searchJobs({ query, limit: 6 }),
-    searchCompanies({ query, limit: 6 }),
-    searchCommunities({ query, limit: 6 }),
+    searchUsers({ query, limit }),
+    searchProjects({ query, limit }),
+    searchHackathons({ query, limit }),
+    searchJobs({ query, limit }),
+    searchCompanies({ query, limit }),
+    searchCommunities({ query, limit }),
   ]);
+
+  // Omni mode: return slim per-entity slices only (no merged topResults).
+  // Used by GET /search/global?omni=true — the SearchResultsPage preview grid.
+  if (omniMode) {
+    return {
+      users,
+      projects,
+      hackathons,
+      jobs: jobs.jobs,
+      companies,
+      communities,
+    };
+  }
 
   const topResults = [
     ...users.map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),

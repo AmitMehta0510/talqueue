@@ -1,558 +1,280 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+/**
+ * DiscoverPage.tsx
+ *
+ * Talent & Team Directory Dashboard — rebuilt as a pure people-search interface.
+ * Jobs, hackathons, companies, posts, and communities tabs have been removed.
+ * Routing for those entities now lives on their dedicated pages (/jobs, /hackathons, etc.)
+ * and on the unified /search results page.
+ *
+ * Supported filters (all wired to the existing /api/v1/search/users endpoint):
+ *   college, branch/department, graduation year, primary role,
+ *   skills, openToWork, acceptingReferrals, verifiedSkillsOnly
+ */
+
 import {
-  BriefcaseBusiness,
-  Building2,
-  Compass,
-  ExternalLink,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
   Filter,
-  Gift,
-  Hash,
   Loader2,
-  Newspaper,
-  Rocket,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
-  Trophy,
   UserRound,
   Users,
   X,
+  MessageSquare,
+  UserPlus,
+  ShieldCheck,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
 import { EngineerCard } from "../components/cards/SocialCards";
-import { HackathonCard } from "../components/cards/HackathonCard";
-import { JobCard } from "../components/cards/JobCard";
-import { ProjectCard } from "../components/cards/ProjectCard";
-import { Avatar, EmptyState, InlineLoader, Metric } from "../components/ui";
+import { Avatar, EmptyState, InlineLoader } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
-import { api, ReferralRequestPayload } from "../lib/api";
 import {
   useConnectUserMutation,
   useCreateDirectConversationMutation,
-  useDiscoveryFeedQuery,
   useFollowUserMutation,
-  useJoinProjectMutation,
   usePlatformSearchMutation,
-  useSuggestedCollaboratorsQuery,
-  useSuggestedCommunitiesQuery,
-  useSuggestedCompaniesQuery,
   useSuggestedEngineersQuery,
-  useSuggestedHackathonsQuery,
-  useSuggestedJobsQuery,
-  useSuggestedMentorsQuery,
-  useSuggestedPostsQuery,
-  useSuggestedProjectsQuery,
-  useSuggestedRecruitersQuery,
+  useSuggestedCollaboratorsQuery,
   useSuggestedTeammatesQuery,
   useUpgradePremiumMutation,
 } from "../hooks/usePlatformQueries";
-import {
-  Community,
-  Company,
-  FeedItem,
-  FeedPost,
-  Hackathon,
-  Job,
-  Project,
-  SearchResults,
-  User,
-} from "../lib/api";
-import {
-  formatCount,
-  formatDate,
-  tagValues,
-  titleCase,
-  userHeadline,
-  userName,
-  cleanLogoUrl,
-} from "../lib/format";
+import { User } from "../lib/api";
+import { userName, userHeadline } from "../lib/format";
 
-type TabKey =
-  | "all"
-  | "people"
-  | "projects"
-  | "jobs"
-  | "hackathons"
-  | "companies"
-  | "posts"
-  | "communities";
+// ─── Filter state ─────────────────────────────────────────────────────────────
 
-const tabs: Array<{ key: TabKey; label: string; icon: typeof Search }> = [
-  { key: "all", label: "All", icon: Search },
-  { key: "people", label: "People", icon: Users },
-  { key: "projects", label: "Projects", icon: Rocket },
-  { key: "jobs", label: "Jobs", icon: BriefcaseBusiness },
-  { key: "hackathons", label: "Hackathons", icon: Trophy },
-  { key: "companies", label: "Companies", icon: Building2 },
-  { key: "posts", label: "Posts", icon: Newspaper },
-  { key: "communities", label: "Communities", icon: Hash },
-];
-
-// tabs that have a filter panel
-const FILTERABLE_TABS: TabKey[] = ["people", "projects", "jobs", "hackathons", "companies", "communities"];
-
-// ─── Filter state shapes ──────────────────────────────────────────────────────
-
-interface PeopleFilters {
+interface TalentFilters {
   college: string;
-  year: string;
-  skills: string;
+  department: string;
+  gradYear: string;
   role: string;
+  skills: string;
   openToWork: boolean;
   acceptingReferrals: boolean;
   verifiedSkillsOnly: boolean;
 }
 
-interface ProjectFilters {
-  techStack: string;
-  status: string;
-  acceptingCollaborators: boolean;
-}
+const emptyFilters: TalentFilters = {
+  college: "",
+  department: "",
+  gradYear: "",
+  role: "",
+  skills: "",
+  openToWork: false,
+  acceptingReferrals: false,
+  verifiedSkillsOnly: false,
+};
 
-interface JobFilters {
-  company: string;
-  location: string;
-  workMode: string;
-  experienceLevel: string;
-  salaryMin: string;
-  salaryMax: string;
-  skills: string;
-  freshness: string;
-}
+const GRAD_YEARS = Array.from({ length: 10 }, (_, i) =>
+  String(new Date().getFullYear() - 2 + i)
+);
 
-interface HackathonFilters {
-  tags: string;
-  upcomingOnly: boolean;
-}
+const ROLE_OPTIONS = [
+  { value: "", label: "All Roles" },
+  { value: "STUDENT", label: "Student" },
+  { value: "PROFESSIONAL", label: "Professional" },
+  { value: "WORKING_PROFESSIONAL", label: "Working Professional" },
+  { value: "RECRUITER", label: "Recruiter" },
+];
 
-interface CompanyFilters {
-  industry: string;
-  location: string;
-  hiringEnabled: boolean;
-  referralEnabled: boolean;
-}
+// ─── Filter toggle chip ───────────────────────────────────────────────────────
 
-interface CommunityFilters {
-  type: string;
-  category: string;
-}
-
-const emptyPeople: PeopleFilters = { college: "", year: "", skills: "", role: "", openToWork: false, acceptingReferrals: false, verifiedSkillsOnly: false };
-const emptyProject: ProjectFilters = { techStack: "", status: "", acceptingCollaborators: false };
-const emptyJob: JobFilters = { company: "", location: "", workMode: "", experienceLevel: "", salaryMin: "", salaryMax: "", skills: "", freshness: "" };
-const emptyHackathon: HackathonFilters = { tags: "", upcomingOnly: false };
-const emptyCompany: CompanyFilters = { industry: "", location: "", hiringEnabled: false, referralEnabled: false };
-const emptyCommunity: CommunityFilters = { type: "", category: "" };
-
-// ─── Referral modal ───────────────────────────────────────────────────────────
-
-interface ReferralTarget {
-  user: User;
-  company?: Company;
-}
-
-function ReferralModal({
-  target,
-  onClose,
-  onSubmit,
-  submitting,
+function ToggleChip({
+  label,
+  checked,
+  onChange,
 }: {
-  target: ReferralTarget;
-  onClose: () => void;
-  onSubmit: (payload: ReferralRequestPayload) => void;
-  submitting: boolean;
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
-  const [jobRole, setJobRole] = useState("");
-  const [companyName, setCompanyName] = useState(target.company?.name || "");
-  const [jobUrl, setJobUrl] = useState("");
-  const [message, setMessage] = useState("");
-  const [resumeUrl, setResumeUrl] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [githubUrl, setGithubUrl] = useState("");
-  const [portfolioUrl, setPortfolioUrl] = useState("");
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!jobRole.trim() || !companyName.trim()) return;
-    onSubmit({
-      companyName: companyName.trim(),
-      jobRole: jobRole.trim(),
-      jobUrl: jobUrl.trim() || undefined,
-      message: message.trim() || undefined,
-      resumeUrl: resumeUrl.trim() || undefined,
-      linkedinUrl: linkedinUrl.trim() || undefined,
-      githubUrl: githubUrl.trim() || undefined,
-      portfolioUrl: portfolioUrl.trim() || undefined,
-    });
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl p-6 shadow-2xl border bg-surface" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-primary">Ask Referral</h2>
-            <p className="mt-0.5 text-sm text-muted-fg">
-              Requesting from <strong>{userName(target.user)}</strong>
-            </p>
-          </div>
-          <button className="rounded-lg p-2 text-secondary hover:text-primary hover:bg-surface-2 transition" type="button" onClick={onClose}>
-            <X size={18} />
-          </button>
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${
+        checked
+          ? "bg-indigo-600 text-white border-indigo-600 shadow-glow-sm"
+          : "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
+      }`}
+      style={checked ? {} : { color: "var(--text-secondary)", background: "var(--bg-surface-2)" }}
+    >
+      {checked && <ShieldCheck size={11} />}
+      {label}
+    </button>
+  );
+}
+
+// ─── Skeleton card ────────────────────────────────────────────────────────────
+
+function SkeletonUserCard() {
+  return (
+    <div
+      className="panel p-5 animate-pulse"
+      style={{ background: "var(--bg-surface)" }}
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="h-10 w-10 rounded-full"
+          style={{ background: "var(--bg-surface-2)" }}
+        />
+        <div className="flex-1 space-y-1.5">
+          <div
+            className="h-3.5 w-2/3 rounded"
+            style={{ background: "var(--bg-surface-2)" }}
+          />
+          <div
+            className="h-2.5 w-1/2 rounded"
+            style={{ background: "var(--bg-surface-2)" }}
+          />
         </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="field-label">Company name *</span>
-              <input className="field" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Google, Microsoft..." />
-            </label>
-            <label className="block">
-              <span className="field-label">Job role *</span>
-              <input className="field" required value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="SDE-2, Product Manager..." />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="field-label">Job URL (optional)</span>
-            <input className="field" type="url" value={jobUrl} onChange={(e) => setJobUrl(e.target.value)} placeholder="https://careers.google.com/..." />
-          </label>
-
-          <label className="block">
-            <span className="field-label">Message (optional)</span>
-            <textarea className="field min-h-[80px] resize-none" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hi, I'm interested in the SDE role at Google..." />
-          </label>
-
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="field-label">LinkedIn URL</span>
-              <input className="field" type="url" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} placeholder="https://linkedin.com/in/..." />
-            </label>
-            <label className="block">
-              <span className="field-label">GitHub URL</span>
-              <input className="field" type="url" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} placeholder="https://github.com/..." />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <label className="block">
-              <span className="field-label">Resume URL</span>
-              <input className="field" type="url" value={resumeUrl} onChange={(e) => setResumeUrl(e.target.value)} placeholder="https://drive.google.com/..." />
-            </label>
-            <label className="block">
-              <span className="field-label">Portfolio URL</span>
-              <input className="field" type="url" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://yoursite.com/..." />
-            </label>
-          </div>
-
-          <p className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-xs text-amber-600 dark:text-amber-400">
-            Note: The referrer must currently work at the requested company. Your engineering score must be ≥ 20 to send referral requests.
-          </p>
-
-          <div className="flex justify-end gap-3 border-t pt-4 border-base">
-            <button className="btn-secondary" type="button" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" type="submit" disabled={submitting || !jobRole.trim() || !companyName.trim()}>
-              {submitting ? <Loader2 className="animate-spin" size={15} /> : <Gift size={15} />}
-              Send Referral Request
-            </button>
-          </div>
-        </form>
+      </div>
+      <div className="space-y-2">
+        <div
+          className="h-2.5 w-full rounded"
+          style={{ background: "var(--bg-surface-2)" }}
+        />
+        <div
+          className="h-2.5 w-4/5 rounded"
+          style={{ background: "var(--bg-surface-2)" }}
+        />
+      </div>
+      <div className="mt-4 flex gap-2">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-5 w-16 rounded"
+            style={{ background: "var(--bg-surface-2)" }}
+          />
+        ))}
       </div>
     </div>
   );
 }
-
-// ─── Helper ────────────────────────────────────────────────────────────────────
-
-const feedTitle = (item: FeedItem) => {
-  if (item.type === "PROJECT") return (item.data as Project).title;
-  if (item.type === "JOB") return (item.data as Job).title;
-  if (item.type === "POST") return (item.data as FeedPost).content;
-  return String((item.data as Record<string, unknown>).name || item.type);
-};
-
-/** Returns a client-side route for a feed item, or null if not navigable. */
-const feedItemRoute = (item: FeedItem): string | null => {
-  switch (item.type) {
-    case "PROJECT": {
-      const p = item.data as Project;
-      return p?.slug ? `/projects/${p.slug}` : p?.id ? `/projects/${p.id}` : null;
-    }
-    case "JOB": {
-      const j = item.data as Job;
-      return j?.id ? `/jobs` : null; // jobs open via modal on the jobs page
-    }
-    case "HACKATHON": {
-      const h = item.data as Record<string, unknown>;
-      return h?.id ? `/hackathons` : null;
-    }
-    case "COMPANY": {
-      const c = item.data as Record<string, unknown>;
-      return c?.slug ? `/companies/${c.slug}` : c?.id ? `/companies` : null;
-    }
-    case "COMMUNITY": {
-      const comm = item.data as Record<string, unknown>;
-      return comm?.slug ? `/communities/${comm.slug}` : null;
-    }
-    case "POST": {
-      const post = item.data as FeedPost;
-      return post?.id ? `/social` : null;
-    }
-    default:
-      return null;
-  }
-};
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function DiscoverPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
-  const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
-  // Filters open by default for filterable tabs
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // Read ?q= from URL (set by header search or SearchResultsPage "View All People" link)
+  const initialQuery = useMemo(() => {
+    return new URLSearchParams(location.search).get("q") ?? "";
+  }, [location.search]);
+
+  const [query, setQuery] = useState(initialQuery);
+  const [filters, setFilters] = useState<TalentFilters>(emptyFilters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Premium upgrade modal (retained for verifiedSkillsOnly recruiter gate)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const upgradeMutation = useUpgradePremiumMutation();
-
   const isRecruiter = user?.roles?.some((ur: any) => ur.role?.name === "RECRUITER");
   const isPremiumRecruiter = user?.roles?.some((ur: any) => ur.role?.name === "PREMIUM_RECRUITER");
 
-  const handleVerifiedSkillsOnlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-    if (checked && isRecruiter && !isPremiumRecruiter) {
-      setShowUpgradeModal(true);
-    } else {
-      setPeopleF({ ...peopleF, verifiedSkillsOnly: checked });
-    }
-  };
-
-  // Per-tab filter state
-  const [peopleF, setPeopleF] = useState<PeopleFilters>(emptyPeople);
-  const [projectF, setProjectF] = useState<ProjectFilters>(emptyProject);
-  const [jobF, setJobF] = useState<JobFilters>(emptyJob);
-  const [hackF, setHackF] = useState<HackathonFilters>(emptyHackathon);
-  const [companyF, setCompanyF] = useState<CompanyFilters>(emptyCompany);
-  const [communityF, setCommunityF] = useState<CommunityFilters>(emptyCommunity);
-
-  // Referral modal state
-  const [referralTarget, setReferralTarget] = useState<ReferralTarget | null>(null);
-  const [referralSubmitting, setReferralSubmitting] = useState(false);
-
+  // Mutations
   const search = usePlatformSearchMutation();
-
-  // When switching tabs, reset the search so stale results don't pollute the new tab
-  const handleTabChange = useCallback((tab: TabKey) => {
-    if (tab !== activeTab) {
-      search.reset();
-      setActiveTab(tab);
-    }
-  }, [activeTab, search]);
-
-  const joinProject = useJoinProjectMutation();
   const followUser = useFollowUserMutation();
   const connectUser = useConnectUserMutation();
-  const createDirectConversation = useCreateDirectConversationMutation();
+  const createDM = useCreateDirectConversationMutation();
 
-  const discoveryFeed = useDiscoveryFeedQuery();
-  const engineers = useSuggestedEngineersQuery(8);
-  const mentors = useSuggestedMentorsQuery(6);
-  const recruiters = useSuggestedRecruitersQuery(6);
+  // Suggestions (shown when no active search)
+  const suggestedEngineers = useSuggestedEngineersQuery(12);
   const collaborators = useSuggestedCollaboratorsQuery(6);
   const teammates = useSuggestedTeammatesQuery(6);
-  const projects = useSuggestedProjectsQuery(6);
-  const jobs = useSuggestedJobsQuery(6);
-  const hackathons = useSuggestedHackathonsQuery(6);
-  const companies = useSuggestedCompaniesQuery(6);
-  const posts = useSuggestedPostsQuery(6);
-  const communities = useSuggestedCommunitiesQuery(6);
 
-  // Auto-open filter panel when switching to a filterable tab
+  // Auto-search when URL has an initial query
   useEffect(() => {
-    if (FILTERABLE_TABS.includes(activeTab)) {
-      setFiltersOpen(true);
-    } else {
-      setFiltersOpen(false);
+    if (initialQuery) {
+      doSearch(initialQuery, emptyFilters);
     }
-  }, [activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const loadingSuggestions =
-    engineers.isFetching ||
-    projects.isFetching ||
-    jobs.isFetching ||
-    hackathons.isFetching ||
-    companies.isFetching ||
-    posts.isFetching ||
-    communities.isFetching;
+  const doSearch = useCallback(
+    (q: string, f: TalentFilters) => {
+      setHasSearched(true);
+      search.mutate({
+        tab: "people",
+        q,
+        people: {
+          college: f.college,
+          year: f.gradYear,
+          skills: f.skills,
+          role: f.role,
+          openToWork: f.openToWork,
+          acceptingReferrals: f.acceptingReferrals,
+          verifiedSkillsOnly: f.verifiedSkillsOnly,
+        },
+      } as any);
+    },
+    [search]
+  );
 
-  const searchResults = search.data;
+  const handleSubmit = (e?: FormEvent) => {
+    e?.preventDefault();
+    doSearch(query, filters);
+  };
 
-  const openMessage = async (targetUser: User) => {
-    const result = await createDirectConversation.mutateAsync(targetUser.id);
+  const handleReset = () => {
+    setQuery("");
+    setFilters(emptyFilters);
+    setHasSearched(false);
+    search.reset();
+  };
+
+  const handleOpenMessage = async (targetUser: User) => {
+    const result = await createDM.mutateAsync(targetUser.id);
     navigate(`/chat/${result.data.id}`);
   };
 
-  const openReferralModal = (targetUser: User) => {
-    setReferralTarget({ user: targetUser });
-  };
-
-  const submitReferral = async (payload: ReferralRequestPayload) => {
-    if (!referralTarget) return;
-    setReferralSubmitting(true);
-    try {
-      await api.createReferralRequest(referralTarget.user.id, payload);
-      showToast("success", "Referral request sent successfully!");
-      setReferralTarget(null);
-    } catch (err: any) {
-      showToast("error", err?.message || "Failed to send referral request");
-    } finally {
-      setReferralSubmitting(false);
-    }
-  };
-
-  // ── Submit search ──────────────────────────────────────────────────────────
-  const submit = (event?: FormEvent) => {
-    event?.preventDefault();
-    const q = query.trim();
-
-    if (activeTab === "people") {
-      search.mutate({ tab: "people", q, people: peopleF } as any);
-    } else if (activeTab === "projects") {
-      search.mutate({ tab: "projects", q, project: projectF } as any);
-    } else if (activeTab === "jobs") {
-      search.mutate({ tab: "jobs", q, job: jobF } as any);
-    } else if (activeTab === "hackathons") {
-      search.mutate({ tab: "hackathons", q, hack: hackF } as any);
-    } else if (activeTab === "companies") {
-      search.mutate({ tab: "companies", q, company: companyF } as any);
-    } else if (activeTab === "communities") {
-      search.mutate({ tab: "communities", q, community: communityF } as any);
+  const handleVerifiedSkillsOnly = (val: boolean) => {
+    if (val && isRecruiter && !isPremiumRecruiter) {
+      setShowUpgradeModal(true);
     } else {
-      // "all" — global search (or empty will show all top hits)
-      search.mutate({ tab: "all", q: q || " " } as any);
+      setFilters((f) => ({ ...f, verifiedSkillsOnly: val }));
     }
   };
 
-  // ── Sections for search results ────────────────────────────────────────────
-  const searchSections = useMemo(
-    () => [
-      {
-        key: "people" as const,
-        title: "People",
-        icon: Users,
-        count: searchResults?.users?.length || 0,
-        content: (
-          <PeopleGrid
-            users={searchResults?.users || []}
-            onConnect={(u) => connectUser.mutate(u.id)}
-            onFollow={(u) => followUser.mutate(u.id)}
-            onMessage={openMessage}
-            onOpenProfile={(u) => navigate(`/users/${u.username || u.id}`)}
-            onRequestReferral={openReferralModal}
-            disabled={!user}
-            currentUserId={user?.id}
-          />
-        ),
-      },
-      {
-        key: "projects" as const,
-        title: "Projects",
-        icon: Rocket,
-        count: searchResults?.projects?.length || 0,
-        content: (
-          <ProjectGrid
-            currentUserId={user?.id}
-            onJoin={(project) => joinProject.mutate(project)}
-            projects={searchResults?.projects || []}
-          />
-        ),
-      },
-      {
-        key: "jobs" as const,
-        title: "Jobs",
-        icon: BriefcaseBusiness,
-        count: searchResults?.jobs?.length || 0,
-        content: <JobGrid jobs={searchResults?.jobs || []} />,
-      },
-      {
-        key: "hackathons" as const,
-        title: "Hackathons",
-        icon: Trophy,
-        count: searchResults?.hackathons?.length || 0,
-        content: <HackathonGrid hackathons={searchResults?.hackathons || []} />,
-      },
-      {
-        key: "companies" as const,
-        title: "Companies",
-        icon: Building2,
-        count: searchResults?.companies?.length || 0,
-        content: <CompanyGrid companies={searchResults?.companies || []} />,
-      },
-      {
-        key: "posts" as const,
-        title: "Posts",
-        icon: Newspaper,
-        count: ((searchResults?.posts as FeedPost[] | undefined) || []).length,
-        content: <PostGrid posts={(searchResults?.posts as FeedPost[] | undefined) || []} />,
-      },
-      {
-        key: "communities" as const,
-        title: "Communities",
-        icon: Hash,
-        count: searchResults?.communities?.length || 0,
-        content: <CommunityGrid communities={searchResults?.communities || []} />,
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [searchResults, user],
+  const searchedUsers: User[] = useMemo(() => {
+    const raw = search.data?.users;
+    if (!raw) return [];
+    // Unwrap ranked objects if necessary
+    return (raw as any[]).map((r: any) => (r.user ? r.user : r));
+  }, [search.data]);
+
+  const hasActiveFilters = Object.values(filters).some(
+    (v) => v !== "" && v !== false
   );
 
-  const visibleSearchSections =
-    activeTab === "all"
-      ? searchSections.filter((s) => s.count > 0)
-      : searchSections.filter((s) => s.key === activeTab);
+  const isSearching = search.isPending;
 
-  const totalResults = searchSections.reduce((sum, s) => sum + s.count, 0);
-
-  // ── Filters have active values ─────────────────────────────────────────────
-  const hasActiveFilters =
-    (activeTab === "people" && Object.values(peopleF).some((v) => v !== "" && v !== false)) ||
-    (activeTab === "projects" && Object.values(projectF).some((v) => v !== "" && v !== false)) ||
-    (activeTab === "jobs" && Object.values(jobF).some((v) => v !== "" && v !== false)) ||
-    (activeTab === "hackathons" && Object.values(hackF).some((v) => v !== "" && v !== false)) ||
-    (activeTab === "companies" && Object.values(companyF).some((v) => v !== "" && v !== false)) ||
-    (activeTab === "communities" && Object.values(communityF).some((v) => v !== "" && v !== false));
-
-  const clearFilters = () => {
-    setPeopleF(emptyPeople);
-    setProjectF(emptyProject);
-    setJobF(emptyJob);
-    setHackF(emptyHackathon);
-    setCompanyF(emptyCompany);
-    setCommunityF(emptyCommunity);
-  };
-
-  const isFilterableTab = FILTERABLE_TABS.includes(activeTab);
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
-      {referralTarget && (
-        <ReferralModal
-          target={referralTarget}
-          onClose={() => setReferralTarget(null)}
-          onSubmit={submitReferral}
-          submitting={referralSubmitting}
-        />
-      )}
-
+      {/* ── Premium upgrade modal ─────────────────────────────────────────── */}
       {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)}>
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl animate-in fade-in zoom-in-95 duration-200 border-base bg-surface" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-              <div className="flex items-center justify-between border-b px-5 py-4 border-base bg-surface-2">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowUpgradeModal(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl border-base bg-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b px-5 py-4 border-base bg-surface-2">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={18} className="text-amber-600" />
                 <h3 className="font-bold text-primary">
@@ -566,25 +288,26 @@ export function DiscoverPage() {
                 <X size={16} />
               </button>
             </div>
-
-            {/* Body */}
             <div className="p-6 text-center space-y-4">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                 <ShieldCheck size={24} />
               </div>
               <div className="space-y-1.5">
-                <h4 className="text-base font-bold text-primary">Unlock Verified Candidate Search</h4>
+                <h4 className="text-base font-bold text-primary">
+                  Unlock Verified Candidate Search
+                </h4>
                 <p className="text-xs max-w-xs mx-auto leading-relaxed text-muted-fg">
-                  Recruiter Premium allows you to filter search results to only show candidates with verified skills and code repositories. Tap below to simulate upgrading.
+                  Filter results to only show candidates with verified skills
+                  and code repositories. Upgrade to access this feature.
                 </p>
               </div>
               <button
                 onClick={() => {
                   upgradeMutation.mutate(undefined, {
                     onSuccess: () => {
-                      setPeopleF({ ...peopleF, verifiedSkillsOnly: true });
+                      setFilters((f) => ({ ...f, verifiedSkillsOnly: true }));
                       setShowUpgradeModal(false);
-                    }
+                    },
                   });
                 }}
                 disabled={upgradeMutation.isPending}
@@ -601,809 +324,437 @@ export function DiscoverPage() {
         </div>
       )}
 
-      <section className="space-y-6">
+      <div className="space-y-6">
+
+        {/* ── Page header ────────────────────────────────────────────────── */}
         <div className="panel p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <Compass className="text-indigo-700" size={20} />
-                <h1 className="text-xl font-bold text-primary">Discover</h1>
-              </div>
-              <p className="mt-1 text-sm text-muted-fg">
-                Search, filter and explore. Results adapt to your interests.
-              </p>
-            </div>
-            {searchResults && (
-              <div className="grid grid-cols-2 gap-3 text-right">
-                <Metric label="Results" value={totalResults} />
-                <Metric label="Sections" value={visibleSearchSections.length} />
-              </div>
-            )}
-          </div>
-
-          {/* Search bar */}
-          <form className="mt-5 flex flex-wrap gap-3" onSubmit={submit}>
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" size={17} />
-              <input
-                className="field pl-9"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search engineers, projects, jobs, companies, communities..."
-              />
-            </div>
-            {isFilterableTab && (
-              <button
-                className={`inline-flex shrink-0 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                  filtersOpen || hasActiveFilters
-                    ? "border-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400"
-                    : "border-base bg-surface text-secondary hover:border-indigo-500/50"
-                }`}
-                type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
-              >
-                <SlidersHorizontal size={15} />
-                Filters
-                {hasActiveFilters && (
-                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                )}
-              </button>
-            )}
-            <button className="btn-primary shrink-0" type="submit" disabled={search.isPending}>
-              {search.isPending ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-              Search
-            </button>
-          </form>
-
-          {/* Tabs */}
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.key;
-              return (
-                <button
-                  className={`inline-flex min-w-max items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition ${
-                    active
-                      ? "border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400"
-                      : "hover:border-indigo-200 hover:text-indigo-800"
-                  }`}
-                  key={tab.key}
-                  type="button"
-                  onClick={() => handleTabChange(tab.key)}
-                >
-                  <Icon size={15} />
-                  {tab.label}
-                  {searchResults && tab.key !== "all" && (
-                    <span className="ml-1 rounded-full px-1.5 py-0.5 text-xs bg-surface-2 text-muted-fg">
-                      {searchSections.find((s) => s.key === tab.key)?.count || 0}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Filter panel */}
-          {isFilterableTab && filtersOpen && (
-            <div className="mt-4 rounded-xl border p-4 border-base bg-surface-2">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
-                  <Filter size={14} />
-                  Filters
-                  {hasActiveFilters && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">Active</span>}
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-700 text-white shadow-glow-sm">
+                  <Users size={18} />
                 </div>
-                {hasActiveFilters && (
-                  <button className="text-xs text-red-500 hover:underline" type="button" onClick={clearFilters}>
-                    Clear all
+                <div>
+                  <h1
+                    className="text-xl font-black tracking-tight leading-none"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Talent Directory
+                  </h1>
+                  <p
+                    className="text-xs mt-0.5"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Find engineers, collaborators &amp; teammates
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter toggle button */}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border transition-all duration-150 ${
+                filtersOpen || hasActiveFilters
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-glow-sm"
+                  : "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
+              }`}
+              style={
+                filtersOpen || hasActiveFilters
+                  ? {}
+                  : {
+                      color: "var(--text-secondary)",
+                      background: "var(--bg-surface-2)",
+                    }
+              }
+            >
+              <SlidersHorizontal size={14} />
+              Filters
+              {hasActiveFilters && (
+                <span className="bg-white/30 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-black">
+                  {
+                    Object.values(filters).filter(
+                      (v) => v !== "" && v !== false
+                    ).length
+                  }
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* ── Search bar ───────────────────────────────────────────────── */}
+          <form onSubmit={handleSubmit} className="mt-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                  size={15}
+                  style={{ color: "var(--text-muted)" }}
+                />
+                <input
+                  id="discover-search-input"
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="field pl-9 py-2 text-sm w-full"
+                  placeholder="Search by name, username, skill…"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-fg hover:text-primary transition"
+                  >
+                    <X size={14} />
                   </button>
                 )}
               </div>
-
-              {activeTab === "people" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="College name">
-                    <input className="field" value={peopleF.college} onChange={(e) => setPeopleF({ ...peopleF, college: e.target.value })} placeholder="IIT Bombay, BITS Pilani..." />
-                  </FilterField>
-                  <FilterField label="Graduation year">
-                    <input className="field" value={peopleF.year} onChange={(e) => setPeopleF({ ...peopleF, year: e.target.value })} placeholder="2025, 2026..." />
-                  </FilterField>
-                  <FilterField label="Skills (comma separated)">
-                    <input className="field" value={peopleF.skills} onChange={(e) => setPeopleF({ ...peopleF, skills: e.target.value })} placeholder="React, Python, Flutter..." />
-                  </FilterField>
-                  <FilterField label="Role / User type">
-                    <select className="field" value={peopleF.role} onChange={(e) => setPeopleF({ ...peopleF, role: e.target.value })}>
-                      <option value="">Any role</option>
-                      <option value="STUDENT">🎓 Student</option>
-                      <option value="PROFESSOR">🏫 Professor / Faculty</option>
-                      <option value="RECRUITER">💼 Recruiter</option>
-                      <option value="PROFESSIONAL">🧑‍💻 Working Professional</option>
-                    </select>
-                  </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={peopleF.openToWork} onChange={(e) => setPeopleF({ ...peopleF, openToWork: e.target.checked })} />
-                    Open to work
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={peopleF.acceptingReferrals} onChange={(e) => setPeopleF({ ...peopleF, acceptingReferrals: e.target.checked })} />
-                    Accepting referrals
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={peopleF.verifiedSkillsOnly} onChange={handleVerifiedSkillsOnlyChange} />
-                    <span className="flex items-center gap-1.5 font-medium">
-                      Verified skills only
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
-                        Premium
-                      </span>
-                    </span>
-                  </label>
-                </div>
+              <button type="submit" className="btn-primary text-sm px-5">
+                {isSearching ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Search size={15} />
+                )}
+                <span className="hidden sm:inline ml-1.5">Search</span>
+              </button>
+              {hasSearched && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="btn-secondary text-xs px-3"
+                >
+                  <X size={13} />
+                  Reset
+                </button>
               )}
+            </div>
+          </form>
 
-              {activeTab === "projects" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="Tech stack (comma separated)">
-                    <input className="field" value={projectF.techStack} onChange={(e) => setProjectF({ ...projectF, techStack: e.target.value })} placeholder="React, Node.js, Python..." />
-                  </FilterField>
-                  <FilterField label="Status">
-                    <select className="field" value={projectF.status} onChange={(e) => setProjectF({ ...projectF, status: e.target.value })}>
-                      <option value="">Any status</option>
-                      <option value="OPEN">Open</option>
-                      <option value="ACTIVE">Active</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="ARCHIVED">Archived</option>
-                    </select>
-                  </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                    <input type="checkbox" checked={projectF.acceptingCollaborators} onChange={(e) => setProjectF({ ...projectF, acceptingCollaborators: e.target.checked })} />
-                    Accepting collaborators
-                  </label>
-                </div>
-              )}
+          {/* ── Filter panel ─────────────────────────────────────────────── */}
+          {filtersOpen && (
+            <div
+              className="mt-4 border-t pt-4 animate-fade-up"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
-              {activeTab === "jobs" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="Company">
-                    <input className="field" value={jobF.company} onChange={(e) => setJobF({ ...jobF, company: e.target.value })} placeholder="Google, Swiggy..." />
-                  </FilterField>
-                  <FilterField label="Location">
-                    <input className="field" value={jobF.location} onChange={(e) => setJobF({ ...jobF, location: e.target.value })} placeholder="Bangalore, Remote..." />
-                  </FilterField>
-                  <FilterField label="Skills required">
-                    <input className="field" value={jobF.skills} onChange={(e) => setJobF({ ...jobF, skills: e.target.value })} placeholder="React, Node.js..." />
-                  </FilterField>
-                  <FilterField label="Work mode">
-                    <select className="field" value={jobF.workMode} onChange={(e) => setJobF({ ...jobF, workMode: e.target.value })}>
-                      <option value="">Any</option>
-                      <option value="REMOTE">Remote</option>
-                      <option value="HYBRID">Hybrid</option>
-                      <option value="ONSITE">On-site</option>
-                    </select>
-                  </FilterField>
-                  <FilterField label="Experience level">
-                    <select className="field" value={jobF.experienceLevel} onChange={(e) => setJobF({ ...jobF, experienceLevel: e.target.value })}>
-                      <option value="">Any</option>
-                      <option value="ENTRY">Entry</option>
-                      <option value="JUNIOR">Junior</option>
-                      <option value="MID">Mid</option>
-                      <option value="SENIOR">Senior</option>
-                      <option value="LEAD">Lead</option>
-                      <option value="EXECUTIVE">Executive</option>
-                    </select>
-                  </FilterField>
-                  <FilterField label="Posted within">
-                    <select className="field" value={jobF.freshness} onChange={(e) => setJobF({ ...jobF, freshness: e.target.value })}>
-                      <option value="">Any time</option>
-                      <option value="1">Today</option>
-                      <option value="7">Last 7 days</option>
-                      <option value="30">Last 30 days</option>
-                    </select>
-                  </FilterField>
-                  <FilterField label="Min salary (₹ LPA)">
-                    <input className="field" type="number" min="0" value={jobF.salaryMin} onChange={(e) => setJobF({ ...jobF, salaryMin: e.target.value })} placeholder="10" />
-                  </FilterField>
-                  <FilterField label="Max salary (₹ LPA)">
-                    <input className="field" type="number" min="0" value={jobF.salaryMax} onChange={(e) => setJobF({ ...jobF, salaryMax: e.target.value })} placeholder="50" />
-                  </FilterField>
-                </div>
-              )}
+                {/* College */}
+                <label className="block">
+                  <span className="field-label">College</span>
+                  <input
+                    id="filter-college"
+                    className="field text-sm"
+                    placeholder="e.g. IIT Bombay"
+                    value={filters.college}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, college: e.target.value }))
+                    }
+                  />
+                </label>
 
-              {activeTab === "hackathons" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="Tags (comma separated)">
-                    <input className="field" value={hackF.tags} onChange={(e) => setHackF({ ...hackF, tags: e.target.value })} placeholder="AI, Web3, Mobile..." />
-                  </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={hackF.upcomingOnly} onChange={(e) => setHackF({ ...hackF, upcomingOnly: e.target.checked })} />
-                    Upcoming only
-                  </label>
-                </div>
-              )}
+                {/* Branch / Department */}
+                <label className="block">
+                  <span className="field-label">Branch / Department</span>
+                  <input
+                    id="filter-department"
+                    className="field text-sm"
+                    placeholder="e.g. Computer Science"
+                    value={filters.department}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, department: e.target.value }))
+                    }
+                  />
+                </label>
 
-              {activeTab === "companies" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="Industry">
-                    <input className="field" value={companyF.industry} onChange={(e) => setCompanyF({ ...companyF, industry: e.target.value })} placeholder="Fintech, SaaS, Ed-tech..." />
-                  </FilterField>
-                  <FilterField label="Location / HQ">
-                    <input className="field" value={companyF.location} onChange={(e) => setCompanyF({ ...companyF, location: e.target.value })} placeholder="Bangalore, Mumbai..." />
-                  </FilterField>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={companyF.hiringEnabled} onChange={(e) => setCompanyF({ ...companyF, hiringEnabled: e.target.checked })} />
-                    Currently hiring
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-secondary">
-                    <input type="checkbox" checked={companyF.referralEnabled} onChange={(e) => setCompanyF({ ...companyF, referralEnabled: e.target.checked })} />
-                    Referrals enabled
-                  </label>
-                </div>
-              )}
+                {/* Graduation Year */}
+                <label className="block">
+                  <span className="field-label">Graduation Year</span>
+                  <select
+                    id="filter-grad-year"
+                    className="field text-sm"
+                    value={filters.gradYear}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, gradYear: e.target.value }))
+                    }
+                  >
+                    <option value="">Any year</option>
+                    {GRAD_YEARS.map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              {activeTab === "communities" && (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  <FilterField label="Type">
-                    <select className="field" value={communityF.type} onChange={(e) => setCommunityF({ ...communityF, type: e.target.value })}>
-                      <option value="">Any</option>
-                      <option value="COLLEGE">College</option>
-                      <option value="COMPANY">Company</option>
-                      <option value="GENERAL">General</option>
-                    </select>
-                  </FilterField>
-                  <FilterField label="Category">
-                    <select className="field" value={communityF.category} onChange={(e) => setCommunityF({ ...communityF, category: e.target.value })}>
-                      <option value="">Any</option>
-                      <option value="GENERAL">General</option>
-                      <option value="CODING">Coding</option>
-                      <option value="PLACEMENTS">Placements</option>
-                      <option value="INTERNSHIPS">Internships</option>
-                      <option value="REFERRALS">Referrals</option>
-                      <option value="INTERVIEWS">Interviews</option>
-                      <option value="SALARIES">Salaries</option>
-                      <option value="ANNOUNCEMENTS">Announcements</option>
-                      <option value="RESOURCES">Resources</option>
-                      <option value="EVENTS">Events</option>
-                      <option value="STARTUPS">Startups</option>
-                      <option value="OPEN_SOURCE">Open Source</option>
-                      <option value="AI">AI</option>
-                      <option value="CAREER_GUIDANCE">Career Guidance</option>
-                    </select>
-                  </FilterField>
+                {/* Primary Role */}
+                <label className="block">
+                  <span className="field-label">Role</span>
+                  <select
+                    id="filter-role"
+                    className="field text-sm"
+                    value={filters.role}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, role: e.target.value }))
+                    }
+                  >
+                    {ROLE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Skills */}
+                <label className="block sm:col-span-2">
+                  <span className="field-label">Skills (comma-separated)</span>
+                  <input
+                    id="filter-skills"
+                    className="field text-sm"
+                    placeholder="e.g. React, Python, Machine Learning"
+                    value={filters.skills}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, skills: e.target.value }))
+                    }
+                  />
+                </label>
+
+                {/* Toggle chips */}
+                <div className="sm:col-span-2 flex flex-wrap items-end gap-2 pb-1">
+                  <ToggleChip
+                    label="Open to Work"
+                    checked={filters.openToWork}
+                    onChange={(v) =>
+                      setFilters((f) => ({ ...f, openToWork: v }))
+                    }
+                  />
+                  <ToggleChip
+                    label="Accepting Referrals"
+                    checked={filters.acceptingReferrals}
+                    onChange={(v) =>
+                      setFilters((f) => ({ ...f, acceptingReferrals: v }))
+                    }
+                  />
+                  <ToggleChip
+                    label="Verified Skills Only"
+                    checked={filters.verifiedSkillsOnly}
+                    onChange={handleVerifiedSkillsOnly}
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Apply & Clear row */}
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => handleSubmit()}
+                  className="btn-primary text-sm"
+                >
+                  <Filter size={14} />
+                  Apply Filters
+                </button>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilters(emptyFilters);
+                    }}
+                    className="btn-secondary text-xs"
+                  >
+                    <X size={12} />
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Results or suggestions */}
-        {searchResults ? (
-          <div className="space-y-5">
-            {visibleSearchSections.length ? (
-              visibleSearchSections.map((section) => (
-                <DiscoverySection
-                  count={section.count}
-                  icon={section.icon}
-                  key={section.key}
-                  title={section.title}
+        {/* ── Search results ─────────────────────────────────────────────── */}
+        {hasSearched && (
+          <section aria-label="Talent search results">
+            {isSearching && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonUserCard key={i} />
+                ))}
+              </div>
+            )}
+
+            {!isSearching && search.isError && (
+              <div
+                className="panel p-6 text-center"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Search failed
+                </p>
+                <p className="text-sm">
+                  Something went wrong. Please try again.
+                </p>
+                <button
+                  onClick={() => handleSubmit()}
+                  className="btn-primary mt-4 text-xs"
                 >
-                  {section.content}
-                </DiscoverySection>
-              ))
-            ) : (
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!isSearching && !search.isError && searchedUsers.length === 0 && (
               <EmptyState
-                icon={Search}
-                title="No results found"
-                text="Try a broader search, different keywords, or clear your filters."
+                icon={UserRound}
+                title="No engineers found"
+                text="Try adjusting your search query or filters."
               />
             )}
-          </div>
-        ) : (
-          <PersonalizedDiscovery
-            canInteract={Boolean(user)}
-            collaborators={collaborators.data || []}
-            communities={communities.data || []}
-            companies={companies.data || []}
-            discoveryFeed={discoveryFeed.data || []}
-            engineers={engineers.data || []}
-            hackathons={hackathons.data || []}
-            jobs={jobs.data || []}
-            loading={loadingSuggestions}
-            mentors={mentors.data || []}
-            onConnect={(u) => connectUser.mutate(u.id)}
-            onFollow={(u) => followUser.mutate(u.id)}
-            onJoin={(project) => joinProject.mutate(project)}
-            onMessage={openMessage}
-            onOpenProfile={(u) => navigate(`/users/${u.id}`)}
-            onRequestReferral={openReferralModal}
-            posts={posts.data || []}
-            projects={projects.data || []}
-            recruiters={recruiters.data || []}
-            teammates={teammates.data || []}
-            user={user}
-            currentUserId={user?.id}
-          />
+
+            {!isSearching && searchedUsers.length > 0 && (
+              <>
+                <p
+                  className="text-xs font-semibold mb-3"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {searchedUsers.length} engineer
+                  {searchedUsers.length !== 1 ? "s" : ""} found
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {searchedUsers.map((u) => (
+                    <EngineerCard
+                      key={u.id}
+                      user={u}
+                      currentUserId={user?.id}
+                      onConnect={(u) => connectUser.mutate(u.id)}
+                      onFollow={(u) => followUser.mutate(u.id)}
+                      onMessage={(u) => handleOpenMessage(u as User)}
+                      onOpenProfile={(u) =>
+                        navigate(`/users/${(u as User).username || u.id}`)
+                      }
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
         )}
-      </section>
+
+        {/* ── Suggested engineers (default view when no search) ────────── */}
+        {!hasSearched && (
+          <div className="space-y-8">
+
+            {/* Top Engineers */}
+            <section aria-label="Suggested engineers">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400">
+                  <UserRound size={14} />
+                </div>
+                <h2
+                  className="text-sm font-bold uppercase tracking-wider"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Suggested Engineers
+                </h2>
+              </div>
+
+              {suggestedEngineers.isFetching ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <SkeletonUserCard key={i} />
+                  ))}
+                </div>
+              ) : (suggestedEngineers.data ?? []).length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="No suggestions yet"
+                  text="Use the search bar above to find engineers."
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {(suggestedEngineers.data ?? []).map((u) => (
+                    <EngineerCard
+                      key={u.id}
+                      user={u}
+                      currentUserId={user?.id}
+                      onConnect={(u) => connectUser.mutate(u.id)}
+                      onFollow={(u) => followUser.mutate(u.id)}
+                      onMessage={(u) => handleOpenMessage(u as User)}
+                      onOpenProfile={(u) =>
+                        navigate(`/users/${(u as any).username || u.id}`)
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Open Collaborators */}
+            {(collaborators.data ?? []).length > 0 && (
+              <section aria-label="Open to collaborate">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400">
+                    <Users size={14} />
+                  </div>
+                  <h2
+                    className="text-sm font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Open to Collaborate
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {(collaborators.data ?? []).map((u) => (
+                    <EngineerCard
+                      key={u.id}
+                      user={u}
+                      currentUserId={user?.id}
+                      onConnect={(u) => connectUser.mutate(u.id)}
+                      onFollow={(u) => followUser.mutate(u.id)}
+                      onMessage={(u) => handleOpenMessage(u as User)}
+                      onOpenProfile={(u) =>
+                        navigate(`/users/${(u as any).username || u.id}`)
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Suggested Teammates */}
+            {(teammates.data ?? []).length > 0 && (
+              <section aria-label="Suggested teammates">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400">
+                    <MessageSquare size={14} />
+                  </div>
+                  <h2
+                    className="text-sm font-bold uppercase tracking-wider"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Suggested Teammates
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {(teammates.data ?? []).map((u) => (
+                    <EngineerCard
+                      key={u.id}
+                      user={u}
+                      currentUserId={user?.id}
+                      onConnect={(u) => connectUser.mutate(u.id)}
+                      onFollow={(u) => followUser.mutate(u.id)}
+                      onMessage={(u) => handleOpenMessage(u as User)}
+                      onOpenProfile={(u) =>
+                        navigate(`/users/${(u as any).username || u.id}`)
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+          </div>
+        )}
+      </div>
     </>
-  );
-}
-
-// ─── Personalized discovery (no search active) ────────────────────────────────
-
-function PersonalizedDiscovery({
-  canInteract,
-  collaborators,
-  communities,
-  companies,
-  discoveryFeed,
-  engineers,
-  hackathons,
-  jobs,
-  loading,
-  mentors,
-  onConnect,
-  onFollow,
-  onJoin,
-  onMessage,
-  onOpenProfile,
-  onRequestReferral,
-  posts,
-  projects,
-  recruiters,
-  teammates,
-  user,
-  currentUserId,
-}: {
-  canInteract: boolean;
-  collaborators: User[];
-  communities: Community[];
-  companies: Company[];
-  discoveryFeed: FeedItem[];
-  engineers: User[];
-  hackathons: Hackathon[];
-  jobs: Job[];
-  loading: boolean;
-  mentors: User[];
-  onConnect: (user: User) => void;
-  onFollow: (user: User) => void;
-  onJoin: (project: Project) => void;
-  onMessage: (user: User) => void;
-  onOpenProfile: (user: User) => void;
-  onRequestReferral: (user: User) => void;
-  posts: FeedPost[];
-  projects: Project[];
-  recruiters: User[];
-  teammates: User[];
-  user: User | null;
-  currentUserId?: string;
-}) {
-  // Merge collaborators + teammates into a single "Connect & Collaborate" pool
-  // (deduplicated by id, tagged with context). Collaborators come first.
-  // NOTE: Hook must be called BEFORE any conditional returns (Rules of Hooks).
-  const connectPool = useMemo(() => {
-    const seen = new Set<string>();
-    const out: Array<User & { _context: string }> = [];
-    for (const u of collaborators) {
-      if (!seen.has(u.id)) { seen.add(u.id); out.push({ ...u, _context: "Collaborator" }); }
-    }
-    for (const u of teammates) {
-      if (!seen.has(u.id)) { seen.add(u.id); out.push({ ...u, _context: "Teammate" }); }
-    }
-    return out;
-  }, [collaborators, teammates]);
-
-  if (!user) {
-    return (
-      <EmptyState
-        icon={UserRound}
-        title="Login required"
-        text="Discovery suggestions use your profile, skills, activity, and network."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-5">
-      {loading && <InlineLoader label="Refreshing suggestions" />}
-
-      {/* ── Discovery feed ── */}
-      {discoveryFeed.length > 0 && (
-        <DiscoverySection count={discoveryFeed.length} icon={Compass} title="Discovery Feed">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {discoveryFeed.slice(0, 6).map((item, index) => (
-              <FeedSuggestionCard item={item} key={`${item.type}-${index}`} />
-            ))}
-          </div>
-        </DiscoverySection>
-      )}
-
-      {/* ── Engineers ── */}
-      <DiscoverySection count={engineers.length} icon={Users} title="Suggested Engineers">
-        <PeopleGrid
-          disabled={!canInteract}
-          onConnect={onConnect}
-          onFollow={onFollow}
-          onMessage={onMessage}
-          onOpenProfile={onOpenProfile}
-          onRequestReferral={onRequestReferral}
-          users={engineers}
-          currentUserId={currentUserId}
-        />
-      </DiscoverySection>
-
-      {/* ── Connect & Collaborate (merged collaborators + teammates) ── */}
-      {connectPool.length > 0 && (
-        <DiscoverySection count={connectPool.length} icon={Users} title="Connect &amp; Collaborate">
-          <p className="-mt-1 mb-3 text-xs text-muted-fg">
-            Engineers matched to your skills and projects — potential collaborators and teammates.
-          </p>
-          <div className="grid gap-5 xl:grid-cols-2">
-            {connectPool.map((u) => (
-              <EngineerCard
-                key={u.id}
-                context={(u as any)._context}
-                disabled={!canInteract}
-                onConnect={onConnect}
-                onOpenProfile={onOpenProfile}
-                onRequestReferral={onRequestReferral}
-                user={u}
-                currentUserId={currentUserId}
-              />
-            ))}
-          </div>
-        </DiscoverySection>
-      )}
-
-      {/* ── Mentors & Recruiters side by side ── */}
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DiscoverySection count={mentors.length} icon={UserRound} title="Mentors">
-          <PeopleGrid
-            disabled={!canInteract}
-            onMessage={onMessage}
-            onOpenProfile={onOpenProfile}
-            onRequestReferral={onRequestReferral}
-            users={mentors}
-            currentUserId={currentUserId}
-          />
-        </DiscoverySection>
-        <DiscoverySection count={recruiters.length} icon={BriefcaseBusiness} title="Recruiters">
-          <PeopleGrid
-            disabled={!canInteract}
-            onMessage={onMessage}
-            onOpenProfile={onOpenProfile}
-            onRequestReferral={onRequestReferral}
-            users={recruiters}
-            currentUserId={currentUserId}
-          />
-        </DiscoverySection>
-      </div>
-
-      {/* ── Projects ── */}
-      <DiscoverySection count={projects.length} icon={Rocket} title="Suggested Projects">
-        <ProjectGrid currentUserId={user.id} onJoin={onJoin} projects={projects} />
-      </DiscoverySection>
-
-      {/* ── Jobs & Hackathons ── */}
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DiscoverySection count={jobs.length} icon={BriefcaseBusiness} title="Suggested Jobs">
-          <JobGrid jobs={jobs} />
-        </DiscoverySection>
-        <DiscoverySection count={hackathons.length} icon={Trophy} title="Hackathons">
-          <HackathonGrid hackathons={hackathons} />
-        </DiscoverySection>
-      </div>
-
-      {/* ── Companies & Communities ── */}
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DiscoverySection count={companies.length} icon={Building2} title="Companies">
-          <CompanyGrid companies={companies} />
-        </DiscoverySection>
-        <DiscoverySection count={communities.length} icon={Hash} title="Communities">
-          <CommunityGrid communities={communities} />
-        </DiscoverySection>
-      </div>
-
-      {/* ── Posts ── */}
-      {posts.length > 0 && (
-        <DiscoverySection count={posts.length} icon={Newspaper} title="Suggested Posts">
-          <PostGrid posts={posts} />
-        </DiscoverySection>
-      )}
-    </div>
-  );
-}
-
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
-function DiscoverySection({
-  children,
-  count,
-  icon: Icon,
-  title,
-}: {
-  children: ReactNode;
-  count: number;
-  icon: typeof Search;
-  title: string;
-}) {
-  return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Icon className="text-indigo-700" size={18} />
-          <h2 className="text-base font-semibold text-primary">{title}</h2>
-        </div>
-        <span className="chip">{formatCount(count)}</span>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-// ─── PeopleGrid ───────────────────────────────────────────────────────────────
-
-function PeopleGrid({
-  disabled,
-  onConnect,
-  onFollow,
-  onMessage,
-  onOpenProfile,
-  onRequestReferral,
-  users,
-  currentUserId,
-}: {
-  disabled?: boolean;
-  onConnect?: (user: User) => void;
-  onFollow?: (user: User) => void;
-  onMessage?: (user: User) => void;
-  onOpenProfile: (user: User) => void;
-  onRequestReferral?: (user: User) => void;
-  users: User[];
-  currentUserId?: string;
-}) {
-  if (!users.length) {
-    return <EmptyState icon={Users} title="No people found" text="Try another keyword or complete your profile." />;
-  }
-
-  return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      {users.map((foundUser) => (
-        <EngineerCard
-          disabled={disabled}
-          key={foundUser.id}
-          onConnect={onConnect}
-          onFollow={onFollow}
-          onMessage={onMessage}
-          onOpenProfile={onOpenProfile}
-          onRequestReferral={onRequestReferral}
-          user={foundUser}
-          currentUserId={currentUserId}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ─── Other grids ─────────────────────────────────────────────────────────────
-
-function ProjectGrid({ currentUserId, onJoin, projects }: { currentUserId?: string; onJoin: (project: Project) => void; projects: Project[] }) {
-  if (!projects.length) return <EmptyState icon={Rocket} title="No projects found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      {projects.map((project) => (
-        <ProjectCard currentUserId={currentUserId} key={project.id} onJoin={onJoin} project={project} />
-      ))}
-    </div>
-  );
-}
-
-function JobGrid({ jobs }: { jobs: Job[] }) {
-  if (!jobs.length) return <EmptyState icon={BriefcaseBusiness} title="No jobs found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5">
-      {jobs.map((job) => <JobCard job={job} key={job.id} />)}
-    </div>
-  );
-}
-
-function HackathonGrid({ hackathons }: { hackathons: Hackathon[] }) {
-  if (!hackathons.length) return <EmptyState icon={Trophy} title="No hackathons found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5">
-      {hackathons.map((hackathon) => <HackathonCard hackathon={hackathon} key={hackathon.id} />)}
-    </div>
-  );
-}
-
-function CompanyGrid({ companies }: { companies: Company[] }) {
-  if (!companies.length) return <EmptyState icon={Building2} title="No companies found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5">
-      {companies.map((company) => <CompanySuggestionCard company={company} key={company.id} />)}
-    </div>
-  );
-}
-
-function CommunityGrid({ communities }: { communities: Community[] }) {
-  if (!communities.length) return <EmptyState icon={Hash} title="No communities found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5">
-      {communities.map((community) => <CommunitySuggestionCard community={community} key={community.id} />)}
-    </div>
-  );
-}
-
-function PostGrid({ posts }: { posts: FeedPost[] }) {
-  if (!posts.length) return <EmptyState icon={Newspaper} title="No posts found" text="Try another keyword." />;
-  return (
-    <div className="grid gap-5 xl:grid-cols-2">
-      {posts.map((post) => <PostSuggestionCard key={post.id} post={post} />)}
-    </div>
-  );
-}
-
-// ─── Card components ──────────────────────────────────────────────────────────
-
-function CompanySuggestionCard({ company }: { company: Company }) {
-  return (
-    <article className="panel p-5">
-      <div className="flex items-start gap-4">
-        {cleanLogoUrl(company.logoUrl) ? (
-          <img className="h-11 w-11 rounded-md object-cover" src={cleanLogoUrl(company.logoUrl)!} alt={company.name} />
-        ) : (
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
-            <Building2 size={20} />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-primary">
-            <Link className="hover:text-indigo-700" to={`/companies/${company.slug}`}>
-              {company.name}
-            </Link>
-          </h3>
-          <p className="mt-1 text-sm text-muted-fg">
-            {[company.industry, company.headquarters, titleCase(company.size)].filter(Boolean).join(" · ") || "Company"}
-          </p>
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-secondary">
-            {company.tagline || company.description}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {company.verified && <span className="chip text-indigo-700">Verified</span>}
-            {company.hiringEnabled && <span className="chip">Hiring</span>}
-            {company.referralEnabled && <span className="chip">Referrals</span>}
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function CommunitySuggestionCard({ community }: { community: Community }) {
-  return (
-    <article className="panel p-5">
-      <div className="flex items-start gap-4">
-        {community.avatarUrl ? (
-          <img className="h-11 w-11 rounded-md object-cover" src={community.avatarUrl} alt={community.name} />
-        ) : (
-          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-800">
-            <Hash size={20} />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-primary">
-            <Link className="hover:text-indigo-700" to={`/communities/${community.slug}`}>
-              {community.name}
-            </Link>
-          </h3>
-          <p className="mt-1 text-sm text-muted-fg">
-            {[titleCase(community.type), titleCase(community.category)].filter(Boolean).join(" · ")}
-          </p>
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-secondary">
-            {community.shortDescription || community.description}
-          </p>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-            <Metric label="Members" value={formatCount(community.memberCount || community._count?.members)} />
-            <Metric label="Posts" value={formatCount(community.postCount || community._count?.posts)} />
-            <Metric label="Trend" value={Math.round(community.trendingScore || 0)} />
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function PostSuggestionCard({ post }: { post: FeedPost }) {
-  const tags = tagValues(post.tags);
-  const author = post.author || post.user;
-  return (
-    <article className="panel p-5">
-      <div className="flex items-start gap-3">
-        <Avatar user={author} />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-primary">{userName(author)}</div>
-          <div className="truncate text-xs text-muted-fg">
-            {titleCase(post.type)} {post.createdAt ? `· ${formatDate(post.createdAt)}` : ""}
-          </div>
-        </div>
-      </div>
-      <p className="mt-4 line-clamp-4 whitespace-pre-line text-sm leading-6 text-secondary">
-        {post.content || post.description || post.title}
-      </p>
-      {tags.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tags.slice(0, 5).map((tag) => (
-            <span className="chip" key={tag}>#{tag}</span>
-          ))}
-        </div>
-      )}
-      <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs border-base text-muted-fg">
-        <span>{formatCount(post.likesCount)} likes</span>
-        <span>{formatCount(post.commentsCount)} comments</span>
-      </div>
-    </article>
-  );
-}
-
-function FeedSuggestionCard({ item }: { item: FeedItem }) {
-  const navigate = useNavigate();
-  const route = feedItemRoute(item);
-
-  const typeColors: Record<string, string> = {
-    PROJECT: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
-    JOB: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-    POST: "bg-surface-3 text-secondary border-base",
-    HACKATHON: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    COMPANY: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-    COMMUNITY: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-  };
-  const chipClass = typeColors[item.type] ?? "bg-surface-3 text-secondary border-base";
-
-  const handleClick = () => {
-    if (route) navigate(route);
-  };
-
-  return (
-    <article
-      className={`panel p-4 transition ${
-        route ? "cursor-pointer hover:border-indigo-300 hover:shadow-md" : ""
-      }`}
-      role={route ? "button" : undefined}
-      tabIndex={route ? 0 : undefined}
-      onClick={route ? handleClick : undefined}
-      onKeyDown={(e) => {
-        if (route && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="line-clamp-2 text-sm font-semibold text-primary">
-            {feedTitle(item) || titleCase(item.type)}
-          </div>
-          <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-fg">
-            {item.reason || "Recommended from your profile and activity."}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${chipClass}`}>
-            {titleCase(item.type)}
-          </span>
-          {route && (
-            <ExternalLink className="text-muted-fg" size={13} />
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ─── FilterField helper ───────────────────────────────────────────────────────
-
-function FilterField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text-muted)" }}>{label}</span>
-      {children}
-    </label>
   );
 }

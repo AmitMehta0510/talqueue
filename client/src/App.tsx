@@ -35,6 +35,7 @@ import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
 import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
 import { TpoDashboardPage } from "./pages/TpoDashboardPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
+import { SearchResultsPage } from "./pages/SearchResultsPage";
 
 
 /** Syncs dark/light class to <html> based on OS preference. */
@@ -160,6 +161,7 @@ function AppRoutes() {
             }
           />
           <Route path="/discover" element={<PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>} />
+          <Route path="/search" element={<PageTransitionWrapper><SearchResultsPage /></PageTransitionWrapper>} />
           <Route path="/colleges" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
           <Route path="/colleges/:collegeSlug" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
           <Route path="/companies" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />

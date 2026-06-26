@@ -48,10 +48,12 @@ export const globalSearchHandler =  asyncHandler(
     ) => {
 
       const query = sanitizeQuery(req.query.q?.toString()) ?? "";
+      const omniMode = req.query.omni === "true";
 
       const results =
         await globalSearch(
-          query
+          query,
+          omniMode,
         );
 
       res.json(

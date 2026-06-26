@@ -177,7 +177,8 @@ export function AppLayout() {
                 placeholder="Search engineers, skills, jobs..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    navigate(`/discover?q=${(e.target as HTMLInputElement).value}`);
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) navigate(`/search?q=${encodeURIComponent(val)}`);
                   }
                 }}
               />
@@ -503,7 +504,8 @@ export function AppLayout() {
                 placeholder="Search engineers, skills..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    navigate(`/discover?q=${(e.target as HTMLInputElement).value}`);
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) navigate(`/search?q=${encodeURIComponent(val)}`);
                   }
                 }}
               />
