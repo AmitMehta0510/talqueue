@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { Hackathon } from "../../lib/api";
 import { formatCount, formatDate, STATUS_CHIP_CLASSES, titleCase, userName } from "../../lib/format";
 import { Avatar } from "../ui";
+import { useAuth } from "../../contexts/AuthContext";
+import { useCreatePostMutation } from "../../hooks/usePlatformQueries";
+import { useToast } from "../../contexts/ToastContext";
 
 const PLATFORM_COLORS: Record<string, string> = {
   Devpost: "bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100/50 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-900/50",
@@ -90,6 +93,10 @@ const getTimelineInfo = (hackathon: Hackathon) => {
 };
 
 export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
+  const { user } = useAuth();
+  const createPost = useCreatePostMutation();
+  const { showToast } = useToast();
+
   const registrationTotal = Number(hackathonCount(hackathon, "registrations"));
   const submissionTotal = Number(hackathonCount(hackathon, "submissions"));
   const judgeTotal = Number(hackathonCount(hackathon, "judges"));
@@ -104,6 +111,22 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
     : isHackathonOpen
     ? "bg-gradient-to-r from-indigo-500 via-teal-500 to-cyan-500"
     : "bg-slate-300";
+
+  const isCollegeStaff = user && (user.primaryRole === "COLLEGE_ADMIN" || user.primaryRole === "TPO" || user.primaryRole === "CDCR");
+
+  const handleShare = () => {
+    if (!user?.profile?.collegeId || !user?.profile?.departmentId) {
+      showToast("error", "No registered college department found in your profile.");
+      return;
+    }
+    createPost.mutate({
+      content: `Opportunity: ${hackathon.title}\n\nJoin this hackathon starting on ${formatDate(hackathon.startDate)}.\nRegistration Deadline: ${formatDate(hackathon.registrationDeadline)}\n${hackathon.externalUrl ? `Register here: ${hackathon.externalUrl}` : ""}`,
+      type: "HACKATHON",
+      collegeId: user.profile.collegeId,
+      departmentId: user.profile.departmentId,
+      visibility: "COLLEGE_ONLY",
+    });
+  };
 
   return (
     <article className="panel hover-lift flex flex-col justify-between min-h-[380px] overflow-hidden">
@@ -280,6 +303,18 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           </Link>
         )}
       </div>
+
+      {isCollegeStaff && (
+        <div className="px-5 pb-4 pt-0 flex justify-end">
+          <button
+            onClick={handleShare}
+            disabled={createPost.isPending}
+            className="w-full btn-primary text-xxs py-2 px-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-brand hover:from-indigo-500 hover:to-brand-light text-white font-bold transition-all shadow-md hover:shadow-lg rounded-lg"
+          >
+            One-Click Share to Community
+          </button>
+        </div>
+      )}
     </article>
   );
 }

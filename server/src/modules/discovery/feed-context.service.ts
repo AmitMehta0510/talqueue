@@ -10,6 +10,7 @@ export const buildFeedContext = async (userId: string) => {
     select: {
       id: true,
       engineeringScore: true,
+      primaryRole: true,
       experiences: {
         select: {
           id: true,
@@ -117,5 +118,7 @@ export const buildFeedContext = async (userId: string) => {
     affinityMap,
 
     isFresher,
+
+    userRole: user.primaryRole,
   };
 };

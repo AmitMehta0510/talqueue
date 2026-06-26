@@ -48,6 +48,36 @@ const ComposePost = lazy(() =>
 
 type FeedCategory = "all" | "recommended" | "discussions" | "projects" | "jobs";
 
+const fallbackRepositories = [
+  {
+    id: "fallback-react",
+    title: "facebook/react",
+    description: "The library for web and native user interfaces.",
+    shortDescription: "The library for web and native user interfaces.",
+    techStack: ["JavaScript", "TypeScript"],
+    slug: "react",
+    status: "ACTIVE",
+  },
+  {
+    id: "fallback-typescript",
+    title: "microsoft/TypeScript",
+    description: "TypeScript is a superset of JavaScript that compiles to clean JavaScript output.",
+    shortDescription: "TypeScript is a superset of JavaScript that compiles to clean JavaScript output.",
+    techStack: ["TypeScript"],
+    slug: "typescript",
+    status: "ACTIVE",
+  },
+  {
+    id: "fallback-nodejs",
+    title: "nodejs/node",
+    description: "Node.js JavaScript runtime ✨🐢🚀",
+    shortDescription: "Node.js JavaScript runtime ✨🐢🚀",
+    techStack: ["C++", "JavaScript"],
+    slug: "node",
+    status: "ACTIVE",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // FeedPage
 // ---------------------------------------------------------------------------
@@ -578,9 +608,9 @@ export function FeedPage() {
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
-            ) : projects.length > 0 ? (
+            ) : (projects.length > 0 ? projects : fallbackRepositories).length > 0 ? (
               <div className="space-y-3.5">
-                {projects.slice(0, 3).map((project) => (
+                {(projects.length > 0 ? projects : fallbackRepositories).slice(0, 3).map((project) => (
                   <div key={project.id}>
                     <Link
                       to={`/projects/${project.slug || project.id}`}
@@ -610,11 +640,7 @@ export function FeedPage() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
-                No active projects available.
-              </div>
-            )}
+            ) : null}
           </div>
 
           {/* Featured Hackathons */}

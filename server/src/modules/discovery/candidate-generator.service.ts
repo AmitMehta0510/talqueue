@@ -304,7 +304,10 @@ export const generateFeedCandidates = async (
     prisma.hackathon.findMany({
       where: {
         deletedAt: null,
-
+        OR: [
+          { registrationDeadline: { gte: new Date() } },
+          { endDate: { gte: new Date() } },
+        ],
         NOT: {
           status: {
             in: ["DRAFT", "DELETED", "ARCHIVED"],
@@ -323,6 +326,7 @@ export const generateFeedCandidates = async (
         registrationDeadline: true,
         maxTeamSize: true,
         minTeamSize: true,
+        createdAt: true,
         createdBy: {
           select: {
             id: true,
@@ -348,9 +352,11 @@ export const generateFeedCandidates = async (
     prisma.job.findMany({
       where: {
         deletedAt: null,
-
         status: "OPEN",
-
+        OR: [
+          { applicationDeadline: { gte: new Date() } },
+          { applicationDeadline: null },
+        ],
         ...(strategy === "discovery" && jobOr.length ? { OR: jobOr } : {}),
       },
 

@@ -7,6 +7,7 @@ import { usePostQuery } from "../../hooks/usePlatformQueries";
 import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName } from "../../lib/format";
 import { Avatar } from "../ui";
 import { HackathonCard } from "./HackathonCard";
+import { JobCard } from "./JobCard";
 
 const projectTags = (project: Project) =>
   Array.isArray(project.techStack) ? project.techStack.map(String) : project.searchTags || [];
@@ -103,6 +104,14 @@ export function FeedCard({
     return (
       <div ref={impressionRef as any}>
         <HackathonCard hackathon={item.data as any} />
+      </div>
+    );
+  }
+
+  if (item.type === "JOB") {
+    return (
+      <div ref={impressionRef as any}>
+        <JobCard job={item.data as any} />
       </div>
     );
   }

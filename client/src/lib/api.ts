@@ -2266,6 +2266,8 @@ export const api = {
     visibility?: string;
     communityId?: string;
     mediaUrl?: string;
+    collegeId?: string;
+    departmentId?: string;
   }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
   post: (

@@ -1,12 +1,35 @@
 import { BriefcaseBusiness } from "lucide-react";
 import { Job } from "../../lib/api";
 import { formatCount, titleCase } from "../../lib/format";
+import { useAuth } from "../../contexts/AuthContext";
+import { useCreatePostMutation } from "../../hooks/usePlatformQueries";
+import { useToast } from "../../contexts/ToastContext";
 
 export function JobCard({ job }: { job: Job }) {
+  const { user } = useAuth();
+  const createPost = useCreatePostMutation();
+  const { showToast } = useToast();
+
   const salary =
     job.salaryMin || job.salaryMax
       ? `${job.currency || "INR"} ${formatCount(job.salaryMin || 0)} - ${formatCount(job.salaryMax || 0)}`
       : null;
+
+  const isCollegeStaff = user && (user.primaryRole === "COLLEGE_ADMIN" || user.primaryRole === "TPO" || user.primaryRole === "CDCR");
+
+  const handleShare = () => {
+    if (!user?.profile?.collegeId || !user?.profile?.departmentId) {
+      showToast("error", "No registered college department found in your profile.");
+      return;
+    }
+    createPost.mutate({
+      content: `Opportunity: ${job.title} at ${job.company?.name || "Company"}\n\nLocation: ${job.location || "Remote"}\nType: ${titleCase(job.type)}\n${salary ? `Salary: ${salary}\n` : ""}\nDescription: ${job.description}\n${job.applyUrl ? `Apply Link: ${job.applyUrl}` : ""}`,
+      type: "GENERAL",
+      collegeId: user.profile.collegeId,
+      departmentId: user.profile.departmentId,
+      visibility: "COLLEGE_ONLY",
+    });
+  };
 
   return (
     <article className="panel p-5 hover-lift">
@@ -42,6 +65,18 @@ export function JobCard({ job }: { job: Job }) {
         <span>{salary || titleCase(job.workMode || "OPEN")}</span>
         <span>{formatCount(job.applicationsCount)} applicants</span>
       </div>
+
+      {isCollegeStaff && (
+        <div className="mt-4 border-t border-base pt-3 flex justify-end">
+          <button
+            onClick={handleShare}
+            disabled={createPost.isPending}
+            className="w-full btn-primary text-xxs py-2 px-3 flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-brand hover:from-indigo-500 hover:to-brand-light text-white font-bold transition-all shadow-md hover:shadow-lg rounded-lg"
+          >
+            One-Click Share to Community
+          </button>
+        </div>
+      )}
     </article>
   );
 }

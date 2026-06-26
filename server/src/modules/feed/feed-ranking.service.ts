@@ -17,6 +17,7 @@ export type FeedContext = {
   isFresher: boolean;
   interactionMap: Map<string, number>;
   affinityMap: Map<string, number>;
+  userRole?: string | null;
 };
 
 export type RankedFeedItem<T = any> = {
@@ -281,10 +282,12 @@ export const calculateFeedScore = (
         const daysLeft =
           (new Date(item.registrationDeadline).getTime() - Date.now()) / DAY_DIVISOR;
 
-        score += Math.max(
-          0,
-          FEED_SCORE_WEIGHTS.hackathons.deadlineWindowDays - daysLeft,
-        );
+        if (daysLeft >= 0) {
+          score += Math.max(
+            0,
+            FEED_SCORE_WEIGHTS.hackathons.deadlineWindowDays - daysLeft,
+          );
+        }
       }
 
       score +=

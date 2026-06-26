@@ -110,8 +110,211 @@ export const applyAiFeedRanking = async (
     };
   });
 
-  // FINAL AI SORT
-  rankedFeed.sort((a, b) => b.aiScore - a.aiScore);
+  return interleaveFeed(rankedFeed, context.userRole, context.isFresher);
+};
 
-  return rankedFeed;
+const classifyItem = (
+  item: RankedFeedItem,
+  userRole: string | null | undefined,
+  isFresher: boolean,
+): number => {
+  const type = item.type;
+  const data = item.data;
+  const content = (data.content || "").toLowerCase();
+  const authorRole =
+    data.author?.primaryRole ||
+    data.owner?.primaryRole ||
+    data.createdBy?.primaryRole ||
+    "";
+  const authorReputation =
+    data.author?.reputationScore ||
+    data.owner?.reputationScore ||
+    data.createdBy?.reputationScore ||
+    0;
+  const authorEngineering =
+    data.author?.engineeringScore ||
+    data.owner?.engineeringScore ||
+    data.createdBy?.engineeringScore ||
+    0;
+
+  const role = userRole ? userRole.toUpperCase() : "";
+
+  if (role === "STUDENT" || role === "FRESHER" || isFresher) {
+    if (type === "JOB") return 0; // Stream 1: Active Jobs/Internships (40%)
+    if (type === "HACKATHON") return 1; // Stream 2: Current Hackathons (10%)
+    if (type === "PROJECT") return 2; // Stream 3: Skill-Matched Projects (20%)
+    return 3; // Stream 4: Community Posts/Suggestions (30%)
+  }
+
+  if (role === "RECRUITER") {
+    // Stream 1: TPO/College Admin Posts (40%)
+    if (
+      type === "POST" &&
+      (authorRole === "COLLEGE_ADMIN" ||
+        authorRole === "TPO" ||
+        authorRole === "CDCR")
+    ) {
+      return 0;
+    }
+    // Stream 2: High-Reputation Student Projects (30%)
+    if (
+      type === "PROJECT" &&
+      (authorRole === "STUDENT" || authorRole === "") &&
+      (authorReputation >= 100 || authorEngineering >= 80)
+    ) {
+      return 1;
+    }
+    // Stream 3: B2B Recruitment Threads (20%)
+    if (
+      type === "POST" &&
+      (data.type === "JOB" ||
+        content.includes("hire") ||
+        content.includes("hiring") ||
+        content.includes("recruit") ||
+        content.includes("recruitment") ||
+        content.includes("b2b") ||
+        content.includes("job") ||
+        content.includes("career"))
+    ) {
+      return 2;
+    }
+    // Stream 4: Network Suggestions (10%)
+    return 3;
+  }
+
+  if (role === "COLLEGE_ADMIN" || role === "TPO" || role === "CDCR") {
+    // Stream 1: Recruiter Branding Updates (40%)
+    if (type === "POST" && authorRole === "RECRUITER") {
+      return 0;
+    }
+    // Stream 2: Direct HR Connection Widgets (30%)
+    if (type === "COMPANY" || (type === "POST" && content.includes("hr"))) {
+      return 1;
+    }
+    // Stream 3: Active Jobs/Internships (with Share Intents Enabled) (20%)
+    if (type === "JOB") {
+      return 2;
+    }
+    // Stream 4: Internal Department Student Posts (10%)
+    if (
+      type === "POST" &&
+      (data.type === "DEPARTMENT" || authorRole === "STUDENT")
+    ) {
+      return 3;
+    }
+    return 3;
+  }
+
+  if (
+    role === "PROFESSIONAL" ||
+    role === "WORKING_PROFESSIONAL" ||
+    role === "MENTOR"
+  ) {
+    // Stream 1: System Design Discussions (40%)
+    if (
+      type === "POST" &&
+      (content.includes("system design") ||
+        content.includes("architecture") ||
+        content.includes("scalability") ||
+        content.includes("microservices") ||
+        content.includes("database") ||
+        content.includes("design pattern"))
+    ) {
+      return 0;
+    }
+    // Stream 2: Trending Repositories (30%)
+    if (type === "PROJECT") {
+      return 1;
+    }
+    // Stream 3: Referral Requests (20%)
+    if (
+      type === "POST" &&
+      (content.includes("referral") ||
+        content.includes("refer") ||
+        content.includes("looking for referral"))
+    ) {
+      return 2;
+    }
+    // Stream 4: Connections (10%)
+    return 3;
+  }
+
+  return -1;
+};
+
+const interleaveFeed = (
+  items: (RankedFeedItem & { aiScore: number })[],
+  userRole: string | null | undefined,
+  isFresher: boolean,
+  limit = 60,
+): (RankedFeedItem & { aiScore: number })[] => {
+  const role = userRole ? userRole.toUpperCase() : "";
+
+  let ratio: number[];
+  if (role === "STUDENT" || role === "FRESHER" || isFresher) {
+    ratio = [4, 1, 2, 3];
+  } else if (role === "RECRUITER") {
+    ratio = [4, 3, 2, 1];
+  } else if (role === "COLLEGE_ADMIN" || role === "TPO" || role === "CDCR") {
+    ratio = [4, 3, 2, 1];
+  } else if (
+    role === "PROFESSIONAL" ||
+    role === "WORKING_PROFESSIONAL" ||
+    role === "MENTOR"
+  ) {
+    ratio = [4, 3, 2, 1];
+  } else {
+    return items.sort((a, b) => b.aiScore - a.aiScore);
+  }
+
+  const streams: (RankedFeedItem & { aiScore: number })[][] = [[], [], [], []];
+  for (const item of items) {
+    const streamIdx = classifyItem(item, userRole, isFresher);
+    if (streamIdx >= 0 && streamIdx < 4) {
+      streams[streamIdx].push(item);
+    } else {
+      streams[3].push(item);
+    }
+  }
+
+  for (let s = 0; s < 4; s++) {
+    streams[s].sort((a, b) => b.aiScore - a.aiScore);
+  }
+
+  const result: (RankedFeedItem & { aiScore: number })[] = [];
+  const pointers = [0, 0, 0, 0];
+
+  while (result.length < limit && result.length < items.length) {
+    let addedInThisCycle = false;
+
+    for (let s = 0; s < 4; s++) {
+      const takeCount = ratio[s];
+      for (let j = 0; j < takeCount; j++) {
+        if (result.length >= limit) break;
+        if (pointers[s] < streams[s].length) {
+          result.push(streams[s][pointers[s]]);
+          pointers[s]++;
+          addedInThisCycle = true;
+        }
+      }
+    }
+
+    if (!addedInThisCycle) {
+      const remaining: (RankedFeedItem & { aiScore: number })[] = [];
+      for (let s = 0; s < 4; s++) {
+        while (pointers[s] < streams[s].length) {
+          remaining.push(streams[s][pointers[s]]);
+          pointers[s]++;
+        }
+      }
+      remaining.sort((a, b) => b.aiScore - a.aiScore);
+      for (const item of remaining) {
+        if (result.length >= limit) break;
+        result.push(item);
+      }
+      break;
+    }
+  }
+
+  return result;
 };

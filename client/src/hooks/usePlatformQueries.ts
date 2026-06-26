@@ -2068,6 +2068,8 @@ export const useCreatePostMutation = () => {
       visibility?: string;
       communityId?: string;
       mediaUrl?: string;
+      collegeId?: string;
+      departmentId?: string;
     }) => {
       if (!user) {
         throw new Error("Login required");
