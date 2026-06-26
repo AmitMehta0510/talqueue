@@ -729,6 +729,9 @@ export type PlacementDrive = {
     name: string;
     offerPolicy?: CollegeOfferPolicy;
   };
+  _count?: {
+    applications?: number;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -3001,5 +3004,209 @@ export const api = {
       "/storage/presigned-url",
       { method: "POST", body }
     ),
+
+  // TPO Dashboard
+  getTpoDashboardStats: (options?: EndpointOptions) =>
+    request<TpoDashboardStats>("/tpo/dashboard/stats", options),
+
+  getTpoStudents: (
+    params: {
+      page: number;
+      limit: number;
+      graduationYear?: number;
+      departmentId?: string;
+      currentYear?: number;
+      search?: string;
+    },
+    options?: EndpointOptions
+  ) => {
+    let url = `/tpo/dashboard/students?page=${params.page}&limit=${params.limit}`;
+    if (params.graduationYear) url += `&graduationYear=${params.graduationYear}`;
+    if (params.departmentId) url += `&departmentId=${params.departmentId}`;
+    if (params.currentYear) url += `&currentYear=${params.currentYear}`;
+    if (params.search) url += `&search=${encodeURIComponent(params.search)}`;
+    return request<StudentListPage>(url, options);
+  },
+
+  getTpoPlacements: (options?: EndpointOptions) =>
+    request<PlacementDrive[]>("/tpo/dashboard/placements", options),
+
+  getTpoAlumniVerifications: (options?: EndpointOptions) =>
+    request<AlumniVerificationItem[]>("/tpo/dashboard/alumni", options),
+
+  approveAlumniVerification: (educationId: string) =>
+    request<{ educationId: string; approved: boolean }>(
+      `/tpo/dashboard/alumni/${educationId}/approve`,
+      { method: "PATCH" }
+    ),
+
+  rejectAlumniVerification: (educationId: string) =>
+    request<{ educationId: string; rejected: boolean }>(
+      `/tpo/dashboard/alumni/${educationId}/reject`,
+      { method: "PATCH" }
+    ),
+
+  getTpoCompanyClaims: (options?: EndpointOptions) =>
+    request<CompanyClaimSummary[]>("/tpo/dashboard/company-claims", options),
+
+  getTpoRecruiterInteractions: (options?: EndpointOptions) =>
+    request<RecruiterInteraction[]>("/tpo/dashboard/recruiters", options),
+
+  // Recruiter Claim Workspace
+  getMyClaimStatus: (options?: EndpointOptions) =>
+    request<CompanyRequest[]>("/recruiter/claim/status", options),
+
+  getMyPostedJobs: (options?: EndpointOptions) =>
+    request<Job[]>("/recruiter/claim/jobs", options),
+
+  updateJobStatus: (jobId: string, status: "OPEN" | "CLOSED" | "ARCHIVED") =>
+    request<{ id: string; title: string; status: string; archivedAt: string | null }>(
+      `/recruiter/claim/jobs/${jobId}/status`,
+      { method: "PATCH", body: { status } }
+    ),
+
+  getJobApplications: (
+    jobId: string,
+    params?: { page?: number; limit?: number; status?: string },
+    options?: EndpointOptions
+  ) => {
+    let url = `/recruiter/claim/jobs/${jobId}/applications?page=${params?.page ?? 1}&limit=${params?.limit ?? 20}`;
+    if (params?.status) url += `&status=${params.status}`;
+    return request<{
+      applications: JobApplication[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(url, options);
+  },
+
+  updateApplicationStatus: (
+    jobId: string,
+    appId: string,
+    body: { status: string; recruiterNotes?: string }
+  ) =>
+    request<any>(
+      `/recruiter/claim/jobs/${jobId}/applications/${appId}/status`,
+      { method: "PATCH", body }
+    ),
 };
+
+export interface TpoDashboardStats {
+  totalStudents: number;
+  activeDrives: number;
+  pendingAlumniVerifications: number;
+  recruiterCount: number;
+}
+
+export interface StudentListPage {
+  students: Array<{
+    userId: string;
+    fullName: string;
+    avatarUrl?: string | null;
+    headline?: string | null;
+    graduationYear?: number | null;
+    department?: { id: string; name: string } | null;
+    college?: { id: string; name: string } | null;
+    user: {
+      id: string;
+      username: string;
+      reputationScore: number;
+      openToWork: boolean;
+      openToInternship: boolean;
+      educations: Array<{
+        endYear: number | null;
+        currentYear: number | null;
+        cgpa: number | null;
+        isAlumni: boolean;
+        alumniVerified: boolean;
+      }>;
+    };
+  }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface AlumniVerificationItem {
+  id: string;
+  endYear?: number | null;
+  degree?: string | null;
+  fieldOfStudy?: string | null;
+  createdAt: string;
+  college?: { id: string; name: string } | null;
+  department?: { id: string; name: string } | null;
+  user: {
+    id: string;
+    username: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string | null;
+      headline?: string | null;
+    } | null;
+  };
+}
+
+export interface CompanyClaimSummary {
+  id: string;
+  companyName: string;
+  requestType: string;
+  status: string;
+  businessEmail: string;
+  createdAt: string;
+  updatedAt: string;
+  company?: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    verificationStatus: string;
+  } | null;
+  requestedBy: {
+    id: string;
+    username: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string | null;
+    } | null;
+  };
+}
+
+export interface RecruiterInteraction {
+  id: string;
+  officeCity?: string | null;
+  company?: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    industry?: string | null;
+  } | null;
+  user: {
+    id: string;
+    username: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string | null;
+      headline?: string | null;
+    } | null;
+  };
+}
+
+export interface CompanyRequest {
+  id: string;
+  companyName: string;
+  requestType: string;
+  status: string;
+  businessEmail: string;
+  reviewNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt?: string | null;
+  company?: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl?: string | null;
+    verificationStatus: string;
+  } | null;
+}
 

@@ -33,6 +33,7 @@ import { CompanyAdminPage } from "./pages/CompanyAdminPage";
 import { EventsPage } from "./pages/EventsPage";
 import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
 import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
+import { TpoDashboardPage } from "./pages/TpoDashboardPage";
 
 
 /** Syncs dark/light class to <html> based on OS preference. */
@@ -261,6 +262,14 @@ function AppRoutes() {
             element={
               <RequireAuth>
                 <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/tpo-dashboard"
+            element={
+              <RequireAuth>
+                <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />

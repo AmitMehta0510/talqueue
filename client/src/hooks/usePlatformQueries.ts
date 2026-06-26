@@ -5168,4 +5168,184 @@ export const useGetPresignedUrlMutation = () => {
   });
 };
 
+export const useTpoDashboardStatsQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "stats"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoDashboardStats({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useTpoStudentsQuery = (
+  filters: {
+    page: number;
+    limit: number;
+    graduationYear?: number;
+    departmentId?: string;
+    currentYear?: number;
+    search?: string;
+  },
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "students", filters],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoStudents(filters, { signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useTpoPlacementsQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "placements"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoPlacements({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useTpoAlumniQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "alumni"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoAlumniVerifications({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useApproveAlumniMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (educationId: string) => api.approveAlumniVerification(educationId),
+    onSuccess: () => {
+      showToast("success", "Alumni verification approved");
+      queryClient.invalidateQueries({ queryKey: ["tpo", "dashboard", "alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["tpo", "dashboard", "stats"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useRejectAlumniMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (educationId: string) => api.rejectAlumniVerification(educationId),
+    onSuccess: () => {
+      showToast("success", "Alumni verification rejected");
+      queryClient.invalidateQueries({ queryKey: ["tpo", "dashboard", "alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["tpo", "dashboard", "stats"] });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useTpoCompanyClaimsQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "company-claims"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoCompanyClaims({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useTpoRecruiterInteractionsQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["tpo", "dashboard", "recruiters"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getTpoRecruiterInteractions({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+// Recruiter Claim Workspace Hooks
+export const useMyClaimStatusQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["recruiter", "claim", "status"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getMyClaimStatus({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useRecruiterClaimJobsQuery = (enabled = true) => {
+  return useQuery({
+    queryKey: ["recruiter", "claim", "jobs"],
+    queryFn: async ({ signal }) => {
+      const result = await api.getMyPostedJobs({ signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
+export const useUpdateJobStatusMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: { jobId: string; status: "OPEN" | "CLOSED" | "ARCHIVED" }) =>
+      api.updateJobStatus(payload.jobId, payload.status),
+    onSuccess: (res) => {
+      showToast("success", res.message || "Job status updated");
+      queryClient.invalidateQueries({ queryKey: ["recruiter", "claim", "jobs"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useRecruiterClaimJobApplicationsQuery = (
+  jobId: string,
+  params?: { page?: number; limit?: number; status?: string },
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["recruiter", "claim", "jobs", jobId, "applications", params],
+    queryFn: async ({ signal }) => {
+      const result = await api.getJobApplications(jobId, params, { signal });
+      return result.data;
+    },
+    enabled: enabled && Boolean(jobId),
+  });
+};
+
+export const useUpdateApplicationStatusMutation = (jobId: string) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (payload: { appId: string; status: string; recruiterNotes?: string }) =>
+      api.updateApplicationStatus(jobId, payload.appId, {
+        status: payload.status,
+        recruiterNotes: payload.recruiterNotes,
+      }),
+    onSuccess: (res) => {
+      showToast("success", res.message || "Application status updated");
+      queryClient.invalidateQueries({
+        queryKey: ["recruiter", "claim", "jobs", jobId, "applications"],
+      });
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 
