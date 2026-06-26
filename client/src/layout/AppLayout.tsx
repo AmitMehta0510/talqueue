@@ -57,11 +57,18 @@ const sections: NavSection[] = [
   { to: "/recruiter",  label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
 ];
 
+const pinnedSections: NavSection[] = [
+  { to: "/feed",       label: "Home",       icon: Compass },
+  { to: "/discover",   label: "Discover",   icon: Search },
+  { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
+  { to: "/chat",       label: "Chats",      icon: MessageSquare, requiresAuth: true },
+];
+
 /** Fixed bottom tab bar — 5 key routes shown on mobile (<lg) */
 const bottomTabs: NavSection[] = [
   { to: "/feed",       label: "Home",       icon: Compass },
+  { to: "/discover",   label: "Discover",   icon: Search },
   { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
-  { to: "/hackathons", label: "Hackathons", icon: Gavel },
   { to: "/chat",       label: "Chat",       icon: MessageSquare, requiresAuth: true },
   { to: "/profile",    label: "Me",         icon: UserRound,     requiresAuth: true },
 ];
@@ -127,6 +134,10 @@ export function AppLayout() {
     return true;
   });
 
+  const sortedDropdownSections = visibleSections
+    .filter((section) => !pinnedSections.some((p) => p.to === section.to))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
 
@@ -175,14 +186,9 @@ export function AppLayout() {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full">
-            {visibleSections.slice(0, 10).map((section, index) => {
+            {pinnedSections.map((section) => {
               const Icon = section.icon;
               const locked = section.requiresAuth && !user;
-
-              const visibilityClass =
-                index >= 6 ? "hidden"
-                : index >= 4 ? "hidden xl:flex"
-                : "flex";
 
               return (
                 <NavLink
@@ -190,7 +196,7 @@ export function AppLayout() {
                   to={locked ? "/auth" : section.to}
                   state={locked ? { from: { pathname: section.to } } : undefined}
                   className={({ isActive }) =>
-                    `${visibilityClass} flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none ${
+                    `flex flex-col items-center justify-center gap-1 px-3 h-full text-[10px] font-bold tracking-wide transition-all duration-150 border-b-2 uppercase leading-none ${
                       isActive
                         ? "border-indigo-600 dark:border-indigo-400 text-indigo-700 dark:text-indigo-400"
                         : "border-transparent hover:border-[color:var(--border-strong)]"
@@ -225,14 +231,9 @@ export function AppLayout() {
               {moreMenuOpen && (
                 <div className="glass absolute right-0 top-full mt-2 w-56 p-2 z-50 animate-scale-in">
                   <div className="space-y-0.5 text-xs font-semibold">
-                    {visibleSections.map((section, index) => {
+                    {sortedDropdownSections.map((section) => {
                       const Icon = section.icon;
                       const locked = section.requiresAuth && !user;
-
-                      const dropdownVisibilityClass =
-                        index < 4 ? "hidden"
-                        : index < 6 ? "block xl:hidden"
-                        : "block";
 
                       return (
                         <NavLink
@@ -240,7 +241,7 @@ export function AppLayout() {
                           to={locked ? "/auth" : section.to}
                           state={locked ? { from: { pathname: section.to } } : undefined}
                           className={({ isActive }) =>
-                            `${dropdownVisibilityClass} flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 ${
+                            `flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 ${
                               isActive ? "text-indigo-700 dark:text-indigo-400 font-bold" : ""
                             }`
                           }
@@ -509,7 +510,7 @@ export function AppLayout() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs font-bold py-2 border-b" style={{ borderColor: "var(--border)" }}>
-              {visibleSections.map((section) => {
+              {sortedDropdownSections.map((section) => {
                 const Icon = section.icon;
                 const locked = section.requiresAuth && !user;
                 return (
