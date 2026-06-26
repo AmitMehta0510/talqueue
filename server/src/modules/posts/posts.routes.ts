@@ -31,6 +31,11 @@ router.get(
   getFeedHandler
 );
 
+router.get(
+  "/",
+  getFeedHandler
+);
+
 // Single post
 router.get(
   "/:id",

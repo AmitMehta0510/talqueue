@@ -71,7 +71,7 @@ export const INTERVIEW_SEED_DATA: InterviewResourceSeedItem[] = [
   // ─── SDE-2 / Coding ──────────────────────────────────────────────────────
   {
     title: "Google SDE-2 Mock Coding Interview — Dynamic Programming",
-    sourceUrl: "https://www.youtube.com/watch?v=oBt53YbR9Kk",
+    sourceUrl: "https://www.youtube.com/watch?v=dp_sde2_google_001",
     youtubeId: "dp_sde2_google_001",
     channelName: "NeetCode",
     thumbnailUrl: "https://img.youtube.com/vi/oBt53YbR9Kk/hqdefault.jpg",

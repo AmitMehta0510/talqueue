@@ -997,18 +997,24 @@ export const getCommunityJoinRequests = async (userId: string, slug: string) => 
     throw new AppError("Community not found", 404);
   }
 
-  // Check if calling user is owner or admin of the community
-  const membership = await prisma.communityMember.findUnique({
-    where: {
-      communityId_userId: {
-        communityId: community.id,
-        userId,
-      },
-    },
-  });
+  // Check if platform admin (bypass check)
+  const roleNames = await getUserRoleNames(userId);
+  const isBypassAdmin = roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN");
 
-  if (!membership || !membership.active || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
-    throw new AppError("Unauthorized. Only community owners and admins can view join requests.", 403);
+  if (!isBypassAdmin) {
+    // Check if calling user is owner or admin of the community
+    const membership = await prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId,
+        },
+      },
+    });
+
+    if (!membership || !membership.active || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+      throw new AppError("Unauthorized. Only community owners and admins can view join requests.", 403);
+    }
   }
 
   // Get pending members: active = false, leftAt = null
@@ -1045,18 +1051,24 @@ export const reviewCommunityJoinRequest = async (
     throw new AppError("Community not found", 404);
   }
 
-  // Check if calling user is owner or admin of the community
-  const membership = await prisma.communityMember.findUnique({
-    where: {
-      communityId_userId: {
-        communityId: community.id,
-        userId,
-      },
-    },
-  });
+  // Check if platform admin (bypass check)
+  const roleNames = await getUserRoleNames(userId);
+  const isBypassAdmin = roleNames.has("PLATFORM_ADMIN") || roleNames.has("SUPER_ADMIN");
 
-  if (!membership || !membership.active || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
-    throw new AppError("Unauthorized. Only community owners and admins can review join requests.", 403);
+  if (!isBypassAdmin) {
+    // Check if calling user is owner or admin of the community
+    const membership = await prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId,
+        },
+      },
+    });
+
+    if (!membership || !membership.active || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+      throw new AppError("Unauthorized. Only community owners and admins can review join requests.", 403);
+    }
   }
 
   // Find the request membership
@@ -1139,6 +1151,112 @@ export const reviewCommunityJoinRequest = async (
     });
 
     return { success: true, status: "rejected" };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Bootstrap helper — called once during server startup
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensures the five platform-core communities always exist in Postgres.
+ * Uses `upsert` with an empty `update` block so it is fully idempotent:
+ * existing rows are never mutated.  New rows are created with a synthetic
+ * system-user owner (the first admin / oldest user in the DB) so that the
+ * `createdById` FK is never null.
+ *
+ * Call this inside `server.listen` callback, AFTER Prisma is connected:
+ *   await ensureCoreCommunitiesExist();
+ */
+export const ensureCoreCommunitiesExist = async (): Promise<void> => {
+  const coreCommunities: Array<{
+    name: string;
+    slug: string;
+    description: string;
+    type: CommunityType;
+    category: CommunityCategory;
+  }> = [
+    {
+      name: "General",
+      slug: "general",
+      description: "The main hub for platform-wide discussions.",
+      type: "GENERAL",
+      category: "GENERAL",
+    },
+    {
+      name: "SDE Prep",
+      slug: "sde-prep",
+      description: "Coding interviews, DSA, system design — all things SDE preparation.",
+      type: "GENERAL",
+      category: "CODING",
+    },
+    {
+      name: "Placement Help",
+      slug: "placement-help",
+      description: "Resume reviews, referrals, and placement tips.",
+      type: "GENERAL",
+      category: "PLACEMENTS",
+    },
+    {
+      name: "Interviews",
+      slug: "interviews",
+      description: "Interview experiences, tips, and preparation resources.",
+      type: "GENERAL",
+      category: "INTERVIEWS",
+    },
+    {
+      name: "Open Source",
+      slug: "open-source",
+      description: "Open-source contributions, GSoC, and community-driven development.",
+      type: "GENERAL",
+      category: "OPEN_SOURCE",
+    },
+
+  ];
+
+  // Find any admin/system user to act as the owner for newly created communities.
+  const systemUser = await prisma.user.findFirst({
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (!systemUser) {
+    console.warn(
+      "[Community Bootstrap] No users found in DB — skipping core community seed. " +
+        "Re-run after at least one user is registered.",
+    );
+    return;
+  }
+
+  let created = 0;
+  for (const community of coreCommunities) {
+    const result = await prisma.community.upsert({
+      where: { slug: community.slug },
+      update: {}, // no-op if already exists
+      create: {
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        type: community.type,
+        category: community.category,
+        createdById: systemUser.id,
+      },
+    });
+
+    // Track newly created (updatedAt === createdAt is a reliable heuristic)
+    if (
+      result.createdAt.getTime() === result.updatedAt.getTime()
+    ) {
+      created++;
+    }
+  }
+
+  if (created > 0) {
+    console.log(
+      `[Community Bootstrap] Seeded ${created} missing core communit${created === 1 ? "y" : "ies"}.`,
+    );
+  } else {
+    console.log("[Community Bootstrap] All core communities already exist. ✓");
   }
 };
 

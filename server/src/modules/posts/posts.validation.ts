@@ -26,6 +26,9 @@ export const createPostSchema =
     thumbnailUrl:
       z.string().optional(),
 
+    mediaUrl:
+      z.string().url().optional(),
+
     mentions:
       z.array(z.string().uuid())
         .optional(),

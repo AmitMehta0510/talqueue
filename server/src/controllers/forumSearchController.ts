@@ -90,6 +90,9 @@ export const searchForumPostsHandler = asyncHandler(
         from,
         size,
         query: esQuery,
+        sort: [
+          { createdAt: { order: "desc" } }
+        ],
         _source: true,
       });
 

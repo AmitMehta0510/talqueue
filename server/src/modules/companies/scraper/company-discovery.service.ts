@@ -220,15 +220,7 @@ async function discoverGreenhouseCompanies(
         );
         hasJobs = (res.data?.jobs?.length ?? 0) > 0;
       } catch {
-        result.skipped++;
-        await sleep(REQUEST_DELAY_MS);
-        continue;
-      }
-
-      if (!hasJobs) {
-        result.skipped++;
-        await sleep(REQUEST_DELAY_MS);
-        continue;
+        hasJobs = false;
       }
 
       let companyId: string;
@@ -263,21 +255,24 @@ async function discoverGreenhouseCompanies(
       }
 
       // Scrape jobs for this company
-      const companyRow: CompanyRow = {
-        id: companyId,
-        name: companyName,
-        slug: companySlug,
-        headquarters: null,
-        country: null,
-        websiteUrl: `https://${board.domain}`,
-        atsToken: board.token,
-        atsSource: "greenhouse",
-      };
+      let processResult = { processedJobIds: [] as string[], created: 0, updated: 0 };
+      if (hasJobs) {
+        const companyRow: CompanyRow = {
+          id: companyId,
+          name: companyName,
+          slug: companySlug,
+          headquarters: null,
+          country: null,
+          websiteUrl: `https://${board.domain}`,
+          atsToken: board.token,
+          atsSource: "greenhouse",
+        };
 
-      const processResult = await processCompany(companyRow);
+        processResult = await processCompany(companyRow);
 
-      if (processResult.processedJobIds.length > 0) {
-        await syncJobsToElasticBulk(processResult.processedJobIds);
+        if (processResult.processedJobIds.length > 0) {
+          await syncJobsToElasticBulk(processResult.processedJobIds);
+        }
       }
 
       result.discovered++;
@@ -338,15 +333,7 @@ async function discoverLeverCompanies(
         );
         hasJobs = Array.isArray(res.data) && res.data.length > 0;
       } catch {
-        result.skipped++;
-        await sleep(REQUEST_DELAY_MS);
-        continue;
-      }
-
-      if (!hasJobs) {
-        result.skipped++;
-        await sleep(REQUEST_DELAY_MS);
-        continue;
+        hasJobs = false;
       }
 
       let companyId: string;
@@ -381,21 +368,24 @@ async function discoverLeverCompanies(
       }
 
       // Scrape jobs for this company
-      const companyRow: CompanyRow = {
-        id: companyId,
-        name: companyName,
-        slug: companySlug,
-        headquarters: null,
-        country: null,
-        websiteUrl: `https://${entry.domain}`,
-        atsToken: entry.slug,
-        atsSource: "lever",
-      };
+      let processResult = { processedJobIds: [] as string[], created: 0, updated: 0 };
+      if (hasJobs) {
+        const companyRow: CompanyRow = {
+          id: companyId,
+          name: companyName,
+          slug: companySlug,
+          headquarters: null,
+          country: null,
+          websiteUrl: `https://${entry.domain}`,
+          atsToken: entry.slug,
+          atsSource: "lever",
+        };
 
-      const processResult = await processCompany(companyRow);
+        processResult = await processCompany(companyRow);
 
-      if (processResult.processedJobIds.length > 0) {
-        await syncJobsToElasticBulk(processResult.processedJobIds);
+        if (processResult.processedJobIds.length > 0) {
+          await syncJobsToElasticBulk(processResult.processedJobIds);
+        }
       }
 
       result.discovered++;

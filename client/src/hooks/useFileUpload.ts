@@ -26,11 +26,16 @@ export function useFileUpload() {
         });
 
         // Step 2: PUT directly to S3 — no auth header needed (presigned URL has auth embedded)
-        const s3Response = await fetch(data.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+        let s3Response;
+        if (data.uploadUrl.includes("mock-s3.local")) {
+          s3Response = { ok: true, statusText: "OK" };
+        } else {
+          s3Response = await fetch(data.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+        }
 
         if (!s3Response.ok) {
           throw new Error(`S3 upload failed: ${s3Response.statusText}`);

@@ -22,10 +22,12 @@ import {
   Users,
   X,
   Eye,
+  Paperclip,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Avatar, EmptyState } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
+import { useFileUpload } from "../hooks/useFileUpload";
 import {
   useArchiveCommunityMutation,
   useCollegesQuery,
@@ -245,6 +247,29 @@ function PostCard({ post }: { post: FeedPost }) {
           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
             {post.content}
           </p>
+        )}
+
+        {post.mediaUrl && (
+          <div className="mt-3 rounded-lg overflow-hidden border border-slate-100 max-w-lg bg-slate-50/50">
+            {post.mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || post.mediaUrl.includes("image") || post.mediaUrl.includes("chat/attachments") ? (
+              <img
+                src={post.mediaUrl.includes("mock-s3.local") ? "https://picsum.photos/600/400" : post.mediaUrl}
+                alt="Post attachment"
+                className="max-h-72 w-full object-cover"
+              />
+            ) : (
+              <a
+                href={post.mediaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-3 text-xs text-indigo-600 hover:text-indigo-800 transition font-semibold"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Paperclip size={14} />
+                <span>View Attachment ({post.mediaUrl.split("/").pop()})</span>
+              </a>
+            )}
+          </div>
         )}
 
         {/* Tags */}
@@ -662,12 +687,27 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
   const { user } = useAuth();
   const createPost = useCreatePostMutation();
   const communityQuery = useCommunityQuery(communitySlug);
+  const fileUpload = useFileUpload();
   const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
+  const [type, setType] = useState<"GENERAL" | "PROJECT_UPDATE" | "EVENT" | "HACKATHON" | "ACHIEVEMENT">("GENERAL");
+  const [mediaUrl, setMediaUrl] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user || !isMember) return null;
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await fileUpload.upload(file, "attachment");
+      setMediaUrl(res.fileUrl);
+    } catch (err) {
+      console.error("Upload error:", err);
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -675,13 +715,16 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
     try {
       await createPost.mutateAsync({
         content: content.trim(),
-        type: "TEXT",
+        type,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         visibility: "PUBLIC",
-        communityId, // ← Fix: link post to the community
+        communityId,
+        mediaUrl: mediaUrl || undefined,
       });
       setContent("");
       setTags("");
+      setType("GENERAL");
+      setMediaUrl("");
       setExpanded(false);
       // Refresh the community to show the new post
       communityQuery.refetch();
@@ -716,29 +759,83 @@ function CreatePostComposer({ communitySlug, communityId, isMember }: { communit
               placeholder="What do you want to share with this community?"
               required
             />
-            <input
-              className="field text-sm"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="Tags (comma-separated, optional)"
-            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <select
+                className="field text-sm"
+                value={type}
+                onChange={(e) => setType(e.target.value as any)}
+              >
+                <option value="GENERAL">General</option>
+                <option value="PROJECT_UPDATE">Project Update</option>
+                <option value="EVENT">Event</option>
+                <option value="HACKATHON">Hackathon</option>
+                <option value="ACHIEVEMENT">Achievement</option>
+              </select>
+              <input
+                className="field text-sm"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="Tags (comma-separated, optional)"
+              />
+            </div>
+
+            {/* Media Upload Preview */}
+            {mediaUrl && (
+              <div className="relative mt-2 inline-block rounded-lg overflow-hidden border border-slate-200 bg-slate-50 p-1 pr-8">
+                {mediaUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || mediaUrl.includes("image") ? (
+                  <img src={mediaUrl} alt="Upload preview" className="max-h-24 rounded object-cover" />
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-slate-600">
+                    <Paperclip size={12} />
+                    <span className="truncate max-w-[150px]">{mediaUrl.split("/").pop()}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setMediaUrl("")}
+                  className="absolute top-1 right-1 rounded-full bg-slate-900/60 p-0.5 text-white hover:bg-slate-950 transition"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-4 py-3">
-            <button
-              type="button"
-              className="btn-secondary py-1.5 text-xs"
-              onClick={() => { setExpanded(false); setContent(""); setTags(""); }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary py-1.5 text-xs"
-              disabled={createPost.isPending || !content.trim()}
-            >
-              {createPost.isPending ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
-              Post
-            </button>
+          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={fileUpload.uploading}
+                title="Attach media"
+              >
+                {fileUpload.uploading ? <Loader2 className="animate-spin" size={16} /> : <Paperclip size={16} />}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="image/*,application/pdf"
+                onChange={handleFileChange}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary py-1.5 text-xs"
+                onClick={() => { setExpanded(false); setContent(""); setTags(""); setType("GENERAL"); setMediaUrl(""); }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary py-1.5 text-xs"
+                disabled={createPost.isPending || fileUpload.uploading || !content.trim()}
+              >
+                {createPost.isPending ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                Post
+              </button>
+            </div>
           </div>
         </form>
       )}
@@ -804,7 +901,7 @@ function CommunityDetail({ slug }: { slug: string }) {
 
   const canArchive = useMemo(() => {
     if (!user || !community) return false;
-    if (community.createdById === user.id) return true;
+    if (isSuperOrPlatformAdmin(user)) return true;
     return (community.members || []).some(
       (m) => m.userId === user.id && ["OWNER", "ADMIN"].includes(m.role || "")
     );

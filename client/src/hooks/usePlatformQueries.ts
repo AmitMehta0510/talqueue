@@ -2067,6 +2067,7 @@ export const useCreatePostMutation = () => {
       tags?: string[];
       visibility?: string;
       communityId?: string;
+      mediaUrl?: string;
     }) => {
       if (!user) {
         throw new Error("Login required");
@@ -2074,10 +2075,13 @@ export const useCreatePostMutation = () => {
 
       return api.createPost(payload);
     },
-    onSuccess: async () => {
+    onSuccess: async (res) => {
       showToast("success", "Post published");
+      const communitySlug = (res as any)?.data?.community?.slug;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.feed.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.communities.all }),
+        ...(communitySlug ? [queryClient.invalidateQueries({ queryKey: queryKeys.communities.detail(communitySlug) })] : []),
         refreshUser(),
       ]);
     },

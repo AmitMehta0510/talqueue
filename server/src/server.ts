@@ -7,6 +7,7 @@ import { checkElasticsearchHealth } from "services/elasticClient";
 import { initElasticsearchIndices } from "services/elasticIndexManager";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
+import { ensureCoreCommunitiesExist } from "modules/community/community.service";
 
 const PORT = process.env.PORT || 5000;
 
@@ -26,6 +27,11 @@ server.listen(PORT, async () => {
   } else {
     console.warn("Skipping Elasticsearch index initialization because health check failed.");
   }
+
+  // Ensure core communities (general, sde-prep, etc.) exist — idempotent
+  await ensureCoreCommunitiesExist().catch((err) =>
+    console.error("[Community Bootstrap] Failed:", err)
+  );
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────

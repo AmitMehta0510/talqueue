@@ -323,6 +323,7 @@ export type FeedPost = {
   itemType?: string;
   reason?: string;
   score?: number;
+  mediaUrl?: string;
 };
 
 export type FeedItemType =
@@ -2264,6 +2265,7 @@ export const api = {
     tags?: string[];
     visibility?: string;
     communityId?: string;
+    mediaUrl?: string;
   }) =>
     request<FeedPost>("/posts", { method: "POST", body }),
   post: (

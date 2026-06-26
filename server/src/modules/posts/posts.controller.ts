@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+import prisma from "shared/database/prisma";
 import asyncHandler from "shared/utils/asyncHandler";
 
 import { successResponse } from "shared/utils/apiResponse";
@@ -66,13 +67,22 @@ export const getFeedHandler =  asyncHandler(
     ) => {
       const query = paginationQuerySchema.parse(req.query);
 
+      let communityId = req.query.communityId || req.query.community || req.query.communitySlug;
+      if (communityId && typeof communityId === "string" && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(communityId)) {
+        const community = await prisma.community.findUnique({
+          where: { slug: communityId },
+          select: { id: true },
+        });
+        communityId = community?.id || undefined;
+      }
+
       const feed =
         await getFeed(
           req.user?.id,
           {
             cursor: query.cursor,
-
             limit: query.limit,
+            communityId: communityId as string | undefined,
           }
         );
 

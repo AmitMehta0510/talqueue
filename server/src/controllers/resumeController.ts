@@ -1,5 +1,6 @@
 import { Response } from "express";
-import puppeteer from "puppeteer";
+// puppeteer is loaded lazily via dynamic import() to avoid the
+// CommonJS-loading-ESM experimental warning at startup.
 import prisma from "shared/database/prisma";
 import asyncHandler from "shared/utils/asyncHandler";
 import AppError from "shared/errors/AppError";
@@ -327,6 +328,8 @@ export const buildResumePdf = async (userId: string): Promise<{ buffer: Buffer; 
   // Use Puppeteer to generate PDF
   let browser: any = null;
   try {
+    // Dynamic import avoids the CJS→ESM experimental warning
+    const { default: puppeteer } = await import("puppeteer");
     browser = await puppeteer.launch({
       headless: true,
       args: [

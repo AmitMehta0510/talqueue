@@ -171,6 +171,8 @@ export const createPost = async (userId: string, data: any) => {
 
       thumbnailUrl: data.thumbnailUrl,
 
+      mediaUrl: data.mediaUrl,
+
       mentions: data.mentions || [],
 
       visibility: data.visibility || "PUBLIC",
@@ -200,6 +202,7 @@ export const createPost = async (userId: string, data: any) => {
       },
 
       tags: true,
+      community: true,
     },
   });
 
@@ -285,6 +288,7 @@ export const getFeed = async (
   params: {
     cursor?: string;
     limit?: number;
+    communityId?: string;
   } = {},
 ) => {
   const limit = clampLimit(params.limit, DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT);
@@ -292,15 +296,12 @@ export const getFeed = async (
   const posts = await prisma.post.findMany({
     where: {
       deletedAt: null,
+      ...(params.communityId ? { communityId: params.communityId } : {}),
     },
 
     orderBy: [
       {
         pinned: "desc",
-      },
-
-      {
-        trendingScore: "desc",
       },
 
       {

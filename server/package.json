@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "node dist/server.js",
     "seed:companies": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualSeed.ts",
-    "seed:jobs": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualJobSeed.ts"
+    "seed:jobs": "ts-node -r tsconfig-paths/register src/modules/companies/scraper/runManualJobSeed.ts",
+    "seed:sandbox": "ts-node -r tsconfig-paths/register prisma/seedStagingSandbox.ts",
+    "seed:interviews": "ts-node -r tsconfig-paths/register prisma/seedInterviews.ts"
   },
   "keywords": [],
   "author": "",

@@ -1141,6 +1141,7 @@ model Post {
   attachments Json?
 
   thumbnailUrl String?
+  mediaUrl     String?
 
   tags PostTag[]
 
