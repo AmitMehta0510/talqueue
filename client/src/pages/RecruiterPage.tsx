@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
   Users,
@@ -13,6 +14,10 @@ import {
   Loader2,
   Building2,
   ClipboardList,
+  ArrowRight,
+  MapPin,
+  Calendar,
+  Trophy,
 } from "lucide-react";
 import {
   useRecruiterDashboardQuery,
@@ -20,6 +25,7 @@ import {
   useRecruiterJobsQuery,
   useDriveInvitesForCompanyQuery,
   useWithdrawDriveInviteMutation,
+  useRespondToDriveInviteMutation,
   useMyPostedDrivesQuery,
   useMyClaimStatusQuery,
   useRecruiterClaimJobApplicationsQuery,
@@ -36,7 +42,8 @@ import { Job, JobApplication } from "../lib/api";
 
 export function RecruiterPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"claim" | "jobs" | "apps">("jobs");
+  const [activeTab, setActiveTab] = useState<"claim" | "jobs" | "apps" | "campus">("jobs");
+  const navigate = useNavigate();
   const [managedJobId, setManagedJobId] = useState<string | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
   const [showDriveInviteModal, setShowDriveInviteModal] = useState(false);
@@ -54,13 +61,14 @@ export function RecruiterPage() {
   // Detect the recruiter's primary company
   const recruiterCompany = useMemo(() => {
     const experiences = (user as any)?.experiences || [];
-    const adminRoles = (user as any)?.companyAdmins || [];
+    const adminRoles = (user as any)?.companyAdminships || (user as any)?.companyAdmins || [];
     return adminRoles[0]?.company || experiences[0]?.company || null;
   }, [user]);
 
   const companyId = recruiterCompany?.id as string | undefined;
   const driveInvitesQuery = useDriveInvitesForCompanyQuery(companyId);
   const withdrawInviteMutation = useWithdrawDriveInviteMutation(companyId);
+  const respondToInviteMutation = useRespondToDriveInviteMutation(null);
   const myPostedDrivesQuery = useMyPostedDrivesQuery();
   const postedDrives = myPostedDrivesQuery.data || [];
 
@@ -174,6 +182,22 @@ export function RecruiterPage() {
           }`}
         >
           Claim Status
+        </button>
+        <button
+          onClick={() => setActiveTab("campus")}
+          className={`pb-3 text-sm font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === "campus"
+              ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <GraduationCap size={14} />
+          Campus Drives
+          {postedDrives.length > 0 && (
+            <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-500 px-1 text-[9px] font-bold text-white">
+              {postedDrives.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -317,14 +341,35 @@ export function RecruiterPage() {
                         </p>
                       )}
                       {invite.status === "PENDING" && (
-                        <button
-                          type="button"
-                          onClick={() => withdrawInviteMutation.mutate(invite.id)}
-                          disabled={withdrawInviteMutation.isPending}
-                          className="text-[10px] font-bold hover:text-rose-600 flex items-center gap-1 transition disabled:opacity-50" style={{ color: "var(--text-muted)" }}
-                        >
-                          <X size={10} /> Withdraw
-                        </button>
+                        invite.initiatedBy === "COMPANY_TO_COLLEGE" ? (
+                          <button
+                            type="button"
+                            onClick={() => withdrawInviteMutation.mutate(invite.id)}
+                            disabled={withdrawInviteMutation.isPending}
+                            className="text-[10px] font-bold hover:text-rose-600 flex items-center gap-1 transition disabled:opacity-50" style={{ color: "var(--text-muted)" }}
+                          >
+                            <X size={10} /> Withdraw
+                          </button>
+                        ) : (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "ACCEPT" })}
+                              disabled={respondToInviteMutation.isPending}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-2.5 rounded-lg text-[10px] transition disabled:opacity-50 shadow-sm"
+                            >
+                              Accept & Create
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "REJECT" })}
+                              disabled={respondToInviteMutation.isPending}
+                              className="border border-rose-200 hover:bg-rose-50 text-rose-600 font-semibold py-1 px-2.5 rounded-lg text-[10px] transition disabled:opacity-50"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )
                       )}
                       {invite.status === "ACCEPTED" && invite.placementDrive && (
                         <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
@@ -583,6 +628,190 @@ export function RecruiterPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── CAMPUS DRIVES TAB ──────────────────────────────────────────────── */}
+      {activeTab === "campus" && (
+        <div className="space-y-8">
+          {/* Header with Send New Invite CTA */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Campus Placement Drives</h3>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                Manage college invitations, track drive progress, and review applicants.
+              </p>
+            </div>
+            {companyId && (
+              <button
+                className="btn-primary py-1.5 px-4 text-xs font-semibold shrink-0"
+                onClick={() => setShowDriveInviteModal(true)}
+              >
+                <Send size={14} />
+                Send Campus Invite
+              </button>
+            )}
+          </div>
+
+          {/* Sent Invites Section */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+              <Send size={12} />
+              Sent Invites ({(driveInvitesQuery.data || []).length})
+            </h4>
+
+            {driveInvitesQuery.isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-indigo-500" /></div>
+            ) : !driveInvitesQuery.data || driveInvitesQuery.data.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--border)" }}>
+                <Send size={24} className="mx-auto mb-2 opacity-40" style={{ color: "var(--text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No invites sent yet</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  Send a campus invite to a college to start a placement drive.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {driveInvitesQuery.data.map((invite: any) => {
+                  const statusColors: Record<string, string> = {
+                    PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    ACCEPTED: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+                    REJECTED: "bg-rose-500/15 text-rose-500 border-rose-500/20",
+                    WITHDRAWN: "bg-slate-500/15 text-slate-500 border-slate-500/20",
+                  };
+                  return (
+                    <div
+                      key={invite.id}
+                      className="panel p-4 flex flex-col gap-2 hover:shadow-md transition"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <GraduationCap size={14} className="text-indigo-400 shrink-0" />
+                            <span className="font-bold text-sm truncate" style={{ color: "var(--text-primary)" }}>
+                              {invite.college?.name || "College"}
+                            </span>
+                          </div>
+                          {invite.college?.city && (
+                            <div className="flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                              <MapPin size={10} />
+                              {[invite.college.city, invite.college.state].filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColors[invite.status] || "bg-slate-500/15 text-slate-500 border-slate-500/20"}`}>
+                          {invite.status}
+                        </span>
+                      </div>
+
+                      {invite.driveTitle && (
+                        <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                          Drive: <span className="font-semibold">{invite.driveTitle}</span>
+                        </p>
+                      )}
+
+                      {invite.status === "PENDING" && (
+                        <button
+                          className="self-start flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-400 transition"
+                          onClick={() => withdrawInviteMutation.mutate(invite.id)}
+                          disabled={withdrawInviteMutation.isPending}
+                        >
+                          {withdrawInviteMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Active Drives Section */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+              <Trophy size={12} />
+              Active Campus Drives ({postedDrives.length})
+            </h4>
+
+            {myPostedDrivesQuery.isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-indigo-500" /></div>
+            ) : postedDrives.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--border)" }}>
+                <GraduationCap size={24} className="mx-auto mb-2 opacity-40" style={{ color: "var(--text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No active campus drives</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  Drives are created automatically when a college accepts your invite.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {postedDrives.map((drive: any) => {
+                  const driveStatusColors: Record<string, string> = {
+                    OPEN: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+                    CLOSED: "bg-slate-500/15 text-slate-500 border-slate-500/20",
+                    CANCELLED: "bg-rose-500/15 text-rose-500 border-rose-500/20",
+                    COMPLETED: "bg-purple-500/15 text-purple-500 border-purple-500/20",
+                  };
+                  return (
+                    <div
+                      key={drive.id}
+                      className="panel p-4 flex flex-col gap-3 hover:shadow-lg transition cursor-pointer group"
+                      onClick={() => navigate(`/recruiter/drive/${drive.id}`)}
+                    >
+                      {/* Drive Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-sm truncate group-hover:text-indigo-500 transition" style={{ color: "var(--text-primary)" }}>
+                            {drive.title}
+                          </h5>
+                          <p className="text-xs truncate mt-0.5" style={{ color: "var(--text-muted)" }}>
+                            {drive.targetCollege?.name || "College TBD"}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${driveStatusColors[drive.status] || "bg-slate-500/15 text-slate-500 border-slate-500/20"}`}>
+                          {drive.status}
+                        </span>
+                      </div>
+
+                      {/* Drive Stats */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg p-2 text-center" style={{ background: "var(--bg-surface-2)" }}>
+                          <div className="text-lg font-black" style={{ color: "var(--text-primary)" }}>
+                            {drive._count?.applications ?? drive.applicationsCount ?? 0}
+                          </div>
+                          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Applicants</div>
+                        </div>
+                        <div className="rounded-lg p-2 text-center" style={{ background: "var(--bg-surface-2)" }}>
+                          <div className="text-lg font-black" style={{ color: "var(--text-primary)" }}>
+                            {drive.driveType || "FULL_TIME"}
+                          </div>
+                          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Type</div>
+                        </div>
+                      </div>
+
+                      {/* Drive Date */}
+                      {drive.driveDate && (
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                          <Calendar size={11} />
+                          {new Date(drive.driveDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      )}
+
+                      {/* View Applicants CTA */}
+                      <button
+                        className="w-full flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-bold transition hover:bg-indigo-500/10 hover:border-indigo-500/30 hover:text-indigo-500"
+                        style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/recruiter/drive/${drive.id}`); }}
+                      >
+                        View Applicants <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

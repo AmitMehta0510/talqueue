@@ -8,6 +8,7 @@ import { initElasticsearchIndices } from "services/elasticIndexManager";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
 import { ensureCoreCommunitiesExist } from "modules/community/community.service";
+import { startMailWorker } from "services/mailQueue";
 
 const PORT = process.env.PORT || 5000;
 
@@ -32,6 +33,9 @@ server.listen(PORT, async () => {
   await ensureCoreCommunitiesExist().catch((err) =>
     console.error("[Community Bootstrap] Failed:", err)
   );
+
+  // Start background mail queue worker
+  startMailWorker();
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────

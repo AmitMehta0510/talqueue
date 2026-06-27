@@ -28,6 +28,7 @@ import { UserProfilePage } from "./pages/UserProfilePage";
 import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReputationPage } from "./pages/ReputationPage";
 import { RecruiterPage } from "./pages/RecruiterPage";
+import { RecruiterDrivePage } from "./pages/RecruiterDrivePage";
 import { AdminPage } from "./pages/AdminPage";
 import { CompanyAdminPage } from "./pages/CompanyAdminPage";
 import { EventsPage } from "./pages/EventsPage";
@@ -266,6 +267,14 @@ function AppRoutes() {
             element={
               <RequireAuth>
                 <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/recruiter/drive/:driveId"
+            element={
+              <RequireAuth>
+                <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
               </RequireAuth>
             }
           />

@@ -105,10 +105,10 @@ function DriveCard({
   const eligibility = eligibilityQuery.data; // { eligible: boolean, reasons: string[], missingFields: string[] }
 
   return (
-    <article className="panel hover-lift justify-between overflow-hidden flex flex-col">
+    <article className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 hover:shadow-xl hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 justify-between overflow-hidden flex flex-col rounded-2xl shadow-sm">
       <div>
         {/* Header stripe */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-brand to-indigo-500" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-600" />
 
         <div className="p-5 space-y-4">
           {/* Company + Status */}
@@ -300,22 +300,22 @@ function MyApplicationsTracker() {
   if (apps.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-blue-105 dark:border-blue-900/40 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/10 dark:to-indigo-950/10 p-4 space-y-3">
+    <section className="rounded-2xl border border-blue-100 dark:border-indigo-950 bg-gradient-to-br from-blue-50/40 via-indigo-50/20 to-white dark:from-indigo-950/20 dark:via-slate-950/40 dark:to-slate-950 p-5 space-y-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <Briefcase size={14} className="text-brand" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-brand">My Drive Applications</h3>
-        <span className="ml-auto rounded-full bg-brand text-inverse text-[10px] font-bold px-2 py-0.5">{apps.length}</span>
+        <Briefcase size={15} className="text-blue-600 dark:text-blue-450" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-450">My Drive Applications</h3>
+        <span className="ml-auto rounded-full bg-blue-600 dark:bg-blue-550 text-white text-[10px] font-bold px-2.5 py-0.5">{apps.length}</span>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {apps.map((app) => {
           const style = APP_STATUS_STYLES[app.status] || APP_STATUS_STYLES["APPLIED"];
           return (
-            <div key={app.id} className="flex items-center gap-3 rounded-xl bg-surface border border-base px-3.5 py-2.5">
+            <div key={app.id} className="flex items-center justify-between gap-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 px-4 py-3 hover:shadow-sm transition-all duration-200">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-primary truncate">{app.drive?.driveTitle}</p>
-                <p className="text-[10px] text-muted-fg">{app.drive?.company?.name}</p>
+                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{app.drive?.driveTitle}</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{app.drive?.company?.name}</p>
               </div>
-              <span className="shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold bg-surface-2 border-base">
+              <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold ${style.color}`}>
                 {style.icon}
                 {style.label}
               </span>
@@ -325,11 +325,11 @@ function MyApplicationsTracker() {
       </div>
       <Link
         to="/placements"
-        className="w-full flex items-center justify-center gap-2 btn-secondary text-brand hover:bg-brand-light hover:border-brand text-xs font-bold py-2.5 shadow-sm transition"
+        className="w-full flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-850 text-blue-600 dark:text-blue-400 text-xs font-bold py-2.5 rounded-xl shadow-sm transition"
       >
         <Briefcase size={13} />
         Go to Placements Dashboard
-        <ChevronRight size={13} className="ml-1 opacity-60" />
+        <ChevronRight size={13} className="ml-1 opacity-60 animate-bounce-horizontal" />
       </Link>
     </section>
   );

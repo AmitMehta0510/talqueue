@@ -37,6 +37,9 @@ const OTP_TTL_SECONDS = 600;
 /** Redis key prefix for company-claim OTPs. */
 const CLAIM_OTP_PREFIX = "company-claim";
 
+/** Redis key prefix for TPO-claim OTPs. */
+const TPO_CLAIM_OTP_PREFIX = "tpo-claim";
+
 /** OTP is a 6-digit numeric code. */
 const OTP_LENGTH = 6;
 
@@ -63,6 +66,29 @@ const claimInitiateSchema = z.object({
 const claimVerifySchema = z.object({
   companyId: z.string().uuid(),
   otp: z.string().length(OTP_LENGTH),
+});
+
+const tpoClaimInitiateSchema = z.object({
+  collegeName: z.string().min(3).max(300),
+  officialEmail: z.string().email(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  website: z.string().url().optional(),
+  aisheCode: z.string().max(50).optional(),
+  authorityLetterheadDoc: z.string().url().optional(),
+});
+
+const tpoClaimVerifySchema = z.object({
+  collegeName: z.string().min(3).max(300),
+  officialEmail: z.string().email(),
+  otp: z.string().length(OTP_LENGTH),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  website: z.string().url().optional(),
+  aisheCode: z.string().max(50).optional(),
+  authorityLetterheadDoc: z.string().url().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -472,6 +498,231 @@ export const claimVerifyHandler = asyncHandler(
             "Your company claim has been verified and submitted for admin review. You will be notified once it is processed.",
         },
         "Company claim submitted successfully"
+      )
+    );
+  }
+);
+
+// ---------------------------------------------------------------------------
+// HANDLER: POST /api/tpo/claim/initiate
+// ---------------------------------------------------------------------------
+
+/**
+ * TPO Claim — Initiate (Step 1 of 2).
+ *
+ * Validates that the official email domain plausibly belongs to the college
+ * (by checking against the college's website domain if it exists in our catalog,
+ * or accepting any institutional email ending in .edu/.ac.in/.edu.in etc.).
+ * Generates a 6-digit OTP and sends it to the official email via Brevo.
+ *
+ * OTP is NEVER returned in the HTTP response.
+ */
+export const tpoClaimInitiateHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const userId = req.user.id as string;
+
+    const { collegeName, officialEmail, ...restFields } = tpoClaimInitiateSchema.parse(req.body);
+
+    logger.info(`TPO claim initiate: user=${userId}, college="${collegeName}", email=${officialEmail}`);
+
+    // --- Domain validation ---
+    const incomingDomain = extractEmailDomain(officialEmail);
+
+    // Accept: institutional email patterns (.edu, .ac.in, .edu.in, .ac.uk, etc.)
+    // OR if the college exists in our catalog, check its website domain
+    const isInstitutionalDomain =
+      incomingDomain.endsWith(".edu") ||
+      incomingDomain.endsWith(".ac.in") ||
+      incomingDomain.endsWith(".edu.in") ||
+      incomingDomain.endsWith(".ac.uk") ||
+      incomingDomain.endsWith(".ac.nz") ||
+      incomingDomain.endsWith(".edu.au");
+
+    // Check if college exists in catalog and has a website domain to match
+    const normalizedKey = collegeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    const existingCollege = await prisma.college.findFirst({
+      where: { normalizedKey },
+      select: { id: true, name: true, website: true },
+    });
+
+    let domainMatches = isInstitutionalDomain;
+
+    if (existingCollege?.website) {
+      try {
+        const collegeWebsiteDomain = new URL(existingCollege.website).hostname.replace(/^www\./, "");
+        domainMatches = domainMatches || incomingDomain.endsWith(collegeWebsiteDomain);
+      } catch {
+        // website URL might be malformed — fall back to institutional check
+      }
+    }
+
+    if (!domainMatches) {
+      logger.warn(
+        `TPO claim domain mismatch for college "${collegeName}": incoming="${incomingDomain}"`
+      );
+      throw new AppError(
+        `The email "@${incomingDomain}" does not appear to be an official institutional email. ` +
+          `Please use your college-issued email address (e.g., yourname@college.ac.in).`,
+        403
+      );
+    }
+
+    // --- Generate and store OTP in Redis ---
+    const otp = generateOtp();
+    const redisKey = `${TPO_CLAIM_OTP_PREFIX}:${userId}:${normalizedKey}`;
+
+    await redis.set(redisKey, otp, "EX", OTP_TTL_SECONDS);
+
+    logger.info(`TPO claim OTP generated: user=${userId}, college="${collegeName}", ttl=${OTP_TTL_SECONDS}s`);
+
+    // --- Send OTP email via Brevo ---
+    const emailResult = await sendOtpEmail({
+      to: officialEmail,
+      otp,
+      companyName: collegeName, // reuse field — will show college name in email
+    });
+
+    return res.status(200).json(
+      successResponse(
+        {
+          collegeName,
+          officialEmail,
+          otpExpiresInSeconds: OTP_TTL_SECONDS,
+          emailSent: emailResult.sent,
+          message: emailResult.sent
+            ? `A verification code has been sent to ${officialEmail}. It expires in 10 minutes.`
+            : `Verification initiated. Check server logs for OTP (dev mode — email not configured).`,
+        },
+        "TPO verification initiated"
+      )
+    );
+  }
+);
+
+// ---------------------------------------------------------------------------
+// HANDLER: POST /api/tpo/claim/verify
+// ---------------------------------------------------------------------------
+
+/**
+ * TPO Claim — Verify (Step 2 of 2).
+ *
+ * Validates the OTP sent to the official email. On success:
+ *  1. Consumes the OTP (single-use).
+ *  2. Creates a CollegeRequest (PENDING) for admin review.
+ *  3. Notifies all super-admins.
+ */
+export const tpoClaimVerifyHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const userId = req.user.id as string;
+
+    const { collegeName, officialEmail, otp, ...restFields } = tpoClaimVerifySchema.parse(req.body);
+
+    logger.info(`TPO claim verify: user=${userId}, college="${collegeName}"`);
+
+    const normalizedKey = collegeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    const redisKey = `${TPO_CLAIM_OTP_PREFIX}:${userId}:${normalizedKey}`;
+
+    // --- Load OTP from Redis ---
+    const storedOtp = await redis.get(redisKey);
+
+    if (!storedOtp) {
+      throw new AppError(
+        "OTP has expired or was not found. Please initiate a new TPO verification.",
+        410
+      );
+    }
+
+    if (storedOtp !== otp) {
+      logger.warn(`TPO claim OTP mismatch: user=${userId}, college="${collegeName}"`);
+      throw new AppError("Invalid OTP. Please check the code and try again.", 401);
+    }
+
+    // --- OTP valid — consume it ---
+    await redis.del(redisKey);
+    logger.info(`TPO claim OTP consumed: user=${userId}, college="${collegeName}"`);
+
+    // Check for duplicate pending request
+    const existingRequest = await prisma.collegeRequest.findFirst({
+      where: {
+        userId,
+        name: { equals: collegeName, mode: "insensitive" },
+        status: { in: ["PENDING", "VERIFIED"] },
+      },
+      select: { id: true, status: true },
+    });
+
+    if (existingRequest) {
+      throw new AppError(
+        `A college request for "${collegeName}" is already ${existingRequest.status.toLowerCase()} for your account. Request ID: ${existingRequest.id}`,
+        409
+      );
+    }
+
+    // --- Create CollegeRequest ---
+    const request = await prisma.collegeRequest.create({
+      data: {
+        userId,
+        name: collegeName,
+        officialEmail,
+        city: restFields.city,
+        state: restFields.state,
+        country: restFields.country,
+        website: restFields.website,
+        aisheCode: restFields.aisheCode,
+        authorityLetterheadDoc: restFields.authorityLetterheadDoc,
+        status: "PENDING",
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        officialEmail: true,
+        aisheCode: true,
+        createdAt: true,
+      },
+    });
+
+    logger.info(`TPO CollegeRequest created: id=${request.id} for "${request.name}".`);
+
+    // Notify all super-admins
+    const adminIds = await getSuperAdminIds();
+    const notificationPromises = adminIds.map((adminId) =>
+      createNotification({
+        userId: adminId,
+        type: NotificationType.SYSTEM,
+        actorId: userId,
+        title: "New TPO College Onboarding Request (OTP Verified)",
+        message: `OTP-verified TPO onboarding request: "${collegeName}" by ${officialEmail}. Request ID: ${request.id}`,
+        entityType: "college_request",
+        entityId: request.id,
+        actionUrl: `/admin`,
+      }).catch((err) => {
+        logger.warn(`Failed to notify admin ${adminId}: ${err.message}`);
+      })
+    );
+    await Promise.allSettled(notificationPromises);
+
+    logger.info(`Notified ${adminIds.length} admin(s) about TPO request ${request.id}.`);
+
+    return res.status(201).json(
+      successResponse(
+        {
+          collegeRequestId: request.id,
+          collegeName: request.name,
+          status: request.status,
+          officialEmail: request.officialEmail,
+          message:
+            "Your institutional onboarding request has been OTP-verified and submitted for admin review. Our team will review and reach out within 2-3 business days.",
+        },
+        "TPO college onboarding request submitted successfully"
       )
     );
   }

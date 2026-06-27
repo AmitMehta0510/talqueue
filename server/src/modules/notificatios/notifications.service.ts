@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
+import { getIO } from "modules/chat/socket";
 
 export const createNotification =  async (data: {
     userId: string;
@@ -37,6 +38,13 @@ export const createNotification =  async (data: {
         },
       },
     });
+
+    try {
+      const io = getIO();
+      io.to(`user:${data.userId}`).emit("notification_created", notification);
+    } catch (err) {
+      // Ignore socket.io initialization errors (e.g., in test suites)
+    }
 
     try {
       const redisKey = `notif:unread:${data.userId}`;
@@ -322,6 +330,15 @@ export const createNotificationsBulk = async (
   });
 
   setImmediate(async () => {
+    try {
+      const io = getIO();
+      for (const data of notificationsData) {
+        io.to(`user:${data.userId}`).emit("notification_created", data);
+      }
+    } catch (err) {
+      // Ignore socket.io initialization errors (e.g., in test suites)
+    }
+
     try {
       const pipeline = redis.pipeline();
       for (const data of notificationsData) {

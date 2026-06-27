@@ -2,6 +2,8 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { isCollegeAdminOrCdcr } from "./placementDrives.service";
 import { PlacementDriveApplicationStatus } from "@prisma/client";
+import { createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { enqueueEmail } from "services/mailQueue";
 
 interface CreateRoundData {
   roundType: string; // "APTITUDE_TEST" | "GROUP_DISCUSSION" | "TECHNICAL_INTERVIEW" | "HR_INTERVIEW" | "FINAL"
@@ -241,16 +243,33 @@ export const shortlistForRound = async (
             WITHDRAWN: "Withdrawn",
           };
 
-          await prisma.notification.createMany({
-            data: applications.map((app) => ({
+          await createNotificationsBulk(
+            applications.map((app) => ({
               userId: app.userId,
               actorId,
               type: "PLACEMENT_DRIVE_APPLIED",
               title: `Shortlisted for ${round.roundType}`,
               message: `Congratulations! You have been advanced to ${statusLabel[updateStatus] ?? updateStatus} for "${round.drive.driveTitle}".`,
               actionUrl: `/jobs`,
-            })),
+            }))
+          );
+
+          // Get emails for all target students
+          const studentUsers = await prisma.user.findMany({
+            where: { id: { in: applications.map((app) => app.userId) } },
+            select: { email: true },
           });
+
+          for (const studentUser of studentUsers) {
+            if (studentUser.email) {
+              await enqueueEmail(
+                studentUser.email,
+                `Advanced to ${statusLabel[updateStatus] ?? updateStatus} for ${round.drive.driveTitle}`,
+                `<p>Congratulations! You have been advanced to <strong>${statusLabel[updateStatus] ?? updateStatus}</strong> for the placement drive: <strong>${round.drive.driveTitle}</strong>.</p>
+                 <p>Please check your student placement dashboard for schedule details or meet links.</p>`
+              );
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to generate advanced status notifications:", err);

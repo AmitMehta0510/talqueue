@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useSearchParams } from "react-router-dom";
 import {
   Building2,
   Mail,
@@ -15,6 +16,7 @@ import {
   UserCheck,
   Building,
   Check,
+  GraduationCap,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useToast } from "../contexts/ToastContext";
@@ -35,13 +37,33 @@ const claimSchema = z.object({
   corporateDoc: z.string().url("Please upload a valid document"),
 });
 
+const tpoSchema = z.object({
+  collegeName: z.string().trim().min(3, "College name must be at least 3 characters"),
+  city: z.string().trim().optional(),
+  state: z.string().trim().optional(),
+  country: z.string().trim().optional(),
+  website: z.string().trim().url("Please enter a valid website URL").optional().or(z.literal("")),
+  aisheCode: z.string().trim().optional(),
+  officialEmail: z.string().trim().email("Please enter a valid official institutional email"),
+  authorityLetterheadDoc: z.string().url("Please upload authorization document").optional().or(z.literal("")),
+});
+
 type RecruiterFormValues = z.infer<typeof recruiterSchema>;
 type ClaimFormValues = z.infer<typeof claimSchema>;
+type TpoFormValues = z.infer<typeof tpoSchema>;
 
 export function BusinessOnboardingPage() {
   const { showToast } = useToast();
   const { upload, uploading } = useFileUpload();
-  const [activeFunnel, setActiveFunnel] = useState<"recruiter" | "claim" | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeFunnel, setActiveFunnel] = useState<"recruiter" | "claim" | "tpo" | null>(null);
+
+  useEffect(() => {
+    if (tabParam === "recruiter" || tabParam === "claim" || tabParam === "tpo") {
+      setActiveFunnel(tabParam);
+    }
+  }, [tabParam]);
   
   // Autocomplete / Company list state
   const [companies, setCompanies] = useState<any[]>([]);
@@ -96,9 +118,127 @@ export function BusinessOnboardingPage() {
     },
   });
 
+  const [tpoSuccess, setTpoSuccess] = useState(false);
+  const [tpoUploadedFileName, setTpoUploadedFileName] = useState<string | null>(null);
+  const [tpoUploadProgress, setTpoUploadProgress] = useState<number | null>(null);
+  // 3-step TPO OTP flow
+  const [tpoStep, setTpoStep] = useState<1 | 2 | 3>(1);
+  const [tpoInitiating, setTpoInitiating] = useState(false);
+  const [tpoOtpValue, setTpoOtpValue] = useState("");
+  const [tpoOtpError, setTpoOtpError] = useState("");
+  const [tpoVerifying, setTpoVerifying] = useState(false);
+
+  const {
+    register: registerTpo,
+    handleSubmit: handleTpoSubmit,
+    setValue: setTpoValue,
+    watch: watchTpo,
+    formState: { errors: tpoErrors, isSubmitting: tpoSubmitting },
+    reset: resetTpo,
+  } = useForm<TpoFormValues>({
+    resolver: zodResolver(tpoSchema),
+    defaultValues: {
+      collegeName: "",
+      city: "",
+      state: "",
+      country: "India",
+      website: "",
+      aisheCode: "",
+      officialEmail: "",
+      authorityLetterheadDoc: "",
+    },
+  });
+
   // Watchers
   const watchedCompanyName = watchRecruiter("companyName");
   const watchedCorporateDoc = watchClaim("corporateDoc");
+  const watchedTpoDoc = watchTpo("authorityLetterheadDoc");
+
+  // TPO Step 1 → Step 2: initiate OTP on official email
+  const onTpoInitiate = async (data: TpoFormValues) => {
+    setTpoInitiating(true);
+    try {
+      await api.tpoClaimInitiate({
+        officialEmail: data.officialEmail,
+        collegeName: data.collegeName,
+      });
+      setTpoStep(2);
+      showToast("success", `OTP sent to ${data.officialEmail} — check your institutional inbox.`);
+    } catch (err: any) {
+      showToast("error", err?.message || "Failed to send OTP — verify your institutional email.");
+    } finally {
+      setTpoInitiating(false);
+    }
+  };
+
+  // TPO Step 2 → Step 3: verify OTP + submit onboarding request
+  const onTpoVerifyAndSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tpoOtpValue.length !== 6) {
+      setTpoOtpError("Please enter the 6-digit OTP sent to your email.");
+      return;
+    }
+    setTpoVerifying(true);
+    setTpoOtpError("");
+    const data = watchTpo();
+    try {
+      // Verify OTP first
+      await api.tpoClaimVerify({
+        officialEmail: data.officialEmail,
+        collegeName: data.collegeName,
+        otp: tpoOtpValue,
+      });
+      // OTP valid — submit full onboarding request
+      const payload = {
+        collegeName: data.collegeName,
+        city: data.city || undefined,
+        state: data.state || undefined,
+        country: data.country || undefined,
+        website: data.website || undefined,
+        aisheCode: data.aisheCode || undefined,
+        officialEmail: data.officialEmail,
+        authorityLetterheadDoc: data.authorityLetterheadDoc || undefined,
+      };
+      await api.submitTpoOnboarding(payload);
+      setTpoSuccess(true);
+      setTpoStep(3);
+      showToast("success", "OTP verified! College onboarding request submitted to admin queue.");
+    } catch (err: any) {
+      const msg = err?.message || "OTP verification failed";
+      if (msg.toLowerCase().includes("otp") || msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("expired")) {
+        setTpoOtpError(msg);
+      } else {
+        showToast("error", msg);
+      }
+    } finally {
+      setTpoVerifying(false);
+    }
+  };
+
+  const handleTpoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      showToast("error", "Only PDF files are allowed for authorization letters");
+      return;
+    }
+
+    setTpoUploadedFileName(file.name);
+    setTpoUploadProgress(10);
+
+    try {
+      setTpoUploadProgress(40);
+      const result = await upload(file, "letterhead");
+      setTpoUploadProgress(100);
+      setTpoValue("authorityLetterheadDoc", result.fileUrl, { shouldValidate: true });
+      showToast("success", "Authorization letter uploaded successfully");
+    } catch (err) {
+      setTpoUploadProgress(null);
+      setTpoUploadedFileName(null);
+      showToast("error", err instanceof Error ? err.message : "Failed to upload document");
+    }
+  };
 
   // Fetch companies for dropdown/selection
   useEffect(() => {
@@ -218,24 +358,24 @@ export function BusinessOnboardingPage() {
         {/* Page Header */}
         <div className="text-center space-y-2">
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-            <Sparkles size={12} /> B2B SaaS Enterprise Portal
+            <Sparkles size={12} /> B2B & Institutional Portal
           </span>
           <h1 className="text-4xl font-extrabold tracking-tight text-primary sm:text-5xl">
-            Engineering Platform <span className="text-indigo-400">For Business</span>
+            Engineering Platform <span className="text-indigo-400">Onboarding</span>
           </h1>
           <p className="max-w-2xl mx-auto text-sm text-secondary">
-            Select your path to request corporate access, recruit verified engineering talent, or claim ownership of your brand.
+            Select your path to request corporate access, recruit verified engineering talent, claim company page ownership, or register your college as a Training & Placement Officer.
           </p>
         </div>
 
         {/* Funnel Selection Split Grid */}
         {activeFunnel === null ? (
-          <div className="grid gap-6 md:grid-cols-2 mt-8">
+          <div className="grid gap-6 md:grid-cols-3 mt-8">
             
             {/* Card 1: Recruiter access */}
             <button
               onClick={() => setActiveFunnel("recruiter")}
-              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#11102a]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#11102a]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <UserCheck size={120} className="text-indigo-400" />
@@ -244,10 +384,10 @@ export function BusinessOnboardingPage() {
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <UserCheck size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
-                  Recruiter Access Console
+                <h3 className="text-xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
+                  Recruiter Access
                 </h3>
-                <p className="text-sm text-secondary leading-relaxed">
+                <p className="text-xs text-secondary leading-relaxed">
                   Join an existing company or create a shadow brand workspace. Post jobs, invite colleges, and evaluate candidates in a dedicated pipeline.
                 </p>
               </div>
@@ -259,7 +399,7 @@ export function BusinessOnboardingPage() {
             {/* Card 2: Company Claim */}
             <button
               onClick={() => setActiveFunnel("claim")}
-              className="group text-left p-8 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#161a35]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#161a35]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Building2 size={120} className="text-indigo-400" />
@@ -268,15 +408,39 @@ export function BusinessOnboardingPage() {
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   <Building2 size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
-                  Claim Page Ownership
+                <h3 className="text-xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
+                  Claim Company Page
                 </h3>
-                <p className="text-sm text-secondary leading-relaxed">
+                <p className="text-xs text-secondary leading-relaxed">
                   Verify business credentials (GSTIN/CIN) and secure global administrative authority. Manage offices, configure department scopes, and assign recruiters.
                 </p>
               </div>
               <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400 group-hover:translate-x-1 transition-transform">
-                Submit KYC & Claim Page &rarr;
+                Submit KYC & Claim &rarr;
+              </span>
+            </button>
+
+            {/* Card 3: College/TPO Onboarding */}
+            <button
+              onClick={() => setActiveFunnel("tpo")}
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#0e2133]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+            >
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                <GraduationCap size={120} className="text-indigo-400" />
+              </div>
+              <div className="space-y-4">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <GraduationCap size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-primary group-hover:text-indigo-400 transition-colors">
+                  Onboard College (TPO)
+                </h3>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Register your college, request TPO coordinator credentials to host campus recruitment drives, verify alumni graduation records, and view insights.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400 group-hover:translate-x-1 transition-transform">
+                Register Institutional Access &rarr;
               </span>
             </button>
 
@@ -291,10 +455,19 @@ export function BusinessOnboardingPage() {
                 setActiveFunnel(null);
                 setRecruiterSuccess(false);
                 setClaimSuccess(false);
+                setTpoSuccess(false);
                 resetRecruiter();
-                resetClaim();
+                setTpoSuccess(false);
+                resetTpo();
+                setTpoStep(1);
+                setTpoOtpValue("");
+                setTpoOtpError("");
+                setTpoUploadedFileName(null);
+                setTpoUploadProgress(null);
                 setUploadedFileName(null);
                 setUploadProgress(null);
+                setTpoUploadedFileName(null);
+                setTpoUploadProgress(null);
               }}
               className="mb-6 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-fg hover:text-primary transition"
             >
@@ -625,6 +798,276 @@ export function BusinessOnboardingPage() {
                       )}
                     </button>
                   </form>
+                )}
+              </div>
+            )}
+
+            {/* FUNNEL: TPO ONBOARDING */}
+            {activeFunnel === "tpo" && (
+              <div className="rounded-2xl border border-base bg-surface-2/50 p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
+
+                {/* Header */}
+                <div className="flex items-center gap-3 border-b border-base pb-4">
+                  <div className="h-10 w-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/25">
+                    <GraduationCap size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold text-primary">TPO Institutional Onboarding</h2>
+                    <p className="text-xs text-muted-fg">3-step verified onboarding: details → email OTP → submit.</p>
+                  </div>
+                  {/* Step indicator */}
+                  {!tpoSuccess && (
+                    <div className="flex items-center gap-1.5">
+                      {([1, 2, 3] as const).map((s) => (
+                        <div
+                          key={s}
+                          className={`h-2 w-2 rounded-full transition-all duration-300 ${
+                            s < tpoStep ? "bg-indigo-500" :
+                            s === tpoStep ? "bg-indigo-400 ring-2 ring-indigo-400/30" :
+                            "bg-surface-3"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Success State ── */}
+                {tpoSuccess ? (
+                  <div className="py-8 text-center space-y-4">
+                    <div className="mx-auto h-16 w-16 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/30 text-indigo-400 animate-bounce">
+                      <CheckCircle2 size={36} />
+                    </div>
+                    <h3 className="text-xl font-bold text-primary">Onboarding Request Filed!</h3>
+                    <p className="text-xs text-secondary max-w-sm mx-auto">
+                      Your OTP-verified institutional claim has been queued for admin review.
+                      Once approved, you will receive TPO coordinator access and can manage campus drives.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setActiveFunnel(null);
+                        setTpoSuccess(false);
+                        resetTpo();
+                        setTpoStep(1);
+                        setTpoOtpValue("");
+                      }}
+                      className="btn-primary px-6 py-2 text-xs font-semibold"
+                    >
+                      Return to Onboarding Portal
+                    </button>
+                  </div>
+
+                ) : tpoStep === 1 ? (
+                  /* ── STEP 1: Details Form ── */
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-black">1</span>
+                      <span className="text-xs font-bold text-secondary">Fill Institutional Details</span>
+                    </div>
+
+                    <form onSubmit={handleTpoSubmit(onTpoInitiate)} className="space-y-4">
+
+                      {/* College Name */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
+                          College / Institution Name
+                        </label>
+                        <input
+                          type="text"
+                          className="field"
+                          placeholder="e.g. Indian Institute of Technology Delhi"
+                          {...registerTpo("collegeName")}
+                        />
+                        {tpoErrors.collegeName && (
+                          <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
+                            <AlertCircle size={12} /> {tpoErrors.collegeName.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Official Institutional Email */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
+                          Official Institutional Email
+                          <span className="ml-2 text-[9px] normal-case font-normal text-indigo-400">(OTP will be sent here)</span>
+                        </label>
+                        <input
+                          type="email"
+                          className="field"
+                          placeholder="tpo@college.edu.in"
+                          {...registerTpo("officialEmail")}
+                        />
+                        {tpoErrors.officialEmail && (
+                          <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
+                            <AlertCircle size={12} /> {tpoErrors.officialEmail.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-secondary">City</label>
+                          <input type="text" className="field" placeholder="Delhi" {...registerTpo("city")} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-secondary">State</label>
+                          <input type="text" className="field" placeholder="Delhi" {...registerTpo("state")} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-secondary">Institutional Website</label>
+                          <input type="text" className="field" placeholder="https://college.edu.in" {...registerTpo("website")} />
+                          {tpoErrors.website && (
+                            <p className="text-xs text-rose-500 flex items-center gap-1 mt-1">
+                              <AlertCircle size={12} /> {tpoErrors.website.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-secondary">AISHE Code (Optional)</label>
+                          <input type="text" className="field uppercase" placeholder="C-12345" {...registerTpo("aisheCode")} />
+                        </div>
+                      </div>
+
+                      {/* Authority Letterhead Document Upload */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
+                          Authorization / Appointment Letterhead (PDF)
+                        </label>
+                        <div className="border-2 border-dashed border-base hover:border-indigo-500/50 rounded-xl p-6 text-center bg-surface-3/30 transition relative">
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={handleTpoFileUpload}
+                            disabled={uploading}
+                          />
+                          <div className="space-y-2">
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-surface-3 text-muted-fg">
+                              {uploading ? <Loader2 size={18} className="animate-spin text-indigo-400" /> : <Upload size={18} />}
+                            </div>
+                            <p className="text-xs text-primary font-semibold">
+                              {tpoUploadedFileName ? `Selected: ${tpoUploadedFileName}` : "Click or drag to select Authorization PDF"}
+                            </p>
+                            <p className="text-[10px] text-muted-fg">Upload signed/stamped declaration on college letterhead.</p>
+                          </div>
+                        </div>
+                        {tpoUploadProgress !== null && (
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] text-muted-fg font-semibold">
+                              <span>{tpoUploadProgress < 105 ? "Uploading to Cloud..." : "Upload Completed"}</span>
+                              <span>{tpoUploadProgress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-surface-3 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${tpoUploadProgress}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        <input type="hidden" {...registerTpo("authorityLetterheadDoc")} />
+                      </div>
+
+                      {/* Next: Send OTP */}
+                      <button
+                        type="submit"
+                        disabled={tpoInitiating || uploading}
+                        className="btn-primary bg-indigo-600 hover:bg-indigo-500 text-white w-full py-2.5 mt-4 text-xs font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        {tpoInitiating ? (
+                          <><Loader2 size={15} className="animate-spin" /> Sending OTP to institutional email...</>
+                        ) : (
+                          <><Mail size={14} /> Continue — Send Verification OTP &rarr;</>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                ) : (
+                  /* ── STEP 2: OTP Verification ── */
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-black">2</span>
+                      <span className="text-xs font-bold text-secondary">Verify Institutional Email</span>
+                    </div>
+
+                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shrink-0 mt-0.5">
+                          <Lock size={14} className="animate-pulse" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-primary">Check your institutional inbox</p>
+                          <p className="text-xs text-muted-fg mt-0.5">
+                            A 6-digit OTP was sent to{" "}
+                            <span className="font-bold text-indigo-400">{watchTpo("officialEmail") || "your institutional email"}</span>.
+                            Enter it below to verify domain ownership.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <form onSubmit={onTpoVerifyAndSubmit} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-secondary">
+                          6-Digit OTP Code
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          inputMode="numeric"
+                          className="field text-center tracking-widest text-lg font-extrabold focus:border-indigo-500"
+                          placeholder="000000"
+                          value={tpoOtpValue}
+                          onChange={(e) => { setTpoOtpValue(e.target.value.replace(/[^0-9]/g, "")); setTpoOtpError(""); }}
+                          autoFocus
+                        />
+                        {tpoOtpError && (
+                          <p className="text-xs text-rose-500 text-center flex items-center justify-center gap-1 mt-1">
+                            <AlertCircle size={12} /> {tpoOtpError}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={tpoVerifying || tpoOtpValue.length !== 6}
+                        className="btn-primary bg-indigo-600 hover:bg-indigo-500 text-white w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-60"
+                      >
+                        {tpoVerifying ? (
+                          <><Loader2 size={15} className="animate-spin" /> Verifying OTP &amp; Submitting Request...</>
+                        ) : (
+                          <><CheckCircle2 size={14} /> Verify &amp; Submit Onboarding Request</>
+                        )}
+                      </button>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <button
+                          type="button"
+                          className="text-muted-fg hover:text-primary transition"
+                          onClick={() => { setTpoStep(1); setTpoOtpValue(""); setTpoOtpError(""); }}
+                        >
+                          &larr; Back to details
+                        </button>
+                        <button
+                          type="button"
+                          disabled={tpoInitiating}
+                          className="text-indigo-400 hover:text-indigo-300 transition disabled:opacity-50"
+                          onClick={async () => {
+                            const data = watchTpo();
+                            setTpoInitiating(true);
+                            try {
+                              await api.tpoClaimInitiate({ officialEmail: data.officialEmail, collegeName: data.collegeName });
+                              showToast("success", "OTP resent successfully!");
+                            } catch { showToast("error", "Failed to resend OTP"); }
+                            finally { setTpoInitiating(false); }
+                          }}
+                        >
+                          {tpoInitiating ? <Loader2 size={11} className="animate-spin inline" /> : null} Resend OTP
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 )}
               </div>
             )}

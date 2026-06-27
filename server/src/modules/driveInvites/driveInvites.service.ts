@@ -1,6 +1,8 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { isCollegeAdminOrCdcr } from "modules/placementDrives/placementDrives.service";
+import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { enqueueEmail } from "services/mailQueue";
 
 interface SendInviteData {
   companyId: string;
@@ -93,16 +95,32 @@ export const sendInvite = async (actorId: string, data: SendInviteData) => {
           select: { userId: true },
         });
         if (collegeAdmins.length > 0) {
-          await prisma.notification.createMany({
-            data: collegeAdmins.map((ca) => ({
+          await createNotificationsBulk(
+            collegeAdmins.map((ca) => ({
               userId: ca.userId,
               actorId,
               type: "PLACEMENT_DRIVE_INVITE",
               title: "Campus Drive Invitation",
               message: `${company.name} has invited your college for a placement drive: "${data.driveTitle}".`,
               actionUrl: `/colleges`,
-            })),
+            }))
+          );
+
+          // Get emails for notifications
+          const admins = await prisma.user.findMany({
+            where: { id: { in: collegeAdmins.map((ca) => ca.userId) } },
+            select: { email: true },
           });
+
+          for (const adminUser of admins) {
+            if (adminUser.email) {
+              await enqueueEmail(
+                adminUser.email,
+                `Campus Drive Invitation: ${data.driveTitle}`,
+                `<p><strong>${company.name}</strong> has invited your college to participate in a campus placement drive: <strong>${data.driveTitle}</strong>.</p>`
+              );
+            }
+          }
         }
       } else {
         // Notify company admins
@@ -111,16 +129,32 @@ export const sendInvite = async (actorId: string, data: SendInviteData) => {
           select: { userId: true },
         });
         if (companyAdmins.length > 0) {
-          await prisma.notification.createMany({
-            data: companyAdmins.map((ca) => ({
+          await createNotificationsBulk(
+            companyAdmins.map((ca) => ({
               userId: ca.userId,
               actorId,
               type: "PLACEMENT_DRIVE_INVITE",
               title: "Campus Drive Request",
               message: `${college.name} has invited your company to conduct a placement drive: "${data.driveTitle}".`,
               actionUrl: `/recruiter`,
-            })),
+            }))
+          );
+
+          // Get emails for notifications
+          const admins = await prisma.user.findMany({
+            where: { id: { in: companyAdmins.map((ca) => ca.userId) } },
+            select: { email: true },
           });
+
+          for (const adminUser of admins) {
+            if (adminUser.email) {
+              await enqueueEmail(
+                adminUser.email,
+                `Campus Drive Request: ${data.driveTitle}`,
+                `<p><strong>${college.name}</strong> has requested your company to conduct a campus placement drive: <strong>${data.driveTitle}</strong>.</p>`
+              );
+            }
+          }
         }
       }
     } catch (error) {
@@ -266,19 +300,33 @@ export const respondToInvite = async (
       ? `Your placement drive invite for "${invite.driveTitle}" was accepted! The drive is now live.`
       : `Your placement drive invite for "${invite.driveTitle}" was declined.`;
 
-  setImmediate(() => {
-    prisma.notification.create({
-      data: {
+  setImmediate(async () => {
+    try {
+      await createNotification({
         userId: invite.createdById,
         actorId,
         type: "PLACEMENT_DRIVE_INVITE",
         title: action === "ACCEPT" ? "Drive Invite Accepted" : "Drive Invite Declined",
         message: notifMsg,
         actionUrl: action === "ACCEPT" ? `/jobs` : `/recruiter`,
-      },
-    }).catch((err) => {
-      console.error("Failed to create respond invite notification:", err);
-    });
+      });
+
+      // Get email of the invite creator
+      const creatorUser = await prisma.user.findUnique({
+        where: { id: invite.createdById },
+        select: { email: true },
+      });
+
+      if (creatorUser?.email) {
+        await enqueueEmail(
+          creatorUser.email,
+          `Drive Invite Response: ${invite.driveTitle}`,
+          `<p>${notifMsg}</p>`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to create respond invite notification/email:", err);
+    }
   });
 
   return updated;

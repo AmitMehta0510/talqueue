@@ -2,6 +2,8 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { PlacementDriveApplicationStatus, CollegeOfferPolicy, Prisma } from "@prisma/client";
 import { processPlacementSelection } from "services/placementLockService";
+import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { enqueueEmail } from "services/mailQueue";
 
 interface CreatePlacementDriveData {
   driveTitle: string;
@@ -560,19 +562,41 @@ export const applyToDrive = async (userId: string, driveId: string, note?: strin
 
   // ── Notify the drive poster (recruiter/TPO) ───────────────────────────────
   if (drive.postedById !== userId) {
-    setImmediate(() => {
-      prisma.notification.create({
-        data: {
+    setImmediate(async () => {
+      try {
+        await createNotification({
           userId: drive.postedById,
           actorId: userId,
           type: "PLACEMENT_DRIVE_APPLIED",
           title: "New Placement Drive Application",
           message: `A student applied to your placement drive: ${drive.driveTitle}`,
           actionUrl: `/placement-drives/${driveId}/applicants`,
-        },
-      }).catch((err) => {
-        console.error("Failed to create application notification:", err);
-      });
+        });
+
+        // Query emails to send async notifications
+        const [studentUser, recruiterUser] = await Promise.all([
+          prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+          prisma.user.findUnique({ where: { id: drive.postedById }, select: { email: true } }),
+        ]);
+
+        if (studentUser?.email) {
+          await enqueueEmail(
+            studentUser.email,
+            `Application submitted for ${drive.driveTitle}`,
+            `<p>Your application has been successfully submitted for the campus placement drive: <strong>${drive.driveTitle}</strong> at ${drive.company.name}.</p>`
+          );
+        }
+
+        if (recruiterUser?.email) {
+          await enqueueEmail(
+            recruiterUser.email,
+            `New applicant for ${drive.driveTitle}`,
+            `<p>A student has applied to your placement drive <strong>${drive.driveTitle}</strong>. You can review their profile on the recruiter console.</p>`
+          );
+        }
+      } catch (err) {
+        console.error("Failed to process apply notifications/emails:", err);
+      }
     });
   }
 
@@ -703,19 +727,85 @@ export const updateApplicationStatus = async (
     WITHDRAWN: "Withdrawn",
   };
 
-  setImmediate(() => {
-    prisma.notification.create({
-      data: {
+  setImmediate(async () => {
+    try {
+      // Notify the student
+      await createNotification({
         userId: application.userId,
         actorId,
-        type: "PLACEMENT_DRIVE_APPLIED",
-        title: "Placement Drive Application Update",
-        message: `Your application for "${application.drive.driveTitle}" has been updated: ${statusLabel[status] ?? status}.`,
-        actionUrl: `/jobs`,
-      },
-    }).catch((err) => {
-      console.error("Failed to create application update notification:", err);
-    });
+        type: "PLACEMENT_STATUS_UPDATE",
+        title: "Placement Drive Update",
+        message: `Your application for "${application.drive.driveTitle}" status: ${statusLabel[status] ?? status}.`,
+        actionUrl: `/placements`,
+      });
+
+      // Notify all TPO / college admins for this college
+      const collegeAdmins = await prisma.collegeAdmin.findMany({
+        where: { collegeId: application.drive.targetCollegeId },
+        select: { userId: true },
+      });
+      const cdcrMembers = await prisma.cdcrMember.findMany({
+        where: { collegeId: application.drive.targetCollegeId },
+        select: { userId: true },
+      });
+      const adminIds = [
+        ...collegeAdmins.map((a) => a.userId),
+        ...cdcrMembers.map((m) => m.userId),
+      ].filter((id) => id !== application.userId);
+
+      if (adminIds.length > 0) {
+        await createNotificationsBulk(
+          adminIds.map((adminUserId) => ({
+            userId: adminUserId,
+            actorId,
+            type: "PLACEMENT_STATUS_UPDATE" as any,
+            title: "Drive Application Updated",
+            message: `A student's application for "${application.drive.driveTitle}" is now: ${statusLabel[status] ?? status}.`,
+            actionUrl: `/tpo/placements`,
+          }))
+        );
+      }
+
+      // Send milestone emails (not for every status to avoid spam)
+      const emailMilestones: PlacementDriveApplicationStatus[] = [
+        PlacementDriveApplicationStatus.SHORTLISTED,
+        PlacementDriveApplicationStatus.INTERVIEW_R1,
+        PlacementDriveApplicationStatus.INTERVIEW_R2,
+        PlacementDriveApplicationStatus.INTERVIEW_R3,
+        PlacementDriveApplicationStatus.PPO_OFFERED,
+        PlacementDriveApplicationStatus.SELECTED,
+        PlacementDriveApplicationStatus.REJECTED,
+      ];
+
+      if (emailMilestones.includes(status)) {
+        const studentUser = await prisma.user.findUnique({
+          where: { id: application.userId },
+          select: { email: true, profile: { select: { fullName: true } } },
+        });
+
+        if (studentUser?.email) {
+          const isSelected = status === PlacementDriveApplicationStatus.SELECTED;
+          const isRejected = status === PlacementDriveApplicationStatus.REJECTED;
+          const subject = isSelected
+            ? `🎉 Congratulations! You've been Selected — ${application.drive.driveTitle}`
+            : isRejected
+            ? `Application Update — ${application.drive.driveTitle}`
+            : `${statusLabel[status]}: ${application.drive.driveTitle}`;
+
+          await enqueueEmail(
+            studentUser.email,
+            subject,
+            `<p>Dear ${studentUser.profile?.fullName || "Candidate"},</p>
+             <p>Your application for <strong>${application.drive.driveTitle}</strong> has been updated to: <strong>${statusLabel[status] ?? status}</strong>.</p>
+             ${isSelected ? "<p>Congratulations! Please check your placement dashboard for next steps.</p>" : ""}
+             ${isRejected ? "<p>Thank you for your participation. We encourage you to apply to other opportunities.</p>" : ""}
+             <p>View your placement dashboard: <a href="/placements">My Placements</a></p>`
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to process status update notifications/emails:", err);
+    }
   });
 
   return updated;

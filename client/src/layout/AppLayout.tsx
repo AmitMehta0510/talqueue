@@ -23,6 +23,7 @@ import {
   X,
   Calendar,
   type LucideIcon,
+  Briefcase,
 } from "lucide-react";
 import {
   NotificationBellButton,
@@ -31,6 +32,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { formatCount, userHeadline, userName } from "../lib/format";
 import { Avatar } from "../components/ui";
+import { useNotificationSocket } from "../hooks/useNotificationSocket";
 
 type NavSection = {
   to: string;
@@ -82,6 +84,7 @@ const glassStyle: React.CSSProperties = {
 
 export function AppLayout() {
   const { user, apiOnline, apiStatus, logout } = useAuth();
+  useNotificationSocket();
 
   const isUserAdmin =
     user &&
@@ -277,6 +280,21 @@ export function AppLayout() {
               </div>
             )}
 
+            {/* Business Button */}
+            <Link
+              to="/business"
+              className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:scale-105 border"
+              style={{
+                background: "linear-gradient(135deg, var(--brand-light), rgba(99,102,241,0.15))",
+                borderColor: "rgba(99,102,241,0.3)",
+                color: "var(--brand)",
+              }}
+              title="Business — Register your company or college"
+            >
+              <Briefcase size={14} className="shrink-0" />
+              <span>Business</span>
+            </Link>
+
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
@@ -387,6 +405,22 @@ export function AppLayout() {
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
                         Unlocked Badges Catalog
+                      </Link>
+                      <Link
+                        to="/business?tab=claim"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400 text-xs font-medium"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        Register / Claim Company
+                      </Link>
+                      <Link
+                        to="/business?tab=tpo"
+                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400 text-xs font-medium"
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        Onboard / Claim College (TPO)
                       </Link>
                       {user.primaryRole === "RECRUITER" && (
                         <Link

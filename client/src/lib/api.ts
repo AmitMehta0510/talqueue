@@ -3020,6 +3020,60 @@ export const api = {
       { method: "POST", body }
     ),
 
+  submitTpoOnboarding: (body: {
+    collegeName: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    website?: string;
+    aisheCode?: string;
+    officialEmail: string;
+    authorityLetterheadDoc?: string;
+  }) =>
+    request<any>("/tpo/onboard-college", { method: "POST", body }),
+
+  // TPO Claim OTP Flow (2-step: domain verify → OTP → admin queue)
+  tpoClaimInitiate: (body: {
+    collegeName: string;
+    officialEmail: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    website?: string;
+    aisheCode?: string;
+    authorityLetterheadDoc?: string;
+  }) =>
+    request<{ collegeName: string; officialEmail: string; otpExpiresInSeconds: number; emailSent: boolean; message: string }>(
+      "/companies/tpo/claim/initiate",
+      { method: "POST", body }
+    ),
+
+  tpoClaimVerify: (body: {
+    collegeName: string;
+    officialEmail: string;
+    otp: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    website?: string;
+    aisheCode?: string;
+    authorityLetterheadDoc?: string;
+  }) =>
+    request<{ collegeRequestId: string; collegeName: string; status: string; officialEmail: string; message: string }>(
+      "/companies/tpo/claim/verify",
+      { method: "POST", body }
+    ),
+
+  // Admin — College Onboarding Requests
+  adminGetCollegeRequests: (status?: string, options?: EndpointOptions) =>
+    request<any[]>(`/admin/college-requests${status ? `?status=${status}` : ""}`, options),
+
+  adminReviewCollegeRequest: (requestId: string, body: { action: "APPROVE" | "REJECT" | "DUPLICATE"; adminNote?: string }) =>
+    request<any>(`/admin/college-requests/${requestId}/review`, { method: "POST", body }),
+
+  adminGetCollegeRequest: (requestId: string, options?: EndpointOptions) =>
+    request<any>(`/admin/college-requests/${requestId}`, options),
+
   // TPO Dashboard
   getTpoDashboardStats: (options?: EndpointOptions) =>
     request<TpoDashboardStats>("/tpo/dashboard/stats", options),

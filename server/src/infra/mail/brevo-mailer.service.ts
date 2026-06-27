@@ -285,3 +285,79 @@ export async function sendOtpEmail(params: OtpEmailParams): Promise<OtpEmailResu
   logger.info(`OTP email successfully dispatched to ${to} (Brevo).`);
   return { sent: true };
 }
+
+export interface GenericEmailParams {
+  to: string;
+  subject: string;
+  htmlContent: string;
+}
+
+/**
+ * Sends a generic transactional email via Brevo v3 API.
+ */
+export async function sendMail(params: GenericEmailParams): Promise<{ sent: boolean }> {
+  const { to, subject, htmlContent } = params;
+  const apiKey = process.env.BREVO_API_KEY;
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (!apiKey) {
+    if (isProd) {
+      logger.error(`BREVO_API_KEY is not set. Cannot send email to ${to}.`);
+      throw new AppError(
+        "Email service is not configured. Please contact the platform administrator.",
+        500
+      );
+    }
+
+    logger.warn(
+      `[DEV MODE] BREVO_API_KEY not set. Skipping live email to ${to}.\n` +
+        `Subject: ${subject}\n` +
+        `Content: ${htmlContent.slice(0, 300)}...`
+    );
+    return { sent: false };
+  }
+
+  const payload = {
+    sender: { name: SENDER_NAME, email: SENDER_EMAIL },
+    to: [{ email: to }],
+    subject,
+    htmlContent,
+  };
+
+  logger.info(`Sending email to ${to} with subject "${subject}" via Brevo.`);
+
+  let response: Response;
+  try {
+    response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (networkErr: any) {
+    logger.error(`Network error reaching Brevo API: ${networkErr.message}`);
+    throw new AppError(
+      `Failed to reach email service: ${networkErr.message}`,
+      502
+    );
+  }
+
+  if (!response.ok) {
+    let errorBody: string;
+    try {
+      const json = await response.json() as Record<string, unknown>;
+      errorBody = (json.message as string) || JSON.stringify(json);
+    } catch {
+      errorBody = await response.text().catch(() => `HTTP ${response.status}`);
+    }
+    logger.error(`Brevo API error ${response.status}: ${errorBody}`);
+    throw new AppError(`Email delivery failed: ${errorBody}`, 502);
+  }
+
+  logger.info(`Email successfully dispatched to ${to} (Brevo).`);
+  return { sent: true };
+}
+
