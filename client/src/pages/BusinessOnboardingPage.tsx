@@ -182,24 +182,22 @@ export function BusinessOnboardingPage() {
     setTpoOtpError("");
     const data = watchTpo();
     try {
-      // Verify OTP first
+      // Verify OTP and create the CollegeRequest in a single call.
+      // tpoClaimVerify creates the CollegeRequest on the backend — all form
+      // fields (including authorityLetterheadDoc) must be passed here so they
+      // are persisted. The previous code only passed 3 fields, causing the
+      // document URL to be silently dropped.
       await api.tpoClaimVerify({
         officialEmail: data.officialEmail,
         collegeName: data.collegeName,
         otp: tpoOtpValue,
-      });
-      // OTP valid — submit full onboarding request
-      const payload = {
-        collegeName: data.collegeName,
         city: data.city || undefined,
         state: data.state || undefined,
         country: data.country || undefined,
         website: data.website || undefined,
         aisheCode: data.aisheCode || undefined,
-        officialEmail: data.officialEmail,
         authorityLetterheadDoc: data.authorityLetterheadDoc || undefined,
-      };
-      await api.submitTpoOnboarding(payload);
+      });
       setTpoSuccess(true);
       setTpoStep(3);
       showToast("success", "OTP verified! College onboarding request submitted to admin queue.");
