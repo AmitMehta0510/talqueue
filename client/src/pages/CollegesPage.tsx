@@ -28,6 +28,7 @@ import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
 import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
 import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
+import { TpoInviteCompanyModal } from "../components/jobs/TpoInviteCompanyModal";
 
 // Role helpers
 const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
@@ -251,6 +252,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
   const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites" | "alumni" | "stats">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
+  const [showInviteCompanyModal, setShowInviteCompanyModal] = useState(false);
   const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
   const isTpo = isCollegeAdminFor(user, college?.id || "");
 
@@ -638,14 +640,14 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                     <Zap size={16} className="text-indigo-600" />
                     Placement Drives
                   </h3>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>All drives for this college — create, manage status, and track applications.</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>All drives for this college — invite companies, manage status, and track applications.</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowCreateDriveModal(true)}
+                  onClick={() => setShowInviteCompanyModal(true)}
                   className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 transition shadow-sm"
                 >
-                  <Plus size={13} /> New Drive
+                  <Plus size={13} /> Invite Company
                 </button>
               </div>
 
@@ -718,7 +720,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                   </table>
                 </div>
               ) : (
-                <EmptyState icon={Zap} title="No drives yet" text="Create the first placement drive for this college." />
+                <EmptyState icon={Zap} title="No drives yet" text="Send a placement drive invitation to a company to get started." />
               )}
             </div>
           )}
@@ -1023,10 +1025,11 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         </div>
       )}
 
-      {showCreateDriveModal && (
-        <CreateDriveModal
-          collegeId={college?.id || collegeId}
-          onClose={() => setShowCreateDriveModal(false)}
+      {showInviteCompanyModal && college && (
+        <TpoInviteCompanyModal
+          collegeId={college.id}
+          collegeName={college.name}
+          onClose={() => setShowInviteCompanyModal(false)}
         />
       )}
       {selectedDriveForApplicants && (

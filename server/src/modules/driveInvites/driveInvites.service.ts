@@ -184,7 +184,7 @@ export const listInvitesForCollege = async (
     },
     include: {
       company: { select: { id: true, name: true, logoUrl: true, slug: true, type: true } },
-      college: { select: { id: true, name: true } },
+      college: { select: { id: true, name: true, normalizedKey: true } },
       createdBy: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
       placementDrive: { select: { id: true, status: true } },
     },
@@ -209,7 +209,7 @@ export const listInvitesSentByCompany = async (
     where: { companyId },
     include: {
       company: { select: { id: true, name: true, logoUrl: true } },
-      college: { select: { id: true, name: true } },
+      college: { select: { id: true, name: true, normalizedKey: true } },
       createdBy: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
       placementDrive: { select: { id: true, status: true } },
     },
@@ -288,7 +288,7 @@ export const respondToInvite = async (
       },
       include: {
         company: { select: { id: true, name: true, logoUrl: true } },
-        college: { select: { id: true, name: true } },
+        college: { select: { id: true, name: true, normalizedKey: true } },
         placementDrive: { select: { id: true, status: true, driveTitle: true } },
       },
     });
@@ -323,6 +323,41 @@ export const respondToInvite = async (
           `Drive Invite Response: ${invite.driveTitle}`,
           `<p>${notifMsg}</p>`
         );
+      }
+
+      // If accepted, notify all students of this college
+      if (action === "ACCEPT") {
+        const students = await prisma.user.findMany({
+          where: {
+            profile: {
+              collegeId: invite.collegeId,
+            },
+          },
+          select: { id: true, email: true },
+        });
+
+        if (students.length > 0) {
+          await createNotificationsBulk(
+            students.map((student) => ({
+              userId: student.id,
+              actorId,
+              type: "PLACEMENT_DRIVE_INVITE",
+              title: "New Campus Placement Drive!",
+              message: `${updated.company.name} will be conducting "${updated.placementDrive?.driveTitle || invite.driveTitle}" at your college.`,
+              actionUrl: `/colleges/${updated.college.normalizedKey}?tab=drives`,
+            }))
+          );
+
+          for (const student of students) {
+            if (student.email) {
+              await enqueueEmail(
+                student.email,
+                `New Placement Drive: ${updated.placementDrive?.driveTitle || invite.driveTitle}`,
+                `<p><strong>${updated.company.name}</strong> has launched a campus placement drive: <strong>${updated.placementDrive?.driveTitle || invite.driveTitle}</strong> at your college. Check the Drives section to apply!</p>`
+              );
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to create respond invite notification/email:", err);
