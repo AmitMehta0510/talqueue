@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Briefcase,
   BriefcaseBusiness,
@@ -237,9 +237,9 @@ function JobRowCard({
     ONSITE: "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600",
   };
 
-  const jobSkills      = (job.skillsRequired || []) as string[];
+  const jobSkills = (job.skillsRequired || []) as string[];
   const matchingSkills = jobSkills.filter((s) => userSkillNames?.has(s.toLowerCase().trim()));
-  const matchPercentage= jobSkills.length
+  const matchPercentage = jobSkills.length
     ? Math.round((matchingSkills.length / jobSkills.length) * 100)
     : 100;
   const showMatchScore = userSkillNames && userSkillNames.size > 0 && jobSkills.length > 0;
@@ -250,11 +250,10 @@ function JobRowCard({
   return (
     <article
       onClick={onSelect}
-      className={`group cursor-pointer rounded-xl border p-4 transition-all duration-300 hover:shadow-lg relative overflow-hidden ${
-        isSelected
+      className={`group cursor-pointer rounded-xl border p-4 transition-all duration-300 hover:shadow-lg relative overflow-hidden ${isSelected
           ? "border-blue-500 dark:border-blue-400 shadow-sm"
           : "hover:border-blue-400 dark:hover:border-blue-500"
-      }`}
+        }`}
       style={
         isSelected
           ? { background: "linear-gradient(to right, rgba(59,130,246,0.06), rgba(99,102,241,0.04))" }
@@ -348,13 +347,12 @@ function JobRowCard({
               </span>
             )}
             {showMatchScore && (
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold border ${
-                matchPercentage >= 75
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold border ${matchPercentage >= 75
                   ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700"
                   : matchPercentage >= 40
-                  ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700"
-                  : "border-[color:var(--border)]"
-              }`} style={matchPercentage < 40 ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}>
+                    ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700"
+                    : "border-[color:var(--border)]"
+                }`} style={matchPercentage < 40 ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}>
                 {matchPercentage}% Skill Match
               </span>
             )}
@@ -438,13 +436,13 @@ function JobDetailDrawer({
 }) {
   const salary = formatSalary(job.salaryMin, job.salaryMax);
   const { cleanTitle, tags } = parseJobTitle(job.title || "");
-  const employeesQuery  = useCompanyEmployeesQuery(job.companyId || job.company?.id);
-  const employees       = employeesQuery.data?.employees || [];
+  const employeesQuery = useCompanyEmployeesQuery(job.companyId || job.company?.id);
+  const employees = employeesQuery.data?.employees || [];
   const referralFriendlyEmployees = employees.filter((emp) => emp.user?.acceptingReferrals);
 
-  const jobSkills      = (job.skillsRequired || []) as string[];
+  const jobSkills = (job.skillsRequired || []) as string[];
   const matchingSkills = jobSkills.filter((s) => userSkillNames?.has(s.toLowerCase().trim()));
-  const missingSkills  = jobSkills.filter((s) => !userSkillNames?.has(s.toLowerCase().trim()));
+  const missingSkills = jobSkills.filter((s) => !userSkillNames?.has(s.toLowerCase().trim()));
 
   return (
     <div
@@ -507,10 +505,10 @@ function JobDetailDrawer({
 
         {/* Quick facts */}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-          {job.location    && <span className="flex items-center gap-1"><MapPin size={11} />{job.location}</span>}
-          {salary          && <span className="flex items-center gap-1 font-semibold" style={{ color: "var(--text-primary)" }}><IndianRupee size={11} />{salary}</span>}
-          {job.workMode    && <span className="flex items-center gap-1"><Briefcase size={11} />{titleCase(job.workMode)}</span>}
-          {job.type        && <span className="flex items-center gap-1"><Clock size={11} />{titleCase(job.type)}</span>}
+          {job.location && <span className="flex items-center gap-1"><MapPin size={11} />{job.location}</span>}
+          {salary && <span className="flex items-center gap-1 font-semibold" style={{ color: "var(--text-primary)" }}><IndianRupee size={11} />{salary}</span>}
+          {job.workMode && <span className="flex items-center gap-1"><Briefcase size={11} />{titleCase(job.workMode)}</span>}
+          {job.type && <span className="flex items-center gap-1"><Clock size={11} />{titleCase(job.type)}</span>}
           {job.experienceLevel && <span className="flex items-center gap-1"><Star size={11} />{titleCase(job.experienceLevel)}</span>}
         </div>
 
@@ -680,12 +678,13 @@ function JobDetailDrawer({
 
 export function JobsPage() {
   const { user } = useAuth();
-  const [activeTab,      setActiveTab]      = useState<TabType>("explore");
-  const [recruiterView,  setRecruiterView]  = useState<SubViewType>({ type: "dashboard" });
-  const [selectedJob,    setSelectedJob]    = useState<Job | null>(null);
-  const [applyModalJob,  setApplyModalJob]  = useState<Job | null>(null);
-  const [showPostModal,  setShowPostModal]  = useState(false);
-  const [referralUser,   setReferralUser]   = useState<User | null>(null);
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<TabType>("explore");
+  const [recruiterView, setRecruiterView] = useState<SubViewType>({ type: "dashboard" });
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [applyModalJob, setApplyModalJob] = useState<Job | null>(null);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [referralUser, setReferralUser] = useState<User | null>(null);
   const [externalApplyJob, setExternalApplyJob] = useState<Job | null>(null);
 
   // Pagination
@@ -693,19 +692,19 @@ export function JobsPage() {
   const jobsPerPage = 20;
 
   // Filters
-  const [searchVal,          setSearchVal]          = useState("");
-  const [selectedWorkModes,  setSelectedWorkModes]  = useState<string[]>([]);
-  const [selectedJobTypes,   setSelectedJobTypes]   = useState<string[]>([]);
-  const [salaryRange,        setSalaryRange]        = useState<[number, number]>([0, 50]);
-  const [selectedRoles,      setSelectedRoles]      = useState<string[]>([]);
-  const [selectedSkills,     setSelectedSkills]     = useState<string[]>([]);
-  const [selectedLocations,  setSelectedLocations]  = useState<string[]>([]);
-  const [searchSkillQ,       setSearchSkillQ]       = useState("");
-  const [searchLocationQ,    setSearchLocationQ]    = useState("");
-  const [stipendRange,       setStipendRange]       = useState<[number, number]>([0, 50]);
-  const [internDuration,     setInternDuration]     = useState<string | null>(null);
-  const [ppoOnly,            setPpoOnly]            = useState(false);
-  const [freshness,          setFreshness]          = useState<string | null>(null);
+  const [searchVal, setSearchVal] = useState("");
+  const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>([]);
+  const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
+  const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 50]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [searchSkillQ, setSearchSkillQ] = useState("");
+  const [searchLocationQ, setSearchLocationQ] = useState("");
+  const [stipendRange, setStipendRange] = useState<[number, number]>([0, 50]);
+  const [internDuration, setInternDuration] = useState<string | null>(null);
+  const [ppoOnly, setPpoOnly] = useState(false);
+  const [freshness, setFreshness] = useState<string | null>(null);
   const [unsaveConfirmJobId, setUnsaveConfirmJobId] = useState<string | null>(null);
 
   const pendingSaveJobId = useRef<string | null>(null);
@@ -720,29 +719,29 @@ export function JobsPage() {
   const jobsQuery = useJobsQuery(
     activeTab === "explore"
       ? {
-          page: jobPage,
-          limit: jobsPerPage,
-          search: searchVal || undefined,
-          workMode: selectedWorkModes.length ? selectedWorkModes : undefined,
-          jobType: selectedJobTypes.length ? selectedJobTypes : undefined,
-          skills: selectedSkills.length ? selectedSkills : undefined,
-          location: selectedLocations.length ? selectedLocations : undefined,
-          roles: selectedRoles.length ? selectedRoles : undefined,
-          freshness: freshness || undefined,
-        }
+        page: jobPage,
+        limit: jobsPerPage,
+        search: searchVal || undefined,
+        workMode: selectedWorkModes.length ? selectedWorkModes : undefined,
+        jobType: selectedJobTypes.length ? selectedJobTypes : undefined,
+        skills: selectedSkills.length ? selectedSkills : undefined,
+        location: selectedLocations.length ? selectedLocations : undefined,
+        roles: selectedRoles.length ? selectedRoles : undefined,
+        freshness: freshness || undefined,
+      }
       : undefined
   );
   const recommendedQuery = useRecommendedJobsQuery();
-  const savedQuery       = useSavedJobsQuery();
-  const applicationsQuery= useMyJobApplicationsQuery();
-  const externalAppsQuery= useMyExternalApplicationsQuery();
-  const recruiterJobsQuery=useRecruiterJobsQuery();
-  const saveMutation     = useSaveJobMutation();
-  const profileQuery     = useMyFullProfileQuery();
+  const savedQuery = useSavedJobsQuery();
+  const applicationsQuery = useMyJobApplicationsQuery();
+  const externalAppsQuery = useMyExternalApplicationsQuery();
+  const recruiterJobsQuery = useRecruiterJobsQuery();
+  const saveMutation = useSaveJobMutation();
+  const profileQuery = useMyFullProfileQuery();
   const skillSuggestionsQuery = useJobSkillsAutocompleteQuery(searchSkillQ);
   const locationSuggestionsQuery = useJobLocationsAutocompleteQuery(searchLocationQ);
 
-  const collegeId   = profileQuery.data?.profile?.collegeId;
+  const collegeId = profileQuery.data?.profile?.collegeId;
   const isRecruiter = user?.primaryRole === "RECRUITER";
 
   const userSkillNames = useMemo(() => {
@@ -782,11 +781,11 @@ export function JobsPage() {
     }
   };
 
-  const toggleWorkMode  = (m: string) => setSelectedWorkModes((cur) => cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]);
-  const toggleJobType   = (t: string) => setSelectedJobTypes((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]);
-  const toggleRole      = (r: string) => setSelectedRoles((cur) => cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]);
-  const toggleSkill     = (s: string) => setSelectedSkills((cur) => cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]);
-  const toggleLocation  = (l: string) => setSelectedLocations((cur) => cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]);
+  const toggleWorkMode = (m: string) => setSelectedWorkModes((cur) => cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]);
+  const toggleJobType = (t: string) => setSelectedJobTypes((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]);
+  const toggleRole = (r: string) => setSelectedRoles((cur) => cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]);
+  const toggleSkill = (s: string) => setSelectedSkills((cur) => cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]);
+  const toggleLocation = (l: string) => setSelectedLocations((cur) => cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]);
 
   const clearFilters = () => {
     setSearchVal(""); setSelectedWorkModes([]); setSelectedJobTypes([]);
@@ -798,11 +797,11 @@ export function JobsPage() {
 
   const getSource = () => {
     switch (activeTab) {
-      case "explore":      return { list: jobsQuery.data?.jobs || [],                                            loading: jobsQuery.isLoading,        error: jobsQuery.isError,        refetch: jobsQuery.refetch };
-      case "recommended":  return { list: recommendedQuery.data || [],                                           loading: recommendedQuery.isLoading,  error: recommendedQuery.isError,  refetch: recommendedQuery.refetch };
-      case "saved":        return { list: savedQuery.data || [],                                                  loading: savedQuery.isLoading,        error: savedQuery.isError,        refetch: savedQuery.refetch };
+      case "explore": return { list: jobsQuery.data?.jobs || [], loading: jobsQuery.isLoading, error: jobsQuery.isError, refetch: jobsQuery.refetch };
+      case "recommended": return { list: recommendedQuery.data || [], loading: recommendedQuery.isLoading, error: recommendedQuery.isError, refetch: recommendedQuery.refetch };
+      case "saved": return { list: savedQuery.data || [], loading: savedQuery.isLoading, error: savedQuery.isError, refetch: savedQuery.refetch };
       case "applications": return { list: (applicationsQuery.data || []).map((a) => a.job).filter(Boolean) as Job[], loading: applicationsQuery.isLoading, error: applicationsQuery.isError, refetch: applicationsQuery.refetch };
-      default:             return { list: [], loading: false, error: false, refetch: () => {} };
+      default: return { list: [], loading: false, error: false, refetch: () => { } };
     }
   };
 
@@ -813,10 +812,10 @@ export function JobsPage() {
       return jobsQuery.data?.jobs || [];
     }
     return source.list.filter((job) => {
-      const q      = searchVal.trim().toLowerCase();
+      const q = searchVal.trim().toLowerCase();
       const matchQ = !q || [job.title, job.description, job.company?.name].join(" ").toLowerCase().includes(q);
       const matchW = !selectedWorkModes.length || selectedWorkModes.includes(job.workMode || "");
-      const matchT = !selectedJobTypes.length  || selectedJobTypes.includes(job.type || "");
+      const matchT = !selectedJobTypes.length || selectedJobTypes.includes(job.type || "");
       const minSalaryLpa = salaryRange[0] * 100000;
       const maxSalaryLpa = salaryRange[1] * 100000;
       const hasNoSalaryDetails = job.salaryMin == null && job.salaryMax == null;
@@ -862,7 +861,18 @@ export function JobsPage() {
   ]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const jobIdParam = params.get("jobId");
+
     if (filteredJobs.length > 0) {
+      if (jobIdParam) {
+        const matched = filteredJobs.find((j) => j.id === jobIdParam);
+        if (matched) {
+          setSelectedJob(matched);
+          return;
+        }
+      }
+
       const tabChanged = prevTab.current !== activeTab;
       prevTab.current = activeTab;
 
@@ -875,7 +885,7 @@ export function JobsPage() {
     } else {
       setSelectedJob(null);
     }
-  }, [filteredJobs, activeTab]);
+  }, [filteredJobs, activeTab, location.search]);
 
   if (activeTab === "recruiter" && recruiterView.type === "pipeline") {
     return (
@@ -908,11 +918,10 @@ export function JobsPage() {
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
-              className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${
-                activeTab === key
+              className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition ${activeTab === key
                   ? "bg-blue-600 text-white"
                   : "hover:bg-[color:var(--bg-surface-2)]"
-              }`}
+                }`}
               style={activeTab !== key ? { color: "var(--text-secondary)" } : {}}
             >
               {label}
@@ -1109,11 +1118,10 @@ export function JobsPage() {
                       key={preset.label}
                       type="button"
                       onClick={() => setSalaryRange(preset.range as [number, number])}
-                      className={`rounded px-2 py-0.5 text-[10px] font-bold border transition-all duration-200 ${
-                        salaryRange[0] === preset.range[0] && salaryRange[1] === preset.range[1]
+                      className={`rounded px-2 py-0.5 text-[10px] font-bold border transition-all duration-200 ${salaryRange[0] === preset.range[0] && salaryRange[1] === preset.range[1]
                           ? "bg-blue-600 text-white border-blue-600"
                           : ""
-                      }`}
+                        }`}
                       style={salaryRange[0] !== preset.range[0] || salaryRange[1] !== preset.range[1]
                         ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" }
                         : {}}
@@ -1193,11 +1201,10 @@ export function JobsPage() {
                     key={opt.label}
                     type="button"
                     onClick={() => setFreshness(opt.value)}
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all duration-200 ${
-                      freshness === opt.value
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-bold border transition-all duration-200 ${freshness === opt.value
                         ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                         : ""
-                    }`}
+                      }`}
                     style={freshness !== opt.value
                       ? { background: "var(--bg-surface-2)", color: "var(--text-muted)", borderColor: "var(--border)" }
                       : {}}

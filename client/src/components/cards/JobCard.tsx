@@ -1,22 +1,40 @@
 import { BriefcaseBusiness, Loader2, Star, Check } from "lucide-react";
 import { Job } from "../../lib/api";
-import { formatCount, titleCase } from "../../lib/format";
+import { formatCount, titleCase, cleanLogoUrl, parseJobTitle } from "../../lib/format";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   useCreatePostMutation,
   useSaveJobMutation,
   useSavedJobsQuery,
+  useMyFullProfileQuery,
 } from "../../hooks/usePlatformQueries";
 import { useToast } from "../../contexts/ToastContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-export function JobCard({ job }: { job: Job }) {
+export function JobCard({ job, onClick }: { job: Job; onClick?: () => void }) {
+  const { cleanTitle, tags: parsedTags } = parseJobTitle(job.title || "");
   const { user } = useAuth();
   const createPost = useCreatePostMutation();
   const { showToast } = useToast();
 
   const { data: savedJobs } = useSavedJobsQuery();
   const saveMutation = useSaveJobMutation();
+
+  const profileQuery = useMyFullProfileQuery();
+  const userSkillNames = useMemo(() => {
+    return new Set(
+      (profileQuery.data?.skills || [])
+        .map((s) => s.skill?.name?.toLowerCase().trim())
+        .filter((name): name is string => Boolean(name))
+    );
+  }, [profileQuery.data?.skills]);
+
+  const jobSkills = (job.skillsRequired || []) as string[];
+  const matchingSkills = jobSkills.filter((s) => userSkillNames.has(s.toLowerCase().trim()));
+  const matchPercentage = jobSkills.length
+    ? Math.round((matchingSkills.length / jobSkills.length) * 100)
+    : 100;
+  const showMatchScore = Boolean(user) && userSkillNames.size > 0 && jobSkills.length > 0;
 
   const [isSaved, setIsSaved] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -77,25 +95,77 @@ export function JobCard({ job }: { job: Job }) {
   };
 
   return (
-    <article className="panel p-5 hover-lift">
+    <article
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("button") || target.closest("a") || target.closest("input")) {
+          return;
+        }
+        if (onClick) onClick();
+      }}
+      className={`panel p-5 hover-lift ${onClick ? "cursor-pointer" : ""}`}
+    >
       <div className="flex items-start gap-4">
-        <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-          <BriefcaseBusiness size={20} />
+        <div className="shrink-0 relative">
+          {cleanLogoUrl(job.company?.logoUrl) ? (
+            <img
+              src={cleanLogoUrl(job.company?.logoUrl)!}
+              alt={`${job.company?.name || "Company"} logo`}
+              className="h-11 w-11 rounded-lg object-cover shadow-sm"
+              style={{ border: "1px solid var(--border)" }}
+            />
+          ) : (
+            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+              <BriefcaseBusiness size={20} />
+            </div>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-base font-semibold text-primary">
-              {job.title || "Open role"}
+              {cleanTitle || "Open role"}
             </h3>
             {job.featured && (
               <span className="chip text-amber-700 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20">
                 Featured
               </span>
             )}
+            {showMatchScore && (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold border ${
+                matchPercentage >= 75
+                  ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700"
+                  : matchPercentage >= 40
+                  ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700"
+                  : "border-[color:var(--border)]"
+              }`} style={matchPercentage < 40 ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}>
+                {matchPercentage}% Skill Match
+              </span>
+            )}
           </div>
-          <p className="mt-1 text-sm text-muted-fg font-medium">
+          {parsedTags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {parsedTags.map((tag, idx) => (
+                <span key={idx} className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="mt-1.5 text-xs text-muted-fg font-medium">
             {job.company?.name || "Company"} - {job.location || "Remote"} - {titleCase(job.type)}
           </p>
+          {job.skillsRequired && job.skillsRequired.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {job.skillsRequired.slice(0, 8).map((skill) => (
+                <span
+                  key={skill}
+                  className="inline-flex items-center rounded bg-slate-50 dark:bg-slate-800/40 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
 
           <p className="mt-3 line-clamp-3 text-sm leading-6 text-secondary">
             {job.description}
@@ -110,13 +180,6 @@ export function JobCard({ job }: { job: Job }) {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {(job.skillsRequired || []).slice(0, 5).map((skill) => (
-          <span className="chip" key={skill}>
-            {skill}
-          </span>
-        ))}
-      </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-base pt-4 text-xs text-muted-fg">
         <span>{salary || titleCase(job.workMode || "OPEN")}</span>

@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Heart, Loader2, MessageSquare, Repeat2, Send, Star } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FeedItem, FeedPost, Job, PostComment, Project } from "../../lib/api";
 import { useImpressionTracking } from "../../hooks/useImpressionTracking";
 import { usePostQuery } from "../../hooks/usePlatformQueries";
@@ -34,6 +34,7 @@ export function FeedCard({
   onRepost: (id: string, caption?: string) => Promise<boolean>;
   canInteract: boolean;
 }) {
+  const navigate = useNavigate();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
@@ -112,7 +113,7 @@ export function FeedCard({
   if (item.type === "JOB") {
     return (
       <div ref={impressionRef as any}>
-        <JobCard job={item.data as any} />
+        <JobCard job={(item as any).job || item.data} />
       </div>
     );
   }

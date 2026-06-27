@@ -1,6 +1,6 @@
 import { ShieldCheck, Plus, Check, Loader2 } from "lucide-react";
 import { Company } from "../../lib/api";
-import { titleCase } from "../../lib/format";
+import { titleCase, cleanLogoUrl } from "../../lib/format";
 import { useAuth } from "../../contexts/AuthContext";
 import { useFollowCompanyMutation, useUnfollowCompanyMutation } from "../../hooks/usePlatformQueries";
 import { useState, useEffect } from "react";
@@ -54,9 +54,9 @@ export function CompanyFeedCard({ company }: { company: Company }) {
   return (
     <article className="panel p-5 hover-lift">
       <div className="flex items-start gap-4">
-        {company.logoUrl ? (
+        {cleanLogoUrl(company.logoUrl) ? (
           <img
-            src={company.logoUrl}
+            src={cleanLogoUrl(company.logoUrl)!}
             alt={`${company.name} logo`}
             className="h-11 w-11 shrink-0 rounded-lg object-cover border border-base"
           />
