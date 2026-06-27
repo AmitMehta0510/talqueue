@@ -3009,6 +3009,16 @@ export const api = {
   updateCompany: (companyId: string, body: CompanyMutationPayload) =>
     request<Company>(`/companies/${companyId}`, { method: "PATCH", body }),
 
+  // Storage — Pre-upload file signature validation
+  validateFile: (body: {
+    fileBase64: string;
+    purpose: "avatar" | "letterhead" | "attachment";
+  }) =>
+    request<{ detectedType: string; purpose: string }>(
+      "/storage/validate",
+      { method: "POST", body }
+    ),
+
   // Storage — S3 Presigned Upload
   getPresignedUrl: (body: {
     filename: string;
