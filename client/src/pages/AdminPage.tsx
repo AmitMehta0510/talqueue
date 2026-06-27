@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
-  Calendar, Globe, UserCheck,
+  Calendar, Globe, UserCheck, Video,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -32,8 +32,9 @@ import { OnboardingRequestsPanel } from "./AdminPages/OnboardingRequestsPanel";
 import { JobsPanel } from "./AdminPages/JobsPanel";
 import { EventsPanel } from "./AdminPages/EventsPanel";
 import { DiscoveredCompaniesPanel } from "./AdminPages/DiscoveredCompaniesPanel";
+import { InterviewPanel } from "./AdminPages/InterviewPanel";
 
-type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies";
+type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -49,6 +50,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "onboarding",       label: "Onboarding",    icon: UserCheck },
   { id: "events",           label: "Events",         icon: Calendar },
   { id: "discovered_companies", label: "Discovered",  icon: Globe },
+  { id: "interviews",       label: "Interviews",     icon: Video },
 ];
 
 export function AdminPage() {
@@ -232,6 +234,7 @@ export function AdminPage() {
             {activeTab === "jobs" && <JobsPanel />}
             {activeTab === "events" && <EventsPanel />}
             {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
+            {activeTab === "interviews" && <InterviewPanel />}
           </div>
         </div>
       </div>
