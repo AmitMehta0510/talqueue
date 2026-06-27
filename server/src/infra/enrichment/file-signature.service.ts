@@ -134,7 +134,8 @@ export function checkFileSignature(
     valid: false,
     detectedType: null,
     reason:
-      "Unrecognised file signature. Please upload a valid PDF, JPEG, or PNG document.",
+      `Unrecognised or unsupported file type. For this upload, please provide: ${allowed.join(" or ")}. ` +
+      "Ensure the file has not been renamed from a different format (e.g., renaming a .jpg to .pdf).",
   };
 }
 
@@ -143,44 +144,62 @@ export function checkFileSignature(
 // ---------------------------------------------------------------------------
 
 /**
- * Performs a two-stage PDF validation:
- *  1. Magic number check — verifies the buffer starts with `%PDF`.
- *  2. Structural sanity check — verifies that the buffer's tail contains
- *     the `%%EOF` cross-reference marker, detecting truncated or corrupt files.
+ * The maximum bytes the client slices for the validation request.
+ * Must match the `VALIDATION_SLICE_BYTES` constant in `useFileUpload.ts`.
+ */
+const VALIDATION_SLICE_BYTES = 4096;
+
+/**
+ * Performs PDF validation in up to two stages:
  *
- * The `%%EOF` check is performed against the last 1 024 bytes of the buffer
- * to handle standard and linearised PDFs alike.
+ *  Stage 1 (always)   — Magic number check: verifies the buffer starts
+ *                       with `%PDF` (bytes 0x25 0x50 0x44 0x46).
  *
- * @param buffer - Full file buffer, or at minimum the first 4 bytes +
- *                 the last 1 024 bytes concatenated. For files ≤ 4 096 bytes,
- *                 pass the entire content.
+ *  Stage 2 (optional) — Structural sanity check: verifies the `%%EOF`
+ *                       cross-reference marker is present in the tail.
+ *
+ *  ⚠️  Stage 2 is ONLY applied when `buffer.length < VALIDATION_SLICE_BYTES`.
+ *      The client transmits only the first 4 096 bytes of the file.
+ *      For any PDF larger than 4 KB the tail (which holds `%%EOF`) is never
+ *      transmitted, so performing the check would produce a false failure for
+ *      every legitimate real-world document.
+ *      When buffer.length < 4096 the file is small enough to have arrived in
+ *      full, so the structural check is both safe and meaningful.
+ *
+ * @param buffer - The decoded bytes from the client's Base64 slice.
  * @returns A `FileSignatureResult`.
  */
 export function validatePdfStructure(buffer: Buffer): FileSignatureResult {
-  // Stage 1 — magic number
+  // Stage 1 — magic number (always enforced)
   const signatureCheck = checkFileSignature(buffer, ["PDF"]);
   if (!signatureCheck.valid) {
     return signatureCheck;
   }
 
-  // Stage 2 — structural tail marker
-  // Inspect the last 1 024 bytes for %%EOF.
-  const tailStart = Math.max(0, buffer.length - 1024);
-  const tail = buffer.subarray(tailStart);
-  const tailAscii = tail.toString("ascii");
+  // Stage 2 — %%EOF tail marker (only for files that fit entirely in the slice)
+  if (buffer.length < VALIDATION_SLICE_BYTES) {
+    const tailStart = Math.max(0, buffer.length - 1024);
+    const tail = buffer.subarray(tailStart);
+    const tailAscii = tail.toString("ascii");
 
-  if (!tailAscii.includes("%%EOF")) {
-    logger.warn(
-      "[validatePdfStructure] PDF magic bytes detected but %%EOF marker is absent — file may be truncated or corrupt."
+    if (!tailAscii.includes("%%EOF")) {
+      logger.warn(
+        "[validatePdfStructure] Small PDF (<4 KB) is missing %%EOF marker — likely corrupt or truncated."
+      );
+      return {
+        valid: false,
+        detectedType: "PDF",
+        reason:
+          "The uploaded PDF appears to be corrupt or incomplete (missing %%EOF marker). " +
+          "Please re-export the document from your PDF editor and try again.",
+      };
+    }
+  } else {
+    logger.info(
+      `[validatePdfStructure] File is ≥${VALIDATION_SLICE_BYTES} bytes — %%EOF check skipped (tail not transmitted).`
     );
-    return {
-      valid: false,
-      detectedType: "PDF",
-      reason:
-        "The uploaded file has a valid PDF header but appears to be truncated or structurally corrupt (missing %%EOF marker). Please re-export and re-upload the document.",
-    };
   }
 
-  logger.info("[validatePdfStructure] PDF structure validated successfully.");
+  logger.info("[validatePdfStructure] PDF validated successfully.");
   return { valid: true, detectedType: "PDF", reason: null };
 }
