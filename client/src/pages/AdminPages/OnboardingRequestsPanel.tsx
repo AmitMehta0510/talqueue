@@ -36,7 +36,11 @@ function TpoRequestsPanel() {
     try {
       const { api } = await import("../../lib/api");
       const res = await api.adminGetCollegeRequests(statusFilter);
-      setRequests((res.data as any[]) || []);
+      // Backend returns a paginated envelope: { requests: [...], nextCursor, hasNextPage }
+      // We must extract .requests — not treat res.data directly as an array.
+      const payload = res.data as { requests?: any[] } | any[];
+      const list = Array.isArray(payload) ? payload : (payload?.requests ?? []);
+      setRequests(list);
     } catch {
       showToast("error", "Failed to load college requests");
     } finally {
@@ -211,7 +215,8 @@ function CompanyClaimsPanel({ requestType }: { requestType: "COMPANY_CLAIM" | "R
     try {
       const { api } = await import("../../lib/api");
       const res = await api.adminCompanyRequests(statusFilter);
-      setRequests(((res.data as any[]) || []).filter((r: any) => r.requestType === requestType));
+      const list = Array.isArray(res.data) ? res.data : [];
+      setRequests(list.filter((r: any) => r.requestType === requestType));
     } catch {
       showToast("error", "Failed to load requests");
     } finally {
