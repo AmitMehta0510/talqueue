@@ -151,7 +151,6 @@ export const checkDriveEligibility = async (
       cgpa: true,
       backlogs: true,
       currentYear: true,
-      collegeEmailVerified: true, // Q4: email-verified students bypass hard locks
       department: {
         select: {
           name: true,
@@ -161,18 +160,6 @@ export const checkDriveEligibility = async (
     },
   });
 
-  // ── Q4: Email Domain Auto-Verification Bypass ─────────────────────────────
-  // If the student has verified their college email for this college, they are
-  // provably enrolled — skip CGPA, branch, year, and backlog hard-lock checks.
-  const isEmailVerified = education?.collegeEmailVerified === true;
-  if (isEmailVerified) {
-    // Only status & deadline checks apply; return early
-    return {
-      eligible: reasons.length === 0,
-      reasons,
-      missingFields,
-    };
-  }
 
   // ── CGPA check ────────────────────────────────────────────────────────────
 
