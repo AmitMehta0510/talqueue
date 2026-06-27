@@ -5,10 +5,11 @@ import {
   BriefcaseBusiness,
   Building2,
   Code2,
-  Compass,
   Gavel,
+  Globe,
   GraduationCap,
-  Hash,
+  Handshake,
+  Home,
   LogIn,
   LogOut,
   ShieldCheck,
@@ -16,9 +17,9 @@ import {
   Rocket,
   Search,
   Users,
+  Users2,
   UserRound,
   Award,
-  Send,
   Menu,
   X,
   Calendar,
@@ -42,15 +43,15 @@ type NavSection = {
 };
 
 const sections: NavSection[] = [
-  { to: "/feed",        label: "Home",       icon: Compass },
+  { to: "/feed",        label: "Home",       icon: Home },
   { to: "/discover",   label: "Discover",   icon: Search },
   { to: "/chat",       label: "Chats",      icon: MessageSquare, requiresAuth: true },
-  { to: "/social",     label: "My Network", icon: UserRound,     requiresAuth: true },
-  { to: "/referrals",  label: "Referrals",  icon: Send,          requiresAuth: true },
+  { to: "/social",     label: "Network",    icon: Users2,        requiresAuth: true },
+  { to: "/referrals",  label: "Referrals",  icon: Handshake,     requiresAuth: true },
   { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/events",     label: "Events",     icon: Calendar },
   { to: "/projects",   label: "Projects",   icon: Rocket },
-  { to: "/communities",label: "Communities",icon: Hash },
+  { to: "/communities",label: "Communities",icon: Globe },
   { to: "/teams",      label: "Teams",      icon: Users,         requiresAuth: true },
   { to: "/colleges",   label: "Colleges",   icon: GraduationCap },
   { to: "/companies",  label: "Companies",  icon: Building2 },
@@ -60,15 +61,17 @@ const sections: NavSection[] = [
 ];
 
 const pinnedSections: NavSection[] = [
-  { to: "/feed",       label: "Home",       icon: Compass },
+  { to: "/feed",       label: "Home",       icon: Home },
   { to: "/discover",   label: "Discover",   icon: Search },
   { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
-  { to: "/chat",       label: "Chats",      icon: MessageSquare, requiresAuth: true },
+  { to: "/referrals",  label: "Referrals",  icon: Handshake,      requiresAuth: true },
+  { to: "/social",     label: "Network",    icon: Users2,         requiresAuth: true },
+  { to: "/chat",       label: "Chats",      icon: MessageSquare,  requiresAuth: true },
 ];
 
 /** Fixed bottom tab bar — 5 key routes shown on mobile (<lg) */
 const bottomTabs: NavSection[] = [
-  { to: "/feed",       label: "Home",       icon: Compass },
+  { to: "/feed",       label: "Home",       icon: Home },
   { to: "/discover",   label: "Discover",   icon: Search },
   { to: "/jobs",       label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/chat",       label: "Chat",       icon: MessageSquare, requiresAuth: true },
@@ -391,36 +394,12 @@ export function AppLayout() {
                         </Link>
                       )}
                       <Link
-                        to="/referrals"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400"
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                      >
-                        Referrals Dashboard
-                      </Link>
-                      <Link
                         to="/reputation"
                         className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400"
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                       >
                         Unlocked Badges Catalog
-                      </Link>
-                      <Link
-                        to="/business?tab=claim"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400 text-xs font-medium"
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                      >
-                        Register / Claim Company
-                      </Link>
-                      <Link
-                        to="/business?tab=tpo"
-                        className="block px-2 py-1.5 rounded-lg transition-all duration-150 hover:text-indigo-700 dark:hover:text-indigo-400 text-xs font-medium"
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                      >
-                        Onboard / Claim College (TPO)
                       </Link>
                       {user.primaryRole === "RECRUITER" && (
                         <Link
