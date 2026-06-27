@@ -333,23 +333,31 @@ export const claimInitiateHandler = asyncHandler(
     }
 
     // --- Generate and store OTP in Redis ---
-    const otp = generateOtp();
+    // In development mode, bypass Brevo and use a hardcoded OTP for easier local testing.
+    const isDev = process.env.NODE_ENV === "development";
+    const otp = isDev ? "123456" : generateOtp();
     const redisKey = buildOtpKey(companyId, userId);
 
     await redis.set(redisKey, otp, "EX", OTP_TTL_SECONDS);
 
-    logger.info(
-      `OTP generated for company claim: company=${companyId}, user=${userId}, ttl=${OTP_TTL_SECONDS}s`
-    );
-
-    // --- Dispatch OTP via Brevo transactional email ---
+    // --- Dispatch OTP via Brevo transactional email (production only) ---
     // OTP is NEVER placed in the HTTP response body.
-    // In dev mode (no BREVO_API_KEY), sendOtpEmail logs it via Winston and returns { sent: false }.
-    const emailResult = await sendOtpEmail({
-      to: businessEmail,
-      otp,
-      companyName: company.name,
-    });
+    let emailResult: { sent: boolean };
+    if (isDev) {
+      logger.info(
+        `[DEV] Company claim OTP bypass active — company=${companyId}, user=${userId}, OTP=${otp}`
+      );
+      emailResult = { sent: false };
+    } else {
+      logger.info(
+        `OTP generated for company claim: company=${companyId}, user=${userId}, ttl=${OTP_TTL_SECONDS}s`
+      );
+      emailResult = await sendOtpEmail({
+        to: businessEmail,
+        otp,
+        companyName: company.name,
+      });
+    }
 
     return res.status(200).json(
       successResponse(
@@ -572,19 +580,28 @@ export const tpoClaimInitiateHandler = asyncHandler(
     }
 
     // --- Generate and store OTP in Redis ---
-    const otp = generateOtp();
+    // In development mode, bypass Brevo and use a hardcoded OTP for easier local testing.
+    const isDev = process.env.NODE_ENV === "development";
+    const otp = isDev ? "123456" : generateOtp();
     const redisKey = `${TPO_CLAIM_OTP_PREFIX}:${userId}:${normalizedKey}`;
 
     await redis.set(redisKey, otp, "EX", OTP_TTL_SECONDS);
 
-    logger.info(`TPO claim OTP generated: user=${userId}, college="${collegeName}", ttl=${OTP_TTL_SECONDS}s`);
-
-    // --- Send OTP email via Brevo ---
-    const emailResult = await sendOtpEmail({
-      to: officialEmail,
-      otp,
-      companyName: collegeName, // reuse field — will show college name in email
-    });
+    // --- Send OTP email via Brevo (production only) ---
+    let emailResult: { sent: boolean };
+    if (isDev) {
+      logger.info(
+        `[DEV] TPO claim OTP bypass active — user=${userId}, college="${collegeName}", OTP=${otp}`
+      );
+      emailResult = { sent: false };
+    } else {
+      logger.info(`TPO claim OTP generated: user=${userId}, college="${collegeName}", ttl=${OTP_TTL_SECONDS}s`);
+      emailResult = await sendOtpEmail({
+        to: officialEmail,
+        otp,
+        companyName: collegeName, // reuse field — will show college name in email
+      });
+    }
 
     return res.status(200).json(
       successResponse(
