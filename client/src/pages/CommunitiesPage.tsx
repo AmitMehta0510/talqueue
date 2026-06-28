@@ -1320,11 +1320,11 @@ type Tab = "joined" | "explore";
 
 export function CommunitiesPage() {
   const { communitySlug } = useParams();
-  const [searchParams] = useSearchParams();
+  const [urlParams] = useSearchParams();
   const { user } = useAuth();
 
   // Pre-fill query from ?q= URL param (e.g. from college Community button)
-  const initialQuery = searchParams.get("q") || "";
+  const initialQuery = urlParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
 
