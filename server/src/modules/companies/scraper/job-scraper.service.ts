@@ -309,19 +309,18 @@ const SKILL_KEYWORDS: Record<string, string[]> = {
   "Algorithms":   ["algorithms", "data structures", "leetcode", "dsa"],
 };
 
-/** Fallback skills for INTERNSHIP/ENTRY_LEVEL — broad generalist set. */
-const INTERN_DEFAULT_SKILLS = ["Python", "Git", "Algorithms", "JavaScript", "SQL"];
-
-/** Fallback skills for senior/mid roles where no domain keyword is matched. */
-const SENIOR_DEFAULT_SKILLS = ["TypeScript", "Node.js", "PostgreSQL", "Docker", "AWS"];
-
 /**
- * Extracts matched skills from combined title + description corpus.
- * Falls back to type-aware defaults instead of a hardcoded array.
+ * Extracts matched skills from the combined title + description corpus via
+ * token matching against SKILL_KEYWORDS.
  *
- * @param title   Job title string
+ * INTEGRITY RULE: If the keyword scan returns zero matches, return [] (empty
+ * array). Do NOT inject synthetic defaults — skill data must reflect actual
+ * scraped content. A stored empty array signals the frontend to omit the
+ * skills section rather than display fabricated technology stacks.
+ *
+ * @param title   Job title string from ATS
  * @param desc    Plain-text job description
- * @param jobType Classified JobType — drives the right fallback skill set
+ * @param jobType Classified JobType (unused for matching; kept for callers)
  */
 function extractSkills(title: string, desc: string, jobType?: string): string[] {
   const text = `${title} ${desc}`.toLowerCase();
@@ -333,11 +332,8 @@ function extractSkills(title: string, desc: string, jobType?: string): string[] 
     }
   }
 
-  if (matched.length > 0) return matched.slice(0, 10);
-
-  // Type-aware fallback — interns get generalist skills, seniors get platform stack
-  const isInternType = jobType === "INTERNSHIP" || jobType === "ENTRY_LEVEL";
-  return isInternType ? INTERN_DEFAULT_SKILLS : SENIOR_DEFAULT_SKILLS;
+  // Strict: return matched tokens only — never inject hardcoded fallback arrays
+  return matched.slice(0, 10);
 }
 
 /**
