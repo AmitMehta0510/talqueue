@@ -121,11 +121,52 @@ export type College = {
   logoUrl?: string | null;
   normalizedKey?: string;
   createdAt?: string;
+  // Public profile fields
+  description?: string | null;
+  establishedYear?: number | null;
+  institutionType?: string | null;
+  collegeType?: string | null;
+  affiliation?: string | null;
+  naacGrade?: string | null;
+  galleryImages?: string[];
+  glanceStats?: {
+    smartClassrooms?: number;
+    labs?: number;
+    researchPapers?: string | number;
+    mous?: number;
+    annualEvents?: string | number;
+    startupsIncubated?: number;
+  } | null;
+  // Enriched counts
   _count?: {
     departments?: number;
     profiles?: number;
     educations?: number;
   };
+  // Enriched relations
+  departments?: Array<{
+    id: string;
+    name: string;
+    hod?: string | null;
+    createdAt?: string;
+    _count?: { profiles: number };
+  }>;
+  profiles?: Array<{ avatarUrl?: string | null; fullName?: string | null }>;
+  // Alumni (computed by service)
+  alumniAvatars?: Array<{ avatarUrl?: string | null; fullName?: string | null }>;
+  alumniCount?: number;
+};
+
+export type CollegePlacementSummary = {
+  placementPercent: number;
+  avgPackageLPA: number | null;
+  maxPackageLPA: number | null;
+  totalDrives: number;
+  topRecruiters: Array<{
+    companyId: string;
+    companyName: string;
+    companyLogo?: string | null;
+  }>;
 };
 
 export type Department = {
@@ -2123,6 +2164,8 @@ export const api = {
     request<College>("/colleges", { method: "POST", body }),
   deleteCollege: (collegeId: string) =>
     request<{ message: string }>(`/colleges/${collegeId}`, { method: "DELETE" }),
+  collegePlacementSummary: (collegeId: string, options?: EndpointOptions) =>
+    request<CollegePlacementSummary>(`/colleges/${collegeId}/placement-summary`, options),
   createDepartment: (body: DepartmentMutationPayload) =>
     request<Department>("/colleges/departments", { method: "POST", body }),
   departments: (collegeId: string, options?: EndpointOptions) =>

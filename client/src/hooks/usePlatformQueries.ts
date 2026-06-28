@@ -5186,6 +5186,19 @@ export const useCollegePlacementStatsQuery = (collegeId?: string | null, year?: 
   });
 };
 
+// Public — no auth required, for the college public profile page
+export const useCollegePlacementSummaryQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["colleges", collegeId, "placement-summary"],
+    queryFn: async ({ signal }) => {
+      const result = await api.collegePlacementSummary(collegeId!, { signal });
+      return result.data;
+    },
+    enabled: Boolean(collegeId),
+    staleTime: 5 * 60 * 1000, // 5 min cache — public data changes infrequently
+  });
+};
+
 export const useGetPresignedUrlMutation = () => {
   const { showToast } = useToast();
 

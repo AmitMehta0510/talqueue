@@ -54,6 +54,36 @@ const collegeSelect = {
   logoUrl: true,
   normalizedKey: true,
   createdAt: true,
+  // Public profile fields
+  description: true,
+  establishedYear: true,
+  institutionType: true,
+  collegeType: true,
+  affiliation: true,
+  naacGrade: true,
+  galleryImages: true,
+  glanceStats: true,
+  // Departments with per-department student counts (sorted by popularity)
+  departments: {
+    select: {
+      id: true,
+      name: true,
+      hod: true,
+      createdAt: true,
+      _count: { select: { profiles: true } },
+    },
+    orderBy: { profiles: { _count: "desc" as const } },
+    take: 10,
+  },
+  // Student avatar stack (latest 6 enrolled students)
+  profiles: {
+    take: 6,
+    orderBy: { updatedAt: "desc" as const },
+    select: {
+      avatarUrl: true,
+      fullName: true,
+    },
+  },
   _count: {
     select: {
       departments: true,
@@ -303,7 +333,7 @@ export const createCollege = async (
 };
 
 export const getCollegeById = async (idOrSlug: string) => {
-  return prisma.college.findFirst({
+  const college = await prisma.college.findFirst({
     where: {
       OR: [
         { id: idOrSlug },
@@ -312,6 +342,33 @@ export const getCollegeById = async (idOrSlug: string) => {
     },
     select: collegeSelect,
   });
+
+  if (!college) return null;
+
+  // Fetch alumni count and avatar stack separately (filtered by alumniVerified=true)
+  const alumniEducations = await prisma.education.findMany({
+    where: { collegeId: college.id, alumniVerified: true },
+    take: 6,
+    orderBy: { alumniVerifiedAt: "desc" },
+    select: {
+      id: true,
+      user: {
+        select: {
+          profile: { select: { avatarUrl: true, fullName: true } },
+        },
+      },
+    },
+  });
+
+  const alumniCount = await prisma.education.count({
+    where: { collegeId: college.id, alumniVerified: true },
+  });
+
+  const alumniAvatars = alumniEducations
+    .map((e) => e.user?.profile)
+    .filter(Boolean) as { avatarUrl: string | null; fullName: string | null }[];
+
+  return { ...college, alumniAvatars, alumniCount };
 };
 
 export const getAllColleges = async (params: CollegeListParams = {}) => {

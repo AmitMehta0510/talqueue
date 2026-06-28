@@ -30,6 +30,8 @@ import {
   removeCellRepresentative,
 } from "./colleges.service";
 
+import * as analyticsService from "modules/placementDrives/driveAnalytics.service";
+
 import {
   createCollegeSchema,
   createDepartmentSchema,
@@ -348,5 +350,34 @@ export const assignCellRepresentativesHandler = asyncHandler(
     return res.status(201).json(
       successResponse(result, "CDCR representative assigned successfully!"),
     );
+  },
+);
+
+// ─── Public placement summary (no auth required) ──────────────────────────────
+export const getCollegePlacementSummaryHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { collegeId } = req.params;
+    const id = (Array.isArray(collegeId) ? collegeId[0] : collegeId) as string;
+    // Only fetch current year stats for the public summary
+    const currentYear = new Date().getFullYear();
+    // Try current year first; fallback to all-time if no drives found
+    let result = await analyticsService.getCollegePlacementStats(id, currentYear);
+    if (result.summary.totalDrives === 0) {
+      result = await analyticsService.getCollegePlacementStats(id);
+    }
+    res.json({
+      success: true,
+      data: {
+        placementPercent: result.summary.placementPercent,
+        avgPackageLPA: result.summary.avgPackageLPA,
+        maxPackageLPA: result.summary.maxPackageLPA,
+        totalDrives: result.summary.totalDrives,
+        topRecruiters: result.byCompany.slice(0, 5).map((c) => ({
+          companyId: c.companyId,
+          companyName: c.companyName,
+          companyLogo: c.companyLogo,
+        })),
+      },
+    });
   },
 );

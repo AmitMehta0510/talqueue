@@ -854,13 +854,19 @@ model College {
 
   // Placement policy configuration
   offerPolicy      CollegeOfferPolicy @default(OPEN)
-  allowBacklogsUpTo Int               @default(0) // Max allowed active backlogs (0 = zero tolerance)
+  allowBacklogsUpTo Int               @default(0)
+
+  // ── Public Profile Fields ─────────────────────────────────────────────────
+  description     String?    // About the Institute text
+  establishedYear Int?       // e.g. 2014
+  institutionType String?    // "Autonomous" | "Deemed" | "Central University" | "State University" | "Private"
+  collegeType     String?    // "Public" | "Private" | "Government Aided"
+  affiliation     String?    // "IIT Act, 2014" | "Anna University" etc.
+  naacGrade       String?    // "A++" | "A+" | "A" | "B++" | "B+" etc.
+  galleryImages   String[]   @default([])
+  glanceStats     Json?      // { smartClassrooms?, labs?, researchPapers?, mous?, annualEvents?, startupsIncubated? }
 
   // ── Institutional governance ─────────────────────────────────────────────
-  // masterAdminUserId: set when a CollegeRequest is APPROVED by a super-admin.
-  // This is the single source of truth for who owns the college dashboard.
-  // tpoUserId: Training & Placement Officer — assigned by the master admin.
-  // Both are nullable so colleges seeded via catalog import remain unaffected.
   masterAdminUserId String?
 
   masterAdmin User? @relation("CollegeMasterAdmin", fields: [masterAdminUserId], references: [id])

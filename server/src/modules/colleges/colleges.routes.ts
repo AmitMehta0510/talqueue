@@ -26,6 +26,7 @@ import {
   submitCollegeOnboardingHandler,
   assignOrRemoveInstitutionalStaffHandler,
   assignCellRepresentativesHandler,
+  getCollegePlacementSummaryHandler,
 } from "./colleges.controller";
 import prisma from "shared/database/prisma";
 
@@ -75,6 +76,9 @@ router.get(
 );
 
 router.get("/:collegeId", getCollegeHandler);
+
+// Public placement summary — no auth required
+router.get("/:collegeId/placement-summary", getCollegePlacementSummaryHandler);
 
 router.get(
   "/:collegeId/departments",
