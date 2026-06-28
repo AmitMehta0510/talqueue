@@ -132,8 +132,19 @@ function stripHtml(html: string): string {
  */
 function isTechOrInternRole(title: string): boolean {
   const t = title.toLowerCase();
-  // Always include internships / co-ops
-  if (t.includes("intern") || t.includes("co-op") || t.includes("coop")) return true;
+  // Fast-pass: all internship/trainee/entry-level patterns must mirror classifyJobType Tier 2
+  // so these roles are never discarded before classification.
+  if (
+    t.includes("intern") ||
+    t.includes("co-op") || t.includes("coop") ||
+    t.includes("trainee") || t.includes("traineeship") ||
+    t.includes("apprentice") ||
+    t.includes("fresher") ||
+    t.includes("new grad") || t.includes("new graduate") ||
+    t.includes("campus hire") || t.includes("campus recruit") ||
+    t.includes("summer program") || t.includes("winter program") ||
+    t.includes("graduate engineer") || t.includes("graduate hire")
+  ) return true;
   return TECH_ROLE_KEYWORDS.some(keyword => t.includes(keyword));
 }
 
@@ -142,27 +153,92 @@ function isTechRole(title: string): boolean {
   return isTechOrInternRole(title);
 }
 
-// Helper to parse job type from title
-function parseJobType(title: string): JobType {
+// ---------------------------------------------------------------------------
+// INTERNSHIP CLASSIFIER — Tier 1 (ATS field) / Tier 2 (title) / Tier 3 (desc)
+// ---------------------------------------------------------------------------
+
+/** Tier 3: Description-level patterns. Scanned on first 800 chars only. */
+const INTERNSHIP_DESC_PATTERNS: RegExp[] = [
+  /\bstipend\b/i,
+  /\bpaid\s+intern(ship)?\b/i,
+  /\b(3|4|6)\s*[-\u2013]\s*month(s)?\s+(internship|program|placement)\b/i,
+  /\bsummer\s+internship\b/i,
+  /\binternship\s+program\b/i,
+  /\bplacement\s+program\b/i,
+];
+
+/**
+ * Classifies a job into a JobType using a 3-tier strategy:
+ *
+ *  Tier 1 — ATS structured employment type field (highest signal, zero false positives):
+ *    - Lever:       job.categories?.commitment  ("Internship" | "Full-time" | "Part-time" | "Contract")
+ *    - Ashby:       job.employmentType          ("Intern" | "FullTime" | "PartTime" | "Contract" | "Temporary")
+ *    - Greenhouse:  job.metadata is null on the public board API — falls through to Tier 2
+ *    - Workday:     no structured field exposed in CXS payload — falls through to Tier 2
+ *
+ *  Tier 2 — Extended title regex (15 patterns: intern/co-op/trainee/apprentice/fresher/campus)
+ *  Tier 3 — Description scan (first 800 chars: stipend/duration/placement keywords)
+ *
+ * @param title             Job title string from ATS
+ * @param description       Plain-text job description (HTML stripped)
+ * @param atsEmploymentType Raw structured employment type from ATS (optional)
+ */
+function classifyJobType(
+  title: string,
+  description: string,
+  atsEmploymentType?: string | null
+): JobType {
+  // ── Tier 1: ATS structured field ────────────────────────────────────────
+  if (atsEmploymentType) {
+    const e = atsEmploymentType.toLowerCase();
+    // Lever:  "Internship" | "Full-time" | "Part-time" | "Contract"
+    // Ashby:  "Intern"     | "FullTime"  | "PartTime"  | "Contract" | "Temporary"
+    if (e === "internship" || e === "intern")           return "INTERNSHIP";
+    if (e === "part-time"  || e === "parttime")         return "PART_TIME";
+    if (e === "contract")                               return "CONTRACT";
+    if (e === "temporary")                              return "CONTRACT"; // Ashby Temporary → CONTRACT
+    if (e === "full-time"  || e === "fulltime")         return "FULL_TIME";
+    // Unknown value: fall through to Tier 2
+  }
+
+  // ── Tier 2: Title regex ──────────────────────────────────────────────────
   const t = title.toLowerCase();
-  // Internship / Co-op patterns
-  if (t.includes("intern") || t.includes("co-op") || t.includes("coop")) return "INTERNSHIP";
-  // Entry-level / Fresher / New Grad / Campus patterns
-  if (
-    t.includes("fresher") ||
-    t.includes("new grad") ||
-    t.includes("new graduate") ||
-    t.includes("graduate trainee") ||
-    t.includes("campus hire") ||
-    t.includes("entry level") ||
-    t.includes("entry-level") ||
-    t.includes("associate engineer") ||
-    t.includes("junior engineer")
-  ) return "ENTRY_LEVEL";
-  if (t.includes("contract") || t.includes("contractor")) return "CONTRACT";
-  if (t.includes("part-time") || t.includes("part time")) return "PART_TIME";
-  if (t.includes("freelance")) return "FREELANCE";
+
+  // INTERNSHIP patterns (ordered by specificity)
+  if (/\bintern(ship)?\b/i.test(t))                                                     return "INTERNSHIP";
+  if (/\bco[-\s]?op\b/i.test(t))                                                        return "INTERNSHIP";
+  if (/\btraineeship\b/i.test(t))                                                        return "INTERNSHIP";
+  if (/\b(industrial|graduate|summer|winter|spring|seasonal)\s+train(ee|ing)\b/i.test(t)) return "INTERNSHIP";
+  if (/\bapprentice(ship)?\b/i.test(t))                                                  return "INTERNSHIP";
+  if (/\b(summer|winter|spring)\s+(program|fellow(ship)?|analyst|associate)\b/i.test(t)) return "INTERNSHIP";
+  if (/\bcampus\s+(hire|recruit|program)\b/i.test(t))                                    return "INTERNSHIP";
+
+  // ENTRY_LEVEL patterns
+  if (/\bfresher\b/i.test(t))                             return "ENTRY_LEVEL";
+  if (/\bnew\s+grad(uate)?\b/i.test(t))                  return "ENTRY_LEVEL";
+  if (/\bgraduate\s+(trainee|hire|engineer)\b/i.test(t)) return "ENTRY_LEVEL";
+  if (/\bentry[-\s]level\b/i.test(t))                    return "ENTRY_LEVEL";
+  if (/\bassociate\s+engineer\b/i.test(t))               return "ENTRY_LEVEL";
+  if (/\bjunior\s+engineer\b/i.test(t))                  return "ENTRY_LEVEL";
+
+  // Other types
+  if (/\bcontract(or)?\b/i.test(t)) return "CONTRACT";
+  if (/\bpart[-\s]time\b/i.test(t)) return "PART_TIME";
+  if (/\bfreelance\b/i.test(t))     return "FREELANCE";
+
+  // ── Tier 3: Description scan (tiebreaker for ambiguous titles) ───────────
+  const descSample = description.slice(0, 800);
+  if (INTERNSHIP_DESC_PATTERNS.some((rx) => rx.test(descSample))) return "INTERNSHIP";
+
   return "FULL_TIME";
+}
+
+/**
+ * @deprecated Use classifyJobType(title, description, atsEmploymentType?) instead.
+ * Preserved as a shim so any missed call sites degrade gracefully (title-only, no crash).
+ */
+function parseJobType(title: string): JobType {
+  return classifyJobType(title, "");
 }
 
 // Helper to parse work mode from location.
@@ -333,7 +409,8 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
         const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
 
-        const type = parseJobType(jobTitle);
+        // Greenhouse public board API: job.metadata is null — Tier 2+3 only
+        const type = classifyJobType(jobTitle, description);
         const locationName = job.location?.name || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
         const skillsRequired = extractSkills(jobTitle, description);
@@ -427,7 +504,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const finalRequirements = requirements || generatedReq;
         const finalResponsibilities = responsibilities || generatedResp;
 
-        const type = parseJobType(jobTitle);
+        // Lever: job.categories?.commitment is the Tier-1 structured field
+        // e.g. "Internship" | "Full-time" | "Part-time" | "Contract"
+        const type = classifyJobType(jobTitle, description, job.categories?.commitment);
         // Lever location is in job.categories.location
         const locationName = job.categories?.location || job.workplaceType || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
@@ -499,7 +578,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const descPlain = job.descriptionPlain || "";
         const requirements = job.requirementsPlain || "";
         const responsibilities = job.responsibilitiesPlain || "";
-        const type = parseJobType(jobTitle);
+        // Ashby: job.employmentType is the Tier-1 structured field
+        // e.g. "Intern" | "FullTime" | "PartTime" | "Contract" | "Temporary"
+        const type = classifyJobType(jobTitle, descPlain, job.employmentType);
         const locationName = job.location || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
         const skillsRequired = extractSkills(jobTitle, `${descPlain} ${jobTitle}`);
@@ -768,7 +849,8 @@ export async function scrapeWorkdayJobs(
         "Remote";
 
       const workMode = parseWorkMode(locationName);
-      const type = parseJobType(jobTitle);
+      // Workday CXS payload exposes no employment type field — Tier 2+3 only
+      const type = classifyJobType(jobTitle, description);
       const { description, requirements, responsibilities } = getJobDescription(
         jobTitle,
         company.name
