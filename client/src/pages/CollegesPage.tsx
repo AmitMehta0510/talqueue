@@ -309,7 +309,10 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
   const statsQuery = useCollegePlacementStatsQuery(isTpo ? college?.id : null, selectedYear);
 
-  const canManageDepartments = isCollegeAdminFor(user, college?.id || "");
+    // Only platform admins or actual CollegeAdmin records can create departments (NOT CDCR)
+  const canManageDepartments =
+    isSuperOrPlatformAdmin(user) ||
+    Boolean(user?.collegeAdminships?.some((adm: any) => adm.collegeId === college?.id));
 
   const submitDepartment = (event: FormEvent) => {
     event.preventDefault();
@@ -378,20 +381,25 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                       <Award size={9} /> NAAC {college.naacGrade}
                     </span>
                   )}
-                  {/* Staff-only role badges */}
+                  {/* Staff-only role badges — directly check raw membership arrays */}
                   {isUserCdcr && (
                     <>
-                      {isCollegeAdminFor(user, college.id) && !isTpoFor(user, college.id) && (
+                      {/* College Admin: only if in collegeAdminships for this college */}
+                      {user?.collegeAdminships?.some((adm: any) => adm.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
                           <Shield size={9} /> College Admin
                         </span>
                       )}
-                      {isTpoFor(user, college.id) && !isSuperOrPlatformAdmin(user) && (
+                      {/* TPO: only if in tpoMemberships for this college */}
+                      {user?.tpoMemberships?.some((t: any) => t.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                           <ShieldCheck size={9} /> TPO
                         </span>
                       )}
-                      {!isTpoFor(user, college.id) && (
+                      {/* CDCR: only if in cdcrMemberships and NOT a higher role for this college */}
+                      {user?.cdcrMemberships?.some((c: any) => c.collegeId === college.id) &&
+                        !user?.tpoMemberships?.some((t: any) => t.collegeId === college.id) &&
+                        !user?.collegeAdminships?.some((adm: any) => adm.collegeId === college.id) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <Shield size={9} /> CDCR
                         </span>
