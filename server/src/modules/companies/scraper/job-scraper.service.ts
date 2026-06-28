@@ -849,12 +849,12 @@ export async function scrapeWorkdayJobs(
         "Remote";
 
       const workMode = parseWorkMode(locationName);
-      // Workday CXS payload exposes no employment type field — Tier 2+3 only
-      const type = classifyJobType(jobTitle, description);
       const { description, requirements, responsibilities } = getJobDescription(
         jobTitle,
         company.name
       );
+      // Workday CXS payload exposes no employment type field — Tier 2+3 only
+      const type = classifyJobType(jobTitle, description);
       const skillsRequired = extractSkills(jobTitle, description);
 
       // Apply URL — Workday public job links use externalPath as the slug segment
