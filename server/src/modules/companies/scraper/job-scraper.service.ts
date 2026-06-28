@@ -490,11 +490,14 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         if (job.content) {
           rawDescription = stripHtml(job.content);
         }
+        // Resolve description first (needed for Tier-3 classifier scan)
+        // then classify, then call getJobDescription with the classified type
+        const preDesc = rawDescription.length > 50 ? rawDescription : "";
+        // Greenhouse public board API: job.metadata is null — Tier 2+3 only
+        const type = classifyJobType(jobTitle, preDesc);
         const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name, type);
         const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
 
-        // Greenhouse public board API: job.metadata is null — Tier 2+3 only
-        const type = classifyJobType(jobTitle, description);
         const locationName = job.location?.name || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
         const skillsRequired = extractSkills(jobTitle, description, type);
@@ -582,13 +585,16 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
           }
         }
 
-        const { description: generatedDesc, requirements: generatedReq, responsibilities: generatedResp } = getJobDescription(jobTitle, company.name, type);
+        // Lever: classify type BEFORE getJobDescription so jobType arg is available.
+        // Tier-1 uses job.categories?.commitment (structured field) so we don't need
+        // description text yet — commitment alone resolves INTERNSHIP/FULL_TIME/etc.
+        const preType = classifyJobType(jobTitle, "", job.categories?.commitment);
+        const { description: generatedDesc, requirements: generatedReq, responsibilities: generatedResp } = getJobDescription(jobTitle, company.name, preType);
         const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
         const finalRequirements = requirements || generatedReq;
         const finalResponsibilities = responsibilities || generatedResp;
 
-        // Lever: job.categories?.commitment is the Tier-1 structured field
-        // e.g. "Internship" | "Full-time" | "Part-time" | "Contract"
+        // Re-classify with full description for Tier-3 scan accuracy
         const type = classifyJobType(jobTitle, description, job.categories?.commitment);
         // Lever location is in job.categories.location
         const locationName = job.categories?.location || job.workplaceType || company.headquarters || "Remote";
