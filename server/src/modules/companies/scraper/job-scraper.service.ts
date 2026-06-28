@@ -642,9 +642,15 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       // ------------------------------------------------------------------
       // Fallback: template mock jobs
       // ------------------------------------------------------------------
-      const numJobs = 3 + (company.name.length % 3); // 3 to 5 jobs
+      // numJobs is 3-5 so cycle NEVER reaches MOCK_JOBS_TEMPLATES[5] (INTERNSHIP).
+      // Instead: generate 3-5 non-intern templates, then always inject 1 INTERNSHIP
+      // explicitly so every mock company contributes to the internship pool.
+      const numJobs = 3 + (company.name.length % 3); // 3 to 5 full-time/senior jobs
+      const mockApplyUrl = company.careersPageUrl || (company.websiteUrl ? `${company.websiteUrl}/careers` : null);
+
+      // — Non-internship cycle (templates 0-4) ———————————————————————————
       for (let i = 0; i < numJobs; i++) {
-        const template = MOCK_JOBS_TEMPLATES[i % MOCK_JOBS_TEMPLATES.length];
+        const template = MOCK_JOBS_TEMPLATES[i % (MOCK_JOBS_TEMPLATES.length - 1)]; // exclude index 5
         const jobTitle = template.title;
         const externalId = `mock-${company.slug}-${i}`;
         const slug = slugify(`${company.slug}-${jobTitle}-${i}`, { lower: true, strict: true });
@@ -653,9 +659,6 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
         const locationName = company.headquarters || "Remote";
         const skillsRequired = extractSkills(jobTitle, description);
-        // Use the company's dedicated careers page URL if available; fall back to
-        // websiteUrl + /careers; null if neither is set (frontend shows generic CTA).
-        const mockApplyUrl = company.careersPageUrl || (company.websiteUrl ? `${company.websiteUrl}/careers` : null);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -691,11 +694,60 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         });
 
         result.processedJobIds.push(upserted.id);
-        if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
-          result.created++;
-        } else {
-          result.updated++;
-        }
+        if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) result.created++;
+        else result.updated++;
+      }
+
+      // — Guaranteed INTERNSHIP job for every mock company ———————————————
+      // This ensures the internship filter always returns results regardless
+      // of which ATS boards are active or how many real intern postings exist.
+      {
+        const internTemplate = MOCK_JOBS_TEMPLATES[MOCK_JOBS_TEMPLATES.length - 1]; // "Software Engineering Intern"
+        const internTitle = internTemplate.title;
+        const internExternalId = `mock-${company.slug}-intern`;
+        const internSlug = slugify(`${company.slug}-${internTitle}-intern`, { lower: true, strict: true });
+        activeSlugs.push(internSlug);
+
+        const { description: iDesc, requirements: iReq, responsibilities: iResp } = getJobDescription(internTitle, company.name);
+        const iLocation = company.headquarters || "Remote";
+        const iSkills = extractSkills(internTitle, iDesc);
+
+        const internUpserted = await prisma.job.upsert({
+          where: { slug: internSlug },
+          create: {
+            companyId: company.id,
+            title: internTitle,
+            slug: internSlug,
+            description: iDesc,
+            requirements: iReq,
+            responsibilities: iResp,
+            location: iLocation,
+            type: "INTERNSHIP",
+            workMode: internTemplate.workMode as WorkMode,
+            applyUrl: mockApplyUrl,
+            skillsRequired: iSkills,
+            status: "OPEN",
+            externalJobId: internExternalId,
+            atsSource: "mock",
+          },
+          update: {
+            title: internTitle,
+            description: iDesc,
+            requirements: iReq,
+            responsibilities: iResp,
+            location: iLocation,
+            type: "INTERNSHIP",
+            workMode: internTemplate.workMode as WorkMode,
+            applyUrl: mockApplyUrl,
+            skillsRequired: iSkills,
+            status: "OPEN",
+            atsSource: "mock",
+          }
+        });
+
+        result.processedJobIds.push(internUpserted.id);
+        if (internUpserted.createdAt.getTime() === internUpserted.updatedAt.getTime()) result.created++;
+        else result.updated++;
       }
     }
 
