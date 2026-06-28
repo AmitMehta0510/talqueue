@@ -251,7 +251,7 @@ function CollegeCard({ college }: { college: College }) {
             Website
           </a>
         )}
-        <Link className="btn-secondary px-3 py-1.5" to={`/communities/${slugify(`${college.name} Official`)}`}>
+        <Link className="btn-secondary px-3 py-1.5" to={`/communities?q=${encodeURIComponent(college.name)}`}>
           Community
         </Link>
       </div>
@@ -422,7 +422,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
               )}
               <Link
                 className="btn-primary text-xs px-3 py-1.5"
-                to={`/communities/${slugify(`${college.name} Official`)}`}
+                to={`/communities?q=${encodeURIComponent(college.name)}`}
               >
                 <Users size={13} />
                 Community
