@@ -1,12 +1,12 @@
 import fs from "fs";
 import path from "path";
-import axios from "axios";
 import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { generateRandomAlphanumeric } from "shared/utils/random";
 import { processCompany, CompanyRow } from "./job-scraper.service";
 import { syncJobsToElasticBulk } from "services/elasticSync";
 import { enrichCompanyMeta } from "infra/enrichment/company-enrichment.service";
+import { resilientGet, jitteredDelay } from "../../../lib/resilientHttp";
 
 // ---------------------------------------------------------------------------
 // CONSTANTS
@@ -20,93 +20,6 @@ const MAX_DISCOVERED_COMPANIES = 150;
 
 /** Delay in ms between individual ATS API requests to avoid rate-limiting. */
 const REQUEST_DELAY_MS = 250;
-
-// ---------------------------------------------------------------------------
-// BOT DETECTION SURVIVAL — UA pool, jitter, exponential backoff
-// ---------------------------------------------------------------------------
-
-/**
- * Rotating User-Agent pool — mimics real browser sessions across 2K+ requests.
- * Prevents fingerprinting from a static UA string that Cloudflare/Lever detect.
- */
-const UA_POOL: string[] = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.207 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.122 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:126.0) Gecko/20100101 Firefox/126.0",
-  "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
-];
-
-/** Returns a pseudo-random User-Agent string from the pool. */
-function pickRandomUA(): string {
-  return UA_POOL[Math.floor(Math.random() * UA_POOL.length)];
-}
-
-/**
- * Sleeps for `baseMs` ± half of `windowMs` milliseconds.
- * Replaces all static `sleep(REQUEST_DELAY_MS)` calls in discovery loops.
- * Minimum enforced delay: 80ms (prevents accidental sub-100ms burst).
- *
- * @param baseMs   Centre of the delay window (ms).
- * @param windowMs Total width of the jitter window (ms). Default 400.
- */
-function jitteredDelay(baseMs: number, windowMs = 400): Promise<void> {
-  const jitter = Math.floor(Math.random() * windowMs) - windowMs / 2;
-  const delay = Math.max(80, baseMs + jitter);
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
-/**
- * Resilient HTTP GET with:
- *  - Randomised User-Agent header on every request (from UA_POOL)
- *  - Browser-like Accept/Accept-Language/Cache-Control headers
- *  - Exponential backoff on HTTP 429 (rate-limited) and 503 (service unavailable)
- *  - Hard-throw on non-retriable errors (other 4xx, network errors)
- *
- * @param url     Full URL to GET.
- * @param retries Max retry attempts on 429/503. Default: 3.
- * @returns       Axios response object.
- * @throws        On max retries exceeded or non-retriable error.
- */
-async function resilientGet(url: string, retries = 3): Promise<any> {
-  let attempt = 0;
-
-  while (attempt <= retries) {
-    try {
-      return await axios.get(url, {
-        timeout: 8000,
-        headers: {
-          "User-Agent":      pickRandomUA(),
-          "Accept":          "application/json, text/plain, */*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Accept-Encoding": "gzip, deflate, br",
-          "Connection":      "keep-alive",
-          "Cache-Control":   "no-cache",
-        },
-      });
-    } catch (err: any) {
-      const status: number | undefined = err?.response?.status;
-
-      if ((status === 429 || status === 503) && attempt < retries) {
-        // Exponential backoff: 1 s → 2 s → 4 s + random jitter
-        const backoff = Math.pow(2, attempt) * 1000 + Math.random() * 500;
-        console.warn(
-          `[Discovery] resilientGet: HTTP ${status} on ${url} — ` +
-          `retry ${attempt + 1}/${retries} after ${Math.round(backoff)}ms`
-        );
-        await new Promise((resolve) => setTimeout(resolve, backoff));
-        attempt++;
-        continue;
-      }
-
-      // Non-retriable: propagate immediately
-      throw err;
-    }
-  }
-
-  throw new Error(`[Discovery] resilientGet: max retries (${retries}) exceeded for ${url}`);
-}
 
 // ---------------------------------------------------------------------------
 // TYPES

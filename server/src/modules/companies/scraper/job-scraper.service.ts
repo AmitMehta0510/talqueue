@@ -3,6 +3,7 @@ import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { JobType, WorkMode, JobStatus } from "@prisma/client";
 import { syncJobsToElasticBulk } from "services/elasticSync";
+import { resilientGet, resilientPost } from "../../../lib/resilientHttp";
 
 // ---------------------------------------------------------------------------
 // CONCURRENCY UTILITIES
@@ -253,70 +254,155 @@ function parseWorkMode(location: string): WorkMode {
 }
 
 // Helper to extract skills from title and description
-const SKILL_KEYWORDS = {
-  "React": ["react", "frontend", "ui"],
-  "TypeScript": ["typescript", "ts"],
-  "Node.js": ["node.js", "nodejs", "node", "backend"],
-  "Python": ["python", "django", "flask", "ml", "data science"],
-  "Go": ["golang", " go "],
-  "Rust": ["rust"],
-  "PostgreSQL": ["postgres", "postgresql", "sql", "database"],
-  "Docker": ["docker", "container", "devops"],
-  "Kubernetes": ["kubernetes", "k8s"],
-  "AWS": ["aws", "amazon web services", "cloud"],
-  "GCP": ["gcp", "google cloud"],
-  "Next.js": ["nextjs", "next.js"],
-  "TailwindCSS": ["tailwind"],
-  "GraphQL": ["graphql"],
-  "Java": ["java", "spring", "jvm"],
-  "Scala": ["scala"],
-  "Ruby": ["ruby", "rails"],
-  "C++": ["c++", "cpp"],
+/**
+ * Ordered by specificity. Each skill maps to a token array — any substring
+ * hit in (title + description).toLowerCase() registers that skill.
+ */
+const SKILL_KEYWORDS: Record<string, string[]> = {
+  // Frontend
+  "React":        ["react", "frontend", "ui component", "single page"],
+  "Next.js":      ["nextjs", "next.js", "next js"],
+  "Vue.js":       ["vue.js", "vuejs", "vue "],
+  "Angular":      ["angular"],
+  "TailwindCSS":  ["tailwind"],
+  "TypeScript":   ["typescript", " ts ", "tsx"],
+  "JavaScript":   ["javascript", " js ", "jsx", "es6", "ecmascript"],
+  // Backend
+  "Node.js":      ["node.js", "nodejs", "node ", "backend", "express", "nestjs"],
+  "Python":       ["python", "django", "flask", "fastapi", "data science", "ml"],
+  "Go":           ["golang", " go ", "go lang"],
+  "Rust":         ["rust"],
+  "Java":         ["java ", "spring", "jvm", "springboot"],
+  "Kotlin":       ["kotlin"],
+  "Scala":        ["scala"],
+  "Ruby":         ["ruby", "rails"],
+  "PHP":          ["php", "laravel"],
+  "C++":          ["c++", "cpp"],
+  "C#":           ["c#", ".net", "dotnet", "asp.net"],
+  "Swift":        ["swift", "ios", "swiftui"],
+  // Data & ML
+  "SQL":          ["sql", "relational db", "mysql", "mariadb"],
+  "PostgreSQL":   ["postgres", "postgresql"],
+  "MongoDB":      ["mongodb", "mongo ", "nosql"],
+  "Redis":        ["redis", "cache", "in-memory"],
+  "Elasticsearch":["elasticsearch", "opensearch", "search engine"],
+  "Kafka":        ["kafka", "event streaming", "message queue"],
+  "Spark":        ["apache spark", "pyspark"],
+  "Pandas":       ["pandas", "dataframe", "numpy"],
+  "TensorFlow":   ["tensorflow", "tf.keras"],
+  "PyTorch":      ["pytorch", "torch"],
+  // Cloud & Infra
+  "AWS":          ["aws", "amazon web services", "s3", "lambda", "ec2", "dynamodb"],
+  "GCP":          ["gcp", "google cloud", "bigquery", "cloud run"],
+  "Azure":        ["azure", "microsoft azure", "aks"],
+  "Docker":       ["docker", "container", "dockerfile"],
+  "Kubernetes":   ["kubernetes", "k8s", "kubectl", "helm"],
+  "Terraform":    ["terraform", "infrastructure as code", "iac"],
+  "CI/CD":        ["ci/cd", "github actions", "jenkins", "gitlab ci", "circleci"],
+  // APIs
+  "GraphQL":      ["graphql", "apollo"],
+  "REST API":     ["rest api", "restful", "openapi", "swagger"],
+  "gRPC":         ["grpc", "protobuf"],
+  // Internship-common
+  "Git":          ["git", "github", "version control"],
+  "Linux":        ["linux", "unix", "bash", "shell scripting"],
+  "Algorithms":   ["algorithms", "data structures", "leetcode", "dsa"],
 };
 
-function extractSkills(title: string, desc: string): string[] {
+/** Fallback skills for INTERNSHIP/ENTRY_LEVEL — broad generalist set. */
+const INTERN_DEFAULT_SKILLS = ["Python", "Git", "Algorithms", "JavaScript", "SQL"];
+
+/** Fallback skills for senior/mid roles where no domain keyword is matched. */
+const SENIOR_DEFAULT_SKILLS = ["TypeScript", "Node.js", "PostgreSQL", "Docker", "AWS"];
+
+/**
+ * Extracts matched skills from combined title + description corpus.
+ * Falls back to type-aware defaults instead of a hardcoded array.
+ *
+ * @param title   Job title string
+ * @param desc    Plain-text job description
+ * @param jobType Classified JobType — drives the right fallback skill set
+ */
+function extractSkills(title: string, desc: string, jobType?: string): string[] {
   const text = `${title} ${desc}`.toLowerCase();
-  const skills: string[] = [];
-  for (const [skill, keywords] of Object.entries(SKILL_KEYWORDS)) {
-    if (keywords.some(kw => text.includes(kw))) {
-      skills.push(skill);
+  const matched: string[] = [];
+
+  for (const [skill, tokens] of Object.entries(SKILL_KEYWORDS)) {
+    if (tokens.some((kw) => text.includes(kw))) {
+      matched.push(skill);
     }
   }
-  if (skills.length === 0) {
-    skills.push("TypeScript", "Node.js");
-  }
-  return skills;
+
+  if (matched.length > 0) return matched.slice(0, 10);
+
+  // Type-aware fallback — interns get generalist skills, seniors get platform stack
+  const isInternType = jobType === "INTERNSHIP" || jobType === "ENTRY_LEVEL";
+  return isInternType ? INTERN_DEFAULT_SKILLS : SENIOR_DEFAULT_SKILLS;
 }
 
-// Helper to generate realistic tech descriptions (used as fallback for mock companies only)
-function getJobDescription(title: string, companyName: string): { description: string, requirements: string, responsibilities: string } {
-  const isLead = title.toLowerCase().includes("senior") || title.toLowerCase().includes("lead") || title.toLowerCase().includes("staff");
-  
+/**
+ * Generates realistic mock job descriptions, requirements, and responsibilities.
+ * Used ONLY as a fallback when an ATS provides no structured description.
+ *
+ * Experience string rules (strict):
+ *  INTERNSHIP / ENTRY_LEVEL  → "0-1 years / Freshers welcome"
+ *  FULL_TIME (non-senior)    → "2+ years"
+ *  SENIOR/LEAD/STAFF/SSE     → "5+ years"
+ *
+ * @param title    Job title string from ATS
+ * @param company  Company name for personalisation
+ * @param jobType  Classified JobType — drives experience string selection
+ */
+function getJobDescription(
+  title: string,
+  companyName: string,
+  jobType?: string
+): { description: string; requirements: string; responsibilities: string } {
+
+  const t = title.toLowerCase();
+
+  // Seniority: explicit tokens only — "2+ years" is NOT a catch-all for everything non-intern
+  const isSenior = /\b(senior|lead|staff|sse|principal|architect|director)\b/i.test(t);
+  const isIntern  = jobType === "INTERNSHIP" || jobType === "ENTRY_LEVEL";
+
+  // 3-way experience branch
+  const experienceRequirement = isIntern
+    ? "0-1 years of experience; freshers and recent graduates are strongly encouraged to apply."
+    : isSenior
+    ? "5+ years of software engineering experience in high-scale production environments."
+    : "2+ years of software engineering experience in a professional team setting.";
+
   const responsibilities = [
     `Design, build, and maintain efficient, reusable, and reliable code at ${companyName}.`,
     `Collaborate with product managers, designers, and fellow engineers to ship high-impact features.`,
-    isLead 
-      ? "Mentor junior team members and guide overall technical architecture decisions." 
+    isIntern
+      ? "Learn production engineering practices through mentorship, code reviews, and pairing sessions."
+      : isSenior
+      ? "Mentor junior team members and guide overall technical architecture decisions."
       : "Participate actively in code reviews and team design discussions.",
-    "Identify bottlenecks and bugs, and devise solutions to mitigate these issues."
+    isIntern
+      ? "Complete a structured 10–12 week project with defined milestones and a final presentation."
+      : "Identify bottlenecks and bugs, and devise solutions to mitigate these issues.",
   ].join("\n");
 
   const requirements = [
-    `Strong background in computer science or equivalent engineering experience.`,
-    `Experience working in modern software development teams and version control systems.`,
-    isLead 
-      ? "5+ years of software engineering experience in similar high-scale environments."
-      : "2+ years of software engineering experience.",
-    "Familiarity with containerization, cloud systems, and database management."
+    `Strong background in computer science fundamentals or equivalent practical experience.`,
+    `Experience with modern software development workflows and version control (Git).`,
+    experienceRequirement,
+    isIntern
+      ? "Proficiency in at least one programming language (Python, Java, JavaScript, or C++)."
+      : "Familiarity with containerization, cloud systems, and database management.",
   ].join("\n");
 
-  const description = `We are looking for a talented ${title} to join our engineering division at ${companyName}. You will play a crucial role in building the next generation of our platforms, designing scalable backend systems or intuitive frontend interfaces, and driving overall product excellence.`;
+  const description = isIntern
+    ? `${companyName} is looking for a motivated Software Engineering Intern to join our engineering team. ` +
+      `This is a paid internship where you will work alongside experienced engineers on real production systems. ` +
+      `No prior industry experience required — we value curiosity, strong fundamentals, and a passion for building.`
+    : `We are looking for a talented ${title} to join our engineering division at ${companyName}. ` +
+      `You will play a crucial role in building the next generation of our platforms, designing scalable backend ` +
+      `systems or intuitive frontend interfaces, and driving overall product excellence.`;
 
-  return {
-    description,
-    requirements,
-    responsibilities
-  };
+  return { description, requirements, responsibilities };
 }
 
 // Local mock templates for non-ATS companies
@@ -386,14 +472,12 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       // ------------------------------------------------------------------
       // Greenhouse ATS
       // ------------------------------------------------------------------
-      const response = await axios.get(
-        `https://boards-api.greenhouse.io/v1/boards/${greenhouseToken}/jobs`,
-        { timeout: 10000 }
+      // Greenhouse: resilientGet with UA rotation + 429/503 backoff
+      const response = await resilientGet(
+        `https://boards-api.greenhouse.io/v1/boards/${greenhouseToken}/jobs`
       );
-      // Destructure immediately so the full response object (headers, config, etc.) can be GC'd
-      // before the sequential DB upsert loop holds the stack frame open.
       const rawJobs: any[] = response.data?.jobs ?? [];
-      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 30);
 
       for (const job of techJobs) {
         const jobTitle = job.title;
@@ -406,14 +490,14 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         if (job.content) {
           rawDescription = stripHtml(job.content);
         }
-        const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
+        const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name, type);
         const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
 
         // Greenhouse public board API: job.metadata is null — Tier 2+3 only
         const type = classifyJobType(jobTitle, description);
         const locationName = job.location?.name || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, description);
+        const skillsRequired = extractSkills(jobTitle, description, type);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -462,13 +546,12 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       // ------------------------------------------------------------------
       // Lever ATS
       // ------------------------------------------------------------------
-      const response = await axios.get(
-        `https://api.lever.co/v0/postings/${leverToken}?mode=json`,
-        { timeout: 10000 }
+      // Lever: resilientGet with UA rotation + 429/503 backoff
+      const response = await resilientGet(
+        `https://api.lever.co/v0/postings/${leverToken}?mode=json`
       );
-      // Destructure immediately to release full response payload before sequential DB writes.
       const rawJobs: any[] = Array.isArray(response.data) ? response.data : [];
-      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.text)).slice(0, 12);
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.text)).slice(0, 20);
 
       for (const job of techJobs) {
         const jobTitle = job.text;
@@ -499,7 +582,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
           }
         }
 
-        const { description: generatedDesc, requirements: generatedReq, responsibilities: generatedResp } = getJobDescription(jobTitle, company.name);
+        const { description: generatedDesc, requirements: generatedReq, responsibilities: generatedResp } = getJobDescription(jobTitle, company.name, type);
         const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
         const finalRequirements = requirements || generatedReq;
         const finalResponsibilities = responsibilities || generatedResp;
@@ -510,7 +593,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         // Lever location is in job.categories.location
         const locationName = job.categories?.location || job.workplaceType || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, description);
+        const skillsRequired = extractSkills(jobTitle, description, type);
         const applyUrl = job.hostedUrl || `https://jobs.lever.co/${leverToken}/${job.id}`;
 
         const upserted = await prisma.job.upsert({
@@ -560,14 +643,13 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       // ------------------------------------------------------------------
       // Ashby ATS
       // ------------------------------------------------------------------
-      const response = await axios.post(
+      // Ashby: resilientPost with UA rotation + 429/503 backoff
+      const response = await resilientPost(
         `https://api.ashbyhq.com/posting-api/job-board/${ashbyToken}`,
-        {},
-        { timeout: 10000 }
+        {}
       );
-      // Destructure immediately to release full response payload before sequential DB writes.
       const rawJobs: any[] = response.data?.jobs ?? [];
-      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 12);
+      const techJobs = rawJobs.filter((job: any) => isTechOrInternRole(job.title)).slice(0, 20);
 
       for (const job of techJobs) {
         const jobTitle = job.title;
@@ -583,7 +665,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const type = classifyJobType(jobTitle, descPlain, job.employmentType);
         const locationName = job.location || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, `${descPlain} ${jobTitle}`);
+        const skillsRequired = extractSkills(jobTitle, `${descPlain} ${jobTitle}`, type);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -656,9 +738,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const slug = slugify(`${company.slug}-${jobTitle}-${i}`, { lower: true, strict: true });
         activeSlugs.push(slug);
 
-        const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name);
+        const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, template.type);
         const locationName = company.headquarters || "Remote";
-        const skillsRequired = extractSkills(jobTitle, description);
+        const skillsRequired = extractSkills(jobTitle, description, template.type);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -708,9 +790,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const internSlug = slugify(`${company.slug}-${internTitle}-intern`, { lower: true, strict: true });
         activeSlugs.push(internSlug);
 
-        const { description: iDesc, requirements: iReq, responsibilities: iResp } = getJobDescription(internTitle, company.name);
+        const { description: iDesc, requirements: iReq, responsibilities: iResp } = getJobDescription(internTitle, company.name, "INTERNSHIP");
         const iLocation = company.headquarters || "Remote";
-        const iSkills = extractSkills(internTitle, iDesc);
+        const iSkills = extractSkills(internTitle, iDesc, "INTERNSHIP");
 
         const internUpserted = await prisma.job.upsert({
           where: { slug: internSlug },
@@ -907,7 +989,7 @@ export async function scrapeWorkdayJobs(
       );
       // Workday CXS payload exposes no employment type field — Tier 2+3 only
       const type = classifyJobType(jobTitle, description);
-      const skillsRequired = extractSkills(jobTitle, description);
+      const skillsRequired = extractSkills(jobTitle, description, type);
 
       // Apply URL — Workday public job links use externalPath as the slug segment
       const applyUrl =
