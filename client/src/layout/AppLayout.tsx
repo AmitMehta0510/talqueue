@@ -449,6 +449,18 @@ export function AppLayout() {
                           {membership.college?.name || "College"} CDCR Console
                         </Link>
                       ))}
+                      {user.tpoMemberships?.map((membership: any) => (
+                        <Link
+                          key={membership.id}
+                          to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}
+                          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--brand-light)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          <ShieldCheck size={13} className="text-indigo-600" />
+                          {membership.college?.name || "College"} TPO Console
+                        </Link>
+                      ))}
                       {user.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN") ? (
                         <Link
                           to="/admin"

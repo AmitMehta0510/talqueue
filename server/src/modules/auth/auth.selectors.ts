@@ -106,6 +106,20 @@ export const authUserSelect = {
       },
     },
   },
+
+  tpoMemberships: {
+    select: {
+      id: true,
+      collegeId: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+          normalizedKey: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 export type AuthenticatedUser = Prisma.UserGetPayload<{

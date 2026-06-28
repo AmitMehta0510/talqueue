@@ -707,7 +707,8 @@ model User {
   collegeRequests      CollegeRequest[]
   // Institutional governance back-relations
   masterAdminColleges  College[]          @relation("CollegeMasterAdmin")
-  tpoColleges          College[]          @relation("CollegeTpo")
+  tpoMemberships       CollegeTpo[]       @relation("CollegeTpoUser")
+  tpoAssignments       CollegeTpo[]       @relation("CollegeTpoAssignedBy")
   hodDepartments       Department[]       @relation("DepartmentHod")
   followedCompanies        Company[]                   @relation("CompanyFollowers")
   createdEvents            Event[]
@@ -861,10 +862,9 @@ model College {
   // tpoUserId: Training & Placement Officer — assigned by the master admin.
   // Both are nullable so colleges seeded via catalog import remain unaffected.
   masterAdminUserId String?
-  tpoUserId         String?
 
   masterAdmin User? @relation("CollegeMasterAdmin", fields: [masterAdminUserId], references: [id])
-  tpo         User? @relation("CollegeTpo", fields: [tpoUserId], references: [id])
+  tpo         CollegeTpo?
 
   createdAt       DateTime         @default(now())
   posts           Post[]
@@ -3059,6 +3059,21 @@ model CdcrMember {
   @@index([collegeId])
   @@index([userId])
   @@index([departmentId])
+}
+
+model CollegeTpo {
+  id           String   @id @default(uuid())
+  collegeId    String   @unique  // Only one TPO per college
+  userId       String
+  assignedById String
+  assignedAt   DateTime @default(now())
+
+  college    College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  user       User    @relation("CollegeTpoUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User    @relation("CollegeTpoAssignedBy", fields: [assignedById], references: [id])
+
+  @@index([userId])
+  @@index([collegeId])
 }
 
 model CompanyAdmin {

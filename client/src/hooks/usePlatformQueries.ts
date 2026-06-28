@@ -4972,6 +4972,17 @@ export const useDriveInvitesForCollegeQuery = (collegeId?: string | null) => {
   });
 };
 
+export const useSentInvitesByCollegeQuery = (collegeId?: string | null) => {
+  return useQuery({
+    queryKey: ["driveInvites", "college", collegeId, "sent"],
+    queryFn: async ({ signal }) => {
+      const result = await api.sentInvitesByCollege(collegeId!, { signal });
+      return (result.data || []) as PlacementDriveInvite[];
+    },
+    enabled: Boolean(collegeId),
+  });
+};
+
 export const useDriveInvitesForCompanyQuery = (companyId?: string | null) => {
   return useQuery({
     queryKey: ["driveInvites", "company", companyId],

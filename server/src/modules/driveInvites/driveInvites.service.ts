@@ -194,6 +194,35 @@ export const listInvitesForCollege = async (
   });
 };
 
+// LIST INVITES SENT BY COLLEGE (TPO/CDCR view — outbound COLLEGE_TO_COMPANY)
+export const listSentInvitesByCollege = async (
+  actorId: string,
+  collegeId: string,
+  page = 1,
+  limit = 20,
+) => {
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(actorId, collegeId);
+  if (!isTpoOrCdcr) throw new AppError("Unauthorized", 403);
+
+  const safeLimit = Math.min(limit, 50);
+
+  return prisma.placementDriveInvite.findMany({
+    where: {
+      collegeId,
+      initiatedBy: "COLLEGE_TO_COMPANY",
+    },
+    include: {
+      company: { select: { id: true, name: true, logoUrl: true, slug: true, type: true } },
+      college: { select: { id: true, name: true, normalizedKey: true } },
+      createdBy: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+      placementDrive: { select: { id: true, status: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
+  });
+};
+
 // LIST INVITES SENT BY COMPANY (recruiter view — their outgoing invites)
 export const listInvitesSentByCompany = async (
   actorId: string,

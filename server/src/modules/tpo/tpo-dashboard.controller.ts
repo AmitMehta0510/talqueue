@@ -49,7 +49,8 @@ const logger = winston.createLogger({
 // ---------------------------------------------------------------------------
 
 /**
- * Verifies that the authenticated user is the `tpoUserId` of at least one College.
+ * Verifies that the authenticated user is the TPO of at least one College
+ * (via the CollegeTpo table).
  * Attaches `req.tpoCollegeIds` — the set of college IDs the caller administers as TPO.
  *
  * @throws 403 if the user is not a TPO of any college.
@@ -65,12 +66,12 @@ export const requireTpoRole = async (
       return next(new AppError("Unauthorized", 401));
     }
 
-    const colleges = await prisma.college.findMany({
-      where: { tpoUserId: userId },
-      select: { id: true, name: true },
+    const tpoRecords = await prisma.collegeTpo.findMany({
+      where: { userId },
+      select: { collegeId: true, college: { select: { id: true, name: true } } },
     });
 
-    if (colleges.length === 0) {
+    if (tpoRecords.length === 0) {
       return next(
         new AppError(
           "Access denied: Training & Placement Officer privileges required.",
@@ -80,8 +81,8 @@ export const requireTpoRole = async (
     }
 
     // Attach college IDs for use in subsequent handlers
-    req.tpoCollegeIds = colleges.map((c) => c.id);
-    req.tpoColleges = colleges;
+    req.tpoCollegeIds = tpoRecords.map((r) => r.collegeId);
+    req.tpoColleges = tpoRecords.map((r) => r.college);
     next();
   } catch (err) {
     next(err);

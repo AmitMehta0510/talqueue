@@ -16,9 +16,11 @@ import {
   useSearchCollegeStudentsQuery,
   useAllDrivesForCollegeQuery,
   useDriveInvitesForCollegeQuery,
+  useSentInvitesByCollegeQuery,
   useRespondToDriveInviteMutation,
   useUpdatePlacementDriveMutation,
   useClosePlacementDriveMutation,
+  useWithdrawDriveInviteMutation,
   usePendingAlumniClaimsQuery,
   useApproveAlumniClaimMutation,
   useRejectAlumniClaimMutation,
@@ -47,8 +49,24 @@ function isCollegeAdminFor(user: any, collegeId: string): boolean {
   if (isSuperOrPlatformAdmin(user)) return true;
   // Check college-scoped admin assignment
   const isAdmin = user.collegeAdminships?.some((adm: any) => adm.collegeId === collegeId);
+  const isTpo = user.tpoMemberships?.some((t: any) => t.collegeId === collegeId);
   const isCdcr = user.cdcrMemberships?.some((cdcr: any) => cdcr.collegeId === collegeId);
-  return Boolean(isAdmin || isCdcr);
+  return Boolean(isAdmin || isTpo || isCdcr);
+}
+
+function isTpoFor(user: any, collegeId: string): boolean {
+  if (!user) return false;
+  if (isSuperOrPlatformAdmin(user)) return true;
+  const isAdmin = user.collegeAdminships?.some((adm: any) => adm.collegeId === collegeId);
+  if (isAdmin) return true;
+  return Boolean(user.tpoMemberships?.some((t: any) => t.collegeId === collegeId));
+}
+
+function isCdcrFor(user: any, collegeId: string): boolean {
+  if (!user) return false;
+  // All higher roles also pass CDCR checks
+  if (isTpoFor(user, collegeId)) return true;
+  return Boolean(user.cdcrMemberships?.some((cdcr: any) => cdcr.collegeId === collegeId));
 }
 
 const flattenColleges = (pages?: Array<{ colleges: College[] }>) =>
@@ -250,23 +268,32 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
   
   // TPO subtabs
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "tpo">("overview");
-  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "invites" | "alumni" | "stats">("cdcr");
+  const [tpoSubTab, setTpoSubTab] = useState<"cdcr" | "drives" | "sent-invites" | "company-invites" | "alumni" | "stats">("cdcr");
   const [showCreateDriveModal, setShowCreateDriveModal] = useState(false);
   const [showInviteCompanyModal, setShowInviteCompanyModal] = useState(false);
   const [selectedDriveForApplicants, setSelectedDriveForApplicants] = useState<{ id: string; title: string } | null>(null);
-  const isTpo = isCollegeAdminFor(user, college?.id || "");
+  const isTpoPortal = isCollegeAdminFor(user, college?.id || "");
+  const isUserTpo = isTpoFor(user, college?.id || "");
+  const isUserCdcr = isCdcrFor(user, college?.id || "");
+  // For backward compat: 'isTpo' means any college staff
+  const isTpo = isTpoPortal;
 
-  // CDCR management
+  // CDCR management — only loaded if user is college staff
   const [searchQuery, setSearchQuery] = useState("");
-  const cdcrQuery = useCdcrMembersQuery(college?.id);
+  const cdcrQuery = useCdcrMembersQuery(isUserCdcr ? college?.id : null);
   const assignMutation = useAssignCdcrMemberMutation(college?.id || "");
   const removeMutation = useRemoveCdcrMemberMutation(college?.id || "");
-  const searchResultsQuery = useSearchCollegeStudentsQuery(college?.id || "", searchQuery);
+  const searchResultsQuery = useSearchCollegeStudentsQuery(
+    isUserCdcr ? (college?.id || "") : "",
+    isUserCdcr ? searchQuery : "",
+  );
 
   // Drives management (TPO view)
   const allDrivesQuery = useAllDrivesForCollegeQuery(isTpo ? college?.id : null);
   const driveInvitesQuery = useDriveInvitesForCollegeQuery(isTpo ? college?.id : null);
+  const sentInvitesQuery = useSentInvitesByCollegeQuery(isTpo ? college?.id : null);
   const respondToInviteMutation = useRespondToDriveInviteMutation(college?.id);
+  const withdrawInviteMutation = useWithdrawDriveInviteMutation(college?.id);
   const updateDriveMutation = useUpdatePlacementDriveMutation();
   const closeDriveMutation = useClosePlacementDriveMutation();
 
@@ -303,54 +330,113 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
   return (
     <section className="space-y-5">
-      <Link className="text-sm font-semibold text-indigo-700 hover:text-indigo-900" to="/colleges">
-        Back to colleges
+      <Link className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition" to="/colleges">
+        ← Back to colleges
       </Link>
 
-      <div className="panel p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 gap-4">
-            <CollegeLogo college={college} />
-            <div className="min-w-0">
-              <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{college.name}</h2>
-              <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
-                {[college.city, college.state].filter(Boolean).join(", ") || "Location unlisted"}
-              </p>
+      {/* ── Hero Banner ── */}
+      <div className="panel overflow-hidden">
+        {/* Gradient accent bar */}
+        <div className="h-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-600" />
+        <div className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex min-w-0 items-center gap-5">
+              {/* Logo */}
+              <div className="relative shrink-0">
+                {cleanLogoUrl(college.logoUrl) ? (
+                  <img
+                    className="h-16 w-16 rounded-2xl object-cover shadow-md border-2 border-white dark:border-slate-700 ring-1 ring-slate-200 dark:ring-slate-700"
+                    src={cleanLogoUrl(college.logoUrl)!}
+                    alt={college.name}
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+                    <GraduationCap size={28} className="text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-extrabold leading-tight" style={{ color: "var(--text-primary)" }}>{college.name}</h1>
+                <p className="mt-1 text-sm flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                  {[college.city, college.state, college.country].filter(Boolean).join(", ") || "Location unlisted"}
+                </p>
+                {/* Role badge for staff */}
+                {isUserCdcr && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {isCollegeAdminFor(user, college.id) && !isTpoFor(user, college.id) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
+                        <Shield size={9} /> College Admin
+                      </span>
+                    )}
+                    {isTpoFor(user, college.id) && !isSuperOrPlatformAdmin(user) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <ShieldCheck size={9} /> TPO
+                      </span>
+                    )}
+                    {!isTpoFor(user, college.id) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <Shield size={9} /> CDCR
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {college.website && (
+                <a
+                  className="btn-secondary text-xs px-3 py-1.5"
+                  href={college.website}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Website ↗
+                </a>
+              )}
+              <Link
+                className="btn-primary text-xs px-3 py-1.5"
+                to={`/communities/${slugify(`${college.name} Official`)}`}
+              >
+                <Users size={13} />
+                Community
+              </Link>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {college.website && (
-              <a className="btn-secondary" href={college.website} rel="noreferrer" target="_blank">
-                Website
-              </a>
-            )}
-            <Link className="btn-primary" to={`/communities/${slugify(`${college.name} Official`)}`}>
-              <Users size={16} />
-              Official community
-            </Link>
-          </div>
-        </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Departments" value={formatCount(college._count?.departments)} />
-          <Metric label="Profiles" value={formatCount(college._count?.profiles)} />
-          <Metric label="Educations" value={formatCount(college._count?.educations)} />
-          <Metric label="Created" value={college.createdAt ? formatDate(college.createdAt) : "Catalog"} />
+          {/* Stats strip */}
+          <div className="mt-5 pt-5 border-t grid grid-cols-2 sm:grid-cols-4 gap-4" style={{ borderColor: "var(--border)" }}>
+            {[
+              { label: "Departments", value: college._count?.departments ?? 0 },
+              { label: "Students", value: college._count?.profiles ?? 0 },
+              { label: "Education Records", value: college._count?.educations ?? 0 },
+              { label: "Added", value: college.createdAt ? formatDate(college.createdAt) : "Catalog" },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="text-xl font-extrabold" style={{ color: "var(--text-primary)" }}>
+                  {typeof stat.value === "number" ? formatCount(stat.value) : stat.value}
+                </p>
+                <p className="text-[11px] mt-0.5 font-semibold" style={{ color: "var(--text-muted)" }}>{stat.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {isTpo && (
-        <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
-          <button
-            onClick={() => setActiveSubTab("overview")}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
-              activeSubTab === "overview"
-                ? "border-indigo-600 text-indigo-700"
-                : "border-transparent hover:text-indigo-700"
-            }`}
-          >
-            Overview
-          </button>
+      {/* ── Tab bar (Overview always visible; TPO Portal only for staff) ── */}
+      <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
+        <button
+          onClick={() => setActiveSubTab("overview")}
+          className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
+            activeSubTab === "overview"
+              ? "border-indigo-600 text-indigo-700"
+              : "border-transparent hover:text-indigo-700"
+          }`}
+          style={activeSubTab !== "overview" ? { color: "var(--text-muted)" } : {}}
+        >
+          College Profile
+        </button>
+        {isUserCdcr && (
           <button
             onClick={() => setActiveSubTab("tpo")}
             className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
@@ -358,77 +444,166 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                 ? "border-indigo-600 text-indigo-700"
                 : "border-transparent hover:text-indigo-700"
             }`}
+            style={activeSubTab !== "tpo" ? { color: "var(--text-muted)" } : {}}
           >
             TPO Portal
-            {(driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length > 0 && (
+            {(
+              (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length +
+              (sentInvitesQuery.data || []).filter(i => i.status === "PENDING").length
+            ) > 0 && (
               <span className="ml-1.5 h-4 w-4 rounded-full bg-rose-500 text-white text-[9px] font-bold inline-flex items-center justify-center">
-                {(driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length}
+                {(driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length +
+                  (sentInvitesQuery.data || []).filter(i => i.status === "PENDING").length}
               </span>
             )}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {activeSubTab === "overview" ? (
-        <div className="grid gap-5 xl:grid-cols-[1fr_23rem]">
-          <div className="panel p-5">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-950">Departments</h3>
-              {departmentsQuery.isFetching && <Loader2 className="animate-spin" size={15} style={{ color: "var(--text-muted)" }} />}
+        <div className="space-y-5">
+          {/* ── Departments ── */}
+          <div className="panel overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <Building2 size={14} className="text-indigo-600" />
+                </div>
+                <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Departments</h3>
+                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 rounded-full px-2 py-0.5">
+                  {(departmentsQuery.data || []).length}
+                </span>
+              </div>
+              {canManageDepartments && (
+                <form onSubmit={submitDepartment} className="flex items-center gap-2">
+                  <input
+                    className="field text-xs py-1.5 px-3 w-44"
+                    value={departmentName}
+                    onChange={(e) => setDepartmentName(e.target.value)}
+                    placeholder="New department..."
+                    required
+                  />
+                  <button className="btn-primary text-xs py-1.5 px-3" type="submit" disabled={createDepartment.isPending}>
+                    {createDepartment.isPending ? <Loader2 className="animate-spin" size={13} /> : <Plus size={13} />}
+                    Add
+                  </button>
+                </form>
+              )}
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {(departmentsQuery.data || []).length ? (
-                (departmentsQuery.data || []).map((department) => (
-                  <div className="rounded-md border p-3" key={department.id} style={{ borderColor: "var(--border)" }}>
-                    <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{department.name}</div>
-                    <div className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                      {department.createdAt ? formatDate(department.createdAt) : "Department"}
+            <div className="p-5">
+              {departmentsQuery.isFetching && !departmentsQuery.data?.length ? (
+                <div className="flex justify-center py-6"><Loader2 className="animate-spin text-indigo-400" size={20} /></div>
+              ) : (departmentsQuery.data || []).length ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(departmentsQuery.data || []).map((dept) => (
+                    <div
+                      key={dept.id}
+                      className="group flex items-center gap-3 rounded-xl border p-3 transition-all hover:border-indigo-200 hover:shadow-sm"
+                      style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+                        <GraduationCap size={14} className="text-indigo-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate" style={{ color: "var(--text-primary)" }}>{dept.name}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>Est. {dept.createdAt ? formatDate(dept.createdAt) : "—"}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No departments listed yet.</p>
+                <p className="text-sm text-center py-8" style={{ color: "var(--text-muted)" }}>No departments listed yet.</p>
               )}
             </div>
           </div>
 
-          <aside className="panel p-5">
-            {canManageDepartments ? (
-              <>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Add department</h3>
-                <form className="mt-4 space-y-3" onSubmit={submitDepartment}>
-                  <input
-                    className="field"
-                    value={departmentName}
-                    onChange={(event) => setDepartmentName(event.target.value)}
-                    placeholder="Department name"
-                    required
-                  />
-                  <button className="btn-primary w-full" type="submit" disabled={createDepartment.isPending}>
-                    {createDepartment.isPending ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-                    Save department
-                  </button>
-                </form>
-              </>
+          {/* ── Quick Links & Info ── */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Official Community */}
+            <div className="panel p-5 flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+                <Users size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Official Community</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Connect with students and alumni</p>
+              </div>
+              <Link
+                to={`/communities/${slugify(`${college.name} Official`)}`}
+                className="shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 transition"
+              >
+                Join
+              </Link>
+            </div>
+
+            {/* Website */}
+            {college.website ? (
+              <div className="panel p-5 flex items-center gap-4">
+                <div className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 text-white shadow-lg">
+                  <Info size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>College Website</p>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>{college.website}</p>
+                </div>
+                <a
+                  href={college.website}
+                  rel="noreferrer"
+                  target="_blank"
+                  className="shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition"
+                >
+                  Visit
+                </a>
+              </div>
             ) : (
-              <>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Departments</h3>
-                <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                  Department management is restricted to college administrators. Contact your placement officer if a department is missing.
-                </p>
-              </>
+              <div className="panel p-5 flex items-center gap-4 opacity-60">
+                <div className="h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                  <Info size={22} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Website</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Not listed</p>
+                </div>
+              </div>
             )}
-          </aside>
+          </div>
+
+          {/* ── Location & Meta ── */}
+          {(college.city || college.state || college.country) && (
+            <div className="panel p-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Location</h3>
+              <div className="flex flex-wrap gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                {college.city && <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />{college.city}
+                </span>}
+                {college.state && <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-300" />{college.state}
+                </span>}
+                {college.country && <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-200" />{college.country}
+                </span>}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* ── TPO Portal Layout ── */
         <div className="space-y-4">
           {/* TPO Sub-tab navigation */}
           <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "var(--bg-surface-2)" }}>
-            {(["cdcr", "drives", "invites", "alumni", "stats"] as const).map((tab) => {
-              const labels: Record<string, string> = { cdcr: "CDCR Members", drives: "Drives", invites: "Pending Invites", alumni: "Alumni", stats: "Statistics" };
-              const pendingCount = tab === "invites"
+            {(["cdcr", "drives", "sent-invites", "company-invites", "alumni", "stats"] as const).map((tab) => {
+              const labels: Record<string, string> = {
+                cdcr: "CDCR Members",
+                drives: "Drives",
+                "sent-invites": "Sent Invites",
+                "company-invites": "Company Invites",
+                alumni: "Alumni",
+                stats: "Statistics",
+              };
+              const pendingCount = tab === "company-invites"
                 ? (driveInvitesQuery.data || []).filter(i => i.status === "PENDING").length
+                : tab === "sent-invites"
+                ? (sentInvitesQuery.data || []).filter(i => i.status === "PENDING").length
                 : tab === "alumni"
                 ? (alumniClaimsQuery.data || []).length
                 : 0;
@@ -541,7 +716,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             )}
           </div>
 
-          {/* Search & Assign Panel */}
+          {/* Search & Assign Panel — only shown to TPO or CollegeAdmin (not CDCR-only) */}
+          {isUserTpo && (
           <aside className="panel p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
@@ -628,6 +804,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
               <p className="text-[10px] text-center py-2" style={{ color: "var(--text-muted)" }}>Type at least 2 characters to search.</p>
             ) : null}
             </aside>
+          )}
 
           </div>
           )}
@@ -725,7 +902,87 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             </div>
           )}
 
-          {tpoSubTab === "invites" && (
+          {tpoSubTab === "sent-invites" && (
+            <div className="panel p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+                    <Building2 size={16} className="text-indigo-600" />
+                    Sent Invites
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Placement drive invitations sent by your college to companies.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteCompanyModal(true)}
+                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 transition shadow-sm"
+                >
+                  <Plus size={13} /> Invite Company
+                </button>
+              </div>
+
+              {sentInvitesQuery.isLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" size={20} /></div>
+              ) : (sentInvitesQuery.data || []).length ? (
+                <div className="space-y-3">
+                  {(sentInvitesQuery.data || []).map((invite) => (
+                    <div key={invite.id} className={`rounded-xl border p-4 space-y-3 transition ${
+                      invite.status === "PENDING" ? "border-indigo-200 dark:border-indigo-700 bg-indigo-50/20 dark:bg-indigo-900/10" : "opacity-60"
+                    }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{invite.driveTitle}</p>
+                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                            <Building2 size={10} />
+                            {invite.company?.name}
+                          </p>
+                          {invite.message && (
+                            <p className="text-xs mt-1.5 italic border-l-2 border-indigo-300 pl-2" style={{ color: "var(--text-secondary)" }}>"{ invite.message}"</p>
+                          )}
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                          invite.status === "ACCEPTED" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                          invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                          "bg-slate-100 text-slate-500 border-slate-200"
+                        }`}>
+                          {invite.status}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {invite.driveDate && <span className="flex items-center gap-1"><Calendar size={9} />Drive: {formatDate(invite.driveDate)}</span>}
+                        {invite.applyDeadline && <span className="flex items-center gap-1"><Clock size={9} />Deadline: {formatDate(invite.applyDeadline)}</span>}
+                        {invite.roles.length > 0 && <span>Roles: {invite.roles.join(", ")}</span>}
+                      </div>
+
+                      {invite.status === "PENDING" && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { if (confirm("Withdraw this invite?")) withdrawInviteMutation.mutate(invite.id); }}
+                            disabled={withdrawInviteMutation.isPending}
+                            className="flex items-center gap-1 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold px-3 py-2 transition disabled:opacity-50"
+                          >
+                            <XCircle size={13} /> Withdraw
+                          </button>
+                        </div>
+                      )}
+                      {invite.status === "ACCEPTED" && invite.placementDrive && (
+                        <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
+                          <CheckCircle2 size={10} /> Drive created
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Building2} title="No invites sent yet" text="Use 'Invite Company' to send a placement drive request to a company." />
+              )}
+            </div>
+          )}
+
+          {tpoSubTab === "company-invites" && (
             <div className="panel p-5 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
@@ -770,7 +1027,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                         {invite.roles.length > 0 && <span>Roles: {invite.roles.join(", ")}</span>}
                       </div>
 
-                      {invite.status === "PENDING" && (
+                      {/* Accept/Reject only for TPO and CollegeAdmin — CDCR cannot action inbound invites */}
+                      {invite.status === "PENDING" && isUserTpo && (
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -790,6 +1048,9 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                             <XCircle size={13} /> Decline
                           </button>
                         </div>
+                      )}
+                      {!isUserTpo && invite.status === "PENDING" && (
+                        <p className="text-[10px] text-amber-600 font-semibold">Only the TPO can accept or decline company invitations.</p>
                       )}
                       {invite.status === "ACCEPTED" && invite.placementDrive && (
                         <p className="text-[10px] text-indigo-600 font-semibold flex items-center gap-1">

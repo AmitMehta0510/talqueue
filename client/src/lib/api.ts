@@ -61,6 +61,15 @@ export type User = {
       name: string;
     } | null;
   }>;
+  tpoMemberships?: Array<{
+    id: string;
+    collegeId: string;
+    college?: {
+      id: string;
+      name: string;
+      normalizedKey?: string;
+    } | null;
+  }>;
   followersCount?: number;
   followingCount?: number;
   connectionCount?: number;
@@ -2964,6 +2973,8 @@ export const api = {
     request<PlacementDriveInvite>("/drive-invites", { method: "POST", body }),
   driveInvitesForCollege: (collegeId: string, options?: EndpointOptions) =>
     request<PlacementDriveInvite[]>(`/drive-invites/college/${collegeId}`, options),
+  sentInvitesByCollege: (collegeId: string, options?: EndpointOptions) =>
+    request<PlacementDriveInvite[]>(`/drive-invites/college/${collegeId}/sent`, options),
   driveInvitesForCompany: (companyId: string, options?: EndpointOptions) =>
     request<PlacementDriveInvite[]>(`/drive-invites/company/${companyId}`, options),
   respondToDriveInvite: (inviteId: string, action: "ACCEPT" | "REJECT") =>

@@ -8,6 +8,7 @@ router.use(protect);
 
 router.post("/", ctrl.sendInvite);
 router.get("/college/:collegeId", ctrl.listInvitesForCollege);
+router.get("/college/:collegeId/sent", ctrl.listSentInvitesByCollege);
 router.get("/company/:companyId", ctrl.listInvitesSentByCompany);
 router.patch("/:inviteId/respond", ctrl.respondToInvite);
 router.patch("/:inviteId/withdraw", ctrl.withdrawInvite);

@@ -57,7 +57,7 @@ const assertCompanyAccess = async (userId: string, companyId: string) => {
 };
 
 export const isCollegeAdminOrCdcr = async (userId: string, collegeId: string): Promise<boolean> => {
-  const [user, collegeAdmin, cdcrMember] = await Promise.all([
+  const [user, collegeAdmin, tpoRecord, cdcrMember] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -69,6 +69,10 @@ export const isCollegeAdminOrCdcr = async (userId: string, collegeId: string): P
       },
     }),
     prisma.collegeAdmin.findFirst({
+      where: { userId, collegeId },
+      select: { id: true },
+    }),
+    prisma.collegeTpo.findFirst({
       where: { userId, collegeId },
       select: { id: true },
     }),
@@ -84,6 +88,7 @@ export const isCollegeAdminOrCdcr = async (userId: string, collegeId: string): P
   }
 
   if (collegeAdmin) return true;
+  if (tpoRecord) return true;
   if (cdcrMember) return true;
 
   return false;

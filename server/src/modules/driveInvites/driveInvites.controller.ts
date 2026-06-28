@@ -26,6 +26,21 @@ export const listInvitesForCollege = async (req: Request, res: Response, next: N
   }
 };
 
+export const listSentInvitesByCollege = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await service.listSentInvitesByCollege(
+      req.user!.id,
+      req.params.collegeId as string,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+    );
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const listInvitesSentByCompany = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page, limit } = req.query;

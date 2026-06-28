@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { protect } from "modules/auth/auth.middleware";
 import { requireCollegeAdmin } from "shared/middleware/requireCollegeAdmin";
+import { requireCdcrAccess } from "shared/middleware/requireCdcrAccess";
 
 import {
   createCollegeHandler,
@@ -87,13 +88,15 @@ router.delete(
 );
 
 // TPO Admin CDCR management routes
+// Listing CDCR members: CDCR+ can view
 router.get(
   "/:collegeId/tpo/cdcr",
   protect,
-  requireCollegeAdmin,
+  requireCdcrAccess,
   listCdcrMembersHandler
 );
 
+// Assigning CDCR: CollegeAdmin only
 router.post(
   "/:collegeId/tpo/cdcr",
   protect,
@@ -101,6 +104,7 @@ router.post(
   assignCdcrMemberHandler
 );
 
+// Removing CDCR: CollegeAdmin only
 router.delete(
   "/:collegeId/tpo/cdcr/:userId",
   protect,
@@ -108,38 +112,40 @@ router.delete(
   removeCdcrMemberHandler
 );
 
+// Student search: CDCR+ can view
 router.get(
   "/:collegeId/tpo/students",
   protect,
-  requireCollegeAdmin,
+  requireCdcrAccess,
   searchCollegeStudentsHandler
 );
 
-// Alumni Claims Verification Routes
+// Alumni claim: anyone authenticated
 router.post(
   "/:collegeId/alumni-claim",
   protect,
   claimAlumniStatusHandler
 );
 
+// Pending alumni list and approve/reject: CDCR+ can view and action
 router.get(
   "/:collegeId/alumni-claims",
   protect,
-  requireCollegeAdmin,
+  requireCdcrAccess,
   getPendingAlumniClaimsHandler
 );
 
 router.post(
   "/:collegeId/alumni-claims/:educationId/approve",
   protect,
-  requireCollegeAdmin,
+  requireCdcrAccess,
   approveAlumniClaimHandler
 );
 
 router.post(
   "/:collegeId/alumni-claims/:educationId/reject",
   protect,
-  requireCollegeAdmin,
+  requireCdcrAccess,
   rejectAlumniClaimHandler
 );
 

@@ -148,6 +148,27 @@ const assertCanManageCollege = async (user: AuthUser, collegeId: string) => {
   }
 };
 
+/**
+ * A user can perform college staff actions (alumni, CDCR roster, students) if:
+ * 1. Platform admin, OR
+ * 2. CollegeAdmin for this college, OR
+ * 3. CollegeTpo for this college, OR
+ * 4. CdcrMember for this college
+ */
+const assertCanManageCollegeStaff = async (user: AuthUser, collegeId: string) => {
+  if (isPlatformAdmin(user)) return;
+
+  const [adminRecord, tpoRecord, cdcrRecord] = await Promise.all([
+    prisma.collegeAdmin.findFirst({ where: { userId: user.id, collegeId }, select: { id: true } }),
+    prisma.collegeTpo.findFirst({ where: { userId: user.id, collegeId }, select: { id: true } }),
+    prisma.cdcrMember.findFirst({ where: { userId: user.id, collegeId }, select: { id: true } }),
+  ]);
+
+  if (!adminRecord && !tpoRecord && !cdcrRecord) {
+    throw new AppError("Access restricted to College staff (CDCR or above)", 403);
+  }
+};
+
 const ensureOfficialCollegeCommunity = async (
   userId: string,
 
@@ -767,7 +788,7 @@ export const claimAlumniStatus = async (userId: string, collegeId: string) => {
 };
 
 export const getPendingAlumniClaims = async (user: AuthUser, collegeId: string) => {
-  await assertCanManageCollege(user, collegeId);
+  await assertCanManageCollegeStaff(user, collegeId);
 
   return prisma.education.findMany({
     where: {
@@ -795,7 +816,7 @@ export const getPendingAlumniClaims = async (user: AuthUser, collegeId: string) 
 };
 
 export const approveAlumniClaim = async (user: AuthUser, collegeId: string, educationId: string) => {
-  await assertCanManageCollege(user, collegeId);
+  await assertCanManageCollegeStaff(user, collegeId);
 
   const education = await prisma.education.findUnique({
     where: { id: educationId },
@@ -832,7 +853,7 @@ export const approveAlumniClaim = async (user: AuthUser, collegeId: string, educ
 };
 
 export const rejectAlumniClaim = async (user: AuthUser, collegeId: string, educationId: string) => {
-  await assertCanManageCollege(user, collegeId);
+  await assertCanManageCollegeStaff(user, collegeId);
 
   const education = await prisma.education.findUnique({
     where: { id: educationId },
@@ -992,16 +1013,37 @@ export const assignOrRemoveInstitutionalStaff = async (
   await assertIsMasterCollegeAdmin(actorId, collegeId);
 
   if (role === "TPO") {
-    const updated = await prisma.college.update({
-      where: { id: collegeId },
-      data: { tpoUserId: action === "ASSIGN" ? targetUserId : null },
-      select: { id: true, name: true, tpoUserId: true },
-    });
+    if (action === "ASSIGN") {
+      // Upsert: replace any existing TPO for this college
+      const tpo = await prisma.collegeTpo.upsert({
+        where: { collegeId },
+        create: {
+          collegeId,
+          userId: targetUserId,
+          assignedById: actorId,
+        },
+        update: {
+          userId: targetUserId,
+          assignedById: actorId,
+          assignedAt: new Date(),
+        },
+        select: { id: true, collegeId: true, userId: true },
+      });
 
-    return {
-      message: action === "ASSIGN" ? "TPO assigned successfully" : "TPO removed successfully",
-      college: updated,
-    };
+      return {
+        message: "TPO assigned successfully",
+        tpo,
+      };
+    } else {
+      // REMOVE
+      await prisma.collegeTpo.deleteMany({
+        where: { collegeId },
+      });
+
+      return {
+        message: "TPO removed successfully",
+      };
+    }
   }
 
   // role === "HOD"
@@ -1039,10 +1081,14 @@ const assertCanManageCdcr = async (
   collegeId: string,
   departmentId?: string,
 ) => {
-  const [college, dept] = await Promise.all([
+  const [college, tpoRecord, dept] = await Promise.all([
     prisma.college.findUnique({
       where: { id: collegeId },
-      select: { id: true, name: true, masterAdminUserId: true, tpoUserId: true },
+      select: { id: true, name: true, masterAdminUserId: true },
+    }),
+    prisma.collegeTpo.findFirst({
+      where: { userId: actorId, collegeId },
+      select: { id: true },
     }),
     departmentId
       ? prisma.department.findFirst({
@@ -1055,7 +1101,7 @@ const assertCanManageCdcr = async (
   if (!college) throw new AppError("College not found", 404);
 
   if (college.masterAdminUserId === actorId) return college;
-  if (college.tpoUserId === actorId) return college;
+  if (tpoRecord) return college;
   if (dept) return college;
 
   throw new AppError(
