@@ -1267,6 +1267,51 @@ const remainingApi = {
 
   triggerInterviewScrape: (options?: EndpointOptions) =>
     request<{ created: number; updated: number }>("/interviews/scrape", { method: "POST", ...options }),
+
+  // TPO Recruiter outreach
+  bulkInviteRecruiters: (
+    collegeId: string,
+    body: { invites: Array<{ email: string; companyName: string }> }
+  ) =>
+    request<{ sentCount: number; skippedCount: number }>(
+      `/colleges/${collegeId}/invites/bulk-recruiters`,
+      { method: "POST", body }
+    ),
+
+  // Public batch profiles
+  getPublicBatchStudents: (
+    collegeId: string,
+    graduationYear: number,
+    options?: EndpointOptions
+  ) =>
+    request<{ collegeName: string; graduationYear: number; students: any[] }>(
+      `/colleges/${collegeId}/public/batch/${graduationYear}`,
+      options
+    ),
+
+  // Resdex recruiter search
+  resdexSearch: (
+    body: {
+      query?: string;
+      skills?: string[];
+      minCgpa?: number;
+      graduationYear?: number;
+      collegeName?: string;
+      companyName?: string;
+      size?: number;
+      from?: number;
+    },
+    options?: EndpointOptions
+  ) =>
+    request<{
+      total: number;
+      candidates: any[];
+      searchLimitInfo?: {
+        isLimited: boolean;
+        dailyLimit: number;
+        currentCount: number;
+      };
+    }>("/resdex/search", { method: "POST", body, ...options }),
 };
 
 export const api = {

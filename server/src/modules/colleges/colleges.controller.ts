@@ -1,4 +1,7 @@
 import { Request, Response } from "express";
+import { z } from "zod";
+import prisma from "shared/database/prisma";
+import { enqueueEmail } from "services/mailQueue";
 
 import asyncHandler from "shared/utils/asyncHandler";
 import AppError from "shared/errors/AppError";
@@ -380,4 +383,195 @@ export const getCollegePlacementSummaryHandler = asyncHandler(
       },
     });
   },
+);
+
+const bulkInviteRecruitersSchema = z.object({
+  invites: z.array(
+    z.object({
+      email: z.string().email(),
+      companyName: z.string().min(2).max(100),
+    })
+  ).min(1).max(100),
+});
+
+export const bulkInviteRecruitersHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeId = req.params.collegeId as string;
+    const validatedData = bulkInviteRecruitersSchema.parse(req.body);
+
+    const college = await prisma.college.findUnique({
+      where: { id: collegeId },
+      select: { name: true },
+    });
+    if (!college) {
+      throw new AppError("College not found", 404);
+    }
+
+    const tpoName = req.user.profile?.fullName || req.user.username || "Placement Officer";
+    let sentCount = 0;
+    let skippedCount = 0;
+
+    for (const invite of validatedData.invites) {
+      const { email, companyName } = invite;
+      const parts = email.toLowerCase().split("@");
+      const domain = parts[1];
+
+      if (!domain) {
+        skippedCount++;
+        continue;
+      }
+
+      // Check if recruiter domain already exists in any company
+      const domainExists = await prisma.company.findFirst({
+        where: {
+          emailDomains: {
+            has: domain,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (domainExists) {
+        skippedCount++;
+        continue;
+      }
+
+      const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+      const inviteLink = `${clientUrl}/business`;
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #4f46e5; margin-top: 0;">Campus Placement Invitation</h2>
+          <p>Hello,</p>
+          <p>You have been invited by <strong>${tpoName}</strong> from <strong>${college.name}</strong> to join our Campus Placement Platform on behalf of <strong>${companyName}</strong>.</p>
+          <p>Our platform helps you manage campus drives, search verified student profiles (including CGPAs and backlog histories), and coordinate hiring events seamlessly.</p>
+          <p style="margin: 24px 0;">
+            <a href="${inviteLink}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Claim Company Profile</a>
+          </p>
+          <p style="color: #64748b; font-size: 12px; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            This email was sent on behalf of ${college.name}. If you did not expect this invitation, please ignore this email.
+          </p>
+        </div>
+      `;
+
+      await enqueueEmail(
+        email,
+        `Invitation to register ${companyName} on campus placement platform`,
+        emailHtml
+      );
+
+      sentCount++;
+    }
+
+    res.status(200).json(
+      successResponse(
+        {
+          sentCount,
+          skippedCount,
+        },
+        `Processed bulk invites successfully. Sent: ${sentCount}, Skipped: ${skippedCount}`
+      )
+    );
+  }
+);
+
+export const getPublicBatchStudentsHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeId = req.params.collegeId as string;
+    const graduationYear = parseInt(req.params.graduationYear as string, 10);
+
+    if (isNaN(graduationYear)) {
+      throw new AppError("Invalid graduation year", 400);
+    }
+
+    const college = await prisma.college.findUnique({
+      where: { id: collegeId },
+      select: { name: true },
+    });
+    if (!college) {
+      throw new AppError("College not found", 404);
+    }
+
+    const students = await prisma.user.findMany({
+      where: {
+        status: "ACTIVE",
+        roles: {
+          some: {
+            role: {
+              name: "STUDENT",
+            },
+          },
+        },
+        educations: {
+          some: {
+            collegeId,
+            endYear: graduationYear,
+          },
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        primaryRole: true,
+        verifiedEngineer: true,
+        reputationScore: true,
+        engineeringScore: true,
+        profile: {
+          select: {
+            fullName: true,
+            avatarUrl: true,
+            headline: true,
+            bio: true,
+            githubUrl: true,
+            linkedinUrl: true,
+          },
+        },
+        skills: {
+          select: {
+            skill: {
+              select: {
+                name: true,
+              },
+            },
+            level: true,
+            verified: true,
+          },
+        },
+        educations: {
+          where: {
+            collegeId,
+            endYear: graduationYear,
+          },
+          select: {
+            degree: true,
+            fieldOfStudy: true,
+            cgpa: true,
+            startYear: true,
+            endYear: true,
+          },
+        },
+        experiences: {
+          select: {
+            companyName: true,
+            title: true,
+            isCurrent: true,
+          },
+        },
+      },
+      orderBy: {
+        engineeringScore: "desc",
+      },
+    });
+
+    res.status(200).json(
+      successResponse(
+        {
+          collegeName: college.name,
+          graduationYear,
+          students,
+        },
+        `Retrieved public batch profiles for ${college.name} graduating in ${graduationYear}.`
+      )
+    );
+  }
 );

@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 
+import prisma from "shared/database/prisma";
+import redis from "shared/database/redis";
 import asyncHandler from "shared/utils/asyncHandler";
 import { successResponse } from "shared/utils/apiResponse";
 import AppError from "shared/errors/AppError";
@@ -22,7 +24,46 @@ import { searchResdexCandidates, ResdexSearchFilters } from "./resdex.service";
  * }
  */
 export const resdexSearchHandler = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: any, res: Response) => {
+    const user = req.user;
+    if (!user) {
+      throw new AppError("Authentication required.", 401);
+    }
+
+    // Role-based Access Control checks
+    const isPlatformAdmin =
+      user.primaryRole === "SUPER_ADMIN" ||
+      user.roles?.some((ur: any) =>
+        ["SUPER_ADMIN", "ADMIN", "PLATFORM_ADMIN"].includes(ur.role?.name)
+      );
+
+    const isRecruiter =
+      user.primaryRole === "RECRUITER" ||
+      user.roles?.some((ur: any) => ur.role?.name === "RECRUITER") ||
+      (await prisma.companyAdmin.findFirst({
+        where: { userId: user.id },
+        select: { id: true },
+      }));
+
+    const isTpo =
+      user.primaryRole === "TPO" ||
+      user.roles?.some((ur: any) => ur.role?.name === "TPO") ||
+      (await prisma.collegeTpo.findFirst({
+        where: { userId: user.id },
+        select: { id: true },
+      }));
+
+    const isCollegeAdmin =
+      user.primaryRole === "COLLEGE_ADMIN" ||
+      (await prisma.collegeAdmin.findFirst({
+        where: { userId: user.id },
+        select: { id: true },
+      }));
+
+    if (!isPlatformAdmin && !isRecruiter && !isTpo && !isCollegeAdmin) {
+      throw new AppError("Access denied. Candidate search is only available to Recruiters, TPOs, and Admins.", 403);
+    }
+
     const body = req.body ?? {};
 
     // Validate skills is an array if provided
@@ -47,6 +88,25 @@ export const resdexSearchHandler = asyncHandler(
       throw new AppError("'from' must be a non-negative number.", 400);
     }
 
+    // Daily search quota check for FREE recruiters
+    const isFreeTier = user.tier === "FREE";
+    const dailyLimit = 5;
+    const today = new Date().toISOString().split("T")[0];
+    const limitKey = `resdex:search-count:${user.id}:${today}`;
+
+    // Apply limit to Free Recruiters (Platform Admin / TPOs / College Admins bypass limits)
+    const isSubjectToLimit = !!(isRecruiter && !isPlatformAdmin && !isTpo && !isCollegeAdmin);
+
+    let currentSearchCount = 0;
+    if (isSubjectToLimit && isFreeTier) {
+      const storedCount = await redis.get(limitKey);
+      currentSearchCount = storedCount ? parseInt(storedCount, 10) : 0;
+
+      if (currentSearchCount >= dailyLimit) {
+        throw new AppError("Daily search limit reached. Upgrade to premium for unlimited searches.", 429);
+      }
+    }
+
     const filters: ResdexSearchFilters = {
       query: body.query?.toString() || undefined,
       skills: body.skills as string[] | undefined,
@@ -61,8 +121,23 @@ export const resdexSearchHandler = asyncHandler(
 
     const result = await searchResdexCandidates(filters);
 
+    if (isSubjectToLimit && isFreeTier) {
+      currentSearchCount++;
+      await redis.set(limitKey, currentSearchCount, "EX", 86400); // 24 hours TTL
+    }
+
     res.json(
-      successResponse(result, `Found ${result.total} candidate(s).`)
+      successResponse(
+        {
+          ...result,
+          searchLimitInfo: {
+            isLimited: isSubjectToLimit && isFreeTier,
+            dailyLimit,
+            currentCount: isSubjectToLimit && isFreeTier ? currentSearchCount : 0,
+          },
+        },
+        `Found ${result.total} candidate(s).`
+      )
     );
   }
 );

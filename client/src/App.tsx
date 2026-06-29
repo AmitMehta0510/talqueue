@@ -35,6 +35,7 @@ import { EventsPage } from "./pages/EventsPage";
 import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
 import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
 import { TpoDashboardPage } from "./pages/TpoDashboardPage";
+import { PublicBatchPage } from "./pages/PublicBatchPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
 import { SearchResultsPage } from "./pages/SearchResultsPage";
 
@@ -202,6 +203,7 @@ function AppRoutes() {
           <Route path="/search" element={<PageTransitionWrapper><SearchResultsPage /></PageTransitionWrapper>} />
           <Route path="/colleges" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
           <Route path="/colleges/:collegeSlug" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
+          <Route path="/colleges/:collegeSlug/batch/:graduationYear" element={<PageTransitionWrapper><PublicBatchPage /></PageTransitionWrapper>} />
           <Route path="/companies" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
           <Route path="/companies/:companySlug" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
           <Route path="/communities" element={<PageTransitionWrapper><CommunitiesPage /></PageTransitionWrapper>} />

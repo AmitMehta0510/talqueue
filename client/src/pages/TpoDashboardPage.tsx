@@ -14,6 +14,11 @@ import {
   ChevronRight,
   Clock,
   Loader2,
+  Plus,
+  Send,
+  Upload,
+  X,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "../core/contexts/AuthContext";
 import {
@@ -28,11 +33,12 @@ import {
   useDepartmentsQuery,
   useDriveInvitesForCollegeQuery,
   useRespondToDriveInviteMutation,
+  useBulkInviteRecruitersMutation,
 } from "../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
 import { titleCase, formatDate } from "../core/utils/format";
 
-type Tab = "overview" | "students" | "placements" | "invites" | "alumni" | "activity";
+type Tab = "overview" | "students" | "placements" | "invites" | "alumni" | "recruiters" | "activity";
 
 export function TpoDashboardPage() {
   const { user } = useAuth();
@@ -58,10 +64,78 @@ export function TpoDashboardPage() {
   const placementsQuery = useTpoPlacementsQuery(activeTab === "placements" && Boolean(collegeId));
   const alumniQuery = useTpoAlumniQuery(activeTab === "alumni" && Boolean(collegeId));
   const claimsQuery = useTpoCompanyClaimsQuery(activeTab === "activity" && Boolean(collegeId));
-  const recruitersQuery = useTpoRecruiterInteractionsQuery(activeTab === "activity" && Boolean(collegeId));
+  const recruitersQuery = useTpoRecruiterInteractionsQuery((activeTab === "activity" || activeTab === "recruiters") && Boolean(collegeId));
   const departmentsQuery = useDepartmentsQuery(collegeId);
   const driveInvitesQuery = useDriveInvitesForCollegeQuery(activeTab === "invites" && collegeId ? collegeId : null);
   const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
+
+  // Recruiter Invitation States & Handlers
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmailsText, setInviteEmailsText] = useState("");
+  const [inviteCompanyText, setInviteCompanyText] = useState("");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [parsedCsvInvites, setParsedCsvInvites] = useState<Array<{ email: string; companyName: string }>>([]);
+
+  const handleCsvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/);
+      const parsed: Array<{ email: string; companyName: string }> = [];
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const columns = line.split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+        const email = columns[0];
+        const companyName = columns[1];
+        if (email && email.includes("@") && companyName) {
+          parsed.push({ email, companyName });
+        }
+      }
+      setParsedCsvInvites(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const bulkInviteMutation = useBulkInviteRecruitersMutation(collegeId || "");
+
+  const handleSendInvites = () => {
+    const invitesToSend: Array<{ email: string; companyName: string }> = [];
+
+    if (csvFile && parsedCsvInvites.length > 0) {
+      invitesToSend.push(...parsedCsvInvites);
+    } else if (inviteEmailsText.trim() && inviteCompanyText.trim()) {
+      const emails = inviteEmailsText
+        .split(/[,\n]/)
+        .map((e) => e.trim())
+        .filter((e) => e && e.includes("@"));
+      for (const email of emails) {
+        invitesToSend.push({ email, companyName: inviteCompanyText.trim() });
+      }
+    }
+
+    if (invitesToSend.length === 0) return;
+
+    bulkInviteMutation.mutate(
+      { invites: invitesToSend },
+      {
+        onSuccess: () => {
+          setShowInviteModal(false);
+          setInviteEmailsText("");
+          setInviteCompanyText("");
+          setCsvFile(null);
+          setParsedCsvInvites([]);
+          recruitersQuery.refetch();
+        },
+      }
+    );
+  };
 
   // Student Query parameters
   const studentFilters = useMemo(() => ({
@@ -107,17 +181,17 @@ export function TpoDashboardPage() {
 
       {/* Tabs Nav */}
       <div className="flex border-b border-gray-250 dark:border-gray-800 overflow-x-auto space-x-8 scrollbar-hide">
-        {(["overview", "students", "placements", "invites", "alumni", "activity"] as Tab[]).map((tab) => (
+        {(["overview", "students", "placements", "invites", "alumni", "recruiters", "activity"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`pb-4 px-1 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all duration-200 ${
               activeTab === tab
                 ? "border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-gray-450 hover:text-gray-700 dark:hover:text-gray-300"
+                : "border-transparent text-gray-500 dark:text-gray-455 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
-            {tab === "placements" ? "Placement Drives" : tab === "invites" ? "Drive Invites" : tab === "alumni" ? "Alumni Verification" : tab === "activity" ? "Company Activity" : tab}
+            {tab === "placements" ? "Placement Drives" : tab === "invites" ? "Drive Invites" : tab === "alumni" ? "Alumni Verification" : tab === "recruiters" ? "Recruiter Outreach" : tab === "activity" ? "Company Activity" : tab}
           </button>
         ))}
       </div>
@@ -775,7 +849,291 @@ export function TpoDashboardPage() {
             )}
           </div>
         )}
+
+        {/* RECRUITER OUTREACH TAB */}
+        {activeTab === "recruiters" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left outreach controls (2 cols) */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white dark:bg-gray-900 border border-gray-250 dark:border-gray-800 p-8 rounded-2xl shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-955 dark:text-white flex items-center gap-2">
+                    <Users className="h-6 w-6 text-blue-600" />
+                    Corporate Network Growth
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1.5" style={{ color: "var(--text-secondary)" }}>
+                    Connect with recruiters by sending them official invitations. When they sign up using their corporate email domain, they automatically claim their company profile, take ownership of pre-scraped job listings, and link to your college for campus placements.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                  <div className="border border-gray-200 dark:border-gray-800 p-6 rounded-2xl bg-gray-50/50 dark:bg-gray-955/10 space-y-4">
+                    <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-650 dark:text-blue-400">
+                      <Send className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white">Quick Single/Batch Invite</h4>
+                      <p className="text-xs text-gray-500 mt-1" style={{ color: "var(--text-secondary)" }}>Invite recruiters directly by entering their email address and company name.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCsvFile(null);
+                        setParsedCsvInvites([]);
+                        setShowInviteModal(true);
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors shadow-sm"
+                    >
+                      Open Invite Form
+                    </button>
+                  </div>
+
+                  <div className="border border-gray-200 dark:border-gray-800 p-6 rounded-2xl bg-gray-50/50 dark:bg-gray-955/10 space-y-4">
+                    <div className="h-10 w-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-green-650 dark:text-green-400">
+                      <Upload className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white">Bulk CSV Upload</h4>
+                      <p className="text-xs text-gray-500 mt-1" style={{ color: "var(--text-secondary)" }}>Upload a CSV list of recruiter emails and company names for automated batch onboarding.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setInviteEmailsText("");
+                        setInviteCompanyText("");
+                        setShowInviteModal(true);
+                      }}
+                      className="w-full bg-slate-900 hover:bg-black dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors border border-transparent dark:border-gray-700 shadow-sm"
+                    >
+                      Upload CSV File
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-150 dark:border-gray-850 pt-6 space-y-4">
+                  <h4 className="font-bold text-gray-905 dark:text-white text-sm">How the onboarding loop works:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-gray-500">
+                    <div className="space-y-1">
+                      <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <span className="h-5 w-5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-extrabold text-[10px]">1</span>
+                        TPO Invites
+                      </div>
+                      <p style={{ color: "var(--text-secondary)" }}>You send a customized claim invitation containing a secure registration link to the recruiter's official business email.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <span className="h-5 w-5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-extrabold text-[10px]">2</span>
+                        Self-Claim Profile
+                      </div>
+                      <p style={{ color: "var(--text-secondary)" }}>Recruiter registers. Our backend checks the email domain against the company domain, auto-verifying and assigning privileges.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <span className="h-5 w-5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-extrabold text-[10px]">3</span>
+                        Pre-scraped Jobs
+                      </div>
+                      <p style={{ color: "var(--text-secondary)" }}>Pre-scraped job postings are automatically linked to the recruiter's dashboard, ready for campus placement drive scheduling.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Connected recruiters list (1 col) */}
+            <div className="space-y-4">
+              <div className="border border-gray-250 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm space-y-4">
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-indigo-650" />
+                    Recruiter Network ({recruitersQuery.data?.length || 0})
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5" style={{ color: "var(--text-secondary)" }}>Recruiters currently associated with your campus placement catalog.</p>
+                </div>
+
+                {recruitersQuery.isLoading ? (
+                  <InlineLoader label="Loading connections..." />
+                ) : recruitersQuery.isError ? (
+                  <ErrorState title="Failed to fetch recruiters" />
+                ) : !recruitersQuery.data || recruitersQuery.data.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 text-xs">No active recruiter connections. Start by sending invitations!</div>
+                ) : (
+                  <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    {recruitersQuery.data.map((recruiter) => (
+                      <div
+                        key={recruiter.id}
+                        className="p-3 border border-gray-150 dark:border-gray-850 rounded-xl hover:bg-gray-50/50 dark:hover:bg-gray-950/20 transition-all flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-8 w-8 bg-gray-50 border border-gray-150 dark:border-gray-850 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+                            {recruiter.company?.logoUrl ? (
+                              <img src={recruiter.company.logoUrl} alt="" className="h-full w-full object-contain" />
+                            ) : (
+                              <Building2 className="h-4 w-4 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 dark:text-white truncate">
+                              {recruiter.user?.profile?.fullName || "Recruiter"}
+                            </p>
+                            <p className="text-[10px] text-gray-450 dark:text-gray-400 truncate">
+                              {recruiter.company?.name} • {recruiter.officeCity || "Remote"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 px-2 py-0.5 bg-gray-50 dark:bg-gray-950 border border-gray-150 dark:border-gray-850 rounded-full font-medium text-[10px]">
+                          {recruiter.company?.industry || "Tech"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* BULK INVITE MODAL */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-250 dark:border-gray-850 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-150 dark:border-gray-850 bg-gray-50 dark:bg-gray-950/20">
+              <h3 className="font-bold text-gray-955 dark:text-white flex items-center gap-2">
+                <Send className="h-4 w-4 text-blue-600" />
+                Invite Corporate Recruiters
+              </h3>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setCsvFile(null);
+                  setParsedCsvInvites([]);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+              <div className="flex bg-gray-100 dark:bg-gray-950 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => { setCsvFile(null); setParsedCsvInvites([]); }}
+                  className={`flex-1 text-center py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    !csvFile
+                      ? "bg-white dark:bg-gray-850 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                  }`}
+                >
+                  Manual Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setInviteEmailsText(""); setInviteCompanyText(""); }}
+                  className={`flex-1 text-center py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    csvFile
+                      ? "bg-white dark:bg-gray-850 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                  }`}
+                >
+                  CSV Upload
+                </button>
+              </div>
+
+              {!csvFile ? (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Recruiter Emails</label>
+                    <textarea
+                      placeholder="Enter email addresses (separated by commas or newlines)..."
+                      value={inviteEmailsText}
+                      onChange={(e) => setInviteEmailsText(e.target.value)}
+                      rows={4}
+                      className="w-full text-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-gray-400 text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Company Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Google India"
+                      value={inviteCompanyText}
+                      onChange={(e) => setInviteCompanyText(e.target.value)}
+                      className="w-full text-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-gray-400 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-205 dark:border-gray-800 rounded-2xl p-6 text-center bg-gray-50/50 dark:bg-gray-955/10 hover:bg-gray-50 dark:hover:bg-gray-955/20 transition-colors">
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-350">CSV Onboarding List</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5" style={{ color: "var(--text-secondary)" }}>CSV must have column headers: email, companyName</p>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCsvChange}
+                      className="mt-4 text-xs max-w-[200px] mx-auto text-gray-500"
+                    />
+                  </div>
+
+                  {parsedCsvInvites.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-350">Parsed Contacts ({parsedCsvInvites.length})</p>
+                      <div className="border border-gray-150 dark:border-gray-85 rounded-xl overflow-hidden max-h-[200px] overflow-y-auto">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-gray-50 dark:bg-gray-950 text-gray-500 font-bold border-b border-gray-150 dark:border-gray-85">
+                            <tr>
+                              <th className="px-4 py-2">Email</th>
+                              <th className="px-4 py-2">Company</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-150 dark:divide-gray-85 bg-white dark:bg-gray-95">
+                            {parsedCsvInvites.map((inv, idx) => (
+                              <tr key={idx}>
+                                <td className="px-4 py-2 text-gray-905 dark:text-white font-medium">{inv.email}</td>
+                                <td className="px-4 py-2 text-gray-500">{inv.companyName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-850 bg-gray-50 dark:bg-gray-950/20 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setCsvFile(null);
+                  setParsedCsvInvites([]);
+                }}
+                className="px-4 py-2 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-950 text-gray-700 dark:text-gray-300 font-semibold rounded-xl text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendInvites}
+                disabled={
+                  !!(
+                    bulkInviteMutation.isPending ||
+                    (!csvFile && (!inviteEmailsText || !inviteCompanyText)) ||
+                    (csvFile && parsedCsvInvites.length === 0)
+                  )
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {bulkInviteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Send Invitations
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

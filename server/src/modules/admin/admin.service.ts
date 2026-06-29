@@ -30,7 +30,7 @@ const ensureCompanyExists = async (companyId: string) => {
 };
 
 /** Prisma interactive-transaction client type alias for internal helpers. */
-type TxClient = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+export type TxClient = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 const ensureRole = async (name: string, tx?: TxClient) => {
   const db = tx ?? prisma;
@@ -41,7 +41,7 @@ const ensureRole = async (name: string, tx?: TxClient) => {
   });
 };
 
-const grantRole = async (userId: string, roleName: string, tx?: TxClient) => {
+export const grantRole = async (userId: string, roleName: string, tx?: TxClient) => {
   const db = tx ?? prisma;
   const role = await ensureRole(roleName, tx);
   const existing = await db.userRole.findFirst({

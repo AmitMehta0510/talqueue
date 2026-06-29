@@ -5403,4 +5403,57 @@ export const useUpdateApplicationStatusMutation = (jobId: string) => {
   });
 };
 
+export const useBulkInviteRecruitersMutation = (collegeId: string) => {
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: (payload: { invites: Array<{ email: string; companyName: string }> }) =>
+      api.bulkInviteRecruiters(collegeId, payload),
+    onSuccess: (res) => {
+      showToast(
+        "success",
+        res.message || `Invited ${res.data?.sentCount || 0} recruiters successfully!`
+      );
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const usePublicBatchStudentsQuery = (
+  collegeId: string,
+  graduationYear: number,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["colleges", collegeId, "public-batch", graduationYear],
+    queryFn: async ({ signal }) => {
+      const result = await api.getPublicBatchStudents(collegeId, graduationYear, { signal });
+      return result.data;
+    },
+    enabled: enabled && Boolean(collegeId) && Boolean(graduationYear),
+  });
+};
+
+export const useResdexSearchQuery = (
+  filters: {
+    query?: string;
+    skills?: string[];
+    minCgpa?: number;
+    graduationYear?: number;
+    collegeName?: string;
+    companyName?: string;
+    size?: number;
+    from?: number;
+  },
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ["resdex", "search", filters],
+    queryFn: async ({ signal }) => {
+      const result = await api.resdexSearch(filters, { signal });
+      return result.data;
+    },
+    enabled,
+  });
+};
+
 

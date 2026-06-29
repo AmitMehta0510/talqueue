@@ -22,6 +22,7 @@ export const authUserSelect = {
   acceptingCollaborators: true,
   acceptingReferrals: true,
   acceptingMentorship: true,
+  tier: true,
   createdAt: true,
   updatedAt: true,
 

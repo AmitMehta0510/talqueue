@@ -11,6 +11,7 @@ import { successResponse } from "shared/utils/apiResponse";
 import { createNotification } from "modules/notificatios/notifications.service";
 import { NotificationType } from "@prisma/client";
 import { sendOtpEmail } from "infra/mail/brevo-mailer.service";
+import { grantRole } from "modules/admin/admin.service";
 
 // ---------------------------------------------------------------------------
 // LOGGER
@@ -337,8 +338,8 @@ export const claimInitiateHandler = asyncHandler(
     const isDev = process.env.NODE_ENV === "development";
     const otp = isDev ? "123456" : generateOtp();
     const redisKey = buildOtpKey(companyId, userId);
-
-    await redis.set(redisKey, otp, "EX", OTP_TTL_SECONDS);
+    const redisValue = JSON.stringify({ otp, businessEmail });
+    await redis.set(redisKey, redisValue, "EX", OTP_TTL_SECONDS);
 
     // --- Dispatch OTP via Brevo transactional email (production only) ---
     // OTP is NEVER placed in the HTTP response body.
@@ -403,13 +404,27 @@ export const claimVerifyHandler = asyncHandler(
 
     // --- Load OTP from Redis ---
     const redisKey = buildOtpKey(companyId, userId);
-    const storedOtp = await redis.get(redisKey);
+    const storedData = await redis.get(redisKey);
 
-    if (!storedOtp) {
+    if (!storedData) {
       throw new AppError(
         "OTP has expired or was not found. Please initiate a new claim verification.",
         410
       );
+    }
+
+    let storedOtp = "";
+    let businessEmail = "";
+    try {
+      const parsed = JSON.parse(storedData);
+      if (parsed && typeof parsed === "object" && "otp" in parsed) {
+        storedOtp = String(parsed.otp);
+        businessEmail = parsed.businessEmail || "";
+      } else {
+        storedOtp = String(parsed);
+      }
+    } catch {
+      storedOtp = storedData;
     }
 
     if (storedOtp !== otp) {
@@ -424,11 +439,75 @@ export const claimVerifyHandler = asyncHandler(
     // Load company for context
     const company = await prisma.company.findUnique({
       where: { id: companyId },
-      select: { id: true, name: true, verificationStatus: true },
+      select: { id: true, name: true, emailDomains: true, verificationStatus: true, claimedAt: true },
     });
 
     if (!company) {
       throw new AppError("Company not found", 404);
+    }
+
+    // --- Fast-Track Verification & Auto-Approval if businessEmail matches domain ---
+    let domainMatches = false;
+    if (businessEmail) {
+      try {
+        const incomingDomain = extractEmailDomain(businessEmail);
+        domainMatches =
+          company.emailDomains.length > 0 &&
+          company.emailDomains.some((d) => d.toLowerCase() === incomingDomain);
+      } catch {
+        domainMatches = false;
+      }
+    }
+
+    if (domainMatches) {
+      logger.info(`Auto-approving company claim for company="${company.name}" by user=${userId}`);
+      
+      await prisma.$transaction(async (tx) => {
+        // 1. Insert user link directly into CompanyAdmin table
+        const existingAdmin = await tx.companyAdmin.findFirst({
+          where: { userId, companyId },
+        });
+        if (!existingAdmin) {
+          await tx.companyAdmin.create({
+            data: { userId, companyId, grantedById: userId },
+          });
+        }
+
+        // 2. Mutate User.primaryRole to "RECRUITER" via grantRole
+        await grantRole(userId, "RECRUITER", tx);
+
+        // 3. Mark the company as VERIFIED and claimedAt as now
+        await tx.company.update({
+          where: { id: companyId },
+          data: {
+            verificationStatus: "VERIFIED",
+            claimedAt: new Date(),
+          },
+        });
+
+        // TASK 2: Trigger auto-assignment of existing scraped claimable jobs
+        await tx.job.updateMany({
+          where: {
+            companyId,
+            postedById: null,
+          },
+          data: {
+            postedById: userId,
+          },
+        });
+      });
+
+      return res.status(200).json(
+        successResponse(
+          {
+            autoApproved: true,
+            companyName: company.name,
+            status: "VERIFIED",
+            message: "Your corporate domain verified successfully. Your recruiter profile is active and pre-scraped jobs have been added to your dashboard.",
+          },
+          "Company claimed and verified automatically"
+        )
+      );
     }
 
     // Check for an existing pending claim from this user for this company
@@ -458,7 +537,7 @@ export const claimVerifyHandler = asyncHandler(
         requestType: "COMPANY_CLAIM",
         status: "PENDING",
         pendingJobData: {}, // Required field — no pending job for a claim request
-        businessEmail: req.body.businessEmail || null, // Forward from initiate if included
+        businessEmail: businessEmail || null,
       },
       select: {
         id: true,

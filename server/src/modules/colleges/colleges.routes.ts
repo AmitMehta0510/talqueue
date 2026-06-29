@@ -3,6 +3,7 @@ import { Router } from "express";
 import { protect } from "modules/auth/auth.middleware";
 import { requireCollegeAdmin } from "shared/middleware/requireCollegeAdmin";
 import { requireCdcrAccess } from "shared/middleware/requireCdcrAccess";
+import { requireTpoAccess } from "shared/middleware/requireTpoAccess";
 
 import {
   createCollegeHandler,
@@ -27,6 +28,8 @@ import {
   assignOrRemoveInstitutionalStaffHandler,
   assignCellRepresentativesHandler,
   getCollegePlacementSummaryHandler,
+  bulkInviteRecruitersHandler,
+  getPublicBatchStudentsHandler,
 } from "./colleges.controller";
 import prisma from "shared/database/prisma";
 
@@ -213,6 +216,28 @@ router.delete(
   "/:collegeId/cdcr/:userId",
   protect,
   assignCellRepresentativesHandler
+);
+
+/**
+ * POST /colleges/:collegeId/invites/bulk-recruiters
+ * Send invitations to recruiters in bulk.
+ * Auth: TPO or CollegeAdmin.
+ */
+router.post(
+  "/:collegeId/invites/bulk-recruiters",
+  protect,
+  requireTpoAccess,
+  bulkInviteRecruitersHandler
+);
+
+/**
+ * GET /colleges/:collegeId/public/batch/:graduationYear
+ * Retrieve safe, public student cohort details.
+ * Auth: Public.
+ */
+router.get(
+  "/:collegeId/public/batch/:graduationYear",
+  getPublicBatchStudentsHandler
 );
 
 export default router;
