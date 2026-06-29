@@ -12,7 +12,7 @@ import {
 } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
 import { SearchBar, DataTable, StatusBadge, LoadMoreBtn, fmtRelative } from "./shared";
-import { cleanLogoUrl } from "../../lib/format";
+import { cleanLogoUrl } from "../../core/utils/format";
 
 type ModerationTab = "posts" | "projects" | "jobs";
 

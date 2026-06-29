@@ -15,7 +15,7 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useTpoDashboardStatsQuery,
   useTpoStudentsQuery,
@@ -30,7 +30,7 @@ import {
   useRespondToDriveInviteMutation,
 } from "../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
-import { titleCase, formatDate } from "../lib/format";
+import { titleCase, formatDate } from "../core/utils/format";
 
 type Tab = "overview" | "students" | "placements" | "invites" | "alumni" | "activity";
 

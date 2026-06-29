@@ -4,7 +4,7 @@ import {
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
   Calendar, Globe, UserCheck, Video,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
   useAdminStatsQuery,

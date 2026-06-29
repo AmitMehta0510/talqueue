@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Building2, GraduationCap, Info, Loader2, MapPin, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar, ShieldCheck, UserCheck, UserX, TrendingUp, Award, BookOpen } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCollegesQuery,
   useCollegeQuery,
@@ -28,7 +28,7 @@ import {
   useCollegePlacementSummaryQuery,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
-import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../lib/format";
+import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../core/utils/format";
 import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
 import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
 import { TpoInviteCompanyModal } from "../components/jobs/TpoInviteCompanyModal";

@@ -26,8 +26,8 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Avatar, EmptyState } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
   useArchiveCommunityMutation,
   useCollegesQuery,
@@ -60,7 +60,7 @@ import {
   titleCase,
   userHeadline,
   userName,
-} from "../lib/format";
+} from "../core/utils/format";
 
 // ---------------------------------------------------------------------------
 // Constants & helpers

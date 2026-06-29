@@ -53,9 +53,9 @@ import {
   PlacementStats,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { getErrorMessage } from "../lib/format";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
+import { getErrorMessage } from "../core/utils/format";
 
 const publicPostsToFeedItems = (posts: FeedPost[]): FeedItem[] =>
   posts.map((post) => ({

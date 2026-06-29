@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, RoleName, User } from "../lib/api";
-import { getErrorMessage } from "../lib/format";
-import { queryKeys } from "../lib/queryKeys";
-import { authStorage } from "../lib/storage";
+import { api, RoleName, User } from "../../lib/api";
+import { getErrorMessage } from "../utils/format";
+import { queryKeys } from "../../lib/queryKeys";
+import { authStorage } from "../utils/storage";
 import { useToast } from "./ToastContext";
 
 type AuthStatus = "checking" | "authenticated" | "anonymous";

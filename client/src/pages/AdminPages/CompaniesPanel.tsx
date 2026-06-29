@@ -2,10 +2,10 @@ import { FormEvent, useState } from "react";
 import { Building2, Plus, Loader2, ExternalLink, ChevronRight, X, Trash2, RefreshCw } from "lucide-react";
 import { Company } from "../../lib/api";
 import { useCompaniesQuery, useCreateCompanyMutation, useListCompanyAdminsQuery, useAdminTriggerCompanyDiscoveryMutation } from "../../hooks/usePlatformQueries";
-import { cleanLogoUrl, userName } from "../../lib/format";
+import { cleanLogoUrl, userName } from "../../core/utils/format";
 import { Avatar } from "../../components/ui";
 import { SearchBar, UserSearchAutocomplete } from "./shared";
-import { useFileUpload } from "../../hooks/useFileUpload";
+import { useFileUpload } from "../../features/storage/hooks/useFileUpload";
 
 export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin, onAssignAdmin }: {
   selectedCompany: Company | null;

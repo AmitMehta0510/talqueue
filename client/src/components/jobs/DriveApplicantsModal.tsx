@@ -30,7 +30,7 @@ import {
   useShortlistForRoundMutation,
 } from "../../hooks/usePlatformQueries";
 import { PlacementDriveApplicationStatus } from "../../lib/api";
-import { cleanLogoUrl, formatDate } from "../../lib/format";
+import { cleanLogoUrl, formatDate } from "../../core/utils/format";
 import { Link } from "react-router-dom";
 
 interface DriveApplicantsModalProps {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { api } from "../lib/api";
-import { useToast } from "../contexts/ToastContext";
+import { api } from "../../../lib/api";
+import { useToast } from "../../../core/contexts/ToastContext";
 
 type UploadPurpose = "avatar" | "letterhead" | "attachment";
 

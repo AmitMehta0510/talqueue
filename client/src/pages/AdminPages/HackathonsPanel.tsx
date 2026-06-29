@@ -8,7 +8,7 @@ import {
   useAdminUpdateHackathonMutation,
   useAdminTriggerScraperMutation,
 } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { SearchBar, DataTable, StatusBadge, fmtDate } from "./shared";
 
 export function HackathonsPanel() {

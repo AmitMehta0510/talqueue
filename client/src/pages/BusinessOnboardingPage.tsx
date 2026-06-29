@@ -19,8 +19,8 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { useToast } from "../contexts/ToastContext";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useToast } from "../core/contexts/ToastContext";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 
 // --- VALIDATION SCHEMAS (Client-side mirror of server schemas) ---
 const recruiterSchema = z.object({

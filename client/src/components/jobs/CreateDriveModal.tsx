@@ -12,7 +12,7 @@ import {
   Search,
 } from "lucide-react";
 import { useCreatePlacementDriveMutation } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { api } from "../../lib/api";
 
 interface Company {

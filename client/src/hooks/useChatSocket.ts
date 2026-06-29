@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
-import { useAuth } from "../contexts/AuthContext";
-import { authStorage } from "../lib/storage";
+import { useAuth } from "../core/contexts/AuthContext";
+import { authStorage } from "../core/utils/storage";
 import { api, ChatMessage, ChatMessagesPage, Conversation } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 

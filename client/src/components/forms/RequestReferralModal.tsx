@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
 import { X, Send, Sparkles, AlertCircle } from "lucide-react";
 import { User, ReferralRequestPayload } from "../../lib/api";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../core/contexts/AuthContext";
 import { useCreateReferralRequestMutation } from "../../hooks/usePlatformQueries";
-import { userName } from "../../lib/format";
+import { userName } from "../../core/utils/format";
 
 interface RequestReferralModalProps {
   targetUser: User;

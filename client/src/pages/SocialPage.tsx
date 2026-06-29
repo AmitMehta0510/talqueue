@@ -3,7 +3,7 @@ import { Check, Inbox, Loader2, Search, UserCheck, Users, X } from "lucide-react
 import { useNavigate } from "react-router-dom";
 import { EngineerCard } from "../components/cards/SocialCards";
 import { Avatar, EmptyState } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useConnectUserMutation,
   useCreateDirectConversationMutation,
@@ -17,7 +17,7 @@ import {
   useSuggestedConnectionsQuery,
 } from "../hooks/usePlatformQueries";
 import { ConnectionsPage, FollowersPage, FollowingPage, PlatformNotification, User } from "../lib/api";
-import { formatDate, titleCase, userHeadline, userName } from "../lib/format";
+import { formatDate, titleCase, userHeadline, userName } from "../core/utils/format";
 
 type SocialTab = "suggested" | "connections" | "followers" | "following";
 

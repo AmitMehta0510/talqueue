@@ -9,7 +9,7 @@ import {
   useCreateEventMutation,
   useAdminListEventAttendeesQuery,
 } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { SearchBar, DataTable, StatusBadge, fmtDate } from "./shared";
 import { Avatar } from "../../components/ui";
 

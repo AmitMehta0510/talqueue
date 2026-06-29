@@ -32,12 +32,12 @@ import {
   useUpdateApplicationStatusMutation,
 } from "../hooks/usePlatformQueries";
 import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { DriveInviteModal } from "../components/jobs/DriveInviteModal";
-import { titleCase, formatDate } from "../lib/format";
+import { titleCase, formatDate } from "../core/utils/format";
 import { Job, JobApplication } from "../lib/api";
 
 export function RecruiterPage() {

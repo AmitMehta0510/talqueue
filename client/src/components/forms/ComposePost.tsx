@@ -2,7 +2,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, Send } from "lucide-react";
-import { titleCase } from "../../lib/format";
+import { titleCase } from "../../core/utils/format";
 
 const postTypes = [
   "GENERAL",

@@ -1,11 +1,11 @@
 import { CalendarDays, Check, MapPin, Trophy, Users, Clock, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Hackathon } from "../../lib/api";
-import { formatCount, formatDate, STATUS_CHIP_CLASSES, titleCase, userName } from "../../lib/format";
+import { formatCount, formatDate, STATUS_CHIP_CLASSES, titleCase, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../core/contexts/AuthContext";
 import { useCreatePostMutation } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 
 const PLATFORM_COLORS: Record<string, string> = {
   Devpost: "bg-cyan-50 text-cyan-700 border-cyan-100 hover:bg-cyan-100/50 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-900/50",

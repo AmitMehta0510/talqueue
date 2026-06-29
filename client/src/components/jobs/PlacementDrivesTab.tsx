@@ -23,8 +23,8 @@ import {
   useDriveEligibilityQuery,
 } from "../../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../ui";
-import { cleanLogoUrl, formatDate } from "../../lib/format";
-import { useAuth } from "../../contexts/AuthContext";
+import { cleanLogoUrl, formatDate } from "../../core/utils/format";
+import { useAuth } from "../../core/contexts/AuthContext";
 import { Link } from "react-router-dom";
 
 // ---------------------------------------------------------------------------

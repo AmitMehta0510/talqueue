@@ -4,10 +4,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { FeedItem, FeedPost, Job, PostComment, Project } from "../../lib/api";
 import { useImpressionTracking } from "../../hooks/useImpressionTracking";
 import { usePostQuery } from "../../hooks/usePlatformQueries";
-import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName } from "../../lib/format";
+import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
 import { HackathonCard } from "./HackathonCard";
-import { JobCard } from "./JobCard";
+import { JobCard } from "../../features/jobs/components/JobCard";
 import { CompanyFeedCard } from "./CompanyFeedCard";
 
 const projectTags = (project: Project) =>

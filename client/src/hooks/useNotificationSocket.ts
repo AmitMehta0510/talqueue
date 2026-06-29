@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
-import { useAuth } from "../contexts/AuthContext";
-import { authStorage } from "../lib/storage";
-import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../core/contexts/AuthContext";
+import { authStorage } from "../core/utils/storage";
+import { useToast } from "../core/contexts/ToastContext";
 import { api } from "../lib/api";
 
 const socketUrl = api.baseUrl.replace(/\/api\/v1\/?$/, "");

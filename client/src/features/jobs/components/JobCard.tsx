@@ -1,14 +1,14 @@
 import { BriefcaseBusiness, Loader2, Star, Check } from "lucide-react";
-import { Job } from "../../lib/api";
-import { formatCount, titleCase, cleanLogoUrl, parseJobTitle } from "../../lib/format";
-import { useAuth } from "../../contexts/AuthContext";
+import { Job } from "../../../lib/api";
+import { formatCount, titleCase, cleanLogoUrl, parseJobTitle } from "../../../core/utils/format";
+import { useAuth } from "../../../core/contexts/AuthContext";
 import {
   useCreatePostMutation,
   useSaveJobMutation,
   useSavedJobsQuery,
   useMyFullProfileQuery,
-} from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+} from "../../../hooks/usePlatformQueries";
+import { useToast } from "../../../core/contexts/ToastContext";
 import { useState, useEffect, useMemo } from "react";
 
 export function JobCard({ job, onClick }: { job: Job; onClick?: () => void }) {

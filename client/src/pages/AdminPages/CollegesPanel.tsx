@@ -13,7 +13,7 @@ import {
   useDeleteCollegeMutation,
 } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
-import { cleanLogoUrl, userName } from "../../lib/format";
+import { cleanLogoUrl, userName } from "../../core/utils/format";
 import { College } from "../../lib/api";
 import { fmtDate, UserSearchAutocomplete } from "./shared";
 

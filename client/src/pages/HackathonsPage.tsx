@@ -19,8 +19,8 @@ import {
 import { Link, useParams } from "react-router-dom";
 import { HackathonCard } from "../components/cards/HackathonCard";
 import { Avatar, EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
   useAssignHackathonJudgeMutation,
   useCreateHackathonMutation,
@@ -56,7 +56,7 @@ import {
   titleCase,
   userHeadline,
   userName,
-} from "../lib/format";
+} from "../core/utils/format";
 
 const statusFilters = ["ALL", "OPEN", "LIVE", "COMPLETED", "DRAFT"] as const;
 

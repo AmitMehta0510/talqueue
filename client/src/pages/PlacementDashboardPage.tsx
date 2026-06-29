@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useMyDriveApplicationsQuery } from "../hooks/usePlatformQueries";
 import { PlacementDriveApplicationStatus } from "../lib/api";
-import { cleanLogoUrl, formatDate } from "../lib/format";
+import { cleanLogoUrl, formatDate } from "../core/utils/format";
 import { EmptyState } from "../components/ui";
 
 type DashboardTab = "all" | "in_progress" | "offers" | "closed";

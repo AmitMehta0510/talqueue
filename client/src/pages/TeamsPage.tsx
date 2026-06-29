@@ -6,7 +6,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { TeamRoleBadge } from "../components/cards/SocialCards";
 import { Avatar, EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreateTeamMutation,
   useInviteTeamMemberMutation,
@@ -22,7 +22,7 @@ import {
   useWithdrawTeamInviteMutation,
 } from "../hooks/usePlatformQueries";
 import { Team, TeamInvite, User } from "../lib/api";
-import { compactPayload, formatCount, formatDate, titleCase, userHeadline, userName } from "../lib/format";
+import { compactPayload, formatCount, formatDate, titleCase, userHeadline, userName } from "../core/utils/format";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

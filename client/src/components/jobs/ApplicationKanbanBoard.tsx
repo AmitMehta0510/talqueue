@@ -18,7 +18,7 @@ import {
   useUpdateExternalApplicationStatusMutation,
   useDeleteExternalApplicationMutation,
 } from "../../hooks/usePlatformQueries";
-import { cleanLogoUrl, formatDate, titleCase } from "../../lib/format";
+import { cleanLogoUrl, formatDate, titleCase } from "../../core/utils/format";
 import { Avatar } from "../ui";
 
 // Platform application status (set by recruiter)

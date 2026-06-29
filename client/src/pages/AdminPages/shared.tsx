@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Loader2, ChevronDown, X } from "lucide-react";
-import { titleCase, userName } from "../../lib/format";
+import { titleCase, userName } from "../../core/utils/format";
 import { useAdminUsersQuery } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
 

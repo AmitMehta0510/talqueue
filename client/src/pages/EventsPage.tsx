@@ -14,7 +14,7 @@ import {
   Edit2,
   ExternalLink,
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useEventsQuery,
   useCreateEventMutation,

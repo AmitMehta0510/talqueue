@@ -13,7 +13,7 @@ import {
   MapPin,
   Hash,
 } from "lucide-react";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { Avatar } from "../../components/ui";
 import { StatusBadge, fmtRelative } from "./shared";
 

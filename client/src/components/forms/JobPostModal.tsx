@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { X, BriefcaseBusiness, Save, Building2, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCreateJobMutation } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
-import { compactPayload, splitCsv } from "../../lib/format";
+import { useToast } from "../../core/contexts/ToastContext";
+import { compactPayload, splitCsv } from "../../core/utils/format";
 import { api } from "../../lib/api";
 
 interface Company {

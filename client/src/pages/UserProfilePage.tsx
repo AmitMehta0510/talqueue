@@ -33,7 +33,7 @@ import {
 } from "../components/cards/ProfileCards";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { Avatar, EmptyState, ErrorState, InlineLoader } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreateDirectConversationMutation,
   useFollowUserMutation,
@@ -53,7 +53,7 @@ import {
   titleCase,
   userHeadline,
   userName,
-} from "../lib/format";
+} from "../core/utils/format";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 
 type Tab = "about" | "posts" | "projects" | "experience" | "skills" | "education" | "connections";

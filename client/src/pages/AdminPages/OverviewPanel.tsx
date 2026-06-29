@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/ui";
 import { KpiCard, DistBar } from "./shared";
-import { titleCase } from "../../lib/format";
+import { titleCase } from "../../core/utils/format";
 import { useAdminAnalyticsQuery } from "../../hooks/usePlatformQueries";
 
 // Helper outside component to avoid reference recreation on render

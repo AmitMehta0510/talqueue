@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import { api, InterviewResource } from "../../lib/api";
 import { SearchBar, DataTable } from "./shared";
-import { useToast } from "../../contexts/ToastContext";
-import { getErrorMessage } from "../../lib/format";
+import { useToast } from "../../core/contexts/ToastContext";
+import { getErrorMessage } from "../../core/utils/format";
 
 export function InterviewPanel() {
   const { showToast } = useToast();

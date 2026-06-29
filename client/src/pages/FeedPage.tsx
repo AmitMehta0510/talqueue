@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
 import { EmptyState, Avatar, FeedCardSkeleton, SidebarItemSkeleton } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreatePostMutation,
   useCommentOnPostMutation,
@@ -40,7 +40,7 @@ import {
   useCreateDirectConversationMutation,
   useRecommendedProjectsQuery,
 } from "../hooks/usePlatformQueries";
-import { titleCase, userName, formatCount, userHeadline, formatDate } from "../lib/format";
+import { titleCase, userName, formatCount, userHeadline, formatDate } from "../core/utils/format";
 
 // Lazy-load the compose modal — it carries react-hook-form + zod and is only
 // needed when the user actively opens it. Falls back to a spinner until ready.

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Building2, Search, Loader2, Plus, Calendar, IndianRupee, Briefcase } from "lucide-react";
 import { useSendDriveInviteMutation } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { api } from "../../lib/api";
 
 interface Company {

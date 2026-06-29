@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PlatformNotification } from "../../lib/api";
-import { formatDate, titleCase, userName } from "../../lib/format";
+import { formatDate, titleCase, userName } from "../../core/utils/format";
 import {
   useArchiveNotificationMutation,
   useMarkAllNotificationsReadMutation,

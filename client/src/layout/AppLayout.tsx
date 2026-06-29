@@ -31,8 +31,8 @@ import {
   NotificationBellButton,
   NotificationPreview,
 } from "../components/notifications/NotificationCenter";
-import { useAuth } from "../contexts/AuthContext";
-import { formatCount, userHeadline, userName } from "../lib/format";
+import { useAuth } from "../core/contexts/AuthContext";
+import { formatCount, userHeadline, userName } from "../core/utils/format";
 import { Avatar } from "../components/ui";
 import { useNotificationSocket } from "../hooks/useNotificationSocket";
 

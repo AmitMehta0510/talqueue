@@ -7,7 +7,7 @@ import {
 import { useAdminUsersQuery } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
 import { SearchBar, StatusBadge, fmtDate } from "./shared";
-import { titleCase, userName, getHighestPrivilegeRole } from "../../lib/format";
+import { titleCase, userName, getHighestPrivilegeRole } from "../../core/utils/format";
 
 export function UsersPanel({
   onAction,

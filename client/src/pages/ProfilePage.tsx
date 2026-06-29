@@ -49,9 +49,9 @@ import {
   titleCase,
   userHeadline,
   userName,
-} from "../lib/format";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
+} from "../core/utils/format";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
 import { Avatar, ErrorState, InlineLoader } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
@@ -89,7 +89,7 @@ import {
   useRepostMutation,
 } from "../hooks/usePlatformQueries";
 import { FeedCard } from "../components/cards/FeedCard";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

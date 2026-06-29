@@ -36,17 +36,17 @@ import {
   useJobSkillsAutocompleteQuery,
   useJobLocationsAutocompleteQuery,
 } from "../hooks/usePlatformQueries";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState, Avatar } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { JobDetailModal } from "../components/cards/JobDetailModal";
+import { JobDetailModal } from "../features/jobs/components/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { ExternalApplyModal } from "../components/forms/ExternalApplyModal";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
 import { ApplicationKanbanBoard } from "../components/jobs/ApplicationKanbanBoard";
 import { PlacementDrivesTab } from "../components/jobs/PlacementDrivesTab";
-import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline, parseJobTitle } from "../lib/format";
+import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline, parseJobTitle } from "../core/utils/format";
 
 type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "campus-drives";
 type SubViewType = { type: "dashboard" } | { type: "pipeline"; jobId: string };

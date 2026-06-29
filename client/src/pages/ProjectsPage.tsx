@@ -19,7 +19,7 @@ import { Link, useParams } from "react-router-dom";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { CreateProjectForm } from "../components/forms/CreateProjectForm";
 import { Avatar, EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreateProjectMutation,
   useInviteUserToProjectMutation,
@@ -39,7 +39,7 @@ import {
   useWithdrawProjectJoinRequestMutation,
 } from "../hooks/usePlatformQueries";
 import { Project, ProjectInvite, ProjectJoinRequest, ProjectMutationPayload, User } from "../lib/api";
-import { compactPayload, formatCount, formatDate, splitCsv, titleCase, userHeadline, userName } from "../lib/format";
+import { compactPayload, formatCount, formatDate, splitCsv, titleCase, userHeadline, userName } from "../core/utils/format";
 
 const isMember = (project: Project, userId?: string) =>
   Boolean(userId && project.members?.some((member) => member.userId === userId));

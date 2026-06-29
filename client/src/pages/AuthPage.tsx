@@ -18,9 +18,9 @@ import {
   Zap,
 } from "lucide-react";
 import { RoleName } from "../lib/api";
-import { getErrorMessage, titleCase, userName } from "../lib/format";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
+import { getErrorMessage, titleCase, userName } from "../core/utils/format";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
 
 type AuthMode = "login" | "register";
 

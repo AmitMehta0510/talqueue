@@ -4,15 +4,15 @@ import {
   Building2, Users, Briefcase, Shield, ShieldCheck, Plus, Trash2, MapPin, Loader2,
   TrendingUp, ArrowLeft, RefreshCw, Sparkles, UserPlus, CheckCircle2, ChevronRight, X, Settings
 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
 import { api } from "../lib/api";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { Avatar } from "../components/ui";
-import { userName } from "../lib/format";
+import { userName } from "../core/utils/format";
 import { UserSearchAutocomplete } from "./AdminPages/shared";
 import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
   useCompanyQuery,
   useCompanyJobsQuery,

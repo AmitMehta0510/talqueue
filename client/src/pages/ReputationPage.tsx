@@ -15,7 +15,7 @@ import {
   useBadgesQuery,
 } from "../hooks/usePlatformQueries";
 import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
-import { formatDate, titleCase, formatCount } from "../lib/format";
+import { formatDate, titleCase, formatCount } from "../core/utils/format";
 import { Badge } from "../lib/api";
 
 export function ReputationPage() {

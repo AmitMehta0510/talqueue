@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, GraduationCap, Search, Loader2, Plus, Building2, Calendar, IndianRupee } from "lucide-react";
 import { useSendDriveInviteMutation } from "../../hooks/usePlatformQueries";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../core/contexts/ToastContext";
 import { api } from "../../lib/api";
 
 interface College {

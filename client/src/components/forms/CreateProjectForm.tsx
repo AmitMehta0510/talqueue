@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
-import { compactPayload, splitCsv } from "../../lib/format";
+import { compactPayload, splitCsv } from "../../core/utils/format";
 
 export function CreateProjectForm({
   onCreate,

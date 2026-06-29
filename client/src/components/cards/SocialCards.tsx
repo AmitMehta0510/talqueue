@@ -1,7 +1,7 @@
 import { Check, CheckCheck, Gift, MessageSquare, UserPlus, Users, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { SuggestedUser, User } from "../../lib/api";
-import { formatCount, titleCase, userHeadline, userName } from "../../lib/format";
+import { formatCount, titleCase, userHeadline, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
 
 type ConnectionStatus = "NONE" | "PENDING" | "ACCEPTED";

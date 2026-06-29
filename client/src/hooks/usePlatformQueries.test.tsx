@@ -50,11 +50,11 @@ vi.mock("../lib/api", async (importOriginal) => {
   };
 });
 
-vi.mock("../contexts/AuthContext", () => ({
+vi.mock("../core/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock("../contexts/ToastContext", () => ({
+vi.mock("../core/contexts/ToastContext", () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 
@@ -63,7 +63,7 @@ vi.mock("../contexts/ToastContext", () => ({
 // --------------------------------------------------------------------------
 
 import { api } from "../lib/api";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import {
   useFeedQuery,
   useSendMessageMutation,

@@ -27,10 +27,10 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../core/contexts/AuthContext";
 import { useChatSocket } from "../hooks/useChatSocket";
-import { useToast } from "../contexts/ToastContext";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useToast } from "../core/contexts/ToastContext";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
   useChatMessageActionMutation,
   useConversationMessagesQuery,
@@ -60,7 +60,7 @@ import {
   titleCase,
   userHeadline,
   userName,
-} from "../lib/format";
+} from "../core/utils/format";
 
 const ALL_QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "✅", "💡"];
 

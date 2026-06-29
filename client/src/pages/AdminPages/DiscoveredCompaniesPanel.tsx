@@ -4,7 +4,7 @@ import {
   RefreshCw, Globe, Layers, AlertTriangle, Search
 } from "lucide-react";
 import { useDiscoveredCompaniesQuery, useReviewDiscoveredCompaniesMutation, useAdminTriggerCompanyDiscoveryMutation } from "../../hooks/usePlatformQueries";
-import { cleanLogoUrl } from "../../lib/format";
+import { cleanLogoUrl } from "../../core/utils/format";
 
 type Action = "VERIFY" | "REJECT";
 

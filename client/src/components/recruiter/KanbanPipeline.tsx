@@ -18,7 +18,7 @@ import {
   useUpdateJobApplicationStatusMutation,
 } from "../../hooks/usePlatformQueries";
 import { InlineLoader, ErrorState, Avatar } from "../ui";
-import { titleCase } from "../../lib/format";
+import { titleCase } from "../../core/utils/format";
 import {
   RecruiterJobPipelineCard,
   CandidateRanking,

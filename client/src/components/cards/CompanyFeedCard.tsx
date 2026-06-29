@@ -1,7 +1,7 @@
 import { ShieldCheck, Plus, Check, Loader2 } from "lucide-react";
 import { Company } from "../../lib/api";
-import { titleCase, cleanLogoUrl } from "../../lib/format";
-import { useAuth } from "../../contexts/AuthContext";
+import { titleCase, cleanLogoUrl } from "../../core/utils/format";
+import { useAuth } from "../../core/contexts/AuthContext";
 import { useFollowCompanyMutation, useUnfollowCompanyMutation } from "../../hooks/usePlatformQueries";
 import { useState, useEffect } from "react";
 

@@ -25,8 +25,8 @@ import type {
 import { EngineerCard } from "../components/cards/SocialCards";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { HackathonCard } from "../components/cards/HackathonCard";
-import { JobCard } from "../components/cards/JobCard";
-import { cleanLogoUrl, formatCount, titleCase, userName } from "../lib/format";
+import { JobCard } from "../features/jobs/components/JobCard";
+import { cleanLogoUrl, formatCount, titleCase, userName } from "../core/utils/format";
 import { Avatar } from "../components/ui";
 
 // ─── View All Footer Link ───────────────────────────────────────────────────

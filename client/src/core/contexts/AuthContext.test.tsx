@@ -35,7 +35,7 @@ import type { ReactNode } from "react";
 // Module-level mocks (hoisted before any import resolution)
 // --------------------------------------------------------------------------
 
-vi.mock("../lib/api", () => ({
+vi.mock("../../lib/api", () => ({
   api: {
     health: vi.fn(),
     me: vi.fn(),
@@ -45,7 +45,7 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
-vi.mock("../lib/storage", () => ({
+vi.mock("../utils/storage", () => ({
   authStorage: {
     getToken: vi.fn(),
     setToken: vi.fn(),
@@ -55,8 +55,8 @@ vi.mock("../lib/storage", () => ({
 }));
 
 // PageLoader is a real component — let it render so we can assert on it
-vi.mock("../components/ui", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../components/ui")>();
+vi.mock("../../components/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../components/ui")>();
   return {
     ...actual,
     // Keep PageLoader real; no overrides needed here
@@ -64,7 +64,7 @@ vi.mock("../components/ui", async (importOriginal) => {
 });
 
 // Toast context — suppress real DOM timers, just spy on showToast
-vi.mock("../contexts/ToastContext", () => ({
+vi.mock("./ToastContext", () => ({
   useToast: () => ({ showToast: vi.fn() }),
   ToastProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -73,8 +73,8 @@ vi.mock("../contexts/ToastContext", () => ({
 // Lazy import AFTER mocks are registered
 // --------------------------------------------------------------------------
 
-import { api } from "../lib/api";
-import { authStorage } from "../lib/storage";
+import { api } from "../../lib/api";
+import { authStorage } from "../utils/storage";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 // --------------------------------------------------------------------------

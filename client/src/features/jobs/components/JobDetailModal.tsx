@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
 import { X, BriefcaseBusiness, DollarSign, Globe, Award, Sparkles, Send, CheckCircle2 } from "lucide-react";
-import { Job, JobApplicationPayload } from "../../lib/api";
-import { formatCount, titleCase } from "../../lib/format";
-import { useAuth } from "../../contexts/AuthContext";
-import { useApplyToJobMutation } from "../../hooks/usePlatformQueries";
+import { Job, JobApplicationPayload } from "../../../lib/api";
+import { formatCount, titleCase } from "../../../core/utils/format";
+import { useAuth } from "../../../core/contexts/AuthContext";
+import { useApplyToJobMutation } from "../../../hooks/usePlatformQueries";
 
 interface JobDetailModalProps {
   job: Job;

@@ -26,7 +26,7 @@ import {
   useDeleteNotificationMutation,
 } from "../hooks/usePlatformQueries";
 import { Avatar, EmptyState } from "../components/ui";
-import { formatDate, titleCase, userName } from "../lib/format";
+import { formatDate, titleCase, userName } from "../core/utils/format";
 import { PlatformNotification } from "../lib/api";
 
 type TabType = "all" | "unread" | "messages" | "projects" | "social" | "jobs" | "system";

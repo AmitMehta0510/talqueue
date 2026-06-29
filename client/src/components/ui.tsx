@@ -1,7 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, LucideIcon, RefreshCcw } from "lucide-react";
 import { User } from "../lib/api";
-import { initials, userName } from "../lib/format";
+import { initials, userName } from "../core/utils/format";
 
 /* ============================================================
    METRIC — displays a numeric stat with a label

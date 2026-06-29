@@ -26,14 +26,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 // Module-level mocks (hoisted before import resolution)
 // --------------------------------------------------------------------------
 
-vi.mock("../lib/api", () => ({
+vi.mock("../../../lib/api", () => ({
   api: {
     getPresignedUrl: vi.fn(),
     validateFile: vi.fn(),
   },
 }));
 
-vi.mock("../contexts/ToastContext", () => ({
+vi.mock("../../../core/contexts/ToastContext", () => ({
   useToast: () => ({
     showToast: mockShowToast,
   }),
@@ -45,7 +45,7 @@ const mockShowToast = vi.fn();
 // Lazy imports (after mocks are registered)
 // --------------------------------------------------------------------------
 
-import { api } from "../lib/api";
+import { api } from "../../../lib/api";
 import { useFileUpload, type UploadResult } from "./useFileUpload";
 
 // --------------------------------------------------------------------------

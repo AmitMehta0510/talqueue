@@ -1,4 +1,4 @@
-import { ApiError, FeedItem, FeedPost, User } from "./api";
+import { ApiError, FeedItem, FeedPost, User } from "../../lib/api";
 
 export const titleCase = (value?: string | null) =>
   value

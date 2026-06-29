@@ -33,8 +33,8 @@ import {
 } from "lucide-react";
 import { EngineerCard } from "../components/cards/SocialCards";
 import { Avatar, EmptyState, InlineLoader } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
 import {
   useConnectUserMutation,
   useCreateDirectConversationMutation,
@@ -46,7 +46,7 @@ import {
   useUpgradePremiumMutation,
 } from "../hooks/usePlatformQueries";
 import { User } from "../lib/api";
-import { userName, userHeadline } from "../lib/format";
+import { userName, userHeadline } from "../core/utils/format";
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 

@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Avatar, EmptyState, Metric } from "../components/ui";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useToast } from "../core/contexts/ToastContext";
 import {
   useCompaniesQuery,
   useCompanyEmployeesQuery,
@@ -37,7 +37,7 @@ import {
 } from "../hooks/usePlatformQueries";
 import { Company, CompanySize, CompanyType, User } from "../lib/api";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
-import { useFileUpload } from "../hooks/useFileUpload";
+import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import {
   compactPayload,
@@ -48,7 +48,7 @@ import {
   userName,
   cleanLogoUrl,
   parseJobTitle,
-} from "../lib/format";
+} from "../core/utils/format";
 
 const companyTypes: CompanyType[] = [
   "STARTUP", "PRODUCT_BASED", "SERVICE_BASED", "MNC", "OTHER",

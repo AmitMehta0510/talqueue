@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GraduationCap, ShieldCheck, Briefcase, Calendar, Users, Code2, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { Education, Experience, UserSkill } from "../../lib/api";
-import { formatMonthYear, titleCase } from "../../lib/format";
+import { formatMonthYear, titleCase } from "../../core/utils/format";
 
 const LEVEL_COLORS: Record<string, string> = {
   BEGINNER:     "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/60",
