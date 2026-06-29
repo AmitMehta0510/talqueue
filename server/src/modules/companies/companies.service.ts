@@ -8,6 +8,7 @@ import { trackRecommendationImpression } from "modules/discovery/recommendation-
 
 import slugify from "slugify";
 import { runCompanySeed } from "./scraper/company-scraper.service";
+import { enrichCompanyDomain } from "services/enrichment.service";
 
 // HELPERS
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1154,6 +1155,21 @@ export const submitRecruiterOnboarding = async (
         },
       },
     });
+  }
+
+  // Auto-enrich new company profile using Clearbit API lookup
+  if (!company && data.businessEmail) {
+    const domain = data.businessEmail.split("@")[1]?.toLowerCase();
+    const isGenericDomain = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "live.com", "icloud.com"].includes(domain || "");
+
+    if (domain && !isGenericDomain) {
+      try {
+        console.log(`[Clearbit Onboarding] Initiating enrichment lookup for new company domain: ${domain}`);
+        company = await enrichCompanyDomain(domain);
+      } catch (err) {
+        console.error(`[Clearbit Onboarding] Failed to enrich details for ${domain}:`, err);
+      }
+    }
   }
 
   if (company) {

@@ -13,7 +13,12 @@ import {
   seedJobsHandler,
 } from "./jobs.controller";
 
+import atsHooksRouter from "./ats-hooks.routes";
+
 const router = Router();
+
+// Mount public ATS webhook handlers
+router.use("/", atsHooksRouter);
 
 router.post(
   "/",
