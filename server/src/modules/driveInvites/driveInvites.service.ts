@@ -295,12 +295,33 @@ export const respondToInvite = async (
     // TPO/CDCR responds on behalf of college
     isAuthorized = await isCollegeAdminOrCdcr(actorId, invite.collegeId);
   } else {
+    // Fetch user roles to verify recruiter status
+    const actor = await prisma.user.findUnique({
+      where: { id: actorId },
+      select: {
+        primaryRole: true,
+        roles: {
+          select: {
+            role: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+    });
+
+    const isRecruiterRole =
+      actor?.primaryRole === "RECRUITER" ||
+      actor?.roles.some((r) => r.role?.name === "RECRUITER");
+
     // Recruiter (Experience) or Company Admin responds on behalf of company
     const [exp, admin] = await Promise.all([
-      prisma.experience.findFirst({
-        where: { userId: actorId, companyId: invite.companyId },
-        select: { id: true },
-      }),
+      isRecruiterRole
+        ? prisma.experience.findFirst({
+            where: { userId: actorId, companyId: invite.companyId },
+            select: { id: true },
+          })
+        : null,
       prisma.companyAdmin.findFirst({
         where: { userId: actorId, companyId: invite.companyId },
         select: { id: true },
