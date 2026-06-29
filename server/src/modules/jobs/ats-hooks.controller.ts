@@ -12,13 +12,13 @@ import { syncJobsToElasticBulk } from "services/elasticSync";
  */
 export const greenhouseWebhookHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const { companyId } = req.params;
+    const companyId = req.params.companyId as string;
     const { action, payload } = req.body;
 
     // 1. Verify target company exists
     const company = await prisma.company.findUnique({
       where: { id: companyId },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, headquarters: true, websiteUrl: true },
     });
     if (!company) {
       throw new AppError("Company not found", 404);
@@ -103,13 +103,13 @@ export const greenhouseWebhookHandler = asyncHandler(
  */
 export const leverWebhookHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const { companyId } = req.params;
+    const companyId = req.params.companyId as string;
     const { event, data } = req.body;
 
     // 1. Verify target company exists
     const company = await prisma.company.findUnique({
       where: { id: companyId },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, headquarters: true, websiteUrl: true },
     });
     if (!company) {
       throw new AppError("Company not found", 404);
