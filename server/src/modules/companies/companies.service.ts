@@ -894,6 +894,11 @@ export const assignCompanyRecruiter = async (actorId: string, companyId: string,
       await tx.userRole.create({ data: { userId, roleId: role.id } });
     }
 
+    await tx.user.update({
+      where: { id: userId },
+      data: { primaryRole: "RECRUITER" },
+    });
+
     const existingExp = await tx.experience.findFirst({
       where: { userId, companyId, isCurrent: true }
     });

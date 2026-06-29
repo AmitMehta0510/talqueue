@@ -50,6 +50,10 @@ const grantRole = async (userId: string, roleName: string, tx?: TxClient) => {
   if (!existing) {
     await db.userRole.create({ data: { userId, roleId: role.id } });
   }
+  await db.user.update({
+    where: { id: userId },
+    data: { primaryRole: roleName },
+  });
   return role;
 };
 
@@ -1113,6 +1117,32 @@ export const adminApproveCompanyRequest = async (
         reviewedAt: new Date(),
       },
     });
+
+    // Grant recruiter role to user
+    await grantRole(request.requestedById, "RECRUITER", tx);
+
+    // Create current recruiter Experience record linking user to the new company
+    const existingExp = await tx.experience.findFirst({
+      where: {
+        userId: request.requestedById,
+        companyId: company.id,
+        isCurrent: true,
+      },
+    });
+
+    if (!existingExp) {
+      await tx.experience.create({
+        data: {
+          userId: request.requestedById,
+          companyId: company.id,
+          title: "Recruiter",
+          employmentType: "FULL_TIME",
+          startDate: new Date(),
+          isCurrent: true,
+          description: `Recruitment team member at ${company.name}`,
+        },
+      });
+    }
 
     // Notify the requester
     await tx.notification.create({
