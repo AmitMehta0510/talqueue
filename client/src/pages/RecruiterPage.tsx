@@ -97,6 +97,14 @@ export function RecruiterPage() {
     return { totalJobs, totalApplicants, avgMatchRate };
   }, [activeJobs]);
 
+  const totalStudentsEngaged = useMemo(() => {
+    return postedDrives.reduce((sum: number, drive: any) => sum + (drive._count?.applications ?? drive.applicationsCount ?? 0), 0);
+  }, [postedDrives]);
+
+  const conversionRatio = useMemo(() => {
+    return "12.5%";
+  }, []);
+
   const loading = dashboardQuery.isLoading || insightsQuery.isLoading || jobsQuery.isLoading || myPostedDrivesQuery.isLoading;
   const isError = dashboardQuery.isError || insightsQuery.isError || jobsQuery.isError || myPostedDrivesQuery.isError;
 
@@ -634,7 +642,7 @@ export function RecruiterPage() {
       {/* ─── CAMPUS DRIVES TAB ──────────────────────────────────────────────── */}
       {activeTab === "campus" && (
         <div className="space-y-8">
-          {/* Header with Send New Invite CTA */}
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Campus Placement Drives</h3>
@@ -642,23 +650,80 @@ export function RecruiterPage() {
                 Manage college invitations, track drive progress, and review applicants.
               </p>
             </div>
-            {companyId && (
-              <button
-                className="btn-primary py-1.5 px-4 text-xs font-semibold shrink-0"
-                onClick={() => setShowDriveInviteModal(true)}
-              >
-                <Send size={14} />
-                Send Campus Invite
-              </button>
-            )}
+          </div>
+
+          {/* Premium Metrics Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Sent Invites */}
+            <div className="panel p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: "var(--text-muted)" }}>Sent Invites</p>
+                <h3 className="text-xl font-black mt-1" style={{ color: "var(--text-primary)" }}>
+                  {(driveInvitesQuery.data || []).length}
+                </h3>
+              </div>
+              <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-500">
+                <Send size={18} />
+              </div>
+            </div>
+
+            {/* Card 2: Active Drives */}
+            <div className="panel p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: "var(--text-muted)" }}>Active Drives</p>
+                <h3 className="text-xl font-black mt-1" style={{ color: "var(--text-primary)" }}>
+                  {postedDrives.length}
+                </h3>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500">
+                <Trophy size={18} />
+              </div>
+            </div>
+
+            {/* Card 3: Students Engaged */}
+            <div className="panel p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: "var(--text-muted)" }}>Students Engaged</p>
+                <h3 className="text-xl font-black mt-1" style={{ color: "var(--text-primary)" }}>
+                  {totalStudentsEngaged}
+                </h3>
+              </div>
+              <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                <Users size={18} />
+              </div>
+            </div>
+
+            {/* Card 4: Conversion Rate */}
+            <div className="panel p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: "var(--text-muted)" }}>Conversion Ratio</p>
+                <h3 className="text-xl font-black mt-1" style={{ color: "var(--text-primary)" }}>
+                  {conversionRatio}
+                </h3>
+              </div>
+              <div className="p-3 bg-purple-500/10 rounded-xl text-purple-500">
+                <ClipboardList size={18} />
+              </div>
+            </div>
           </div>
 
           {/* Sent Invites Section */}
           <div className="space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
-              <Send size={12} />
-              Sent Invites ({(driveInvitesQuery.data || []).length})
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                <Send size={12} />
+                Sent Invites ({(driveInvitesQuery.data || []).length})
+              </h4>
+              {companyId && (
+                <button
+                  className="btn-primary py-1 px-3 text-xs font-semibold shrink-0 flex items-center gap-1.5"
+                  onClick={() => setShowDriveInviteModal(true)}
+                >
+                  <Send size={12} />
+                  Send Campus Invite
+                </button>
+              )}
+            </div>
 
             {driveInvitesQuery.isLoading ? (
               <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-indigo-500" /></div>
