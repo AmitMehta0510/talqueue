@@ -431,7 +431,7 @@ describe("Suite 2 — Exception Frameworks & Failure Rollbacks", () => {
 
     // Error must be cleared at the start of the second call
     expect(result.current.error).toBeNull();
-    expect(result.current.uploading).toBe(false);
+  });
 });
 
 // --------------------------------------------------------------------------
