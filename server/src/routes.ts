@@ -122,6 +122,10 @@ export const registerApiRoutes = (app: Express) => {
     );
   });
 
+  app.get(`${API_PREFIX}/health`, (req, res) => {
+    res.json(successResponse({ status: "ok" }));
+  });
+
   for (const { key, path, router } of apiRouteEntries) {
     let rateLimiter;
     if (key === "auth") {
