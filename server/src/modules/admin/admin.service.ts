@@ -1590,6 +1590,12 @@ export const reviewCollegeRequest = async (
         await grantRole(request.userId, "COLLEGE_ADMIN", tx);
       }
 
+      // Sync Profile collegeId to lock the academic context
+      await tx.profile.update({
+        where: { userId: request.userId },
+        data: { collegeId: college.id },
+      });
+
       // Step 3: Mark request as VERIFIED
       await tx.collegeRequest.update({
         where: { id: requestId },

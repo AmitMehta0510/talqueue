@@ -123,6 +123,36 @@ const userProfileSelect = {
       roles: true,
     },
   },
+
+  tpoMemberships: {
+    select: {
+      id: true,
+      collegeId: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+          normalizedKey: true,
+          logoUrl: true,
+        },
+      },
+    },
+  },
+
+  collegeAdminships: {
+    select: {
+      id: true,
+      collegeId: true,
+      college: {
+        select: {
+          id: true,
+          name: true,
+          normalizedKey: true,
+          logoUrl: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 const userFullProfileSelect = {

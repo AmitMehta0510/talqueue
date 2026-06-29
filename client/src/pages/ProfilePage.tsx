@@ -11,6 +11,7 @@ import {
   Award,
   Briefcase,
   Building2,
+  Calendar,
   CheckCircle2,
   ChevronDown,
   Circle,
@@ -691,6 +692,8 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             onEdit={handleEditExperience}
             onDelete={(exp) => setConfirmDelete({ type: "experience", id: exp.id, label: exp.title || exp.companyName || "" })}
             onCancel={handleCancelExperience}
+            tpoMemberships={profile.tpoMemberships}
+            collegeAdminships={profile.collegeAdminships}
           />
         )}
 
@@ -1115,6 +1118,8 @@ function ExperienceTab({
   onDelete,
   onCancel,
   onVerify,
+  tpoMemberships,
+  collegeAdminships,
 }: {
   experiences: ReturnType<typeof flattenPages<any, any>>;
   isFetching: boolean;
@@ -1132,6 +1137,8 @@ function ExperienceTab({
   onDelete: (exp: any) => void;
   onCancel: () => void;
   onVerify?: (experienceId: string, email: string, code?: string) => Promise<any>;
+  tpoMemberships?: any[];
+  collegeAdminships?: any[];
 }) {
   const { data: companyPage } = useCompaniesQuery({ limit: 100 });
   const companies = companyPage?.companies || [];
@@ -1346,7 +1353,7 @@ function ExperienceTab({
       )}
 
       {/* List */}
-      {experiences.length === 0 && !isFetching ? (
+      {experiences.length === 0 && (!tpoMemberships || tpoMemberships.length === 0) && (!collegeAdminships || collegeAdminships.length === 0) && !isFetching ? (
         <EmptySection
           icon={Briefcase}
           title="No experience yet"
@@ -1359,6 +1366,74 @@ function ExperienceTab({
         />
       ) : (
         <div className="space-y-3">
+          {/* TPO Memberships */}
+          {tpoMemberships && tpoMemberships.map((tpo: any) => (
+            <article key={tpo.id} className="group relative flex flex-col gap-4 panel p-5 border border-indigo-500/10 hover:border-indigo-500/40 dark:hover:border-indigo-400/40">
+              <div className="flex gap-4">
+                <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-500 dark:from-indigo-950/40 dark:to-indigo-900/40 dark:text-indigo-400">
+                  <GraduationCap size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-primary">Training & Placement Officer (TPO)</h4>
+                      <p className="mt-0.5 text-sm text-secondary">{tpo.college?.name || "Target College"}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-1.5 pr-12">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
+                        <ShieldCheck size={11} />
+                        Verified Staff
+                      </span>
+                      <span className="chip">
+                        Academic Staff
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-fg">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      Active Institutional Administrator
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+
+          {/* College Adminships */}
+          {collegeAdminships && collegeAdminships.map((admin: any) => (
+            <article key={admin.id} className="group relative flex flex-col gap-4 panel p-5 border border-indigo-500/10 hover:border-indigo-500/40 dark:hover:border-indigo-400/40">
+              <div className="flex gap-4">
+                <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-500 dark:from-indigo-950/40 dark:to-indigo-900/40 dark:text-indigo-400">
+                  <GraduationCap size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-primary">College Placement Administrator</h4>
+                      <p className="mt-0.5 text-sm text-secondary">{admin.college?.name || "Target College"}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-1.5 pr-12">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40">
+                        <ShieldCheck size={11} />
+                        Verified Admin
+                      </span>
+                      <span className="chip">
+                        Academic Staff
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-fg">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      Active Institutional Administrator
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+
           {experiences.map((exp) => (
             <ExperienceCard
               key={exp.id}

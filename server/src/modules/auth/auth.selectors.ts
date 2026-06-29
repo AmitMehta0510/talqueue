@@ -120,6 +120,27 @@ export const authUserSelect = {
       },
     },
   },
+
+  experiences: {
+    select: {
+      id: true,
+      companyId: true,
+      title: true,
+      employmentType: true,
+      startDate: true,
+      endDate: true,
+      isCurrent: true,
+      description: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 export type AuthenticatedUser = Prisma.UserGetPayload<{
