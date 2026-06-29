@@ -96,7 +96,6 @@ const GREENHOUSE_TOKENS: Record<string, string> = {
   "hasura": "hasura",
   "darwinbox": "darwinbox",
   "innovaccer": "innovaccer",
-  "mindtickle": "mindtickle",
   "leadsquared": "leadsquared",
   "springworks": "springworks",
   "sigmoid": "sigmoid",
@@ -634,21 +633,29 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
   const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
   const activeSlugs: string[] = [];
 
-  // Resolve ATS tokens: explicit atsToken/atsSource fields take priority over
-  // the static slug-map lookup (used for discovered companies with DB-stored tokens).
   const lookupKey = company.slug.replace(/-[a-z0-9]{5}$/i, "");
-  const greenhouseToken =
-    (company.atsSource === "greenhouse" && company.atsToken) ? company.atsToken
-    : GREENHOUSE_TOKENS[lookupKey];
-  const ashbyToken =
-    (company.atsSource === "ashby" && company.atsToken) ? company.atsToken
-    : ASHBY_TOKENS[lookupKey];
-  const leverToken =
-    (company.atsSource === "lever" && company.atsToken) ? company.atsToken
-    : LEVER_TOKENS[lookupKey];
-  const workdayToken =
-    (company.atsSource === "workday" && company.atsToken) ? company.atsToken
-    : null; // Workday tokens come exclusively from autonomous crawler discovery
+
+  // Resolve ATS tokens: explicit atsSource/atsToken fields take priority.
+  // Static lists serve as a fallback ONLY if the company doesn't have an explicit source in the DB.
+  let greenhouseToken: string | null = null;
+  let ashbyToken: string | null = null;
+  let leverToken: string | null = null;
+  const workdayToken = company.atsSource === "workday" ? company.atsToken : null;
+
+  if (company.atsSource) {
+    if (company.atsSource === "greenhouse") {
+      greenhouseToken = company.atsToken || GREENHOUSE_TOKENS[lookupKey] || null;
+    } else if (company.atsSource === "ashby") {
+      ashbyToken = company.atsToken || ASHBY_TOKENS[lookupKey] || null;
+    } else if (company.atsSource === "lever") {
+      leverToken = company.atsToken || LEVER_TOKENS[lookupKey] || null;
+    }
+  } else {
+    // Fall back to static maps if atsSource is null/undefined in DB
+    greenhouseToken = GREENHOUSE_TOKENS[lookupKey] || null;
+    ashbyToken = ASHBY_TOKENS[lookupKey] || null;
+    leverToken = LEVER_TOKENS[lookupKey] || null;
+  }
 
   try {
     if (greenhouseToken) {
