@@ -9,7 +9,7 @@ import {
   checkFileSignature,
   validatePdfStructure,
   type AllowedFileType,
-} from "infra/enrichment/file-signature.service";
+} from "shared/services/security/file-signature.service";
 
 // ---------------------------------------------------------------------------
 // LOGGER

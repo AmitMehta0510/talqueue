@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("shared/database/prisma", () => ({
   default: {
-    college: { findMany: vi.fn() },
+    collegeTpo: { findMany: vi.fn() },
     profile: { count: vi.fn(), findMany: vi.fn() },
     placementDrive: { count: vi.fn(), findMany: vi.fn() },
     education: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
@@ -112,8 +112,8 @@ describe("requireTpoRole", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("calls next() and attaches tpoCollegeIds when user is a valid TPO", async () => {
-    (prisma.college.findMany as any).mockResolvedValueOnce([
-      { id: "college-1", name: "IIT Delhi" },
+    (prisma.collegeTpo.findMany as any).mockResolvedValueOnce([
+      { collegeId: "college-1", college: { id: "college-1", name: "IIT Delhi" } },
     ]);
 
     const req = { user: { id: "tpo-user-1" } } as any;
@@ -126,7 +126,7 @@ describe("requireTpoRole", () => {
   });
 
   it("calls next(AppError 403) when user is not TPO of any college", async () => {
-    (prisma.college.findMany as any).mockResolvedValueOnce([]);
+    (prisma.collegeTpo.findMany as any).mockResolvedValueOnce([]);
 
     const req = { user: { id: "non-tpo-user" } } as any;
     const res = makeRes();

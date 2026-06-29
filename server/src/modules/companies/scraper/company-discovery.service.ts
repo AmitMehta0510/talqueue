@@ -6,7 +6,7 @@ import { generateRandomAlphanumeric } from "shared/utils/random";
 import { processCompany, CompanyRow } from "./job-scraper.service";
 import { syncJobsToElasticBulk } from "services/elasticSync";
 import { enrichCompanyMeta } from "infra/enrichment/company-enrichment.service";
-import { resilientGet, jitteredDelay } from "../../../lib/resilientHttp";
+import { resilientGet, jitteredDelay } from "shared/services/network/resilientHttp";
 
 // ---------------------------------------------------------------------------
 // CONSTANTS

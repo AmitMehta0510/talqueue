@@ -30,7 +30,7 @@ const TIMEOUT_MS     = 8000;
 
 const OUTPUT_PATH = path.resolve(
   __dirname,
-  "../src/modules/companies/scraper/data/greenhouse-boards.json"
+  "../../src/modules/companies/scraper/data/greenhouse-boards.json"
 );
 
 const EXISTING_PATH = OUTPUT_PATH;

@@ -1,4 +1,4 @@
-import { runJobScrape } from "./job-scraper.service";
+import { runJobScrape } from "modules/companies/scraper/job-scraper.service";
 
 async function main() {
   console.log("Starting manual seeding of job openings...");

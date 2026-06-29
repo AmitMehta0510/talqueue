@@ -498,9 +498,10 @@ export const updateApplicationStatus = async (
       `;
       const job = jobs[0];
 
-      if (job && job.openings !== null && job.openings !== undefined && job.openings >= 1) {
-        // Only decrement when openings is a genuine positive count (>= 1).
-        // Jobs with openings=0 are ATS/mock jobs without tracked slots — skip.
+      if (job && job.openings !== null && job.openings !== undefined) {
+        if (job.openings <= 0) {
+          throw new AppError("No openings remaining for this job", 400);
+        }
         const nextOpenings = job.openings - 1;
         await tx.job.update({
           where: { id: application.jobId },

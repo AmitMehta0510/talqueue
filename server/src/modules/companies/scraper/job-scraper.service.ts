@@ -3,7 +3,7 @@ import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import { JobType, WorkMode, JobStatus } from "@prisma/client";
 import { syncJobsToElasticBulk } from "services/elasticSync";
-import { resilientGet, resilientPost } from "../../../lib/resilientHttp";
+import { resilientGet, resilientPost } from "shared/services/network/resilientHttp";
 
 // ---------------------------------------------------------------------------
 // CONCURRENCY UTILITIES
