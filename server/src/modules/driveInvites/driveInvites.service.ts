@@ -295,12 +295,18 @@ export const respondToInvite = async (
     // TPO/CDCR responds on behalf of college
     isAuthorized = await isCollegeAdminOrCdcr(actorId, invite.collegeId);
   } else {
-    // Company admin responds on behalf of company
-    const admin = await prisma.companyAdmin.findFirst({
-      where: { userId: actorId, companyId: invite.companyId },
-      select: { id: true },
-    });
-    isAuthorized = !!admin;
+    // Recruiter (Experience) or Company Admin responds on behalf of company
+    const [exp, admin] = await Promise.all([
+      prisma.experience.findFirst({
+        where: { userId: actorId, companyId: invite.companyId },
+        select: { id: true },
+      }),
+      prisma.companyAdmin.findFirst({
+        where: { userId: actorId, companyId: invite.companyId },
+        select: { id: true },
+      }),
+    ]);
+    isAuthorized = !!exp || !!admin;
   }
   if (!isAuthorized) throw new AppError("Unauthorized to respond to this invite", 403);
 

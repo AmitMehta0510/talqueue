@@ -99,6 +99,43 @@ function RequirePlatformAdmin({ children }: { children: ReactNode }) {
   return children;
 }
 
+function RequireRecruiter({ children }: { children: ReactNode }) {
+  const { authStatus, user } = useAuth();
+
+  if (authStatus === "checking") {
+    return <PageLoader />;
+  }
+
+  const isRecruiter =
+    user?.primaryRole === "RECRUITER" ||
+    user?.roles?.some((ur: any) => ur.role?.name === "RECRUITER");
+
+  if (!user || !isRecruiter) {
+    return <Navigate to="/feed" replace />;
+  }
+
+  return children;
+}
+
+function RequireTpo({ children }: { children: ReactNode }) {
+  const { authStatus, user } = useAuth();
+
+  if (authStatus === "checking") {
+    return <PageLoader />;
+  }
+
+  const isTpo =
+    user?.primaryRole === "TPO" ||
+    user?.primaryRole === "COLLEGE_ADMIN" ||
+    user?.roles?.some((ur: any) => ur.role?.name === "TPO" || ur.role?.name === "COLLEGE_ADMIN");
+
+  if (!user || !isTpo) {
+    return <Navigate to="/feed" replace />;
+  }
+
+  return children;
+}
+
 function PublicOnly({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
   const location = useLocation();
@@ -266,7 +303,9 @@ function AppRoutes() {
             path="/recruiter"
             element={
               <RequireAuth>
-                <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
+                <RequireRecruiter>
+                  <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
+                </RequireRecruiter>
               </RequireAuth>
             }
           />
@@ -274,7 +313,9 @@ function AppRoutes() {
             path="/recruiter/drive/:driveId"
             element={
               <RequireAuth>
-                <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
+                <RequireRecruiter>
+                  <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
+                </RequireRecruiter>
               </RequireAuth>
             }
           />
@@ -282,7 +323,9 @@ function AppRoutes() {
             path="/tpo-dashboard"
             element={
               <RequireAuth>
-                <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
+                <RequireTpo>
+                  <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
+                </RequireTpo>
               </RequireAuth>
             }
           />
