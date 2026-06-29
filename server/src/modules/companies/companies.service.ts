@@ -8,7 +8,7 @@ import { trackRecommendationImpression } from "modules/discovery/recommendation-
 
 import slugify from "slugify";
 import { runCompanySeed } from "./scraper/company-scraper.service";
-import { enrichCompanyDomain } from "services/enrichment.service";
+import { enrichCompanyDomain } from "./enrichment.service";
 
 // HELPERS
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
