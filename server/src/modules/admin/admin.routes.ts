@@ -2,7 +2,7 @@ import { Router } from "express";
 import { protect, protect as isAuthenticated } from "modules/auth/auth.middleware";
 import { requirePlatformAdmin, requirePlatformAdmin as isAdminOrSuperAdmin } from "shared/middleware/requirePlatformAdmin";
 import { requireSuperAdmin } from "shared/middleware/requireSuperAdmin";
-import { scraperAuthMiddleware } from "shared/middleware/scraper-auth.middleware";
+import { scraperAuthMiddleware } from "./scraper-auth.middleware";
 
 import {
   assignCollegeAdminHandler,
