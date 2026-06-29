@@ -165,6 +165,15 @@ export const checkDriveEligibility = async (
     },
   });
 
+  if (!education) {
+    reasons.push("You must link your college and complete your academic profile to be eligible.");
+    return {
+      eligible: false,
+      reasons,
+      missingFields: ["education"],
+    };
+  }
+
 
   // ── CGPA check ────────────────────────────────────────────────────────────
 

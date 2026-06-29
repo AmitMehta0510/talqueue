@@ -43,6 +43,9 @@ export function DriveInviteModal({ companyId, companyName, onClose }: DriveInvit
   });
   const [roles, setRoles] = useState<string[]>([]);
   const [roleInput, setRoleInput] = useState("");
+  const [eligibleBranches, setEligibleBranches] = useState<string[]>([]);
+  const [branchInput, setBranchInput] = useState("");
+  const [eligibleYears, setEligibleYears] = useState<number[]>([]);
 
   useEffect(() => {
     if (collegeQuery.trim().length < 2) { setCollegeSuggestions([]); return; }
@@ -85,6 +88,8 @@ export function DriveInviteModal({ companyId, companyName, onClose }: DriveInvit
       salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
       salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
       minCgpa: form.minCgpa ? Number(form.minCgpa) : undefined,
+      eligibleBranches,
+      eligibleYears,
       currency: "INR",
     });
     onClose();
@@ -215,6 +220,114 @@ export function DriveInviteModal({ companyId, companyName, onClose }: DriveInvit
                   <input type="number" placeholder="Max" value={form.salaryMax} onChange={(e) => setForm((f) => ({ ...f, salaryMax: e.target.value }))} className="field py-2 px-3 text-sm" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Candidate Eligibility Criteria */}
+          <div className="space-y-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-650 dark:text-indigo-400">
+              Candidate Eligibility Criteria
+            </h4>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Minimum CGPA */}
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">Min CGPA Required</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  placeholder="e.g. 7.5 (Optional)"
+                  value={form.minCgpa}
+                  onChange={(e) => setForm((f) => ({ ...f, minCgpa: e.target.value }))}
+                  className="field"
+                />
+              </div>
+
+              {/* Target Years */}
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">Eligible Year(s) of Study</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {[1, 2, 3, 4].map((year) => {
+                    const isSelected = eligibleYears.includes(year);
+                    return (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => {
+                          setEligibleYears((prev) =>
+                            isSelected ? prev.filter((y) => y !== year) : [...prev, year]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-surface border-base text-secondary hover:bg-surface-2"
+                        }`}
+                      >
+                        Yr {year}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Target Branches */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary mb-1.5">Eligible Branches / Departments</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Computer Science, Mechanical..."
+                  value={branchInput}
+                  onChange={(e) => setBranchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const trimmed = branchInput.trim();
+                      if (trimmed && !eligibleBranches.includes(trimmed)) {
+                        setEligibleBranches((prev) => [...prev, trimmed]);
+                      }
+                      setBranchInput("");
+                    }
+                  }}
+                  className="field flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = branchInput.trim();
+                    if (trimmed && !eligibleBranches.includes(trimmed)) {
+                      setEligibleBranches((prev) => [...prev, trimmed]);
+                    }
+                    setBranchInput("");
+                  }}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              {eligibleBranches.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {eligibleBranches.map((branch) => (
+                    <span
+                      key={branch}
+                      className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-400"
+                    >
+                      {branch}
+                      <button
+                        type="button"
+                        onClick={() => setEligibleBranches((p) => p.filter((x) => x !== branch))}
+                        className="text-indigo-400 dark:text-indigo-500 hover:text-indigo-750 dark:hover:text-indigo-350"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
