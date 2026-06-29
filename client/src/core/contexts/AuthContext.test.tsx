@@ -155,7 +155,7 @@ describe("Suite 1 — AuthContext Core Mechanics", () => {
     // Default: no stored token, API is online
     mockStorage.getToken.mockReturnValue(null);
     mockStorage.subscribe.mockReturnValue(vi.fn());
-    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: {} });
+    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: { status: "ok" } });
   });
 
   afterEach(() => {
@@ -388,7 +388,7 @@ function renderWithStubAuth(
     override.user ? MOCK_TOKEN : null,
   );
   mockStorage.subscribe.mockReturnValue(vi.fn());
-  mockApi.health.mockResolvedValue({ success: true, message: "ok", data: {} });
+  mockApi.health.mockResolvedValue({ success: true, message: "ok", data: { status: "ok" } });
 
   if (override.user) {
     mockApi.me.mockResolvedValue({
@@ -451,7 +451,7 @@ describe("Suite 2 — Route Guards Security Engine", () => {
     // Keep api.me pending indefinitely so authStatus stays "checking"
     mockStorage.getToken.mockReturnValue(MOCK_TOKEN);
     mockStorage.subscribe.mockReturnValue(vi.fn());
-    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: {} });
+    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: { status: "ok" } });
     mockApi.me.mockImplementation(() => new Promise(() => undefined)); // never resolves
 
     const queryClient = makeQueryClient();
@@ -492,7 +492,7 @@ describe("Suite 2 — Route Guards Security Engine", () => {
   it("PublicOnly — authenticated user hitting /auth is redirected to /feed", async () => {
     mockStorage.getToken.mockReturnValue(MOCK_TOKEN);
     mockStorage.subscribe.mockReturnValue(vi.fn());
-    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: {} });
+    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: { status: "ok" } });
     mockApi.me.mockResolvedValueOnce({
       success: true,
       message: "ok",
@@ -541,7 +541,7 @@ describe("Suite 2 — Route Guards Security Engine", () => {
   it("PublicOnly — renders PageLoader while authStatus is 'checking'", async () => {
     mockStorage.getToken.mockReturnValue(MOCK_TOKEN);
     mockStorage.subscribe.mockReturnValue(vi.fn());
-    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: {} });
+    mockApi.health.mockResolvedValue({ success: true, message: "ok", data: { status: "ok" } });
     mockApi.me.mockImplementation(() => new Promise(() => undefined));
 
     const queryClient = makeQueryClient();
