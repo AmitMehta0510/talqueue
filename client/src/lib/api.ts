@@ -1,4 +1,4 @@
-import { authStorage } from "./storage";
+import { authStorage } from "../core/utils/storage";
 
 export type ApiEnvelope<T> = {
   success: boolean;

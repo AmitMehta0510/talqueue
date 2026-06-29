@@ -28,8 +28,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
+import "@testing-library/jest-dom";
 
 // --------------------------------------------------------------------------
 // Module-level mocks (hoisted before any import resolution)
@@ -81,7 +82,7 @@ import { AuthProvider, useAuth } from "./AuthContext";
 // Typed mock aliases for clean assertions
 // --------------------------------------------------------------------------
 
-const mockApi = api as {
+const mockApi = api as unknown as {
   health: MockedFunction<typeof api.health>;
   me: MockedFunction<typeof api.me>;
   login: MockedFunction<typeof api.login>;
@@ -89,7 +90,7 @@ const mockApi = api as {
   register: MockedFunction<typeof api.register>;
 };
 
-const mockStorage = authStorage as {
+const mockStorage = authStorage as unknown as {
   getToken: MockedFunction<typeof authStorage.getToken>;
   setToken: MockedFunction<typeof authStorage.setToken>;
   clearToken: MockedFunction<typeof authStorage.clearToken>;
@@ -373,52 +374,6 @@ function LocationDisplay() {
   return <div data-testid="location">{loc.pathname}</div>;
 }
 
-/**
- * Mini App that mirrors the real guard structure from App.tsx.
- * The guards are copy-inlined here so they consume our mock AuthContext.
- */
-function buildGuardTree(override: AuthContextOverride) {
-  // Inline RequireAuth mirroring App.tsx logic (uses useAuth internally)
-  function RequireAuthLocal({ children }: { children: ReactNode }) {
-    const { authStatus, user } = useAuth();
-    const location = useLocation();
-
-    if (authStatus === "checking") {
-      return <div data-testid="page-loader">Loading workspace</div>;
-    }
-    if (!user) {
-      const { Navigate } = require("react-router-dom");
-      return <Navigate to="/auth" replace state={{ from: location }} />;
-    }
-    return <>{children}</>;
-  }
-
-  // Inline PublicOnly mirroring App.tsx logic
-  function PublicOnlyLocal({ children }: { children: ReactNode }) {
-    const { authStatus, user } = useAuth();
-    const location = useLocation();
-    const redirectTo =
-      (location.state as { from?: { pathname?: string; search?: string } } | null)
-        ?.from || { pathname: "/feed", search: "" };
-
-    if (authStatus === "checking") {
-      return <div data-testid="page-loader">Loading workspace</div>;
-    }
-    if (user) {
-      const { Navigate } = require("react-router-dom");
-      return (
-        <Navigate
-          to={`${redirectTo.pathname || "/feed"}${redirectTo.search || ""}`}
-          replace
-        />
-      );
-    }
-    return <>{children}</>;
-  }
-
-  return { RequireAuthLocal, PublicOnlyLocal };
-}
-
 // ---- Utility: render a MemoryRouter tree with stubbed AuthProvider --------
 
 function renderWithStubAuth(
@@ -462,8 +417,6 @@ describe("Suite 2 — Route Guards Security Engine", () => {
   // Test 2.1 — RequireAuth: unauthenticated user is redirected to /auth
   // -------------------------------------------------------------------------
   it("RequireAuth — anonymous user is redirected to /auth and protected content is NOT rendered", async () => {
-    const { Navigate } = await import("react-router-dom");
-
     // Build a minimal route tree that reflects App.tsx patterns
     renderWithStubAuth(
       "/profile",
@@ -629,7 +582,6 @@ describe("Suite 2 — Route Guards Security Engine", () => {
 /** Mirrors App.tsx RequireAuth for anonymous-redirect testing. */
 function AuthGateWrapper({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
-  const { Navigate } = require("react-router-dom");
   const location = useLocation();
 
   if (authStatus === "checking") {
@@ -654,7 +606,6 @@ function CheckingStateGate({ children }: { children: ReactNode }) {
 /** Mirrors App.tsx PublicOnly for authenticated-redirect testing. */
 function PublicOnlyGate({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
-  const { Navigate } = require("react-router-dom");
   const location = useLocation();
   const redirectTo =
     (location.state as { from?: { pathname?: string; search?: string } } | null)

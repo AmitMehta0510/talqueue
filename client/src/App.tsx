@@ -7,8 +7,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AppErrorBoundary, PageLoader } from "./components/ui";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ToastProvider } from "./contexts/ToastContext";
+import { AuthProvider, useAuth } from "./core/contexts/AuthContext";
+import { ToastProvider } from "./core/contexts/ToastContext";
 import { AppLayout } from "./layout/AppLayout";
 import { AuthPage } from "./pages/AuthPage";
 import { ChatPage } from "./pages/ChatPage";
