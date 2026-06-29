@@ -28,7 +28,8 @@ export const greenhouseWebhookHandler = asyncHandler(
     const greenhouseSecret = process.env.GREENHOUSE_WEBHOOK_SECRET;
     if (greenhouseSecret) {
       const signature = req.headers["x-greenhouse-signature"];
-      if (!signature || signature !== greenhouseSecret) {
+      const signatureStr = Array.isArray(signature) ? signature[0] : signature;
+      if (!signatureStr || signatureStr !== greenhouseSecret) {
         throw new AppError("Invalid Greenhouse webhook signature", 401);
       }
     }
@@ -64,7 +65,7 @@ export const greenhouseWebhookHandler = asyncHandler(
         responsibilities: "See description for details.",
         location,
         type: "FULL_TIME",
-        workMode: "OFFICE",
+        workMode: "ONSITE",
         applyUrl,
         skillsRequired: [],
         status,
@@ -118,7 +119,8 @@ export const leverWebhookHandler = asyncHandler(
     const leverSecret = process.env.LEVER_WEBHOOK_SECRET;
     if (leverSecret) {
       const signature = req.headers["x-lever-signature"];
-      if (!signature || signature !== leverSecret) {
+      const signatureStr = Array.isArray(signature) ? signature[0] : signature;
+      if (!signatureStr || signatureStr !== leverSecret) {
         throw new AppError("Invalid Lever webhook signature", 401);
       }
     }
@@ -153,7 +155,7 @@ export const leverWebhookHandler = asyncHandler(
         responsibilities: "See description for details.",
         location,
         type: "FULL_TIME",
-        workMode: "OFFICE",
+        workMode: "ONSITE",
         applyUrl,
         skillsRequired: [],
         status,

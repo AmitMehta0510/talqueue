@@ -15,7 +15,7 @@ export async function dispatchDriveMatchAlerts(driveId: string): Promise<string[
     where: { id: driveId },
     select: {
       id: true,
-      title: true,
+      driveTitle: true,
       minCgpa: true,
       targetCollegeId: true,
       college: { select: { name: true } },
@@ -52,17 +52,18 @@ export async function dispatchDriveMatchAlerts(driveId: string): Promise<string[
       const eligibility = await checkDriveEligibility(student.id, drive.id);
       if (eligibility.eligible) {
         // 1. Dispatch official in-app alert
-        await createNotification(
-          student.id,
-          NotificationType.PLACEMENT_DRIVE_UPDATE,
-          `New Eligible Campus Drive: "${drive.title}" is now open for applications at ${drive.college.name}. CGPA cutoff: ${drive.minCgpa || "None"}.`,
-          `/placement-drives/${drive.id}`
-        );
+        await createNotification({
+          userId: student.id,
+          type: NotificationType.PLACEMENT_DRIVE_INVITE,
+          title: "Eligible Campus Drive Published",
+          message: `New Eligible Campus Drive: "${drive.driveTitle}" is now open for applications at ${drive.college.name}. CGPA cutoff: ${drive.minCgpa || "None"}.`,
+          actionUrl: `/placement-drives/${drive.id}`,
+        });
 
         // 2. Dispatch simulated WhatsApp / SMS alert trigger
         console.log(
           `[WhatsApp Alert] Sent to student "${student.profile?.fullName || student.email}": ` +
-          `You qualify for the new "${drive.title}" campus drive at ${drive.college.name}! Apply on the platform now.`
+          `You qualify for the new "${drive.driveTitle}" campus drive at ${drive.college.name}! Apply on the platform now.`
         );
 
         notifiedStudentIds.push(student.id);
