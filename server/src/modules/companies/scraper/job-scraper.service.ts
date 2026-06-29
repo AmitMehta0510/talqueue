@@ -715,6 +715,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
             skillsRequired,
             status: "OPEN",
+            openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "greenhouse",
             postedAt: job.updated_at ? new Date(job.updated_at) : null,
           }
@@ -815,6 +816,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             applyUrl,
             skillsRequired,
             status: "OPEN",
+            openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "lever",
             postedAt: job.createdAt ? new Date(job.createdAt) : null,
           }
@@ -885,6 +887,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
             skillsRequired,
             status: "OPEN",
+            openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "ashby",
           }
         });
@@ -960,6 +963,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             applyUrl: mockApplyUrl,
             skillsRequired,
             status: "OPEN",
+            openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "mock",
           }
         });
@@ -1012,6 +1016,7 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             applyUrl: mockApplyUrl,
             skillsRequired: iSkills,
             status: "OPEN",
+            openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "mock",
           }
         });
