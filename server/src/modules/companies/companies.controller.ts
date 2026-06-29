@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { getOrSetCache, bustCache, bustCachePattern } from "shared/database/redisCache";
 
 import { CompanySize, CompanyType } from "@prisma/client";
 
@@ -107,8 +108,13 @@ export const getCompaniesHandler = asyncHandler(
 export const getCompanyBySlugHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const slug = req.params.slug as string;
+    const userId = (req as any).user?.id;
+    const cacheKey = `companies:profile:${slug}:${userId || "guest"}`;
+    const cacheTtl = 3600; // Cache for 1 hour
 
-    const company = await getCompanyBySlug(req.user?.id, slug);
+    const company = await getOrSetCache(cacheKey, cacheTtl, () =>
+      getCompanyBySlug(userId, slug)
+    );
 
     res.json(successResponse(company));
   },
@@ -341,6 +347,10 @@ export const updateCompanyHandler = asyncHandler(
     const { companyId } = req.params;
     const validatedData = createCompanySchema.partial().parse(req.body);
     const company = await updateCompany(companyId, validatedData);
+
+    // Bust the profile cache for this company slug
+    await bustCachePattern(`companies:profile:${company.slug}:*`);
+
     res.json(successResponse(company, "Company profile updated successfully"));
   }
 );

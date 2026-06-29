@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import prisma from "shared/database/prisma";
 import { enqueueEmail } from "services/mailQueue";
+import { getOrSetCache } from "shared/database/redisCache";
 
 import asyncHandler from "shared/utils/asyncHandler";
 import AppError from "shared/errors/AppError";
@@ -484,93 +485,100 @@ export const getPublicBatchStudentsHandler = asyncHandler(
       throw new AppError("Invalid graduation year", 400);
     }
 
-    const college = await prisma.college.findUnique({
-      where: { id: collegeId },
-      select: { name: true },
-    });
-    if (!college) {
-      throw new AppError("College not found", 404);
-    }
+    const cacheKey = `colleges:public-batch:${collegeId}:${graduationYear}`;
+    const cacheTtl = 3600; // Cache for 1 hour
 
-    const students = await prisma.user.findMany({
-      where: {
-        status: "ACTIVE",
-        roles: {
-          some: {
-            role: {
-              name: "STUDENT",
-            },
-          },
-        },
-        educations: {
-          some: {
-            collegeId,
-            endYear: graduationYear,
-          },
-        },
-      },
-      select: {
-        id: true,
-        username: true,
-        primaryRole: true,
-        verifiedEngineer: true,
-        reputationScore: true,
-        engineeringScore: true,
-        profile: {
-          select: {
-            fullName: true,
-            avatarUrl: true,
-            headline: true,
-            bio: true,
-            githubUrl: true,
-            linkedinUrl: true,
-          },
-        },
-        skills: {
-          select: {
-            skill: {
-              select: {
-                name: true,
+    const cachedResult = await getOrSetCache(cacheKey, cacheTtl, async () => {
+      const college = await prisma.college.findUnique({
+        where: { id: collegeId },
+        select: { name: true },
+      });
+      if (!college) {
+        throw new AppError("College not found", 404);
+      }
+
+      const students = await prisma.user.findMany({
+        where: {
+          status: "ACTIVE",
+          roles: {
+            some: {
+              role: {
+                name: "STUDENT",
               },
             },
-            level: true,
-            verified: true,
+          },
+          educations: {
+            some: {
+              collegeId,
+              endYear: graduationYear,
+            },
           },
         },
-        educations: {
-          where: {
-            collegeId,
-            endYear: graduationYear,
+        select: {
+          id: true,
+          username: true,
+          primaryRole: true,
+          verifiedEngineer: true,
+          reputationScore: true,
+          engineeringScore: true,
+          profile: {
+            select: {
+              fullName: true,
+              avatarUrl: true,
+              headline: true,
+              bio: true,
+              githubUrl: true,
+              linkedinUrl: true,
+            },
           },
-          select: {
-            degree: true,
-            fieldOfStudy: true,
-            cgpa: true,
-            startYear: true,
-            endYear: true,
+          skills: {
+            select: {
+              skill: {
+                select: {
+                  name: true,
+                },
+              },
+              level: true,
+              verified: true,
+            },
+          },
+          educations: {
+            where: {
+              collegeId,
+              endYear: graduationYear,
+            },
+            select: {
+              degree: true,
+              fieldOfStudy: true,
+              cgpa: true,
+              startYear: true,
+              endYear: true,
+            },
+          },
+          experiences: {
+            select: {
+              companyName: true,
+              title: true,
+              isCurrent: true,
+            },
           },
         },
-        experiences: {
-          select: {
-            companyName: true,
-            title: true,
-            isCurrent: true,
-          },
+        orderBy: {
+          engineeringScore: "desc",
         },
-      },
-      orderBy: {
-        engineeringScore: "desc",
-      },
+      });
+
+      return {
+        collegeName: college.name,
+        graduationYear,
+        students,
+      };
     });
 
     res.status(200).json(
       successResponse(
-        {
-          collegeName: college.name,
-          graduationYear,
-          students,
-        },
-        `Retrieved public batch profiles for ${college.name} graduating in ${graduationYear}.`
+        cachedResult,
+        `Retrieved public batch profiles for ${cachedResult.collegeName} graduating in ${graduationYear}.`
       )
     );
   }

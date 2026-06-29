@@ -2,6 +2,7 @@ import { Router } from "express";
 import { protect, protect as isAuthenticated } from "modules/auth/auth.middleware";
 import { requirePlatformAdmin, requirePlatformAdmin as isAdminOrSuperAdmin } from "shared/middleware/requirePlatformAdmin";
 import { requireSuperAdmin } from "shared/middleware/requireSuperAdmin";
+import { scraperAuthMiddleware } from "shared/middleware/scraper-auth.middleware";
 
 import {
   assignCollegeAdminHandler,
@@ -55,7 +56,14 @@ import {
 
 const router = Router();
 
-// All admin routes require authentication + platform admin role
+// ============================================================
+// SERVERLESS CRON / TRIGGER ENDPOINTS (Protected via Scraper Cron Key or platform admin session)
+// ============================================================
+router.post("/scraper/run", scraperAuthMiddleware, adminTriggerScraperHandler);
+router.post("/scraper/jobs", scraperAuthMiddleware, adminTriggerJobScraperHandler);
+router.post("/scraper/companies-discovery", scraperAuthMiddleware, adminTriggerCompanyDiscoveryHandler);
+
+// All other admin routes require authentication + platform admin role
 router.use(protect, requirePlatformAdmin);
 
 // ============================================================
@@ -106,9 +114,6 @@ router.delete("/content/posts/:postId", adminDeletePostHandler);
 router.get("/content/hackathons", adminListHackathonsHandler);
 router.patch("/content/hackathons/:hackathonId/status", adminUpdateHackathonStatusHandler);
 router.patch("/content/hackathons/:hackathonId", adminUpdateHackathonHandler);
-router.post("/scraper/run", adminTriggerScraperHandler);
-router.post("/scraper/jobs", adminTriggerJobScraperHandler);
-router.post("/scraper/companies-discovery", adminTriggerCompanyDiscoveryHandler);
 
 // Projects
 router.get("/content/projects", adminListProjectsHandler);

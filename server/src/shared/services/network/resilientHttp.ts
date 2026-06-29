@@ -30,6 +30,34 @@ export function pickRandomUA(): string {
 }
 
 /**
+ * Returns a randomized proxy configuration configuration object for Axios.
+ * Falls back to null if no proxies are configured or URL parsing fails.
+ */
+export function getNextProxyConfig(): any | null {
+  const proxyServers = process.env.PROXY_SERVERS
+    ? process.env.PROXY_SERVERS.split(",").map((p) => p.trim()).filter(Boolean)
+    : [];
+
+  if (proxyServers.length === 0) return null;
+  const proxyUrl = proxyServers[Math.floor(Math.random() * proxyServers.length)];
+  try {
+    const parsed = new URL(proxyUrl);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port, 10) || 80,
+      auth: parsed.username && parsed.password ? {
+        username: decodeURIComponent(parsed.username),
+        password: decodeURIComponent(parsed.password),
+      } : undefined,
+      protocol: parsed.protocol.replace(":", ""),
+    };
+  } catch (err) {
+    console.error(`[resilientHttp] Invalid proxy URL: ${proxyUrl}`, err);
+    return null;
+  }
+}
+
+/**
  * Sleeps for `baseMs` ± half of `windowMs` milliseconds.
  * Replaces all static `sleep(REQUEST_DELAY_MS)` calls in scraper loops.
  * Minimum enforced delay: 80ms (prevents accidental sub-100ms burst).
@@ -68,9 +96,11 @@ export async function resilientGet(url: string, retries = 3): Promise<any> {
   let attempt = 0;
   while (attempt <= retries) {
     try {
+      const proxy = getNextProxyConfig();
       return await axios.get(url, {
         timeout: 10000,
         headers: { "User-Agent": pickRandomUA(), ...BROWSER_HEADERS },
+        proxy: proxy || undefined,
       });
     } catch (err: any) {
       const status: number | undefined = err?.response?.status;
@@ -102,6 +132,7 @@ export async function resilientPost(url: string, body: unknown = {}, retries = 3
   let attempt = 0;
   while (attempt <= retries) {
     try {
+      const proxy = getNextProxyConfig();
       return await axios.post(url, body, {
         timeout: 10000,
         headers: {
@@ -109,6 +140,7 @@ export async function resilientPost(url: string, body: unknown = {}, retries = 3
           "Content-Type": "application/json",
           ...BROWSER_HEADERS,
         },
+        proxy: proxy || undefined,
       });
     } catch (err: any) {
       const status: number | undefined = err?.response?.status;
