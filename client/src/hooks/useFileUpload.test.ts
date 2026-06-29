@@ -29,8 +29,17 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 vi.mock("../lib/api", () => ({
   api: {
     getPresignedUrl: vi.fn(),
+    validateFile: vi.fn(),
   },
 }));
+
+vi.mock("../contexts/ToastContext", () => ({
+  useToast: () => ({
+    showToast: mockShowToast,
+  }),
+}));
+
+const mockShowToast = vi.fn();
 
 // --------------------------------------------------------------------------
 // Lazy imports (after mocks are registered)
@@ -40,11 +49,15 @@ import { api } from "../lib/api";
 import { useFileUpload, type UploadResult } from "./useFileUpload";
 
 // --------------------------------------------------------------------------
-// Typed mock alias
+// Typed mock aliases
 // --------------------------------------------------------------------------
 
 const mockGetPresignedUrl = api.getPresignedUrl as MockedFunction<
   typeof api.getPresignedUrl
+>;
+
+const mockValidateFile = api.validateFile as MockedFunction<
+  typeof api.validateFile
 >;
 
 // --------------------------------------------------------------------------
@@ -98,6 +111,8 @@ describe("Suite 1 — Absolute Upload Success Pathway", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+
+    mockValidateFile.mockResolvedValue({ success: true, message: "Valid", data: { detectedType: "png", purpose: "avatar" } } as any);
 
     // Spy on global fetch (S3 binary PUT)
     fetchSpy = vi.spyOn(globalThis, "fetch") as MockedFunction<typeof globalThis.fetch>;
@@ -259,6 +274,8 @@ describe("Suite 2 — Exception Frameworks & Failure Rollbacks", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
 
+    mockValidateFile.mockResolvedValue({ success: true, message: "Valid", data: { detectedType: "png", purpose: "avatar" } } as any);
+
     fetchSpy = vi.spyOn(globalThis, "fetch") as MockedFunction<typeof globalThis.fetch>;
   });
 
@@ -415,5 +432,65 @@ describe("Suite 2 — Exception Frameworks & Failure Rollbacks", () => {
     // Error must be cleared at the start of the second call
     expect(result.current.error).toBeNull();
     expect(result.current.uploading).toBe(false);
+});
+
+// --------------------------------------------------------------------------
+// Suite 3 — Secure File Upload Bridge & Rejection Gates
+// --------------------------------------------------------------------------
+
+describe("Suite 3 — Secure File Upload Bridge & Rejection Gates", () => {
+  let fetchSpy: MockedFunction<typeof globalThis.fetch>;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    fetchSpy = vi.spyOn(globalThis, "fetch") as MockedFunction<typeof globalThis.fetch>;
+  });
+
+  it("upload() — validation success: calls validateFile first, then continues pipeline", async () => {
+    mockValidateFile.mockResolvedValueOnce({ success: true } as any);
+    mockGetPresignedUrl.mockResolvedValueOnce(makePresignedResponse());
+    fetchSpy.mockResolvedValueOnce(makeS3OkResponse());
+
+    const { result } = renderHook(() => useFileUpload());
+    const file = makeFile("test.pdf", "application/pdf");
+
+    await act(async () => {
+      await result.current.upload(file, "attachment");
+    });
+
+    expect(mockValidateFile).toHaveBeenCalledOnce();
+    expect(mockGetPresignedUrl).toHaveBeenCalledOnce();
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(mockShowToast).not.toHaveBeenCalled();
+  });
+
+  it("upload() — validation failure: calls validateFile, intercepts rejection, toast is shown, and S3 is not called", async () => {
+    // Mock validateFile throwing a 400 Bad Request simulation
+    const validationError = new Error("Invalid file signature");
+    mockValidateFile.mockRejectedValueOnce(validationError);
+
+    const { result } = renderHook(() => useFileUpload());
+    const file = makeFile("fake.pdf", "application/pdf");
+
+    let caughtErr: any;
+    await act(async () => {
+      try {
+        await result.current.upload(file, "attachment");
+      } catch (err) {
+        caughtErr = err;
+      }
+    });
+
+    // It must rethrow the validation error
+    expect(caughtErr).toEqual(validationError);
+    // It must show toast error with validation message
+    expect(mockShowToast).toHaveBeenCalledWith("error", "Invalid file signature");
+    // It must completely abort the transaction — getPresignedUrl and fetch must NEVER be called
+    expect(mockGetPresignedUrl).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result.current.uploading).toBe(false);
+    expect(result.current.error).toBe("Invalid file signature");
   });
 });
+
