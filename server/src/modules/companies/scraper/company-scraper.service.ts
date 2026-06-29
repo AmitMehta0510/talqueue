@@ -24,6 +24,8 @@ interface CompanySeedData {
 /**
  * Runs the seeding process for top companies.
  * Reads data from top-companies.json and upserts into the database.
+ * Optimized for production: processes records in batches of 50 with a staggered delay
+ * to avoid database load spikes, and skips redundant updates if values are unchanged.
  */
 export async function runCompanySeed() {
   console.log("[Company Seed] Starting company seeding...");
@@ -39,66 +41,107 @@ export async function runCompanySeed() {
   let created = 0;
   let updated = 0;
   const total = topCompanies.length;
+  const CHUNK_SIZE = 50;
+  const DELAY_MS = 800; // Delay in ms between chunks to prevent PostgreSQL connection saturation
 
-  for (const comp of topCompanies) {
-    try {
-      const existing = await prisma.company.findUnique({
-        where: { name: comp.name },
-        select: { id: true, slug: true, verified: true },
-      });
+  for (let i = 0; i < topCompanies.length; i += CHUNK_SIZE) {
+    const chunk = topCompanies.slice(i, i + CHUNK_SIZE);
 
-      if (existing) {
-        // Update existing record (do not overwrite slug)
-        await prisma.company.update({
-          where: { id: existing.id },
-          data: {
-            websiteUrl: comp.websiteUrl || null,
-            logoUrl: comp.logoUrl || null,
-            linkedinUrl: comp.linkedinUrl || null,
-            githubUrl: comp.githubUrl || null,
-            careersPageUrl: comp.careersPageUrl || null,
-            description: comp.description || null,
-            tagline: comp.tagline || null,
-            headquarters: comp.headquarters || null,
-            country: comp.country || null,
-            industry: comp.industry || null,
-            type: comp.type || null,
-            size: comp.size || null,
-            verified: true,
-          },
-        });
-        updated++;
-      } else {
-        // Create new company
-        // Append a 5-char random alphanumeric token to the base slug so that
-        // unique-constraint collisions are bypassed without any DB read loop.
-        const baseSlug = slugify(comp.name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
-        const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
+    await Promise.all(
+      chunk.map(async (comp) => {
+        try {
+          const existing = await prisma.company.findUnique({
+            where: { name: comp.name },
+            select: {
+              id: true,
+              websiteUrl: true,
+              logoUrl: true,
+              linkedinUrl: true,
+              githubUrl: true,
+              careersPageUrl: true,
+              description: true,
+              tagline: true,
+              headquarters: true,
+              country: true,
+              industry: true,
+              type: true,
+              size: true,
+            },
+          });
 
+          if (existing) {
+            // Optimize database writes: check if any target field has actually changed
+            const needsUpdate =
+              existing.websiteUrl !== (comp.websiteUrl || null) ||
+              existing.logoUrl !== (comp.logoUrl || null) ||
+              existing.linkedinUrl !== (comp.linkedinUrl || null) ||
+              existing.githubUrl !== (comp.githubUrl || null) ||
+              existing.careersPageUrl !== (comp.careersPageUrl || null) ||
+              existing.description !== (comp.description || null) ||
+              existing.tagline !== (comp.tagline || null) ||
+              existing.headquarters !== (comp.headquarters || null) ||
+              existing.country !== (comp.country || null) ||
+              existing.industry !== (comp.industry || null) ||
+              existing.type !== (comp.type || null) ||
+              existing.size !== (comp.size || null);
 
-        await prisma.company.create({
-          data: {
-            name: comp.name,
-            slug,
-            websiteUrl: comp.websiteUrl || null,
-            logoUrl: comp.logoUrl || null,
-            linkedinUrl: comp.linkedinUrl || null,
-            githubUrl: comp.githubUrl || null,
-            careersPageUrl: comp.careersPageUrl || null,
-            description: comp.description || null,
-            tagline: comp.tagline || null,
-            headquarters: comp.headquarters || null,
-            country: comp.country || null,
-            industry: comp.industry || null,
-            type: comp.type || null,
-            size: comp.size || null,
-            verified: true,
-          },
-        });
-        created++;
-      }
-    } catch (err) {
-      console.error(`[Company Seed] Failed to upsert company ${comp.name}:`, err);
+            if (needsUpdate) {
+              await prisma.company.update({
+                where: { id: existing.id },
+                data: {
+                  websiteUrl: comp.websiteUrl || null,
+                  logoUrl: comp.logoUrl || null,
+                  linkedinUrl: comp.linkedinUrl || null,
+                  githubUrl: comp.githubUrl || null,
+                  careersPageUrl: comp.careersPageUrl || null,
+                  description: comp.description || null,
+                  tagline: comp.tagline || null,
+                  headquarters: comp.headquarters || null,
+                  country: comp.country || null,
+                  industry: comp.industry || null,
+                  type: comp.type || null,
+                  size: comp.size || null,
+                  verified: true,
+                },
+              });
+              updated++;
+            }
+          } else {
+            // Create new company
+            const baseSlug = slugify(comp.name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
+            const slug = `${baseSlug}-${generateRandomAlphanumeric(5)}`;
+
+            await prisma.company.create({
+              data: {
+                name: comp.name,
+                slug,
+                websiteUrl: comp.websiteUrl || null,
+                logoUrl: comp.logoUrl || null,
+                linkedinUrl: comp.linkedinUrl || null,
+                githubUrl: comp.githubUrl || null,
+                careersPageUrl: comp.careersPageUrl || null,
+                description: comp.description || null,
+                tagline: comp.tagline || null,
+                headquarters: comp.headquarters || null,
+                country: comp.country || null,
+                industry: comp.industry || null,
+                type: comp.type || null,
+                size: comp.size || null,
+                verified: true,
+              },
+            });
+            created++;
+          }
+        } catch (err) {
+          console.error(`[Company Seed] Failed to upsert company ${comp.name}:`, err);
+        }
+      })
+    );
+
+    console.log(`[Company Seed] Processed ${Math.min(i + CHUNK_SIZE, total)} / ${total} companies...`);
+
+    if (i + CHUNK_SIZE < total) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
   }
 
