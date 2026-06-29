@@ -78,6 +78,9 @@ export interface AddEducationData {
   startYear?: number;
   endYear?: number;
   current?: boolean;
+  cgpa?: number | null;
+  backlogs?: number | null;
+  currentYear?: number | null;
 }
 
 const MAX_SKILLS = 30;
@@ -1619,6 +1622,9 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
           startYear: data.startYear,
           endYear: data.endYear,
           current: data.current || false,
+          cgpa: data.cgpa,
+          backlogs: data.backlogs,
+          currentYear: data.currentYear,
         },
         include: compactEducationInclude,
       });
@@ -1680,6 +1686,9 @@ export const addEducation = async (userId: string, data: AddEducationData) => {
         startYear: data.startYear,
         endYear: data.endYear,
         current: data.current || false,
+        cgpa: data.cgpa,
+        backlogs: data.backlogs,
+        currentYear: data.currentYear,
       },
       include: compactEducationInclude,
     });

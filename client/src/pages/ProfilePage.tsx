@@ -129,6 +129,9 @@ const emptyEducationForm = {
   startYear: "",
   endYear: "",
   current: false,
+  cgpa: "",
+  backlogs: "",
+  currentYear: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -503,6 +506,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
                 ? undefined
                 : Number(educationForm.endYear),
             current: educationForm.current,
+            cgpa: educationForm.cgpa ? Number(educationForm.cgpa) : undefined,
+            backlogs: educationForm.backlogs !== "" ? Number(educationForm.backlogs) : undefined,
+            currentYear: educationForm.currentYear ? Number(educationForm.currentYear) : undefined,
           }),
         });
       } else {
@@ -519,6 +525,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
                 ? undefined
                 : Number(educationForm.endYear),
             current: educationForm.current,
+            cgpa: educationForm.cgpa ? Number(educationForm.cgpa) : undefined,
+            backlogs: educationForm.backlogs !== "" ? Number(educationForm.backlogs) : undefined,
+            currentYear: educationForm.currentYear ? Number(educationForm.currentYear) : undefined,
           }),
         });
       }
@@ -585,6 +594,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       startYear: edu.startYear ? edu.startYear.toString() : "",
       endYear: edu.endYear ? edu.endYear.toString() : "",
       current: edu.current || false,
+      cgpa: edu.cgpa !== null && edu.cgpa !== undefined ? edu.cgpa.toString() : "",
+      backlogs: edu.backlogs !== null && edu.backlogs !== undefined ? edu.backlogs.toString() : "",
+      currentYear: edu.currentYear !== null && edu.currentYear !== undefined ? edu.currentYear.toString() : "",
     });
   };
 
@@ -746,6 +758,15 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
             departments={standardDepartments as any}
             departmentsLoading={standardDepartmentsQuery.isFetching}
             onVerify={handleVerifyCollegeEmail}
+            graduationYear={profileForm.graduationYear ? Number(profileForm.graduationYear) : null}
+            onSaveGraduationYear={async (year) => {
+              await updateProfile.mutateAsync({
+                ...compactPayload({
+                  graduationYear: year,
+                })
+              });
+            }}
+            isSavingGraduationYear={updateProfile.isPending}
           />
         )}
 
@@ -1575,6 +1596,9 @@ function EducationTab({
   departments,
   departmentsLoading,
   onVerify,
+  graduationYear,
+  onSaveGraduationYear,
+  isSavingGraduationYear,
 }: {
   educations: any[];
   isFetching: boolean;
@@ -1600,9 +1624,61 @@ function EducationTab({
   departments: Department[];
   departmentsLoading: boolean;
   onVerify?: (educationId: string, email: string, code?: string) => Promise<any>;
+  graduationYear: number | null;
+  onSaveGraduationYear: (year: number) => Promise<void>;
+  isSavingGraduationYear: boolean;
 }) {
+  const [localGradYear, setLocalGradYear] = useState(graduationYear?.toString() || "");
+
+  useEffect(() => {
+    setLocalGradYear(graduationYear?.toString() || "");
+  }, [graduationYear]);
+
+  const handleSaveGradYear = async () => {
+    const parsed = parseInt(localGradYear, 10);
+    if (isNaN(parsed) || parsed < 1970 || parsed > 2100) return;
+    await onSaveGraduationYear(parsed);
+  };
+
   return (
-    <div className="space-y-4">
+    <>
+      {/* Graduation & Eligibility Settings */}
+      <div className="panel p-5 bg-indigo-50/20 dark:bg-indigo-950/5 border border-indigo-150/40 dark:border-indigo-900/40 rounded-2xl space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+            <GraduationCap size={15} />
+            Academic Graduation Year
+          </h3>
+          <p className="text-xs text-muted-fg mt-0.5">
+            Set your expected graduation year. This is required for recruiter campus placement drive filters.
+          </p>
+        </div>
+
+        <div className="max-w-xs space-y-1">
+          <label className="block text-xs font-semibold text-secondary">Expected Graduation Year</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              className="field text-sm py-1.5 px-3"
+              placeholder="e.g. 2026"
+              value={localGradYear}
+              onChange={(e) => setLocalGradYear(e.target.value)}
+              min={1970}
+              max={2100}
+            />
+            <button
+              type="button"
+              onClick={handleSaveGradYear}
+              disabled={isSavingGraduationYear || localGradYear === (graduationYear?.toString() || "")}
+              className="btn-primary py-1.5 px-4 text-xs font-bold shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition"
+            >
+              {isSavingGraduationYear ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-primary">Education</h2>
@@ -1813,6 +1889,46 @@ function EducationTab({
                   Currently studying
                 </label>
               </div>
+
+              <Field label="Current CGPA / GPA">
+                <input
+                  className="field"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  value={form.cgpa}
+                  onChange={(e) => onFormChange({ ...form, cgpa: e.target.value })}
+                  placeholder="e.g. 8.5"
+                />
+              </Field>
+
+              <Field label="Active Backlogs">
+                <input
+                  className="field"
+                  type="number"
+                  min="0"
+                  value={form.backlogs}
+                  onChange={(e) => onFormChange({ ...form, backlogs: e.target.value })}
+                  placeholder="e.g. 0"
+                />
+              </Field>
+
+              <Field label="Current Year of Study">
+                <select
+                  className="field"
+                  value={form.currentYear}
+                  onChange={(e) => onFormChange({ ...form, currentYear: e.target.value })}
+                >
+                  <option value="">Select Year (optional)</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year (Final)</option>
+                  <option value="5">5th Year</option>
+                  <option value="6">6th Year</option>
+                </select>
+              </Field>
             </div>
             <div className="mt-4 flex justify-end">
               <button
@@ -1869,6 +1985,7 @@ function EducationTab({
         </button>
       )}
     </div>
+    </>
   );
 }
 
@@ -1989,9 +2106,7 @@ function SettingsTab({
           <Field label="Location">
             <input className="field" value={profileForm.location} onChange={set("location")} placeholder="Mumbai, India" />
           </Field>
-          <Field label="Graduation year">
-            <input className="field" type="number" value={profileForm.graduationYear} onChange={set("graduationYear")} placeholder="2027" min={1970} max={2100} />
-          </Field>
+
           <Field label="Bio" className="md:col-span-2">
             <textarea className="field min-h-28" value={profileForm.bio} onChange={set("bio")} placeholder="What you build, what you're learning, what kind of work you want..." maxLength={1000} />
           </Field>
@@ -2082,6 +2197,12 @@ function SettingsTab({
             <div className="relative">
               <Github size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
               <input className="field pl-8" value={profileForm.githubUrl} onChange={set("githubUrl")} placeholder="https://github.com/..." type="url" />
+            </div>
+          </Field>
+          <Field label="LinkedIn URL">
+            <div className="relative">
+              <Linkedin size={15} className="pointer-events-none absolute left-3 top-2.5 text-muted-fg" />
+              <input className="field pl-8" value={profileForm.linkedinUrl} onChange={set("linkedinUrl")} placeholder="https://linkedin.com/in/..." type="url" />
             </div>
           </Field>
           <Field label="Portfolio URL">

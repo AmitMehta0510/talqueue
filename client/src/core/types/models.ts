@@ -242,6 +242,9 @@ export type Education = {
   department?: Department | null;
   collegeEmail?: string | null;
   collegeEmailVerified?: boolean;
+  cgpa?: number | null;
+  backlogs?: number | null;
+  currentYear?: number | null;
 };
 
 export type CollegePage = {

@@ -304,6 +304,31 @@ export function EducationCard({
               {yearRange}
             </p>
           )}
+
+          {/* Eligibility Metrics display */}
+          {(education.cgpa || education.backlogs !== undefined || education.currentYear) && (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {education.cgpa !== null && education.cgpa !== undefined && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 dark:bg-indigo-950/30 text-indigo-750 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60 px-2 py-0.5 text-[10px] font-bold">
+                  CGPA: {education.cgpa.toFixed(2)}
+                </span>
+              )}
+              {education.backlogs !== null && education.backlogs !== undefined && (
+                <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold border ${
+                  education.backlogs > 0
+                    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/60"
+                    : "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/60"
+                }`}>
+                  {education.backlogs} {education.backlogs === 1 ? "Active Backlog" : "Active Backlogs"}
+                </span>
+              )}
+              {education.currentYear && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 dark:bg-slate-950/30 text-slate-700 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800/60 px-2 py-0.5 text-[10px] font-bold">
+                  Year {education.currentYear} of Study
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
