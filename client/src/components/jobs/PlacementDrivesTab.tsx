@@ -84,7 +84,7 @@ const APP_STATUS_STYLES: Record<string, { label: string; color: string; icon: Re
 // ---------------------------------------------------------------------------
 // Drive Card
 // ---------------------------------------------------------------------------
-function DriveCard({
+export function DriveCard({
   drive,
   hasApplied,
   isApplying,

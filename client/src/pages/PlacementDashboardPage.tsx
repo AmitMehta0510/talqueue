@@ -17,10 +17,16 @@ import {
   ArrowLeft,
   FileText,
 } from "lucide-react";
-import { useMyDriveApplicationsQuery } from "../hooks/usePlatformQueries";
+import {
+  useMyDriveApplicationsQuery,
+  useMyFullProfileQuery,
+  usePlacementDrivesForCollegeQuery,
+  useApplyToDriveMutation,
+} from "../hooks/usePlatformQueries";
 import { PlacementDriveApplicationStatus } from "../lib/api";
 import { cleanLogoUrl, formatDate } from "../core/utils/format";
 import { EmptyState } from "../components/ui";
+import { DriveCard } from "../components/jobs/PlacementDrivesTab";
 
 type DashboardTab = "all" | "in_progress" | "offers" | "closed";
 
@@ -88,6 +94,28 @@ export function PlacementDashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("all");
   const appsQuery = useMyDriveApplicationsQuery();
   const apps = appsQuery.data || [];
+
+  const profileQuery = useMyFullProfileQuery();
+  const collegeId = profileQuery.data?.profile?.collegeId;
+
+  const drivesQuery = usePlacementDrivesForCollegeQuery(collegeId);
+  const drives = drivesQuery.data || [];
+
+  const applyMutation = useApplyToDriveMutation();
+
+  // Filter ongoing/upcoming college drives that the student hasn't applied to yet
+  const activeUnappliedDrives = useMemo(() => {
+    const appliedDriveIds = new Set(apps.map((a) => a.driveId));
+    return drives.filter(
+      (d) =>
+        (d.status === "ONGOING" || d.status === "UPCOMING") &&
+        !appliedDriveIds.has(d.id),
+    );
+  }, [drives, apps]);
+
+  const handleApply = (driveId: string) => {
+    applyMutation.mutate({ driveId });
+  };
 
   // Filter application sets
   const filteredApps = useMemo(() => {
@@ -230,23 +258,56 @@ export function PlacementDashboardPage() {
 
           {/* Applications list */}
           <div className="space-y-4">
-            {appsQuery.isLoading ? (
+            {appsQuery.isLoading || profileQuery.isLoading || drivesQuery.isLoading ? (
               <div className="panel p-20 flex flex-col items-center justify-center rounded-2xl gap-2" style={{ color: "var(--text-muted)" }}>
                 <Loader2 className="animate-spin text-indigo-600" size={32} />
                 <span className="text-sm font-semibold">Loading placement pipeline...</span>
               </div>
-            ) : filteredApps.length === 0 ? (
+            ) : filteredApps.length === 0 && ((activeTab !== "all" && activeTab !== "in_progress") || activeUnappliedDrives.length === 0) ? (
               <EmptyState
                 icon={Inbox}
                 title="No drives found"
                 text={
                   activeTab === "all"
-                    ? "You haven't applied to any campus placement drives yet."
+                    ? "You haven't applied to any campus placement drives yet, and no active drives are available."
                     : `No drives match the filter "${activeTab.replace("_", " ")}".`
                 }
               />
             ) : (
-              filteredApps.map((app) => {
+              <>
+                {/* Available Campus Placement Drives (Only for "all" or "in_progress" tabs) */}
+                {(activeTab === "all" || activeTab === "in_progress") && activeUnappliedDrives.length > 0 && (
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-2 pb-1">
+                      <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        Available Campus Placement Drives ({activeUnappliedDrives.length})
+                      </h3>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {activeUnappliedDrives.map((drive) => (
+                        <DriveCard
+                          key={drive.id}
+                          drive={drive}
+                          hasApplied={false}
+                          isApplying={applyMutation.isPending && (applyMutation.variables as { driveId: string } | undefined)?.driveId === drive.id}
+                          onApply={handleApply}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Applied drives list header if there are drives */}
+                {(activeTab === "all" || activeTab === "in_progress") && filteredApps.length > 0 && (
+                  <div className="flex items-center gap-2 pb-1 mt-6">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-secondary">
+                      Your Applied Drives ({filteredApps.length})
+                    </h3>
+                  </div>
+                )}
+
+                {filteredApps.map((app) => {
                 const drive = app.drive;
                 const company = drive?.company;
                 const status = STATUS_CONFIG[app.status] || STATUS_CONFIG.APPLIED;
@@ -380,7 +441,8 @@ export function PlacementDashboardPage() {
                     </div>
                   </article>
                 );
-              })
+              })}
+              </>
             )}
           </div>
 
