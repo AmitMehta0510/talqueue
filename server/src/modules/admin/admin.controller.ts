@@ -530,9 +530,10 @@ export const getCollegeRequestHandler = asyncHandler(
 export const reviewCollegeRequestHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { requestId } = req.params as { requestId: string };
-    const { action, adminNote } = req.body as {
+    const { action, adminNote, grantAs } = req.body as {
       action: "APPROVE" | "REJECT" | "DUPLICATE";
       adminNote?: string;
+      grantAs?: "COLLEGE_ADMIN" | "TPO";
     };
 
     if (!action || !["APPROVE", "REJECT", "DUPLICATE"].includes(action)) {
@@ -545,6 +546,7 @@ export const reviewCollegeRequestHandler = asyncHandler(
       requestId,
       action,
       adminNote,
+      grantAs,
     );
 
     res.json(successResponse(result, result.message));

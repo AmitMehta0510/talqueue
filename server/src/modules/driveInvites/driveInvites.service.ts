@@ -223,7 +223,7 @@ export const listSentInvitesByCollege = async (
   });
 };
 
-// LIST INVITES SENT BY COMPANY (recruiter view — their outgoing invites)
+// LIST INVITES SENT BY COMPANY (recruiter view — outbound COMPANY_TO_COLLEGE only)
 export const listInvitesSentByCompany = async (
   actorId: string,
   companyId: string,
@@ -235,12 +235,37 @@ export const listInvitesSentByCompany = async (
   const safeLimit = Math.min(limit, 50);
 
   return prisma.placementDriveInvite.findMany({
-    where: { companyId },
+    where: { companyId, initiatedBy: "COMPANY_TO_COLLEGE" },
     include: {
       company: { select: { id: true, name: true, logoUrl: true } },
       college: { select: { id: true, name: true, normalizedKey: true } },
       createdBy: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
       placementDrive: { select: { id: true, status: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    skip: (page - 1) * safeLimit,
+    take: safeLimit,
+  });
+};
+
+// LIST INVITES RECEIVED BY COMPANY (recruiter view — inbound COLLEGE_TO_COMPANY only)
+export const listInvitesReceivedByCompany = async (
+  actorId: string,
+  companyId: string,
+  page = 1,
+  limit = 20,
+) => {
+  await assertCompanyAccess(actorId, companyId);
+
+  const safeLimit = Math.min(limit, 50);
+
+  return prisma.placementDriveInvite.findMany({
+    where: { companyId, initiatedBy: "COLLEGE_TO_COMPANY" },
+    include: {
+      company: { select: { id: true, name: true, logoUrl: true } },
+      college: { select: { id: true, name: true, city: true, state: true, logoUrl: true } },
+      createdBy: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+      placementDrive: { select: { id: true, status: true, driveTitle: true } },
     },
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * safeLimit,

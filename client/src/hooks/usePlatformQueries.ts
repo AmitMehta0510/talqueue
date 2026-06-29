@@ -4994,6 +4994,17 @@ export const useDriveInvitesForCompanyQuery = (companyId?: string | null) => {
   });
 };
 
+export const useInboundDriveInvitesForCompanyQuery = (companyId?: string | null) => {
+  return useQuery({
+    queryKey: ["driveInvites", "company", companyId, "received"],
+    queryFn: async ({ signal }) => {
+      const result = await api.inboundDriveInvitesForCompany(companyId!, { signal });
+      return (result.data || []) as PlacementDriveInvite[];
+    },
+    enabled: Boolean(companyId),
+  });
+};
+
 export const useRespondToDriveInviteMutation = (collegeId?: string | null) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();

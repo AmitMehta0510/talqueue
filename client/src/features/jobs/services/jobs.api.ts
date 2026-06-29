@@ -233,6 +233,9 @@ export const jobsApi = {
   driveInvitesForCompany: (companyId: string, options?: EndpointOptions) =>
     request<PlacementDriveInvite[]>(`/drive-invites/company/${companyId}`, options),
 
+  inboundDriveInvitesForCompany: (companyId: string, options?: EndpointOptions) =>
+    request<PlacementDriveInvite[]>(`/drive-invites/company/${companyId}/received`, options),
+
   respondToDriveInvite: (inviteId: string, action: "ACCEPT" | "REJECT") =>
     request<PlacementDriveInvite>(`/drive-invites/${inviteId}/respond`, { method: "PATCH", body: { action } }),
 

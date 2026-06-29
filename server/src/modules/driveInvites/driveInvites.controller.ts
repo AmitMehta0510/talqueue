@@ -56,6 +56,21 @@ export const listInvitesSentByCompany = async (req: Request, res: Response, next
   }
 };
 
+export const listInvitesReceivedByCompany = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page, limit } = req.query;
+    const result = await service.listInvitesReceivedByCompany(
+      req.user!.id,
+      req.params.companyId as string,
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+    );
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const respondToInvite = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { action } = req.body;

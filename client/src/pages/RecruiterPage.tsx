@@ -24,6 +24,7 @@ import {
   useRecruiterInsightsQuery,
   useRecruiterJobsQuery,
   useDriveInvitesForCompanyQuery,
+  useInboundDriveInvitesForCompanyQuery,
   useWithdrawDriveInviteMutation,
   useRespondToDriveInviteMutation,
   useMyPostedDrivesQuery,
@@ -67,6 +68,8 @@ export function RecruiterPage() {
 
   const companyId = recruiterCompany?.id as string | undefined;
   const driveInvitesQuery = useDriveInvitesForCompanyQuery(companyId);
+  const inboundInvitesQuery = useInboundDriveInvitesForCompanyQuery(companyId);
+  const inboundInvites = inboundInvitesQuery.data || [];
   const withdrawInviteMutation = useWithdrawDriveInviteMutation(companyId);
   const respondToInviteMutation = useRespondToDriveInviteMutation(null);
   const myPostedDrivesQuery = useMyPostedDrivesQuery();
@@ -707,6 +710,95 @@ export function RecruiterPage() {
             </div>
           </div>
 
+          {/* Received Invites Section (Inbound COLLEGE_TO_COMPANY) */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+              <GraduationCap size={12} />
+              Received Invites ({inboundInvites.length})
+            </h4>
+
+            {inboundInvitesQuery.isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-indigo-500" /></div>
+            ) : inboundInvites.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--border)" }}>
+                <GraduationCap size={24} className="mx-auto mb-2 opacity-40" style={{ color: "var(--text-muted)" }} />
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No received invites yet</p>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                  When a college's TPO sends your company a drive request, it will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {inboundInvites.map((invite: any) => {
+                  const statusColors: Record<string, string> = {
+                    PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    ACCEPTED: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+                    REJECTED: "bg-rose-500/15 text-rose-500 border-rose-500/20",
+                  };
+                  return (
+                    <div key={invite.id} className="panel p-4 flex flex-col gap-3 hover:shadow-md transition">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <GraduationCap size={14} className="text-indigo-400 shrink-0" />
+                            <span className="font-bold text-sm truncate" style={{ color: "var(--text-primary)" }}>
+                              {invite.college?.name || "College"}
+                            </span>
+                          </div>
+                          {invite.college?.city && (
+                            <div className="flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                              <MapPin size={10} />
+                              {[invite.college.city, invite.college.state].filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                          <p className="text-xs mt-1 font-medium" style={{ color: "var(--text-secondary)" }}>
+                            Drive: <span className="font-semibold">{invite.driveTitle}</span>
+                          </p>
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColors[invite.status] || "bg-slate-500/15 text-slate-500 border-slate-500/20"}`}>
+                          {invite.status}
+                        </span>
+                      </div>
+
+                      {/* Action buttons — only for PENDING */}
+                      {invite.status === "PENDING" && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="flex-1 text-xs font-bold py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center justify-center gap-1 disabled:opacity-60"
+                            onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "ACCEPT" })}
+                            disabled={respondToInviteMutation.isPending}
+                          >
+                            {respondToInviteMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                            Accept
+                          </button>
+                          <button
+                            className="flex-1 text-xs font-bold py-1.5 rounded-lg border text-rose-500 hover:bg-rose-500/10 transition flex items-center justify-center gap-1 disabled:opacity-60"
+                            style={{ borderColor: "rgba(244,63,94,0.3)" }}
+                            onClick={() => respondToInviteMutation.mutate({ inviteId: invite.id, action: "REJECT" })}
+                            disabled={respondToInviteMutation.isPending}
+                          >
+                            <X size={11} />
+                            Decline
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Post-acceptance drive link */}
+                      {invite.status === "ACCEPTED" && invite.placementDrive && (
+                        <button
+                          className="self-start text-xs font-semibold text-indigo-500 flex items-center gap-1 hover:underline"
+                          onClick={() => navigate(`/recruiter/drive/${invite.placementDrive.id}`)}
+                        >
+                          <ArrowRight size={11} /> View Active Drive
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Sent Invites Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -782,7 +874,7 @@ export function RecruiterPage() {
                           disabled={withdrawInviteMutation.isPending}
                         >
                           {withdrawInviteMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
-                          Withdraw
+                          Withdraw Invite
                         </button>
                       )}
                     </div>

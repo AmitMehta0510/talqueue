@@ -1492,6 +1492,7 @@ export const reviewCollegeRequest = async (
   requestId: string,
   action: "APPROVE" | "REJECT" | "DUPLICATE",
   adminNote?: string,
+  grantAs: "COLLEGE_ADMIN" | "TPO" = "COLLEGE_ADMIN",
 ) => {
   const request = await prisma.collegeRequest.findUnique({
     where: { id: requestId },
@@ -1550,23 +1551,44 @@ export const reviewCollegeRequest = async (
         select: { id: true, name: true, masterAdminUserId: true },
       });
 
-      // Step 2: Upsert CollegeAdmin row for the requesting user
-      const existingAdmin = await tx.collegeAdmin.findUnique({
-        where: { userId_collegeId: { userId: request.userId, collegeId: college.id } },
-        select: { id: true },
-      });
-
-      if (!existingAdmin) {
-        await tx.collegeAdmin.create({
-          data: {
-            userId: request.userId,
-            collegeId: college.id,
-            grantedById: actorId,
-          },
+      // Step 2: Branch on role grant — COLLEGE_ADMIN vs TPO
+      if (grantAs === "TPO") {
+        // TPO path: write CollegeTpo junction, do NOT write CollegeAdmin
+        const existingTpo = await tx.collegeTpo.findFirst({
+          where: { userId: request.userId, collegeId: college.id },
+          select: { id: true },
         });
-      }
 
-      await grantRole(request.userId, "COLLEGE_ADMIN", tx);
+        if (!existingTpo) {
+          await tx.collegeTpo.create({
+            data: {
+              userId: request.userId,
+              collegeId: college.id,
+              assignedById: actorId,
+            },
+          });
+        }
+
+        await grantRole(request.userId, "TPO", tx);
+      } else {
+        // Default: COLLEGE_ADMIN path
+        const existingAdmin = await tx.collegeAdmin.findUnique({
+          where: { userId_collegeId: { userId: request.userId, collegeId: college.id } },
+          select: { id: true },
+        });
+
+        if (!existingAdmin) {
+          await tx.collegeAdmin.create({
+            data: {
+              userId: request.userId,
+              collegeId: college.id,
+              grantedById: actorId,
+            },
+          });
+        }
+
+        await grantRole(request.userId, "COLLEGE_ADMIN", tx);
+      }
 
       // Step 3: Mark request as VERIFIED
       await tx.collegeRequest.update({
