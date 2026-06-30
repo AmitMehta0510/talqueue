@@ -14,7 +14,19 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
   onAssignAdmin: (companyId: string, userId: string, label: string, companyName: string, officeCity?: string) => void;
 }) {
   const [search, setSearch] = useState("");
-  const companiesQuery = useCompaniesQuery({ q: search, limit: 100 });
+  const [page, setPage] = useState(1);
+  const [atsFilter, setAtsFilter] = useState<string>("");
+  const [verifiedFilter, setVerifiedFilter] = useState<string>("all");
+  const [hiringFilter, setHiringFilter] = useState<string>("all");
+
+  const companiesQuery = useCompaniesQuery({
+    q: search || undefined,
+    page,
+    limit: 20,
+    atsSource: atsFilter || undefined,
+    verified: verifiedFilter === "verified" ? true : verifiedFilter === "unverified" ? false : undefined,
+    hasJobs: hiringFilter === "hiring" ? true : hiringFilter === "not-hiring" ? false : undefined,
+  });
   const createCompany = useCreateCompanyMutation();
   const triggerDiscovery = useAdminTriggerCompanyDiscoveryMutation();
 
@@ -77,7 +89,9 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Company Management</h2>
+        <h2 className="text-sm font-black uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+          Company Management {companiesQuery.data?.total !== undefined && `(${companiesQuery.data.total} Total)`}
+        </h2>
         <button
           className="flex items-center gap-1.5 rounded-lg border border-indigo-600/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-400 hover:bg-indigo-500/20 transition"
           onClick={() => { setShowForm(!showForm); onSelectCompany(null); }}
@@ -86,7 +100,60 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
         </button>
       </div>
 
-      <SearchBar value={search} onChange={setSearch} placeholder="Search companies by name, description, industry..." />
+      <SearchBar
+        value={search}
+        onChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        placeholder="Search companies by name, description, industry..."
+      />
+
+      <div className="flex flex-wrap gap-3">
+        <select
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-100 focus:border-indigo-500 focus:outline-none transition w-auto min-w-[150px]"
+          value={atsFilter}
+          onChange={(e) => {
+            setAtsFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">All ATS Platforms</option>
+          <option value="greenhouse">Greenhouse</option>
+          <option value="lever">Lever</option>
+          <option value="ashby">Ashby</option>
+          <option value="workday">Workday</option>
+          <option value="bamboohr">BambooHR</option>
+          <option value="icims">iCIMS</option>
+          <option value="paylocity">Paylocity</option>
+        </select>
+
+        <select
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-100 focus:border-indigo-500 focus:outline-none transition w-auto min-w-[150px]"
+          value={verifiedFilter}
+          onChange={(e) => {
+            setVerifiedFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All Verification</option>
+          <option value="verified">Verified Only</option>
+          <option value="unverified">Unverified Only</option>
+        </select>
+
+        <select
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-100 focus:border-indigo-500 focus:outline-none transition w-auto min-w-[150px]"
+          value={hiringFilter}
+          onChange={(e) => {
+            setHiringFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All Hiring Status</option>
+          <option value="hiring">Hiring Now</option>
+          <option value="not-hiring">Not Hiring</option>
+        </select>
+      </div>
 
       {showForm && (
         <div className="rounded-xl border border-indigo-600/20 bg-zinc-900/60 p-5">
@@ -178,6 +245,34 @@ export function CompaniesPanel({ selectedCompany, onSelectCompany, onRevokeAdmin
               </div>
             </div>
           ))}
+
+          {/* Pagination Controls */}
+          {companiesQuery.data && companiesQuery.data.total > 20 && (
+            <div className="mt-4 flex items-center justify-between border-t border-zinc-700/50 pt-4">
+              <p className="text-xs text-zinc-500">
+                Showing {Math.min(companiesQuery.data.total, (page - 1) * 20 + 1)} to{" "}
+                {Math.min(companiesQuery.data.total, page * 20)} of {companiesQuery.data.total} companies
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 disabled:opacity-50"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 disabled:opacity-50"
+                  disabled={page * 20 >= companiesQuery.data.total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>

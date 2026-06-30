@@ -622,6 +622,37 @@ interface ProcessResult {
   processedJobIds: string[];
 }
 
+function isLocationInIndia(location: string | null | undefined): boolean {
+  if (!location) return false;
+  const locLower = location.toLowerCase();
+  const indianCitiesAndWords = [
+    "india",
+    "bengaluru",
+    "bangalore",
+    "hyderabad",
+    "pune",
+    "mumbai",
+    "chennai",
+    "noida",
+    "gurgaon",
+    "gurugram",
+    "delhi",
+    "kolkata",
+    "kochi",
+    "coimbatore",
+    "trivandrum",
+    "ahmedabad",
+    "jaipur",
+  ];
+  
+  if (indianCitiesAndWords.some(word => locLower.includes(word))) {
+    return true;
+  }
+  
+  const words = locLower.split(/[\s,.-]+/);
+  return words.includes("in");
+}
+
 /**
  * Processes all jobs for a single company (Greenhouse / Lever / Ashby / mock fallback).
  * Returns counts and the IDs of every upserted job for downstream Elastic sync.
@@ -1077,6 +1108,30 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       }
     });
     result.staleArchived = deletedResult.count;
+
+    // Recalculate isIndian for the company dynamically based on HQ and active jobs
+    const openJobs = await prisma.job.findMany({
+      where: {
+        companyId: company.id,
+        status: "OPEN",
+      },
+      select: {
+        location: true,
+      },
+    });
+
+    const hasIndiaJobs = openJobs.some((j) => isLocationInIndia(j.location));
+    const isCompanyHqIndia =
+      company.country?.toLowerCase() === "india" ||
+      company.country?.toLowerCase() === "in" ||
+      company.headquarters?.toLowerCase().includes("india");
+
+    const isIndian = !!(hasIndiaJobs || isCompanyHqIndia);
+
+    await prisma.company.update({
+      where: { id: company.id },
+      data: { isIndian },
+    });
 
   } catch (err) {
     // Inner catch: absorbs all network / Prisma / ATS API errors per company.

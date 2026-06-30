@@ -2334,6 +2334,7 @@ model Company {
   // ── Monetization & Promotion ─────────────────────────────────────────────
   tier       CompanyTier @default(FREE)
   isPromoted Boolean     @default(false)
+  isIndian   Boolean     @default(false)
 
   adPlacements AdPlacement[]
 

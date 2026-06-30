@@ -210,12 +210,24 @@ export const getSuggestedCompanies = async (userId: string) => {
         },
       ],
     },
+    include: {
+      _count: {
+        select: {
+          jobs: true,
+          experiences: true,
+        },
+      },
+      followers: {
+        where: { id: userId },
+        select: { id: true },
+      },
+    },
 
     take: 100,
   });
 
   const ranked = companies.map((company) => {
-    let score = calculateFeedScore(company, "COMPANY", context);
+    let score = calculateFeedScore(company as any, "COMPANY", context);
 
     const memory = memoryMap.get(`COMPANY:${company.id}`);
 
@@ -231,9 +243,11 @@ export const getSuggestedCompanies = async (userId: string) => {
       score += 60;
     }
 
-    return {
-      ...company,
+    const { followers, ...rest } = company;
 
+    return {
+      ...rest,
+      isFollowing: (followers?.length ?? 0) > 0,
       recommendationScore: Math.round(score),
     };
   });

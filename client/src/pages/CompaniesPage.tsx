@@ -707,7 +707,11 @@ function CompanyDetail({ slug }: { slug: string }) {
                 })}
               </div>
             ) : (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>No open positions right now.</p>
+              <EmptyState
+                icon={BriefcaseBusiness}
+                title="No active jobs at the moment"
+                text="Follow this company to get notified as soon as new engineering positions are posted."
+              />
             )}
           </div>
 
@@ -848,11 +852,11 @@ export function CompaniesPage() {
   const [searchQ, setSearchQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<CompanyType | "">("");
   const [sizeFilter, setSizeFilter] = useState<CompanySize | "">("");
-  const [hiringOnly, setHiringOnly] = useState(false);
+  const [hiringOnly, setHiringOnly] = useState(true);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  const [appliedFilters, setAppliedFilters] = useState<Record<string, unknown>>({});
-  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, hasJobs: true, ...appliedFilters });
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, unknown>>({ hasJobs: true });
+  const companiesQuery = useCompaniesQuery({ page: 1, limit: 24, ...appliedFilters });
   const suggestedQuery = useSuggestedCompaniesQuery();
   const companies = companiesQuery.data?.companies || [];
   const suggested = suggestedQuery.data || [];
@@ -862,7 +866,7 @@ export function CompaniesPage() {
       ...(searchQ.trim() ? { q: searchQ.trim() } : {}),
       ...(typeFilter ? { type: typeFilter } : {}),
       ...(sizeFilter ? { size: sizeFilter } : {}),
-      ...(hiringOnly ? { hiringEnabled: true } : {}),
+      ...(hiringOnly ? { hasJobs: true } : {}),
       ...(verifiedOnly ? { verified: true } : {}),
     });
   };

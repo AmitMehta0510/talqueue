@@ -141,6 +141,7 @@ export const getCompanies = async (
     type?: CompanyType;
     size?: CompanySize;
     hasJobs?: boolean;
+    atsSource?: string;
   } = {},
   userId?: string,
 ) => {
@@ -209,6 +210,10 @@ export const getCompanies = async (
     where.size = filters.size;
   }
 
+  if (filters.atsSource) {
+    where.atsSource = filters.atsSource;
+  }
+
   if (filters.hasJobs !== undefined) {
     if (filters.hasJobs) {
       where.jobs = {
@@ -234,6 +239,9 @@ export const getCompanies = async (
       take: limit,
 
       orderBy: [
+        {
+          isIndian: "desc",
+        },
         ...(filters.hasJobs ? [
           {
             jobs: {

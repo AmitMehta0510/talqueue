@@ -165,6 +165,10 @@ async function autoCreateCompany(params: {
       // Industry: prefer enriched value, fall back to the seed file's classification
       industry: meta.industry ?? industry,
       country: meta.country ?? null,
+      isIndian:
+        meta.country?.toLowerCase() === "india" ||
+        meta.country?.toLowerCase() === "in" ||
+        false,
       verified: false,
       discoveredVia,
       hiringEnabled: true,

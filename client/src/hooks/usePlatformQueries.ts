@@ -714,6 +714,7 @@ export const useCompaniesQuery = (
     verified?: boolean;
     hiringEnabled?: boolean;
     hasJobs?: boolean;
+    atsSource?: string;
   } = {},
 ) =>
   useQuery({
