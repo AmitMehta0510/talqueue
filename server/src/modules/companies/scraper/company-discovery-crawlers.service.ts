@@ -674,7 +674,7 @@ export async function runAutonomousCrawler(): Promise<CrawlerRunResult> {
         }
       } else {
         logger.info(
-          `"${companyName}" uses ${atsSource.toUpperCase()} — job scraper is pending implementation. Company indexed.`
+          `"${companyName}" uses ${(atsSource as string).toUpperCase()} — job scraper is pending implementation. Company indexed.`
         );
       }
 
