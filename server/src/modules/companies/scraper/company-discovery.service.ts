@@ -16,10 +16,10 @@ import { resilientGet, resilientPost, jitteredDelay } from "shared/services/netw
  * Maximum number of NEW companies to auto-create per discovery run.
  * Tune this to control DB growth rate and API load.
  */
-const MAX_DISCOVERED_COMPANIES = 150;
+const MAX_DISCOVERED_COMPANIES = 500;
 
 /** Delay in ms between individual ATS API requests to avoid rate-limiting. */
-const REQUEST_DELAY_MS = 250;
+const REQUEST_DELAY_MS = 750;
 
 // ---------------------------------------------------------------------------
 // TYPES
