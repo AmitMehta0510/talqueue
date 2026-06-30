@@ -641,6 +641,9 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
   let ashbyToken: string | null = null;
   let leverToken: string | null = null;
   const workdayToken = company.atsSource === "workday" ? company.atsToken : null;
+  const bamboohrToken = company.atsSource === "bamboohr" ? company.atsToken : null;
+  const icimsToken = company.atsSource === "icims" ? company.atsToken : null;
+  const paylocityToken = company.atsSource === "paylocity" ? company.atsToken : null;
 
   if (company.atsSource) {
     if (company.atsSource === "greenhouse") {
@@ -918,6 +921,36 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
       activeSlugs.push(
         ...workdayResult.processedJobIds.map(() => "") // stale cleanup relies on slug list
       );
+
+    } else if (bamboohrToken) {
+      // ------------------------------------------------------------------
+      // BambooHR ATS
+      // ------------------------------------------------------------------
+      const bamboohrResult = await scrapeBambooHRJobs(bamboohrToken, company);
+      result.created += bamboohrResult.created;
+      result.updated += bamboohrResult.updated;
+      result.processedJobIds.push(...bamboohrResult.processedJobIds);
+      activeSlugs.push(...bamboohrResult.processedJobSlugs);
+
+    } else if (icimsToken) {
+      // ------------------------------------------------------------------
+      // iCIMS ATS
+      // ------------------------------------------------------------------
+      const icimsResult = await scrapeIcimsJobs(icimsToken, company);
+      result.created += icimsResult.created;
+      result.updated += icimsResult.updated;
+      result.processedJobIds.push(...icimsResult.processedJobIds);
+      activeSlugs.push(...icimsResult.processedJobSlugs);
+
+    } else if (paylocityToken) {
+      // ------------------------------------------------------------------
+      // Paylocity ATS
+      // ------------------------------------------------------------------
+      const paylocityResult = await scrapePaylocityJobs(paylocityToken, company);
+      result.created += paylocityResult.created;
+      result.updated += paylocityResult.updated;
+      result.processedJobIds.push(...paylocityResult.processedJobIds);
+      activeSlugs.push(...paylocityResult.processedJobSlugs);
 
     } else {
       // ------------------------------------------------------------------
@@ -1261,6 +1294,338 @@ export async function scrapeWorkdayJobs(
 }
 
 // ---------------------------------------------------------------------------
+// BAMBOOHR SCRAPER
+// ---------------------------------------------------------------------------
+
+/**
+ * Scrapes jobs from a BambooHR career site list.
+ */
+export async function scrapeBambooHRJobs(
+  token: string,
+  company: CompanyRow
+): Promise<{ created: number; updated: number; processedJobIds: string[]; processedJobSlugs: string[] }> {
+  const result = { created: 0, updated: 0, processedJobIds: [] as string[], processedJobSlugs: [] as string[] };
+  const url = `https://${token}.bamboohr.com/careers/list`;
+
+  try {
+    const response = await resilientGet(url);
+    const rawJobs = response.data?.result ?? response.data ?? [];
+    if (!Array.isArray(rawJobs)) return result;
+
+    const techJobs = rawJobs.filter((j: any) => isTechOrInternRole(j?.jobOpeningName ?? ""));
+
+    for (const job of techJobs) {
+      const jobTitle = job.jobOpeningName || "Engineering Role";
+      const jobId = job.id;
+      if (!jobId) continue;
+
+      const externalId = `bamboohr-${token}-${jobId}`;
+      const slug = slugify(`${company.slug}-${jobTitle}-${jobId}`, { lower: true, strict: true }) || `job-bamboohr-${jobId}`;
+
+      // Location parsing
+      let locationName = "Not specified";
+      const loc = job.location;
+      if (loc && typeof loc === "object") {
+        const city = loc.city || "";
+        const state = loc.state || "";
+        locationName = [city, state].filter(Boolean).join(", ") || "Not specified";
+      } else if (loc && typeof loc === "string") {
+        locationName = loc;
+      }
+      if (locationName.length > 50) {
+        locationName = locationName.slice(0, 50);
+      }
+
+      const workMode = parseWorkMode(locationName);
+      const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
+      const type = classifyJobType(jobTitle, description);
+      const skillsRequired = extractSkills(jobTitle, description, type);
+      const applyUrl = `https://${token}.bamboohr.com/careers/${jobId}`;
+
+      const upserted = await prisma.job.upsert({
+        where: { slug },
+        create: {
+          companyId: company.id,
+          title: jobTitle,
+          slug,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl,
+          skillsRequired,
+          status: "OPEN",
+          externalJobId: externalId,
+          atsSource: "bamboohr",
+        },
+        update: {
+          title: jobTitle,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl,
+          skillsRequired,
+          status: "OPEN",
+          atsSource: "bamboohr",
+        },
+      });
+
+      result.processedJobIds.push(upserted.id);
+      result.processedJobSlugs.push(slug);
+      if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
+        result.created++;
+      } else {
+        result.updated++;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[Job Scraper] BambooHR scrape failed for "${token}": ${err.message}`);
+  }
+
+  console.log(
+    `[Job Scraper] BambooHR "${token}": ${result.created} created, ${result.updated} updated.`
+  );
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// ICIMS SITEMAP SCRAPER
+// ---------------------------------------------------------------------------
+
+/**
+ * Scrapes jobs from an iCIMS sitemap XML.
+ */
+export async function scrapeIcimsJobs(
+  token: string,
+  company: CompanyRow
+): Promise<{ created: number; updated: number; processedJobIds: string[]; processedJobSlugs: string[] }> {
+  const result = { created: 0, updated: 0, processedJobIds: [] as string[], processedJobSlugs: [] as string[] };
+  const sitemapUrl = `https://careers-${token}.icims.com/sitemap.xml`;
+
+  try {
+    const response = await resilientGet(sitemapUrl);
+    const xmlContent = response.data;
+    if (typeof xmlContent !== "string") return result;
+
+    // Use Regex to parse XML sitemap
+    const urlBlocks = xmlContent.match(/<url>([\s\S]*?)<\/url>/gi) || [];
+    const jobsList: { url: string; lastmod?: string }[] = [];
+
+    for (const block of urlBlocks) {
+      const locMatch = block.match(/<loc>\s*(.*?)\s*<\/loc>/i);
+      if (!locMatch) continue;
+      const jobUrl = locMatch[1].trim();
+
+      if (!jobUrl.includes("/jobs/") || jobUrl.endsWith("/jobs/intro")) continue;
+
+      const lastmodMatch = block.match(/<lastmod>\s*(.*?)\s*<\/lastmod>/i);
+      const lastmod = lastmodMatch ? lastmodMatch[1].trim() : undefined;
+      jobsList.push({ url: jobUrl, lastmod });
+    }
+
+    for (const job of jobsList) {
+      const jobUrl = job.url;
+      const pathParts = jobUrl.split("/jobs/");
+      if (pathParts.length < 2) continue;
+      const jobPath = pathParts[1];
+      const segments = jobPath.split("/");
+      if (segments.length < 2) continue;
+
+      const rawTitle = decodeURIComponent(segments[1]);
+      const jobTitle = rawTitle.replace(/[-_]+/g, " ").trim().replace(/\b\w/g, c => c.toUpperCase());
+      const jobId = segments[0];
+      if (!jobId || !isTechOrInternRole(jobTitle)) continue;
+
+      const externalId = `icims-${token}-${jobId}`;
+      const slug = slugify(`${company.slug}-${jobTitle}-${jobId}`, { lower: true, strict: true }) || `job-icims-${jobId}`;
+
+      const locationName = company.headquarters || "Not specified";
+      const workMode = parseWorkMode(locationName);
+      const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
+      const type = classifyJobType(jobTitle, description);
+      const skillsRequired = extractSkills(jobTitle, description, type);
+      const postedAt = job.lastmod ? new Date(job.lastmod) : null;
+
+      const upserted = await prisma.job.upsert({
+        where: { slug },
+        create: {
+          companyId: company.id,
+          title: jobTitle,
+          slug,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl: jobUrl,
+          skillsRequired,
+          status: "OPEN",
+          externalJobId: externalId,
+          atsSource: "icims",
+          postedAt,
+        },
+        update: {
+          title: jobTitle,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl: jobUrl,
+          skillsRequired,
+          status: "OPEN",
+          atsSource: "icims",
+          postedAt,
+        },
+      });
+
+      result.processedJobIds.push(upserted.id);
+      result.processedJobSlugs.push(slug);
+      if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
+        result.created++;
+      } else {
+        result.updated++;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[Job Scraper] iCIMS scrape failed for "${token}": ${err.message}`);
+  }
+
+  console.log(
+    `[Job Scraper] iCIMS "${token}": ${result.created} created, ${result.updated} updated.`
+  );
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// PAYLOCITY SCRAPER
+// ---------------------------------------------------------------------------
+
+/**
+ * Scrapes jobs from a Paylocity career site.
+ */
+export async function scrapePaylocityJobs(
+  token: string,
+  company: CompanyRow
+): Promise<{ created: number; updated: number; processedJobIds: string[]; processedJobSlugs: string[] }> {
+  const result = { created: 0, updated: 0, processedJobIds: [] as string[], processedJobSlugs: [] as string[] };
+  const url = `https://recruiting.paylocity.com/recruiting/jobs/All/${token}/`;
+
+  try {
+    const response = await resilientGet(url);
+    const htmlContent = response.data;
+    if (typeof htmlContent !== "string") return result;
+
+    const pageDataMatch = htmlContent.match(/window\.pageData\s*=\s*(\{.*?\});/s);
+    if (!pageDataMatch) return result;
+
+    const data = JSON.parse(pageDataMatch[1]);
+    const rawJobs = data.Jobs || [];
+    if (!Array.isArray(rawJobs)) return result;
+
+    const decodeHtml = (str: string) => {
+      if (!str) return "";
+      return str
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, " ");
+    };
+
+    const techJobs = rawJobs.filter((j: any) => isTechOrInternRole(decodeHtml(j?.JobTitle ?? "")));
+
+    for (const job of techJobs) {
+      const jobTitle = decodeHtml(job.JobTitle) || "Engineering Role";
+      const jobId = job.JobId;
+      if (!jobId) continue;
+
+      const externalId = `paylocity-${token}-${jobId}`;
+      const slug = slugify(`${company.slug}-${jobTitle}-${jobId}`, { lower: true, strict: true }) || `job-paylocity-${jobId}`;
+
+      const loc = job.JobLocation || {};
+      const city = loc.City ? decodeHtml(loc.City) : "";
+      const state = loc.State ? decodeHtml(loc.State) : "";
+      let locationName = [city, state].filter(Boolean).join(", ");
+      if (!locationName) {
+        locationName = job.LocationName ? decodeHtml(job.LocationName) : "Not specified";
+      }
+      if (locationName.length > 50) {
+        locationName = locationName.slice(0, 50);
+      }
+
+      const isRemote = !!job.IsRemote;
+      const inferredRemote = parseWorkMode(locationName) === "REMOTE";
+      const workMode = (isRemote || inferredRemote) ? "REMOTE" : parseWorkMode(locationName);
+
+      const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
+      const type = classifyJobType(jobTitle, description);
+      const skillsRequired = extractSkills(jobTitle, description, type);
+      const applyUrl = `https://recruiting.paylocity.com/recruiting/Jobs/Details/${jobId}`;
+      const postedAt = job.PublishedDate ? new Date(job.PublishedDate) : null;
+
+      const upserted = await prisma.job.upsert({
+        where: { slug },
+        create: {
+          companyId: company.id,
+          title: jobTitle,
+          slug,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl,
+          skillsRequired,
+          status: "OPEN",
+          externalJobId: externalId,
+          atsSource: "paylocity",
+          postedAt,
+        },
+        update: {
+          title: jobTitle,
+          description,
+          requirements,
+          responsibilities,
+          location: locationName,
+          type,
+          workMode,
+          applyUrl,
+          skillsRequired,
+          status: "OPEN",
+          atsSource: "paylocity",
+          postedAt,
+        },
+      });
+
+      result.processedJobIds.push(upserted.id);
+      result.processedJobSlugs.push(slug);
+      if (upserted.createdAt.getTime() === upserted.updatedAt.getTime()) {
+        result.created++;
+      } else {
+        result.updated++;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[Job Scraper] Paylocity scrape failed for "${token}": ${err.message}`);
+  }
+
+  console.log(
+    `[Job Scraper] Paylocity "${token}": ${result.created} created, ${result.updated} updated.`
+  );
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // MAIN ENTRY POINT
 // ---------------------------------------------------------------------------
 
@@ -1283,7 +1648,17 @@ export async function runJobScrape() {
 
   // Fetch all companies from database
   const companies = await prisma.company.findMany({
-    select: { id: true, name: true, slug: true, headquarters: true, country: true, websiteUrl: true, careersPageUrl: true }
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      headquarters: true,
+      country: true,
+      websiteUrl: true,
+      careersPageUrl: true,
+      atsToken: true,
+      atsSource: true,
+    }
   });
 
   let created = 0;
