@@ -155,7 +155,7 @@ async function autoCreateCompany(params: {
       logoUrl: meta.logoUrl ?? `https://logo.clearbit.com/${domain}`,
       coverImageUrl: `https://picsum.photos/seed/${domain}/1200/400`,
       websiteUrl: `https://${domain}`,
-      careersPageUrl: `https://${domain}/careers`,
+      careersPageUrl: null,
       // Enriched fields — only set if the pipeline returned them
       description: meta.description ?? null,
       tagline: meta.tagline ?? null,
