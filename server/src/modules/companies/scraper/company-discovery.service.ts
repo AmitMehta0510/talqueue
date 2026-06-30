@@ -6,7 +6,7 @@ import { generateRandomAlphanumeric } from "shared/utils/random";
 import { processCompany, CompanyRow } from "./job-scraper.service";
 import { syncJobsToElasticBulk } from "services/elasticSync";
 import { enrichCompanyMeta } from "infra/enrichment/company-enrichment.service";
-import { resilientGet, jitteredDelay } from "shared/services/network/resilientHttp";
+import { resilientGet, resilientPost, jitteredDelay } from "shared/services/network/resilientHttp";
 
 // ---------------------------------------------------------------------------
 // CONSTANTS
@@ -82,9 +82,11 @@ function loadSeedFile<T>(filename: string): T[] {
  * 2. Name match   - company exists in DB but not yet linked to this token. Link and scrape.
  * 3. No match     - brand-new company. Auto-create, link, and scrape.
  */
+type AllowedAtsSource = "greenhouse" | "lever" | "ashby" | "bamboohr" | "icims" | "paylocity";
+
 async function resolveCompanyByAtsToken(
   atsToken: string,
-  atsSource: "greenhouse" | "lever" | "ashby",
+  atsSource: AllowedAtsSource,
   name: string
 ): Promise<
   | { action: "skip" }
@@ -119,7 +121,7 @@ async function resolveCompanyByAtsToken(
 async function linkAtsTokenToCompany(
   companyId: string,
   atsToken: string,
-  atsSource: "greenhouse" | "lever" | "ashby"
+  atsSource: AllowedAtsSource
 ): Promise<void> {
   await prisma.company.update({
     where: { id: companyId },
@@ -137,7 +139,7 @@ async function autoCreateCompany(params: {
   industry: string;
   discoveredVia: string;
   atsToken: string;
-  atsSource: "greenhouse" | "lever" | "ashby";
+  atsSource: AllowedAtsSource;
 }): Promise<{ id: string; slug: string }> {
   const { name, domain, industry, discoveredVia, atsToken, atsSource } = params;
   const baseSlug = slugify(name, { lower: true, strict: true, trim: true }) || `company-${Date.now()}`;
@@ -176,189 +178,77 @@ async function autoCreateCompany(params: {
 }
 
 // ---------------------------------------------------------------------------
-// GREENHOUSE DISCOVERY
+// ATS DISCOVERY PIPELINE
 // ---------------------------------------------------------------------------
 
-/**
- * Scans the curated greenhouse-boards.json list and discovers companies.
- *
- * Uses a hybrid 3-way upsert pipeline:
- * - Already linked by token -> skip (processed in prior run)
- * - Exists by name but no token -> link atsToken + scrape fresh jobs
- * - New board entirely -> auto-create company + link + scrape
- */
-async function discoverGreenhouseCompanies(
-  budget: number,
-  result: DiscoveryResult
-): Promise<void> {
-  const boards = loadSeedFile<GreenhouseBoardEntry>("greenhouse-boards.json");
-  if (boards.length === 0) return;
-
-  console.log(`[Discovery] Greenhouse: checking ${boards.length} boards against DB...`);
-
-  for (const board of boards) {
-    if (result.discovered >= budget) {
-      console.log(`[Discovery] Greenhouse: discovery budget (${budget}) reached, stopping.`);
-      break;
-    }
-
-    try {
-      const resolution = await resolveCompanyByAtsToken(board.token, "greenhouse", board.name);
-
-      // Already linked in a prior run
-      if (resolution.action === "skip") {
-        result.skipped++;
-        continue;
-      }
-
-      // Verify the board token actually has jobs before doing any work
-      let hasJobs = false;
-      try {
-        const res = await resilientGet(
-          `https://boards-api.greenhouse.io/v1/boards/${board.token}/jobs`
-        );
-        hasJobs = (res.data?.jobs?.length ?? 0) > 0;
-      } catch {
-        hasJobs = false;
-      }
-
-      let companyId: string;
-      let companySlug: string;
-      let companyName: string;
-
-      if (resolution.action === "link") {
-        // Existing company, link the token and scrape jobs
-        console.log(
-          `[Discovery] Greenhouse: linking existing company "${resolution.name}" to token "${board.token}"`
-        );
-        await linkAtsTokenToCompany(resolution.id, board.token, "greenhouse");
-        companyId = resolution.id;
-        companySlug = resolution.slug;
-        companyName = resolution.name;
-      } else {
-        // Brand-new company - auto-create
-        console.log(
-          `[Discovery] Greenhouse: creating new company "${board.name}" (token: ${board.token})`
-        );
-        const created = await autoCreateCompany({
-          name: board.name,
-          domain: board.domain,
-          industry: board.industry,
-          discoveredVia: "greenhouse-aggregate",
-          atsToken: board.token,
-          atsSource: "greenhouse",
-        });
-        companyId = created.id;
-        companySlug = created.slug;
-        companyName = board.name;
-      }
-
-      // Scrape jobs for this company
-      let processResult = { processedJobIds: [] as string[], created: 0, updated: 0 };
-      if (hasJobs) {
-        const companyRow: CompanyRow = {
-          id: companyId,
-          name: companyName,
-          slug: companySlug,
-          headquarters: null,
-          country: null,
-          websiteUrl: `https://${board.domain}`,
-          atsToken: board.token,
-          atsSource: "greenhouse",
-        };
-
-        processResult = await processCompany(companyRow);
-
-        if (processResult.processedJobIds.length > 0) {
-          await syncJobsToElasticBulk(processResult.processedJobIds);
-        }
-      }
-
-      result.discovered++;
-      result.jobsCreated += processResult.created;
-      result.jobsUpdated += processResult.updated;
-
-      console.log(
-        `[Discovery] Greenhouse: ok "${companyName}" - jobs: ${processResult.created} created, ${processResult.updated} updated`
-      );
-
-      await jitteredDelay(REQUEST_DELAY_MS);
-    } catch (err: any) {
-      console.error(`[Discovery] Greenhouse: error processing "${board.name}":`, err?.message || err);
-      result.errors++;
-      await jitteredDelay(REQUEST_DELAY_MS);
-    }
-  }
+interface AtsBoardEntry {
+  token?: string;
+  slug?: string;
+  name: string;
+  domain: string;
+  industry: string;
 }
 
-// ---------------------------------------------------------------------------
-// LEVER DISCOVERY
-// ---------------------------------------------------------------------------
-
 /**
- * Scans the curated lever-companies.json list and discovers companies.
- * Uses the same hybrid 3-way upsert pipeline as Greenhouse.
+ * Generalized ATS company discovery process.
+ * Handles duplicate checks, job verification, database upserts, and job scraping.
  */
-async function discoverLeverCompanies(
+async function discoverAtsCompanies(
+  atsSource: AllowedAtsSource,
+  seedFilename: string,
+  verifyJobsFn: (token: string) => Promise<boolean>,
   budget: number,
   result: DiscoveryResult
 ): Promise<void> {
-  const companies = loadSeedFile<LeverCompanyEntry>("lever-companies.json");
-  if (companies.length === 0) return;
+  const entries = loadSeedFile<AtsBoardEntry>(seedFilename);
+  if (entries.length === 0) return;
 
-  console.log(`[Discovery] Lever: checking ${companies.length} companies against DB...`);
+  const platformName = atsSource.toUpperCase();
+  console.log(`[Discovery] ${platformName}: checking ${entries.length} entries against DB...`);
 
-  for (const entry of companies) {
+  for (const entry of entries) {
     if (result.discovered >= budget) {
-      console.log(`[Discovery] Lever: discovery budget (${budget}) reached, stopping.`);
+      console.log(`[Discovery] ${platformName}: discovery budget (${budget}) reached, stopping.`);
       break;
     }
 
-    try {
-      const resolution = await resolveCompanyByAtsToken(entry.slug, "lever", entry.name);
+    const token = entry.token || entry.slug;
+    if (!token) continue;
 
-      // Already linked in a prior run
+    try {
+      const resolution = await resolveCompanyByAtsToken(token, atsSource, entry.name);
+
       if (resolution.action === "skip") {
         result.skipped++;
         continue;
       }
 
-      // Verify the Lever slug has active postings
-      let hasJobs = false;
-      try {
-        const res = await resilientGet(
-          `https://api.lever.co/v0/postings/${entry.slug}?mode=json&limit=1`
-        );
-        hasJobs = Array.isArray(res.data) && res.data.length > 0;
-      } catch {
-        hasJobs = false;
-      }
+      // Verify the board actually has jobs before linking or creating
+      const hasJobs = await verifyJobsFn(token);
 
       let companyId: string;
       let companySlug: string;
       let companyName: string;
 
       if (resolution.action === "link") {
-        // Existing company, link the token and scrape jobs
         console.log(
-          `[Discovery] Lever: linking existing company "${resolution.name}" to slug "${entry.slug}"`
+          `[Discovery] ${platformName}: linking existing company "${resolution.name}" to token "${token}"`
         );
-        await linkAtsTokenToCompany(resolution.id, entry.slug, "lever");
+        await linkAtsTokenToCompany(resolution.id, token, atsSource);
         companyId = resolution.id;
         companySlug = resolution.slug;
         companyName = resolution.name;
       } else {
-        // Brand-new company - auto-create
         console.log(
-          `[Discovery] Lever: creating new company "${entry.name}" (slug: ${entry.slug})`
+          `[Discovery] ${platformName}: creating new company "${entry.name}" (token: ${token})`
         );
         const created = await autoCreateCompany({
           name: entry.name,
           domain: entry.domain,
           industry: entry.industry,
-          discoveredVia: "lever-aggregate",
-          atsToken: entry.slug,
-          atsSource: "lever",
+          discoveredVia: `${atsSource}-aggregate`,
+          atsToken: token,
+          atsSource,
         });
         companyId = created.id;
         companySlug = created.slug;
@@ -375,8 +265,8 @@ async function discoverLeverCompanies(
           headquarters: null,
           country: null,
           websiteUrl: `https://${entry.domain}`,
-          atsToken: entry.slug,
-          atsSource: "lever",
+          atsToken: token,
+          atsSource,
         };
 
         processResult = await processCompany(companyRow);
@@ -391,12 +281,12 @@ async function discoverLeverCompanies(
       result.jobsUpdated += processResult.updated;
 
       console.log(
-        `[Discovery] Lever: ok "${companyName}" - jobs: ${processResult.created} created, ${processResult.updated} updated`
+        `[Discovery] ${platformName}: ok "${companyName}" - jobs: ${processResult.created} created, ${processResult.updated} updated`
       );
 
       await jitteredDelay(REQUEST_DELAY_MS);
     } catch (err: any) {
-      console.error(`[Discovery] Lever: error processing "${entry.name}":`, err?.message || err);
+      console.error(`[Discovery] ${platformName}: error processing "${entry.name}":`, err?.message || err);
       result.errors++;
       await jitteredDelay(REQUEST_DELAY_MS);
     }
@@ -414,10 +304,6 @@ async function discoverLeverCompanies(
  *  a. Token already linked in DB -> skip (board was processed in a prior run)
  *  b. Name matches an existing DB company -> link atsToken + scrape fresh jobs
  *  c. Completely new -> auto-create company + link atsToken + scrape jobs
- *
- * This fixes the "Discovered: 0, Skipped: 178" regression where the old
- * name-only check caused all pre-seeded companies (Airtable, Gusto, etc.)
- * to be unconditionally skipped, preventing any job scraping.
  */
 export async function runCompanyDiscovery(): Promise<DiscoveryResult> {
   console.log("[Discovery] Starting nightly company discovery scan...");
@@ -431,14 +317,117 @@ export async function runCompanyDiscovery(): Promise<DiscoveryResult> {
     errors: 0,
   };
 
-  // Phase A: Greenhouse (~55% of budget)
-  const greenhouseBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.55);
-  await discoverGreenhouseCompanies(greenhouseBudget, result);
+  // Phase A: Greenhouse (40% of budget)
+  const greenhouseBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.40);
+  await discoverAtsCompanies(
+    "greenhouse",
+    "greenhouse-boards.json",
+    async (token) => {
+      try {
+        const res = await resilientGet(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs`);
+        return (res.data?.jobs?.length ?? 0) > 0;
+      } catch {
+        return false;
+      }
+    },
+    greenhouseBudget,
+    result
+  );
 
-  // Phase B: Lever (remaining budget)
-  const leverBudget = MAX_DISCOVERED_COMPANIES - result.discovered;
-  if (leverBudget > 0) {
-    await discoverLeverCompanies(leverBudget, result);
+  // Phase B: Lever (20% of budget)
+  const leverBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.20);
+  if (result.discovered < MAX_DISCOVERED_COMPANIES) {
+    await discoverAtsCompanies(
+      "lever",
+      "lever-companies.json",
+      async (token) => {
+        try {
+          const res = await resilientGet(`https://api.lever.co/v0/postings/${token}?mode=json&limit=1`);
+          return Array.isArray(res.data) && res.data.length > 0;
+        } catch {
+          return false;
+        }
+      },
+      leverBudget,
+      result
+    );
+  }
+
+  // Phase C: Ashby (10% of budget)
+  const ashbyBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.10);
+  if (result.discovered < MAX_DISCOVERED_COMPANIES) {
+    await discoverAtsCompanies(
+      "ashby",
+      "ashby-companies.json",
+      async (token) => {
+        try {
+          const res = await resilientPost(`https://api.ashbyhq.com/posting-api/job-board/${token}`, {});
+          return (res.data?.jobs?.length ?? 0) > 0;
+        } catch {
+          return false;
+        }
+      },
+      ashbyBudget,
+      result
+    );
+  }
+
+  // Phase D: BambooHR (10% of budget)
+  const bamboohrBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.10);
+  if (result.discovered < MAX_DISCOVERED_COMPANIES) {
+    await discoverAtsCompanies(
+      "bamboohr",
+      "bamboohr-companies.json",
+      async (token) => {
+        try {
+          const res = await resilientGet(`https://${token}.bamboohr.com/careers/list`);
+          const raw = res.data?.result ?? res.data ?? [];
+          return Array.isArray(raw) && raw.length > 0;
+        } catch {
+          return false;
+        }
+      },
+      bamboohrBudget,
+      result
+    );
+  }
+
+  // Phase E: iCIMS (10% of budget)
+  const icimsBudget = Math.ceil(MAX_DISCOVERED_COMPANIES * 0.10);
+  if (result.discovered < MAX_DISCOVERED_COMPANIES) {
+    await discoverAtsCompanies(
+      "icims",
+      "icims-companies.json",
+      async (token) => {
+        try {
+          const res = await resilientGet(`https://careers-${token}.icims.com/sitemap.xml`);
+          return typeof res.data === "string" && res.data.includes("<url>");
+        } catch {
+          return false;
+        }
+      },
+      icimsBudget,
+      result
+    );
+  }
+
+  // Phase F: Paylocity (remaining budget)
+  const paylocityBudget = MAX_DISCOVERED_COMPANIES - result.discovered;
+  if (paylocityBudget > 0 && result.discovered < MAX_DISCOVERED_COMPANIES) {
+    await discoverAtsCompanies(
+      "paylocity",
+      "paylocity-companies.json",
+      async (token) => {
+        try {
+          const res = await resilientGet(`https://recruiting.paylocity.com/recruiting/jobs/All/${token}/`);
+          return typeof res.data === "string" && res.data.includes("window.pageData");
+        } catch {
+          return false;
+        }
+      },
+      paylocityBudget,
+      result
+    );
   }
 
   console.log(
