@@ -37,7 +37,7 @@ import {
   useJobLocationsAutocompleteQuery,
 } from "../hooks/usePlatformQueries";
 import { useAuth } from "../core/contexts/AuthContext";
-import { EmptyState, InlineLoader, ErrorState, Avatar } from "../components/ui";
+import { EmptyState, InlineLoader, ErrorState, Avatar, SkeletonBlock } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { JobDetailModal } from "../features/jobs/components/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
@@ -206,6 +206,33 @@ function ActiveFilters({
 }
 
 // ---------------------------------------------------------------------------
+// Job Row Card Skeleton — premium shimmer loading state
+// ---------------------------------------------------------------------------
+function JobRowCardSkeleton() {
+  return (
+    <div className="panel p-4 space-y-3 animate-pulse border border-base rounded-xl" style={{ background: "var(--bg-surface)" }}>
+      <div className="flex items-start gap-3.5">
+        <SkeletonBlock className="h-11 w-11 rounded-xl flex-shrink-0" />
+        <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
+          <SkeletonBlock className="h-3.5 w-1/2 rounded" />
+          <SkeletonBlock className="h-2.5 w-1/4 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+        <SkeletonBlock className="h-3 w-16 rounded" />
+        <SkeletonBlock className="h-3 w-20 rounded" />
+        <SkeletonBlock className="h-3 w-14 rounded" />
+      </div>
+      <div className="flex flex-wrap gap-1.5 pt-1.5">
+        <SkeletonBlock className="h-4.5 w-12 rounded-lg" />
+        <SkeletonBlock className="h-4.5 w-16 rounded-lg" />
+        <SkeletonBlock className="h-4.5 w-14 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Job Row Card — dark mode aware
 // ---------------------------------------------------------------------------
 function JobRowCard({
@@ -328,18 +355,8 @@ function JobRowCard({
             )}
           </div>
 
-          {/* Status badges */}
+          {/* Status badges & Skills */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[9px] font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-              <span className="h-1 w-1 rounded-full bg-indigo-500 animate-pulse" />
-              Actively Hiring
-            </span>
-            {isNew && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 text-[9px] font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-                <span className="h-1 w-1 rounded-full bg-indigo-500 animate-pulse" />
-                New
-              </span>
-            )}
             {isHot && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
                 <span className="h-1 w-1 rounded-full bg-amber-500 animate-pulse" />
@@ -355,6 +372,28 @@ function JobRowCard({
                 }`} style={matchPercentage < 40 ? { background: "var(--bg-surface-2)", color: "var(--text-muted)" } : {}}>
                 {matchPercentage}% Skill Match
               </span>
+            )}
+            {job.skillsRequired && job.skillsRequired.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1">
+                {job.skillsRequired.slice(0, 4).map((skill) => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold border"
+                    style={{
+                      background: "var(--bg-surface-2)",
+                      borderColor: "var(--border)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {skill}
+                  </span>
+                ))}
+                {job.skillsRequired.length > 4 && (
+                  <span className="text-[9px] font-medium pl-0.5" style={{ color: "var(--text-muted)" }}>
+                    +{job.skillsRequired.length - 4}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -1532,7 +1571,11 @@ export function JobsPage() {
             )}
 
             {source.loading ? (
-              <div className="flex justify-center py-10"><InlineLoader label="Searching jobs…" /></div>
+              <div className="space-y-2.5 max-h-[calc(100vh-210px)] overflow-y-auto pr-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <JobRowCardSkeleton key={i} />
+                ))}
+              </div>
             ) : source.error ? (
               <ErrorState title="Couldn't load jobs" text="Check your connection and try again." onRetry={source.refetch} />
             ) : filteredJobs.length > 0 ? (
