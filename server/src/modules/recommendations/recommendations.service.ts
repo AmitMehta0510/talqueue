@@ -82,7 +82,7 @@ export const getSavedJobs = async (userId: string, page = 1, limit = 20) => {
 export const getRecommendedJobs = async (
   userId: string,
   page = 1,
-  limit = 20
+  limit = 1000
 ) => {
   //
   // User profile and jobs pre-fetched in a single concurrent block Promise.all
@@ -113,7 +113,6 @@ export const getRecommendedJobs = async (
       include: {
         company: true,
       },
-      take: 200,
     }),
   ]);
 

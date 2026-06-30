@@ -1,9 +1,32 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useMemo } from "react";
 import { X, BriefcaseBusiness, DollarSign, Globe, Award, Sparkles, Send, CheckCircle2 } from "lucide-react";
 import { Job, JobApplicationPayload } from "../../../lib/api";
 import { formatCount, titleCase } from "../../../core/utils/format";
 import { useAuth } from "../../../core/contexts/AuthContext";
-import { useApplyToJobMutation } from "../../../hooks/usePlatformQueries";
+import { useApplyToJobMutation, useMyFullProfileQuery } from "../../../hooks/usePlatformQueries";
+
+// Helper to render plain text lists as neat bulleted list items in premium UI/UX
+function renderDynamicList(text: string | null | undefined) {
+  if (!text) return null;
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[-*•\d.]+\s*/, ""))
+    .filter(Boolean);
+
+  if (lines.length > 1) {
+    return (
+      <ul className="space-y-2.5 mt-2">
+        {lines.map((line, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0 mt-2" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{text}</p>;
+}
 
 interface JobDetailModalProps {
   job: Job;
@@ -15,6 +38,20 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
   const { user } = useAuth();
   const applyMutation = useApplyToJobMutation(job.id);
   const [applied, setApplied] = useState(hasAppliedAlready);
+
+  // Fetch full user profile for skills checklist match
+  const profileQuery = useMyFullProfileQuery();
+  const userSkillNames = useMemo(() => {
+    return new Set(
+      (profileQuery.data?.skills || [])
+        .map((s) => s.skill?.name?.toLowerCase().trim())
+        .filter((name): name is string => Boolean(name))
+    );
+  }, [profileQuery.data?.skills]);
+
+  const jobSkills = (job.skillsRequired || []) as string[];
+  const matchingSkills = jobSkills.filter((s) => userSkillNames.has(s.toLowerCase().trim()));
+  const missingSkills = jobSkills.filter((s) => !userSkillNames.has(s.toLowerCase().trim()));
 
   const [form, setForm] = useState<JobApplicationPayload>({
     resumeUrl: user?.profile?.resumeUrl || "",
@@ -95,44 +132,106 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
 
           <hr className="border-base" />
 
+          {/* Skill checklist matching */}
+          {jobSkills.length > 0 && (
+            <div className="panel p-5 space-y-4 bg-gradient-to-br from-surface to-surface-2 border border-base rounded-xl shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-base">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Skill Checklist Match
+                  </h4>
+                  <p className="text-[11px] text-muted-fg mt-0.5">
+                    How well does your profile match this role's stack?
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                    matchingSkills.length === jobSkills.length
+                      ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200"
+                      : matchingSkills.length > 0
+                      ? "bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 border-indigo-200"
+                      : "bg-slate-50 dark:bg-slate-900 text-slate-500 border-base"
+                  }`}>
+                    {Math.round((matchingSkills.length / jobSkills.length) * 100)}% Match
+                  </span>
+                </div>
+              </div>
+              
+              {/* Visual match progress bar */}
+              <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    matchingSkills.length === jobSkills.length
+                      ? "bg-emerald-500"
+                      : matchingSkills.length > 0
+                      ? "bg-indigo-500"
+                      : "bg-slate-300"
+                  }`}
+                  style={{ width: `${(matchingSkills.length / jobSkills.length) * 100}%` }}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 pt-1">
+                <div className="space-y-2">
+                  <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    ✓ Matches ({matchingSkills.length})
+                  </h5>
+                  {matchingSkills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {matchingSkills.map((s, i) => (
+                        <span key={i} className="rounded-md px-2.5 py-1 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] italic text-muted-fg">No matching skills yet.</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 text-amber-600 dark:text-amber-500">
+                    ⚠ Missing ({missingSkills.length})
+                  </h5>
+                  {missingSkills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {missingSkills.map((s, i) => (
+                        <span key={i} className="rounded-md px-2.5 py-1 text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-base text-secondary">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] italic text-emerald-600">All matching! Zero missing skills.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Description Section */}
           <div>
             <h3 className="text-sm font-semibold text-primary mb-2">Job Description</h3>
-            <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.description}</p>
+            {renderDynamicList(job.description)}
           </div>
 
           {job.responsibilities && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-2">Responsibilities</h3>
-              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.responsibilities}</p>
+              {renderDynamicList(job.responsibilities)}
             </div>
           )}
 
           {job.requirements && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-2">Requirements</h3>
-              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.requirements}</p>
+              {renderDynamicList(job.requirements)}
             </div>
           )}
 
           {job.perks && (
             <div>
               <h3 className="text-sm font-semibold text-primary mb-2">Perks & Benefits</h3>
-              <p className="text-sm leading-6 text-secondary whitespace-pre-wrap">{job.perks}</p>
-            </div>
-          )}
-
-          {/* Skills Required */}
-          {job.skillsRequired && job.skillsRequired.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-primary mb-2">Required Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {job.skillsRequired.map((skill) => (
-                  <span className="chip px-3 py-1" key={skill}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
+              {renderDynamicList(job.perks)}
             </div>
           )}
 

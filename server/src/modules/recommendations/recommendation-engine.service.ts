@@ -26,7 +26,11 @@ export const calculateJobRecommendationScoreSync = (
     (skill: string) => userSkillsSet.has(skill)
   );
 
-  score += matchedSkills.length * 15;
+  // Focus on percentage matching ratio instead of raw count, with massive weight to ensure 1st priority sorting
+  const matchPercent = requiredSkills.length > 0
+    ? (matchedSkills.length / requiredSkills.length)
+    : 1.0;
+  score += matchPercent * 10000;
 
   //
   // Engineering score
@@ -101,7 +105,7 @@ export const calculateJobRecommendationScoreSync = (
 export const recommendJobsForUserAdvanced = async (
   userId: string,
   page = 1,
-  limit = 20
+  limit = 1000
 ) => {
   //
   // Open jobs and user prefetch in parallel
@@ -132,7 +136,6 @@ export const recommendJobsForUserAdvanced = async (
       include: {
         company: true,
       },
-      take: 200,
     }),
   ]);
 

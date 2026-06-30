@@ -23,6 +23,51 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
+/**
+ * Returns a concise one-liner string for well-known scraper errors so that
+ * routine HTTP failures (404 board gone, 429 rate-limit, etc.) don't flood
+ * the terminal with multi-hundred-line Axios stack traces.
+ *
+ * Unknown or truly unexpected errors return only the .message string (still
+ * no stack) so logs stay readable while nothing is silently swallowed.
+ */
+function formatScraperError(err: unknown): string {
+  if (err && typeof err === "object" && (err as any).isAxiosError === true) {
+    const ax      = err as any;
+    const status  = ax.response?.status ?? ax.status;
+    const url     = ax.config?.url ?? "(unknown URL)";
+    const code    = ax.code ?? "";
+
+    if (status === 401) return `HTTP 401 Unauthorized — ${url}`;
+    if (status === 403) return `HTTP 403 Forbidden — ${url}`;
+    if (status === 404) return `HTTP 404 Not Found — ${url}`;
+    if (status === 429) return `HTTP 429 Rate Limited — ${url}`;
+    if (status === 502) return `HTTP 502 Bad Gateway — ${url}`;
+    if (status === 503) return `HTTP 503 Service Unavailable — ${url}`;
+    if (status === 500) return `HTTP 500 Internal Server Error — ${url}`;
+    if (status)         return `HTTP ${status} — ${url}`;
+    if (code === "ECONNABORTED" || code === "ETIMEDOUT") return `Timeout — ${url}`;
+    if (code === "ENOTFOUND"   || code === "EAI_AGAIN")  return `DNS resolution failed — ${url}`;
+    if (code === "ECONNREFUSED")                         return `Connection refused — ${url}`;
+  }
+  // Fallback: any Error-like object — message only, no stack
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+/** Returns true for expected/transient scraper errors that warrant only a
+ *  warn-level log rather than an error-level one. */
+function isExpectedScraperError(summary: string): boolean {
+  return (
+    summary.startsWith("HTTP 4")   || // 401, 403, 404, 429
+    summary.startsWith("HTTP 502") ||
+    summary.startsWith("HTTP 503") ||
+    summary.startsWith("Timeout")  ||
+    summary.startsWith("DNS")      ||
+    summary.startsWith("Connection refused")
+  );
+}
+
 // ---------------------------------------------------------------------------
 // CONSTANTS
 // ---------------------------------------------------------------------------
@@ -523,6 +568,113 @@ function extractSkills(title: string, desc: string, jobType?: string): string[] 
 }
 
 /**
+ * Parses an ATS HTML job description into structured sections.
+ * Scans H1–H4 headings to split the raw HTML into description (intro),
+ * requirements, responsibilities, and perks. Falls back gracefully to the
+ * full stripped text if no recognisable section headings are found.
+ *
+ * Works with Greenhouse, BambooHR, iCIMS, and most generic ATS HTML layouts.
+ */
+function parseJobDescriptionSections(html: string): {
+  description: string;
+  requirements: string;
+  responsibilities: string;
+  perks: string;
+} {
+  const empty = { description: "", requirements: "", responsibilities: "", perks: "" };
+  if (!html?.trim()) return empty;
+
+  const REQS_PATTERNS = [
+    "requirement", "qualif", "what we look", "what you bring", "must have",
+    "who you are", "your background", "you'll need", "you should have",
+    "skills required", "minimum qualif", "basic qualif", "preferred qualif",
+  ];
+  const RESP_PATTERNS = [
+    "responsib", "what you'll do", "what you will do", "your role",
+    "in this role", "what you do", "your day", "about the role",
+    "key tasks", "the role", "you will be", "what you'll be doing",
+    "key responsib", "day-to-day", "expectations", "what we expect",
+  ];
+  const PERKS_PATTERNS = [
+    "benefit", "perk", "compensation", "what we offer", "why join",
+    "we offer", "package", "salary & benefit", "total rewards", "perks &",
+  ];
+
+  // Intro: content before the first heading
+  let description = "";
+  const firstH = html.search(/<h[1-4]/i);
+  if (firstH > 0) {
+    description = stripHtml(html.slice(0, firstH)).trim();
+  } else if (firstH === -1) {
+    // No headings at all — whole content is the description
+    return { ...empty, description: stripHtml(html).trim() };
+  }
+
+  let requirements = "";
+  let responsibilities = "";
+  let perks = "";
+
+  // Walk each section: <hN>heading</hN> body ... next-<hN>
+  const sectionRe = /<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>([\s\S]*?)(?=<h[1-4]|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = sectionRe.exec(html)) !== null) {
+    const heading = stripHtml(m[1]).toLowerCase().trim();
+    const body = stripHtml(m[2]).trim();
+    if (!body || body.length < 10) continue;
+
+    if (REQS_PATTERNS.some(p => heading.includes(p))) {
+      requirements = requirements ? `${requirements}\n${body}` : body;
+    } else if (RESP_PATTERNS.some(p => heading.includes(p))) {
+      responsibilities = responsibilities ? `${responsibilities}\n${body}` : body;
+    } else if (PERKS_PATTERNS.some(p => heading.includes(p))) {
+      perks = perks ? `${perks}\n${body}` : body;
+    } else if (
+      !description &&
+      (heading.includes("overview") || heading.includes("about this") ||
+       heading.includes("the job") || heading.includes("job description") ||
+       heading.includes("about the position"))
+    ) {
+      description = body;
+    }
+  }
+
+  // Last-resort description: first 800 chars of stripped full HTML
+  if (!description) {
+    description = stripHtml(html).trim().slice(0, 800);
+  }
+
+  return { description, requirements, responsibilities, perks };
+}
+
+/**
+ * Infers a human-readable experience level from a job title and description.
+ * Uses a priority-ordered set of title-level signals first (highest precision),
+ * then falls back to year-range patterns in the description text.
+ *
+ * Returns null when there is not enough signal to make a reliable determination.
+ */
+function extractExperienceLevel(title: string, description: string): string | null {
+  const t = title.toLowerCase();
+  const d = description.slice(0, 600).toLowerCase();
+
+  // Tier 1: explicit title tokens (zero ambiguity)
+  if (/\b(intern|co[-\s]?op|coop|trainee|apprentice|fresher)\b/.test(t))                    return "Internship";
+  if (/\b(new\s+grad|entry[-\s]level|junior\b|associate\s+engineer|graduate\s+(engineer|hire))\b/.test(t)) return "Entry Level";
+  if (/\b(principal\s+engineer|staff\s+engineer|distinguished\s+engineer)\b/.test(t))        return "Staff / Principal";
+  if (/\b(director|vp\s+of|head\s+of|chief\s+\w+\s+officer)\b/.test(t))                     return "Director+";
+  if (/\b(senior\b|lead\s+engineer|lead\s+developer|sse\b|tech\s+lead|sr\.?\s+engineer)\b/.test(t)) return "Senior";
+  if (/\b(engineer\s+(ii|iii|iv|2|3)|software\s+engineer\s+[234])\b/.test(t))               return "Mid Level";
+
+  // Tier 2: year-range signals in description
+  if (/\b(0[-–]?1|1[-–]?2)\s*\+?\s*years?\s+(of\s+)?(experience|exp)/i.test(d))            return "Entry Level";
+  if (/\bno\s+(prior\s+)?(work\s+)?experience\s+required/i.test(d))                         return "Entry Level";
+  if (/\b(2[-–]?4|3[-–]?5)\s*\+?\s*years?\s+(of\s+)?(experience|exp)/i.test(d))            return "Mid Level";
+  if (/\b([5-9]|10)\s*\+\s*years?\s+(of\s+)?(experience|exp)/i.test(d))                    return "Senior";
+
+  return null;
+}
+
+/**
  * Generates realistic mock job descriptions, requirements, and responsibilities.
  * Used ONLY as a fallback when an ATS provides no structured description.
  *
@@ -710,21 +862,34 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         activeSlugs.push(slug);
 
         // Use real description from Greenhouse if available; fall back to generated
-        let rawDescription = "";
-        if (job.content) {
-          rawDescription = stripHtml(job.content);
+        // Parse real description sections from Greenhouse HTML content field
+        let description = "";
+        let requirements = "";
+        let responsibilities = "";
+        let perks: string | null = null;
+
+        if (job.content && job.content.length > 80) {
+          const sections = parseJobDescriptionSections(job.content);
+          description = sections.description;
+          requirements = sections.requirements;
+          responsibilities = sections.responsibilities;
+          perks = sections.perks || null;
         }
-        // Resolve description first (needed for Tier-3 classifier scan)
-        // then classify, then call getJobDescription with the classified type
-        const preDesc = rawDescription.length > 50 ? rawDescription : "";
-        // Greenhouse public board API: job.metadata is null — Tier 2+3 only
-        const type = classifyJobType(jobTitle, preDesc);
-        const { description: generatedDesc, requirements, responsibilities } = getJobDescription(jobTitle, company.name, type);
-        const description = rawDescription.length > 50 ? rawDescription : generatedDesc;
+
+        // Classify type using real content for Tier-3 accuracy
+        const type = classifyJobType(jobTitle, description);
+
+        // Fall back to templates only for fields that weren't extracted from real content
+        const generated = getJobDescription(jobTitle, company.name, type);
+        if (!description)       description       = generated.description;
+        if (!requirements)      requirements      = generated.requirements;
+        if (!responsibilities)  responsibilities  = generated.responsibilities;
 
         const locationName = job.location?.name || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, description, type);
+        // Extend skills corpus to include requirements text for better coverage
+        const skillsRequired = extractSkills(jobTitle, `${description} ${requirements}`, type);
+        const experienceLevel = extractExperienceLevel(jobTitle, `${description} ${requirements}`);
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -735,30 +900,34 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             description,
             requirements,
             responsibilities,
+            perks,
             location: locationName,
             type,
             workMode,
             applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "greenhouse",
-            postedAt: job.updated_at ? new Date(job.updated_at) : null,
+            postedAt: job.updated_at ? new Date(job.updated_at) : new Date(),
           },
           update: {
             title: jobTitle,
             description,
             requirements,
             responsibilities,
+            perks,
             location: locationName,
             type,
             workMode,
             applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "greenhouse",
-            postedAt: job.updated_at ? new Date(job.updated_at) : null,
+            // postedAt intentionally NOT updated — preserve original posting date
           }
         });
 
@@ -821,10 +990,14 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
 
         // Re-classify with full description for Tier-3 scan accuracy
         const type = classifyJobType(jobTitle, description, job.categories?.commitment);
-        // Lever location is in job.categories.location
-        const locationName = job.categories?.location || job.workplaceType || company.headquarters || "Remote";
-        const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, description, type);
+        // Lever location: prefer structured categories.location over the less-reliable workplaceType string
+        const locationName = job.categories?.location || company.headquarters || "Remote";
+        // Lever provides explicit workplaceType: "remote" | "on-site" | "hybrid"
+        const workMode: WorkMode = job.workplaceType?.toLowerCase().includes("remote") ? "REMOTE"
+          : job.workplaceType?.toLowerCase().includes("hybrid") ? "HYBRID"
+          : parseWorkMode(locationName);
+        const skillsRequired = extractSkills(jobTitle, `${description} ${finalRequirements}`, type);
+        const experienceLevel = extractExperienceLevel(jobTitle, `${description} ${finalRequirements}`);
         const applyUrl = job.hostedUrl || `https://jobs.lever.co/${leverToken}/${job.id}`;
 
         const upserted = await prisma.job.upsert({
@@ -841,10 +1014,11 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             workMode,
             applyUrl,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "lever",
-            postedAt: job.createdAt ? new Date(job.createdAt) : null,
+            postedAt: job.createdAt ? new Date(job.createdAt) : new Date(),
           },
           update: {
             title: jobTitle,
@@ -856,10 +1030,11 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             workMode,
             applyUrl,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "lever",
-            postedAt: job.createdAt ? new Date(job.createdAt) : null,
+            // postedAt intentionally NOT updated — preserve original posting date
           }
         });
 
@@ -897,7 +1072,18 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         const type = classifyJobType(jobTitle, descPlain, job.employmentType);
         const locationName = job.location || company.headquarters || "Remote";
         const workMode = parseWorkMode(locationName);
-        const skillsRequired = extractSkills(jobTitle, `${descPlain} ${jobTitle}`, type);
+        // Ashby exposes isRemote boolean and workplaceType for accurate work mode
+        const ashbyWorkMode: WorkMode = job.isRemote === true ? "REMOTE"
+          : job.workplaceType?.toLowerCase().includes("hybrid") ? "HYBRID"
+          : parseWorkMode(locationName);
+        const skillsRequired = extractSkills(jobTitle, `${descPlain} ${requirements}`, type);
+        const experienceLevel = extractExperienceLevel(jobTitle, `${descPlain} ${requirements}`);
+
+        // Ashby provides descriptionPlain/requirementsPlain — fall back to templates only when missing
+        const generated = getJobDescription(jobTitle, company.name, type);
+        const finalDesc = descPlain || generated.description;
+        const finalReq  = requirements || generated.requirements;
+        const finalResp = responsibilities || generated.responsibilities;
 
         const upserted = await prisma.job.upsert({
           where: { slug },
@@ -905,31 +1091,35 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
             companyId: company.id,
             title: jobTitle,
             slug,
-            description: descPlain || jobTitle,
-            requirements: requirements || null,
-            responsibilities: responsibilities || null,
+            description: finalDesc,
+            requirements: finalReq || null,
+            responsibilities: finalResp || null,
             location: locationName,
             type,
-            workMode,
+            workMode: ashbyWorkMode,
             applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "ashby",
+            postedAt: job.publishedAt ? new Date(job.publishedAt) : new Date(),
           },
           update: {
             title: jobTitle,
-            description: descPlain || jobTitle,
-            requirements: requirements || null,
-            responsibilities: responsibilities || null,
+            description: finalDesc,
+            requirements: finalReq || null,
+            responsibilities: finalResp || null,
             location: locationName,
             type,
-            workMode,
+            workMode: ashbyWorkMode,
             applyUrl: job.jobUrl || `https://jobs.ashbyhq.com/${ashbyToken}/${job.id}`,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             openings: null, // clear legacy openings=0 that triggers erroneous auto-close
             atsSource: "ashby",
+            // postedAt intentionally NOT updated — preserve original posting date
           }
         });
 
@@ -1134,8 +1324,14 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
     });
 
   } catch (err) {
-    // Inner catch: absorbs all network / Prisma / ATS API errors per company.
-    console.error(`[Job Scraper] Failed to process jobs for company ${company.name}:`, err);
+    const summary = formatScraperError(err);
+    if (isExpectedScraperError(summary)) {
+      // Known / routine failure — one clean line, no stack trace
+      console.warn(`[Job Scraper] Skipping ${company.name}: ${summary}`);
+    } else {
+      // Truly unexpected — still only message, but at error level
+      console.error(`[Job Scraper] Failed to process ${company.name}: ${summary}`);
+    }
   }
 
   return result;
@@ -1279,6 +1475,7 @@ export async function scrapeWorkdayJobs(
       // Workday CXS payload exposes no employment type field — Tier 2+3 only
       const type = classifyJobType(jobTitle, description);
       const skillsRequired = extractSkills(jobTitle, description, type);
+      const experienceLevel = extractExperienceLevel(jobTitle, description);
 
       // Apply URL — Workday public job links use externalPath as the slug segment
       const applyUrl =
@@ -1301,9 +1498,11 @@ export async function scrapeWorkdayJobs(
             workMode,
             applyUrl,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             externalJobId: externalId,
             atsSource: "workday",
+            postedAt: rawJob?.startDate ? new Date(rawJob.startDate) : new Date(),
           },
           update: {
             title: jobTitle,
@@ -1315,8 +1514,10 @@ export async function scrapeWorkdayJobs(
             workMode,
             applyUrl,
             skillsRequired,
+            experienceLevel,
             status: "OPEN",
             atsSource: "workday",
+            // postedAt intentionally NOT updated — preserve original posting date
           },
         });
 
@@ -1392,10 +1593,53 @@ export async function scrapeBambooHRJobs(
       }
 
       const workMode = parseWorkMode(locationName);
-      const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
-      const type = classifyJobType(jobTitle, description);
-      const skillsRequired = extractSkills(jobTitle, description, type);
       const applyUrl = `https://${token}.bamboohr.com/careers/${jobId}`;
+
+      // Attempt to fetch per-job detail JSON for real description/requirements
+      let description = "";
+      let requirements = "";
+      let responsibilities = "";
+      let perks: string | null = null;
+      let bambooPostedAt: Date | null = job.datePosted ? new Date(job.datePosted) : null;
+
+      try {
+        const detailRes = await resilientGet(`https://${token}.bamboohr.com/careers/${jobId}/detail`);
+        const detail = detailRes.data;
+        if (detail && typeof detail === "object") {
+          // BambooHR detail JSON fields (vary by version)
+          const rawHtml = detail.description || detail.jobDescription || "";
+          if (rawHtml && rawHtml.length > 80) {
+            const sections = parseJobDescriptionSections(rawHtml);
+            description = sections.description;
+            requirements = sections.requirements || detail.requirements || "";
+            responsibilities = sections.responsibilities;
+            perks = sections.perks || null;
+          }
+          if (!bambooPostedAt && detail.datePosted) {
+            bambooPostedAt = new Date(detail.datePosted);
+          }
+        } else if (typeof detailRes.data === "string" && detailRes.data.length > 80) {
+          // HTML fallback
+          const sections = parseJobDescriptionSections(detailRes.data);
+          description = sections.description;
+          requirements = sections.requirements;
+          responsibilities = sections.responsibilities;
+          perks = sections.perks || null;
+        }
+      } catch {
+        // Network / 404 — fall through to templates below
+      }
+
+      const type = classifyJobType(jobTitle, description);
+
+      // Fill missing fields with templates
+      const generated = getJobDescription(jobTitle, company.name, type);
+      if (!description)       description       = generated.description;
+      if (!requirements)      requirements      = generated.requirements;
+      if (!responsibilities)  responsibilities  = generated.responsibilities;
+
+      const skillsRequired = extractSkills(jobTitle, `${description} ${requirements}`, type);
+      const experienceLevel = extractExperienceLevel(jobTitle, `${description} ${requirements}`);
 
       const upserted = await prisma.job.upsert({
         where: { slug },
@@ -1406,27 +1650,33 @@ export async function scrapeBambooHRJobs(
           description,
           requirements,
           responsibilities,
+          perks,
           location: locationName,
           type,
           workMode,
           applyUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           externalJobId: externalId,
           atsSource: "bamboohr",
+          postedAt: bambooPostedAt ?? new Date(),
         },
         update: {
           title: jobTitle,
           description,
           requirements,
           responsibilities,
+          perks,
           location: locationName,
           type,
           workMode,
           applyUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           atsSource: "bamboohr",
+          // postedAt intentionally NOT updated — preserve original posting date
         },
       });
 
@@ -1504,7 +1754,8 @@ export async function scrapeIcimsJobs(
       const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
       const type = classifyJobType(jobTitle, description);
       const skillsRequired = extractSkills(jobTitle, description, type);
-      const postedAt = job.lastmod ? new Date(job.lastmod) : null;
+      const experienceLevel = extractExperienceLevel(jobTitle, description);
+      const postedAt = job.lastmod ? new Date(job.lastmod) : new Date();
 
       const upserted = await prisma.job.upsert({
         where: { slug },
@@ -1520,6 +1771,7 @@ export async function scrapeIcimsJobs(
           workMode,
           applyUrl: jobUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           externalJobId: externalId,
           atsSource: "icims",
@@ -1535,9 +1787,10 @@ export async function scrapeIcimsJobs(
           workMode,
           applyUrl: jobUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           atsSource: "icims",
-          postedAt,
+          // postedAt intentionally NOT updated — preserve original posting date
         },
       });
 
@@ -1624,8 +1877,9 @@ export async function scrapePaylocityJobs(
       const { description, requirements, responsibilities } = getJobDescription(jobTitle, company.name, "FULL_TIME");
       const type = classifyJobType(jobTitle, description);
       const skillsRequired = extractSkills(jobTitle, description, type);
+      const experienceLevel = extractExperienceLevel(jobTitle, description);
       const applyUrl = `https://recruiting.paylocity.com/recruiting/Jobs/Details/${jobId}`;
-      const postedAt = job.PublishedDate ? new Date(job.PublishedDate) : null;
+      const postedAt = job.PublishedDate ? new Date(job.PublishedDate) : new Date();
 
       const upserted = await prisma.job.upsert({
         where: { slug },
@@ -1641,6 +1895,7 @@ export async function scrapePaylocityJobs(
           workMode,
           applyUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           externalJobId: externalId,
           atsSource: "paylocity",
@@ -1656,9 +1911,10 @@ export async function scrapePaylocityJobs(
           workMode,
           applyUrl,
           skillsRequired,
+          experienceLevel,
           status: "OPEN",
           atsSource: "paylocity",
-          postedAt,
+          // postedAt intentionally NOT updated — preserve original posting date
         },
       });
 
@@ -1745,10 +2001,8 @@ export async function runJobScrape() {
         totalProcessed++;
       } else {
         // Outer catch: unexpected rejection that bypassed the inner try/catch.
-        console.error(
-          `[Job Scraper] Unexpected batch rejection for company "${batch[i].name}":`,
-          settlement.reason
-        );
+        const summary = formatScraperError(settlement.reason);
+        console.error(`[Job Scraper] Unexpected rejection for "${batch[i].name}": ${summary}`);
       }
     }
 

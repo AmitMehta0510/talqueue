@@ -414,6 +414,31 @@ function JobRowCard({
   );
 }
 
+// Helper to render plain text lists as neat bulleted list items in premium UI/UX
+function renderDynamicList(text: string | null | undefined) {
+  if (!text) return null;
+  
+  // Split lines, remove bullet markers, and clean whitespace
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[-*•\d.]+\s*/, ""))
+    .filter(Boolean);
+
+  if (lines.length > 1) {
+    return (
+      <ul className="space-y-2.5 mt-2">
+        {lines.map((line, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0 mt-2" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{text}</p>;
+}
+
 // ---------------------------------------------------------------------------
 // Job Detail Drawer — dark mode aware
 // ---------------------------------------------------------------------------
@@ -596,41 +621,74 @@ function JobDetailDrawer({
 
         {/* Skill checklist matching */}
         {jobSkills.length > 0 && (
-          <div className="panel p-5 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-              Skill Checklist Match
-            </h4>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="panel p-5 space-y-4 bg-gradient-to-br from-surface to-surface-2 border border-base rounded-xl shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-base">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Skill Checklist Match
+                </h4>
+                <p className="text-[11px] text-muted-fg mt-0.5">
+                  How well does your profile match this role's stack?
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                  matchingSkills.length === jobSkills.length
+                    ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200"
+                    : matchingSkills.length > 0
+                    ? "bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 border-indigo-200"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-500 border-base"
+                }`}>
+                  {Math.round((matchingSkills.length / jobSkills.length) * 100)}% Match
+                </span>
+              </div>
+            </div>
+            
+            {/* Visual match progress bar */}
+            <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  matchingSkills.length === jobSkills.length
+                    ? "bg-emerald-500"
+                    : matchingSkills.length > 0
+                    ? "bg-indigo-500"
+                    : "bg-slate-300"
+                }`}
+                style={{ width: `${(matchingSkills.length / jobSkills.length) * 100}%` }}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 pt-1">
               <div className="space-y-2">
-                <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   ✓ Matches ({matchingSkills.length})
                 </h5>
                 {matchingSkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {matchingSkills.map((s, i) => (
-                      <span key={i} className="rounded-md px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300">
+                      <span key={i} className="rounded-md px-2.5 py-1 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
                         {s}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] italic" style={{ color: "var(--text-muted)" }}>No matching skills yet.</p>
+                  <p className="text-[11px] italic text-muted-fg">No matching skills yet.</p>
                 )}
               </div>
               <div className="space-y-2">
-                <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                <h5 className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 text-amber-600 dark:text-amber-500">
                   ⚠ Missing ({missingSkills.length})
                 </h5>
                 {missingSkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {missingSkills.map((s, i) => (
-                      <span key={i} className="rounded-md px-2 py-0.5 text-[10px] font-medium chip">
+                      <span key={i} className="rounded-md px-2.5 py-1 text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-base text-secondary">
                         {s}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] italic" style={{ color: "var(--text-muted)" }}>No missing skills!</p>
+                  <p className="text-[11px] italic text-emerald-600">All matching! Zero missing skills.</p>
                 )}
               </div>
             </div>
@@ -641,25 +699,25 @@ function JobDetailDrawer({
         {job.description && (
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Job Description</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{job.description}</p>
+            {renderDynamicList(job.description)}
           </div>
         )}
         {job.responsibilities && (
           <div className="space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Responsibilities</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{job.responsibilities}</p>
+            {renderDynamicList(job.responsibilities)}
           </div>
         )}
         {job.requirements && (
           <div className="space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Requirements</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{job.requirements}</p>
+            {renderDynamicList(job.requirements)}
           </div>
         )}
         {job.perks && (
           <div className="space-y-2 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Perks & Benefits</h3>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>{job.perks}</p>
+            {renderDynamicList(job.perks)}
           </div>
         )}
         {(job.postedAt || job.createdAt) && (
@@ -808,42 +866,115 @@ export function JobsPage() {
   const source = getSource();
 
   const filteredJobs = useMemo(() => {
+    let resultList: Job[] = [];
+
     if (activeTab === "explore") {
-      return jobsQuery.data?.jobs || [];
-    }
-    return source.list.filter((job) => {
-      const q = searchVal.trim().toLowerCase();
-      const matchQ = !q || [job.title, job.description, job.company?.name].join(" ").toLowerCase().includes(q);
-      const matchW = !selectedWorkModes.length || selectedWorkModes.includes(job.workMode || "");
-      const matchT = !selectedJobTypes.length || selectedJobTypes.includes(job.type || "");
-      const minSalaryLpa = salaryRange[0] * 100000;
-      const maxSalaryLpa = salaryRange[1] * 100000;
-      const hasNoSalaryDetails = job.salaryMin == null && job.salaryMax == null;
-      const matchS =
-        hasNoSalaryDetails || (
-          (!minSalaryLpa || (job.salaryMax != null && job.salaryMax >= minSalaryLpa)) &&
-          (salaryRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxSalaryLpa))
+      resultList = jobsQuery.data?.jobs || [];
+    } else {
+      resultList = source.list.filter((job) => {
+        const q = searchVal.trim().toLowerCase();
+        const matchQ = !q || [job.title, job.description, job.company?.name].join(" ").toLowerCase().includes(q);
+        const matchW = !selectedWorkModes.length || selectedWorkModes.includes(job.workMode || "");
+        const matchT = !selectedJobTypes.length || selectedJobTypes.includes(job.type || "");
+        const minSalaryLpa = salaryRange[0] * 100000;
+        const maxSalaryLpa = salaryRange[1] * 100000;
+        const hasNoSalaryDetails = job.salaryMin == null && job.salaryMax == null;
+        const matchS =
+          hasNoSalaryDetails || (
+            (!minSalaryLpa || (job.salaryMax != null && job.salaryMax >= minSalaryLpa)) &&
+            (salaryRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxSalaryLpa))
+          );
+        const matchR = !selectedRoles.length || selectedRoles.some((roleName) => {
+          const keywords = ROLE_MAPPINGS[roleName] || [];
+          const titleLower = (job.title || "").toLowerCase();
+          return keywords.some((kw) => titleLower.includes(kw));
+        });
+        const matchSkills = !selectedSkills.length || (job.skillsRequired || []).some((jobSkill) =>
+          selectedSkills.some((selected) => selected.toLowerCase().trim() === jobSkill.toLowerCase().trim())
         );
-      const matchR = !selectedRoles.length || selectedRoles.some((roleName) => {
-        const keywords = ROLE_MAPPINGS[roleName] || [];
-        const titleLower = (job.title || "").toLowerCase();
-        return keywords.some((kw) => titleLower.includes(kw));
+        const matchLoc = !selectedLocations.length || (job.location && selectedLocations.includes(job.location.trim()));
+        const isInternshipTab = selectedJobTypes.includes("INTERNSHIP") || (selectedJobTypes.length === 0 && false);
+        const matchStipend = !isInternshipTab || (() => {
+          if (stipendRange[0] === 0 && stipendRange[1] >= 50) return true;
+          const minStipend = stipendRange[0] * 1000;
+          const maxStipend = stipendRange[1] * 1000;
+          if (job.salaryMin == null && job.salaryMax == null) return true;
+          return (!minStipend || (job.salaryMax != null && job.salaryMax >= minStipend)) &&
+            (stipendRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxStipend));
+        })();
+        const matchPpo = !ppoOnly || (job as any).ppoOffered === true;
+        return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc && matchStipend && matchPpo;
       });
-      const matchSkills = !selectedSkills.length || (job.skillsRequired || []).some((jobSkill) =>
-        selectedSkills.some((selected) => selected.toLowerCase().trim() === jobSkill.toLowerCase().trim())
-      );
-      const matchLoc = !selectedLocations.length || (job.location && selectedLocations.includes(job.location.trim()));
-      const isInternshipTab = selectedJobTypes.includes("INTERNSHIP") || (selectedJobTypes.length === 0 && false);
-      const matchStipend = !isInternshipTab || (() => {
-        if (stipendRange[0] === 0 && stipendRange[1] >= 50) return true;
-        const minStipend = stipendRange[0] * 1000;
-        const maxStipend = stipendRange[1] * 1000;
-        if (job.salaryMin == null && job.salaryMax == null) return true;
-        return (!minStipend || (job.salaryMax != null && job.salaryMax >= minStipend)) &&
-          (stipendRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxStipend));
-      })();
-      const matchPpo = !ppoOnly || (job as any).ppoOffered === true;
-      return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc && matchStipend && matchPpo;
+    }
+
+    // Now sort the resulting jobs based on user priorities:
+    // 1st Priority: Higher skills matching %
+    // 2nd Priority: India or Indian cities location
+    // 3rd Priority: Internship or Fresher roles
+    const getSortMetrics = (job: Job) => {
+      // 1. Skill Match Percentage
+      const jobSkills = (job.skillsRequired || []) as string[];
+      let matchPercent = 0;
+      if (jobSkills.length > 0 && userSkillNames.size > 0) {
+        const matching = jobSkills.filter((s) => userSkillNames.has(s.toLowerCase().trim()));
+        matchPercent = (matching.length / jobSkills.length) * 100;
+      } else if (jobSkills.length === 0) {
+        matchPercent = 100;
+      }
+
+      // 2. India Location check
+      const loc = (job.location || "").toLowerCase();
+      const isIndia = loc.includes("india") ||
+                      loc.includes("bengaluru") ||
+                      loc.includes("bangalore") ||
+                      loc.includes("pune") ||
+                      loc.includes("mumbai") ||
+                      loc.includes("delhi") ||
+                      loc.includes("noida") ||
+                      loc.includes("gurgaon") ||
+                      loc.includes("gurugram") ||
+                      loc.includes("chennai") ||
+                      loc.includes("hyderabad") ||
+                      loc.includes("kolkata");
+
+      // 3. Internship or Fresher roles
+      const typeLower = (job.type || "").toLowerCase();
+      const titleLower = (job.title || "").toLowerCase();
+      const expLevelLower = (job.experienceLevel || "").toLowerCase();
+      const isInternOrFresher = typeLower === "internship" ||
+                                typeLower === "entry_level" ||
+                                expLevelLower === "entry level" ||
+                                expLevelLower === "internship" ||
+                                /\b(intern|fresher|new\s*grad|associate|junior)\b/.test(titleLower);
+
+      return {
+        matchPercent,
+        isIndia: isIndia ? 1 : 0,
+        isInternOrFresher: isInternOrFresher ? 1 : 0
+      };
+    };
+
+    return [...resultList].sort((a, b) => {
+      const metricsA = getSortMetrics(a);
+      const metricsB = getSortMetrics(b);
+
+      if (metricsB.matchPercent !== metricsA.matchPercent) {
+        return metricsB.matchPercent - metricsA.matchPercent;
+      }
+      if (metricsB.isIndia !== metricsA.isIndia) {
+        return metricsB.isIndia - metricsA.isIndia;
+      }
+      if (metricsB.isInternOrFresher !== metricsA.isInternOrFresher) {
+        return metricsB.isInternOrFresher - metricsA.isInternOrFresher;
+      }
+      
+      const featA = a.featured ? 1 : 0;
+      const featB = b.featured ? 1 : 0;
+      if (featB !== featA) return featB - featA;
+
+      const dateA = new Date(a.postedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.postedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
     });
   }, [
     activeTab,
@@ -858,7 +989,9 @@ export function JobsPage() {
     selectedLocations,
     stipendRange,
     ppoOnly,
+    userSkillNames,
   ]);
+
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

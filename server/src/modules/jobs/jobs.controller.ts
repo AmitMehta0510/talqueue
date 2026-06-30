@@ -39,14 +39,16 @@ export const getJobsHandler = asyncHandler(async (req: Request, res: Response) =
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
 
   // Parse multi-value params (sent as comma-separated strings or repeated keys)
-  const parseMulti = (val: unknown): string[] => {
+  const parseMulti = (val: unknown, uppercase = false): string[] => {
     if (!val) return [];
-    if (Array.isArray(val)) return (val as string[]).filter(Boolean);
-    return (val as string).split(",").map((s) => s.trim()).filter(Boolean);
+    const arr = Array.isArray(val)
+      ? (val as string[]).filter(Boolean)
+      : (val as string).split(",").map((s) => s.trim()).filter(Boolean);
+    return uppercase ? arr.map((s) => s.toUpperCase()) : arr;
   };
 
-  const workMode  = parseMulti(req.query.workMode);
-  const jobType   = parseMulti(req.query.jobType);
+  const workMode  = parseMulti(req.query.workMode, true);
+  const jobType   = parseMulti(req.query.jobType, true);
   const skills    = parseMulti(req.query.skills);
   const location  = parseMulti(req.query.location);
   const roles     = parseMulti(req.query.roles);
