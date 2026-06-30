@@ -76,6 +76,7 @@ function clearbitSuccessResponse() {
     category: { industry: "Financial Services" },
     metrics: { employees: 7000, employeesRange: "1001-5000" },
     type: "private",
+    geo: { country: "United States" },
   };
 }
 
@@ -125,6 +126,7 @@ describe("enrichCompanyMeta", () => {
     expect(result.industry).toBe("Financial Services");
     expect(result.totalEmployees).toBe(7000);
     expect(result.size).toBe(CompanySize.LARGE);
+    expect(result.country).toBe("United States");
   });
 
   it("skips Clearbit entirely when CLEARBIT_API_KEY is not set", async () => {
@@ -251,6 +253,7 @@ describe("enrichCompanyMeta", () => {
         companyType: "STARTUP",
         companySize: "SMALL",
         industry: "SaaS",
+        country: "India",
       }))
     );
 
@@ -261,6 +264,7 @@ describe("enrichCompanyMeta", () => {
     expect(result.type).toBe(CompanyType.STARTUP);
     expect(result.size).toBe(CompanySize.SMALL);
     expect(result.industry).toBe("SaaS");
+    expect(result.country).toBe("India");
   });
 
   it("returns partial data when Gemini returns a malformed JSON response", async () => {

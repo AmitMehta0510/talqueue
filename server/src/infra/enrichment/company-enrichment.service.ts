@@ -67,6 +67,8 @@ export interface EnrichedCompanyMeta {
   industry?: string;
   /** Approximate headcount. */
   totalEmployees?: number;
+  /** Headquarter country. */
+  country?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,6 +219,7 @@ async function fetchFromClearbit(domain: string): Promise<EnrichedCompanyMeta | 
     if (data.tags?.[0]) meta.tagline = data.tags[0];
     if (data.category?.industry) meta.industry = data.category.industry;
     if (data.metrics?.employees) meta.totalEmployees = data.metrics.employees;
+    if (data.geo?.country) meta.country = data.geo.country;
 
     const sizeEnum = mapClearbitSizeToEnum(data.metrics?.employeesRange);
     if (sizeEnum) meta.size = sizeEnum;
@@ -325,6 +328,7 @@ async function fetchFromGemini(
 - "companyType": one of STARTUP, PRODUCT_BASED, SERVICE_BASED, ENTERPRISE, MNC, OTHER
 - "companySize": one of SOLO, SMALL, MEDIUM, LARGE, ENTERPRISE
 - "industry": a concise industry label (e.g. "Software", "Fintech", "Healthcare")
+- "country": the country where the company is headquartered (e.g. "India", "United States", "Germany")
 
 If you cannot determine a field with confidence, omit it from the JSON.
 Return ONLY the raw JSON object, no markdown fences, no explanation.
@@ -379,6 +383,7 @@ ${contextText.slice(0, 1200)}`;
     if (typeEnum) meta.type = typeEnum;
 
     if (typeof parsed.industry === "string") meta.industry = parsed.industry;
+    if (typeof parsed.country === "string") meta.country = parsed.country;
 
     logger.info(`[Gemini] Enriched "${domain}" — fields: ${Object.keys(meta).join(", ")}`);
     return meta;
@@ -449,6 +454,7 @@ export async function enrichCompanyMeta(domain: string): Promise<EnrichedCompany
           if (!merged.size && gemini.size) merged.size = gemini.size;
           if (!merged.type && gemini.type) merged.type = gemini.type;
           if (!merged.industry && gemini.industry) merged.industry = gemini.industry;
+          if (!merged.country && gemini.country) merged.country = gemini.country;
         }
       }
     }

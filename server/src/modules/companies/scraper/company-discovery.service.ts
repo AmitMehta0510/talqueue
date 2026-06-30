@@ -164,6 +164,7 @@ async function autoCreateCompany(params: {
       totalEmployees: meta.totalEmployees ?? undefined,
       // Industry: prefer enriched value, fall back to the seed file's classification
       industry: meta.industry ?? industry,
+      country: meta.country ?? null,
       verified: false,
       discoveredVia,
       hiringEnabled: true,
