@@ -70,7 +70,7 @@ interface TopCompanyEntry {
 
 /** Detected ATS board from a career page scan. */
 export interface DetectedAts {
-  atsSource: "greenhouse" | "lever" | "ashby" | "workday";
+  atsSource: "greenhouse" | "lever" | "ashby" | "workday" | "bamboohr" | "icims" | "paylocity";
   atsToken: string;
 }
 
@@ -107,6 +107,9 @@ const ATS_PATTERNS = {
   ashby: /(?:jobs\.ashbyhq\.com|ashbyhq\.com\/embed)\/([a-zA-Z0-9_-]+)/i,
   // Workday: <company>.wd1.myworkdayjobs.com, wd2, wd3, wd5 etc.
   workday: /([a-zA-Z0-9-]+)\.wd\d+\.myworkdayjobs\.com/i,
+  bamboohr: /([a-zA-Z0-9-]+)\.bamboohr\.com/i,
+  icims: /(?:careers-)?([a-zA-Z0-9-]+)\.icims\.com/i,
+  paylocity: /(?:recruiting\.paylocity\.com\/recruiting\/jobs\/All\/|orgGuid=)([a-zA-Z0-9-]+)/i,
 } as const;
 
 /**
@@ -147,8 +150,35 @@ export function extractWorkdayToken(html: string): string | null {
 }
 
 /**
+ * Attempt to extract a BambooHR company subdomain token from raw HTML content.
+ * Returns the token string or null if not found.
+ */
+export function extractBambooHRToken(html: string): string | null {
+  const match = ATS_PATTERNS.bamboohr.exec(html);
+  return match ? match[1] : null;
+}
+
+/**
+ * Attempt to extract an iCIMS company token from raw HTML content.
+ * Returns the token string or null if not found.
+ */
+export function extractIcimsToken(html: string): string | null {
+  const match = ATS_PATTERNS.icims.exec(html);
+  return match ? match[1] : null;
+}
+
+/**
+ * Attempt to extract a Paylocity organization GUID/ID from raw HTML content.
+ * Returns the token string or null if not found.
+ */
+export function extractPaylocityToken(html: string): string | null {
+  const match = ATS_PATTERNS.paylocity.exec(html);
+  return match ? match[1] : null;
+}
+
+/**
  * Run all ATS signature detectors against the given HTML string.
- * Returns the first match found (priority: Greenhouse → Lever → Ashby → Workday).
+ * Returns the first match found (priority: Greenhouse → Lever → Ashby → Workday → BambooHR → iCIMS → Paylocity).
  */
 export function detectAtsFromHtml(html: string): DetectedAts | null {
   const gh = extractGreenhouseToken(html);
@@ -162,6 +192,15 @@ export function detectAtsFromHtml(html: string): DetectedAts | null {
 
   const wd = extractWorkdayToken(html);
   if (wd) return { atsSource: "workday", atsToken: wd };
+
+  const bb = extractBambooHRToken(html);
+  if (bb) return { atsSource: "bamboohr", atsToken: bb };
+
+  const ic = extractIcimsToken(html);
+  if (ic) return { atsSource: "icims", atsToken: ic };
+
+  const pl = extractPaylocityToken(html);
+  if (pl) return { atsSource: "paylocity", atsToken: pl };
 
   return null;
 }
@@ -361,9 +400,18 @@ function loadTopCompanies(): TopCompanyEntry[] {
  * 2. Company exists by name but no token → link & scrape.
  * 3. Not in DB → create & scrape.
  */
+type CrawlerAtsSource = "greenhouse" | "lever" | "ashby" | "workday" | "bamboohr" | "icims" | "paylocity";
+
+/**
+ * Resolves a company in the DB before any write operations.
+ *
+ * 1. ATS token already present → skip (processed before).
+ * 2. Company exists by name but no token → link & scrape.
+ * 3. Not in DB → create & scrape.
+ */
 async function resolveCompany(
   atsToken: string,
-  atsSource: "greenhouse" | "lever" | "ashby" | "workday",
+  atsSource: CrawlerAtsSource,
   name: string
 ): Promise<
   | { action: "skip" }
@@ -391,7 +439,7 @@ async function resolveCompany(
 async function autoCreateDiscoveredCompany(params: {
   entry: TopCompanyEntry;
   atsToken: string;
-  atsSource: "greenhouse" | "lever" | "ashby" | "workday";
+  atsSource: CrawlerAtsSource;
 }): Promise<{ id: string; slug: string }> {
   const { entry, atsToken, atsSource } = params;
   const baseDomain = (() => {
@@ -435,7 +483,7 @@ async function autoCreateDiscoveredCompany(params: {
 async function linkToken(
   companyId: string,
   atsToken: string,
-  atsSource: "greenhouse" | "lever" | "ashby" | "workday"
+  atsSource: CrawlerAtsSource
 ): Promise<void> {
   await prisma.company.update({
     where: { id: companyId },
@@ -584,9 +632,16 @@ export async function runAutonomousCrawler(): Promise<CrawlerRunResult> {
 
       result.discovered++;
 
-      // --- Queue job scraping (only for supported ATS: Greenhouse & Lever) ---
-      // Ashby & Workday scrapers are planned — log and skip for now.
-      if (atsSource === "greenhouse" || atsSource === "lever") {
+      // --- Queue job scraping for all supported ATS sources ---
+      if (
+        atsSource === "greenhouse" ||
+        atsSource === "lever" ||
+        atsSource === "ashby" ||
+        atsSource === "workday" ||
+        atsSource === "bamboohr" ||
+        atsSource === "icims" ||
+        atsSource === "paylocity"
+      ) {
         const baseDomain = (() => {
           try { return new URL(entry.websiteUrl).hostname.replace(/^www\./, ""); } catch { return ""; }
         })();
@@ -619,7 +674,7 @@ export async function runAutonomousCrawler(): Promise<CrawlerRunResult> {
         }
       } else {
         logger.info(
-          `"${companyName}" uses ${atsSource.toUpperCase()} — job scraper for this ATS is pending implementation. Company indexed.`
+          `"${companyName}" uses ${atsSource.toUpperCase()} — job scraper is pending implementation. Company indexed.`
         );
       }
 

@@ -31,6 +31,9 @@ import {
   extractLeverToken,
   extractAshbyToken,
   extractWorkdayToken,
+  extractBambooHRToken,
+  extractIcimsToken,
+  extractPaylocityToken,
   detectAtsFromHtml,
   parseJsonLdJobs,
 } from "./company-discovery-crawlers.service";
@@ -140,6 +143,64 @@ describe("extractWorkdayToken", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Suite 4.1 — BambooHR Token Extractor
+// ---------------------------------------------------------------------------
+
+describe("extractBambooHRToken", () => {
+  test("extracts subdomain from bamboohr link", () => {
+    const html = `<a href="https://postman.bamboohr.com/careers">Postman Careers</a>`;
+    expect(extractBambooHRToken(html)).toBe("postman");
+  });
+
+  test("returns null when no BambooHR link is present", () => {
+    const html = `<p>No BambooHR here</p>`;
+    expect(extractBambooHRToken(html)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 4.2 — iCIMS Token Extractor
+// ---------------------------------------------------------------------------
+
+describe("extractIcimsToken", () => {
+  test("extracts subdomain from careers- prefixed link", () => {
+    const html = `<a href="https://careers-google.icims.com/jobs">Google Jobs</a>`;
+    expect(extractIcimsToken(html)).toBe("google");
+  });
+
+  test("extracts subdomain from standard icims link", () => {
+    const html = `<a href="https://acme.icims.com/jobs">Acme Jobs</a>`;
+    expect(extractIcimsToken(html)).toBe("acme");
+  });
+
+  test("returns null when no iCIMS link is present", () => {
+    const html = `<p>No iCIMS here</p>`;
+    expect(extractIcimsToken(html)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 4.3 — Paylocity Token Extractor
+// ---------------------------------------------------------------------------
+
+describe("extractPaylocityToken", () => {
+  test("extracts token from recruiting link", () => {
+    const html = `<a href="https://recruiting.paylocity.com/recruiting/jobs/All/12345/">Jobs</a>`;
+    expect(extractPaylocityToken(html)).toBe("12345");
+  });
+
+  test("extracts token from details URL with orgGuid query parameter", () => {
+    const html = `<a href="https://recruiting.paylocity.com/Recruiting/Jobs/Details/999?orgGuid=12345-abc-678">Details</a>`;
+    expect(extractPaylocityToken(html)).toBe("12345-abc-678");
+  });
+
+  test("returns null when no Paylocity link is present", () => {
+    const html = `<p>No Paylocity here</p>`;
+    expect(extractPaylocityToken(html)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Suite 5 — detectAtsFromHtml (priority + multi-ATS)
 // ---------------------------------------------------------------------------
 
@@ -166,6 +227,24 @@ describe("detectAtsFromHtml", () => {
     const html = `<a href="https://amazon.wd1.myworkdayjobs.com/jobs">Amazon Jobs</a>`;
     const result = detectAtsFromHtml(html);
     expect(result).toEqual({ atsSource: "workday", atsToken: "amazon" });
+  });
+
+  test("returns BambooHR when only BambooHR is present", () => {
+    const html = `<a href="https://postman.bamboohr.com/careers">Postman Jobs</a>`;
+    const result = detectAtsFromHtml(html);
+    expect(result).toEqual({ atsSource: "bamboohr", atsToken: "postman" });
+  });
+
+  test("returns iCIMS when only iCIMS is present", () => {
+    const html = `<a href="https://careers-google.icims.com/jobs">Google Jobs</a>`;
+    const result = detectAtsFromHtml(html);
+    expect(result).toEqual({ atsSource: "icims", atsToken: "google" });
+  });
+
+  test("returns Paylocity when only Paylocity is present", () => {
+    const html = `<a href="https://recruiting.paylocity.com/recruiting/jobs/All/12345/">Jobs</a>`;
+    const result = detectAtsFromHtml(html);
+    expect(result).toEqual({ atsSource: "paylocity", atsToken: "12345" });
   });
 
   test("prioritises Greenhouse over Lever on a multi-ATS page", () => {
