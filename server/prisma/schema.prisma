@@ -2419,8 +2419,48 @@ model Job {
 
   adPlacements AdPlacement[]
 
+  // ── Pipeline v2 extraction fields (all nullable — additive, non-breaking) ──────
+
+  // Raw data preservation — enables future re-parsing without re-scraping
+  rawHtml           String?   // Original HTML from ATS
+  normalizedText    String?   // Whitespace-normalized plain text
+  parsedSectionsJson Json?    // SectionMap serialized as JSON
+
+  // Structured skills (flat arrays for backward compat + Elasticsearch keyword)
+  preferredSkills   String[]  @default([])
+  techStackJson     Json?     // Full TechStack object (languages/frameworks/cloud etc.)
+
+  // Structured experience data
+  experienceMinYears Int?
+  experienceMaxYears Int?
+
+  // Salary enrichment (columns exist but were never populated by scraper)
+  salaryPeriod      String?   @default("annual")  // 'annual' | 'monthly' | 'hourly'
+
+  // Structured location decomposition
+  locationCity        String?
+  locationState       String?
+  locationCountry     String?
+  locationCountryCode String?   // ISO 3166-1 alpha-2: "IN", "US", "DE"
+  visaSponsorship     Boolean?
+  relocationAssistance Boolean?
+
+  // Education requirements
+  educationDegree   String?   // 'bachelors' | 'masters' | 'phd' | 'any'
+  educationRequired Boolean?
+
+  // Pipeline provenance and quality
+  parserConfidence  Float?    // 0.0-1.0 overall confidence score
+  needsLLMReview    Boolean   @default(false)
+  pipelineVersion   String?   @default("1.0.0")
+  lastParsedAt      DateTime?
+
   @@index([companyId, status])
   @@index([type, status])
+  @@index([locationCountryCode])
+  @@index([parserConfidence])
+  @@index([experienceMinYears])
+  @@index([needsLLMReview])
 }
 
 enum CompanyRequestStatus {

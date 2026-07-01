@@ -181,25 +181,7 @@ export function syncJobToElastic(jobId: string): void {
       await elasticClient.index({
         index: "jobs",
         id: job.id,
-        document: {
-          title: job.title,
-          description: job.description,
-          companyName: job.company?.name || "Unknown Company",
-          requirements: job.requirements,
-          status: job.status,
-          type: job.type,
-          workMode: job.workMode,
-          location: job.location,
-          experienceLevel: job.experienceLevel,
-          skillsRequired: job.skillsRequired || [],
-          salaryMin: job.salaryMin,
-          salaryMax: job.salaryMax,
-          ppoOffered: job.ppoOffered,
-          featured: job.featured,
-          createdAt: job.createdAt,
-          isPromoted,
-          hasActiveAd,
-        },
+        document: buildJobDocument(job, isPromoted, hasActiveAd),
       });
       console.log(`[ES Sync] Successfully synced job '${job.title}' (${job.id}) to Elasticsearch.`);
     })
@@ -253,25 +235,7 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
         const hasActiveAd: boolean = (j.company?._count?.adPlacements ?? 0) > 0;
 
         operations.push({ index: { _index: "jobs", _id: id } });
-        operations.push({
-          title: j.title,
-          description: j.description,
-          companyName: j.company?.name || "Unknown Company",
-          requirements: j.requirements,
-          status: j.status,
-          type: j.type,
-          workMode: j.workMode,
-          location: j.location,
-          experienceLevel: j.experienceLevel,
-          skillsRequired: j.skillsRequired || [],
-          salaryMin: j.salaryMin,
-          salaryMax: j.salaryMax,
-          ppoOffered: j.ppoOffered,
-          featured: j.featured,
-          createdAt: j.createdAt,
-          isPromoted,
-          hasActiveAd,
-        });
+        operations.push(buildJobDocument(j, isPromoted, hasActiveAd));
       }
     }
 
@@ -297,6 +261,76 @@ export async function syncJobsToElasticBulk(jobIds: string[]): Promise<void> {
   } catch (error: any) {
     console.error("[ES Sync] Elasticsearch bulk sync failed for jobs:", error?.message || error);
   }
+}
+
+/**
+ * Builds the Elasticsearch document for a job record.
+ * Shared by both single and bulk sync functions to avoid duplication.
+ * Indexes all pipeline v2 structured fields for rich filtering and search.
+ */
+function buildJobDocument(job: any, isPromoted: boolean, hasActiveAd: boolean): Record<string, any> {
+  // Deserialize techStackJson if stored as JSON string
+  let techStack: any = null;
+  if (job.techStackJson) {
+    try {
+      techStack = typeof job.techStackJson === "string"
+        ? JSON.parse(job.techStackJson)
+        : job.techStackJson;
+    } catch { techStack = null; }
+  }
+
+  return {
+    // ── Core fields (backward-compatible with v1 consumers) ─────────────────
+    title:            job.title,
+    description:      job.description,
+    companyName:      job.company?.name || job.companyName || "Unknown Company",
+    requirements:     job.requirements,
+    responsibilities: job.responsibilities,
+    benefits:         job.benefits,
+    status:           job.status,
+    type:             job.type,
+    workMode:         job.workMode,
+    location:         job.location,
+    experienceLevel:  job.experienceLevel,
+    salaryMin:        job.salaryMin,
+    salaryMax:        job.salaryMax,
+    ppoOffered:       job.ppoOffered,
+    featured:         job.featured,
+    atsSource:        job.atsSource,
+    createdAt:        job.createdAt,
+    postedAt:         job.postedAt,
+    isPromoted,
+    hasActiveAd,
+
+    // ── Pipeline v2 skill fields ─────────────────────────────────────────────
+    requiredSkills:   job.skillsRequired || [],    // v2 alias in ES mapping
+    preferredSkills:  job.preferredSkills || [],
+    techStack:        techStack,
+
+    // ── Pipeline v2 location fields ──────────────────────────────────────────
+    locationCity:         job.locationCity ?? null,
+    locationState:        job.locationState ?? null,
+    locationCountry:      job.locationCountry ?? null,
+    locationCountryCode:  job.locationCountryCode ?? null,
+    visaSponsorship:      job.visaSponsorship ?? null,
+    relocationAssistance: job.relocationAssistance ?? null,
+
+    // ── Pipeline v2 experience fields ────────────────────────────────────────
+    experienceMinYears:   job.experienceMinYears ?? null,
+    experienceMaxYears:   job.experienceMaxYears ?? null,
+
+    // ── Pipeline v2 education fields ─────────────────────────────────────────
+    educationDegree:      job.educationDegree ?? null,
+
+    // ── Pipeline v2 compensation fields ─────────────────────────────────────
+    currency:     job.currency ?? null,
+    salaryPeriod: job.salaryPeriod ?? "annual",
+
+    // ── Pipeline v2 provenance fields ────────────────────────────────────────
+    parserConfidence:  job.parserConfidence ?? null,
+    needsLLMReview:    job.needsLLMReview ?? false,
+    pipelineVersion:   job.pipelineVersion ?? "1.0.0",
+  };
 }
 
 /**

@@ -5,6 +5,82 @@ import { JobType, WorkMode, JobStatus } from "@prisma/client";
 import { syncJobsToElasticBulk } from "services/elasticSync";
 import { resilientGet, resilientPost } from "shared/services/network/resilientHttp";
 
+// ── Pipeline v2 — shadow mode integration ────────────────────────────────────
+// When PIPELINE_V2_SHADOW_MODE=true, the new extraction pipeline runs in
+// parallel with the existing scraper. It writes ONLY to the new nullable
+// v2 fields (rawHtml, techStackJson, locationCity, etc.) and does NOT
+// modify any v1 fields. This allows progressive validation before cutover.
+//
+// Set PIPELINE_V2_SHADOW_MODE=true in .env to enable.
+// Set PIPELINE_V2_SHADOW_MODE=false (default) to keep existing behavior.
+import { getJobPipeline, JobPipeline } from "../../../pipeline/JobPipeline";
+import { JobPersister } from "../../../pipeline/persistence/JobPersister";
+
+const PIPELINE_V2_SHADOW_MODE = process.env.PIPELINE_V2_SHADOW_MODE === "true";
+let _shadowPipeline: JobPipeline | null = null;
+let _shadowPersister: JobPersister | null = null;
+
+function getShadowPipeline(): { pipeline: JobPipeline; persister: JobPersister } {
+  if (!_shadowPipeline) _shadowPipeline = getJobPipeline({ enableLLM: false });
+  if (!_shadowPersister) _shadowPersister = new JobPersister();
+  return { pipeline: _shadowPipeline, persister: _shadowPersister };
+}
+
+/**
+ * Run the v2 pipeline on a raw job input in shadow mode.
+ * Errors are caught and logged — never propagated to the caller.
+ */
+async function runShadowPipeline(
+  rawInput: { title: string; rawHtml: string; externalId: string; atsSource: string; applyUrl: string; location: string | null; postedAt: Date | null },
+  companySlug: string,
+  companyId: string,
+): Promise<void> {
+  if (!PIPELINE_V2_SHADOW_MODE) return;
+  try {
+    const { pipeline, persister } = getShadowPipeline();
+    const parsedJob = await pipeline.process({
+      externalId: rawInput.externalId,
+      title: rawInput.title,
+      rawHtml: rawInput.rawHtml,
+      atsLocation: rawInput.location,
+      atsPublishedAt: rawInput.postedAt,
+      // Inject atsSource for the persister
+      _atsSource: rawInput.atsSource,
+      _applyUrl: rawInput.applyUrl,
+    } as any);
+    const slug = slugify(`${companySlug}-${rawInput.title}-${rawInput.externalId.slice(-8)}`, { lower: true, strict: true });
+    // Only write v2 fields — existing v1 upsert already handled the core fields
+    await prisma.job.updateMany({
+      where: { externalJobId: rawInput.externalId },
+      data: {
+        rawHtml: parsedJob.rawHtml?.slice(0, 200_000) || "",
+        normalizedText: parsedJob.normalizedText?.slice(0, 50_000) || "",
+        parsedSectionsJson: parsedJob.parsedSections ? Object.fromEntries(parsedJob.parsedSections) as any : null,
+        techStackJson: parsedJob.techStack as any,
+        preferredSkills: parsedJob.preferredSkills?.value?.map((s) => s.name) ?? [],
+        experienceMinYears: parsedJob.experience?.value?.minYears ?? null,
+        experienceMaxYears: parsedJob.experience?.value?.maxYears ?? null,
+        locationCity: parsedJob.location?.value?.city ?? null,
+        locationState: parsedJob.location?.value?.state ?? null,
+        locationCountry: parsedJob.location?.value?.country ?? null,
+        locationCountryCode: parsedJob.location?.value?.countryCode ?? null,
+        visaSponsorship: parsedJob.location?.value?.visaSponsorship ?? null,
+        relocationAssistance: parsedJob.location?.value?.relocationAssistance ?? null,
+        educationDegree: parsedJob.education?.value?.degree ?? null,
+        educationRequired: parsedJob.education?.value?.isRequired ?? null,
+        currency: parsedJob.salary?.value?.currency ?? null,
+        salaryPeriod: parsedJob.salary?.value?.period ?? "annual",
+        parserConfidence: parsedJob.overallConfidence,
+        needsLLMReview: parsedJob.needsLLMReview,
+        pipelineVersion: parsedJob.pipelineVersion,
+        lastParsedAt: new Date(),
+      },
+    });
+  } catch (err: any) {
+    console.warn(`[Pipeline v2 Shadow] Failed for ${rawInput.externalId}: ${err?.message ?? err}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // CONCURRENCY UTILITIES
 // ---------------------------------------------------------------------------
@@ -937,6 +1013,21 @@ export async function processCompany(company: CompanyRow): Promise<ProcessResult
         } else {
           result.updated++;
         }
+
+        // Run v2 pipeline in shadow mode
+        await runShadowPipeline(
+          {
+            title: jobTitle,
+            rawHtml: job.content || "",
+            externalId,
+            atsSource: "greenhouse",
+            applyUrl: job.absolute_url || `https://boards.greenhouse.io/${greenhouseToken}/jobs/${job.id}`,
+            location: locationName,
+            postedAt: job.updated_at ? new Date(job.updated_at) : new Date(),
+          },
+          company.slug,
+          company.id,
+        );
       }
 
     } else if (leverToken) {
