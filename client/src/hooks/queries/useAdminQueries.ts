@@ -114,7 +114,7 @@ export const useUpdateUserStatusMutation = () => {
   return useMutation({
     mutationFn: ({ userId, status }: { userId: string; status: "ACTIVE" | "INACTIVE" | "BANNED" }) =>
       api.updateUserStatus(userId, { status }),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "User status updated");
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
@@ -131,7 +131,7 @@ export const useAssignPlatformAdminMutation = () => {
 
   return useMutation({
     mutationFn: (userId: string) => api.assignPlatformAdmin(userId),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Role granted successfully");
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
@@ -148,7 +148,7 @@ export const useRemovePlatformAdminMutation = () => {
 
   return useMutation({
     mutationFn: (userId: string) => api.removePlatformAdmin(userId),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Role revoked successfully");
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
@@ -280,7 +280,7 @@ export const useAdminDeletePostMutation = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: (postId: string) => api.adminDeletePost(postId),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Post removed");
       queryClient.invalidateQueries({ queryKey: ["admin", "content", "posts"] });
     },
@@ -437,7 +437,7 @@ export const useAdminDeleteJobMutation = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: (jobId: string) => api.adminDeleteJob(jobId),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Job removed");
       queryClient.invalidateQueries({ queryKey: ["admin", "content", "jobs"] });
     },
@@ -728,7 +728,7 @@ export const useImportCollegesMutation = () => {
 
   return useMutation({
     mutationFn: (body: any) => api.importColleges(body, { timeoutMs: 600000 }),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Colleges imported successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.colleges.all });
     },
@@ -746,7 +746,7 @@ export const useVerifyCollegeEmailMutation = () => {
   return useMutation({
     mutationFn: ({ educationId, email, code }: { educationId: string; email: string; code?: string }) =>
       api.verifyCollegeEmail(educationId, email, code),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       showToast("success", result.message || "Email verified successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.users.educations });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.full });

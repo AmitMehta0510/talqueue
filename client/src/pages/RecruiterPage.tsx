@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   BriefcaseBusiness,
@@ -35,10 +35,13 @@ import {
   useUpdateApplicationStatusMutation,
   useResdexSearchQuery,
 } from "../hooks/usePlatformQueries";
-import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
+
 import { useAuth } from "../core/contexts/AuthContext";
-import { EmptyState, InlineLoader, ErrorState } from "../components/ui";
-import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
+import { EmptyState, InlineLoader, ErrorState, PageLoader } from "../components/ui";
+
+const DriveApplicantsModal = lazy(() => import("../components/jobs/DriveApplicantsModal").then(m => ({ default: m.DriveApplicantsModal })));
+const KanbanPipeline = lazy(() => import("../components/recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
+
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { DriveInviteModal } from "../components/jobs/DriveInviteModal";
 import { titleCase, formatDate } from "../core/utils/format";
@@ -159,7 +162,9 @@ export function RecruiterPage() {
   if (managedJobId) {
     return (
       <div className="space-y-4">
-        <KanbanPipeline jobId={managedJobId} onBack={() => setManagedJobId(null)} />
+        <Suspense fallback={<PageLoader />}>
+          <KanbanPipeline jobId={managedJobId} onBack={() => setManagedJobId(null)} />
+        </Suspense>
       </div>
     );
   }
@@ -1187,11 +1192,13 @@ export function RecruiterPage() {
       )}
 
       {selectedDriveForApplicants && (
-        <DriveApplicantsModal
-          driveId={selectedDriveForApplicants.id}
-          driveTitle={selectedDriveForApplicants.title}
-          onClose={() => setSelectedDriveForApplicants(null)}
-        />
+        <Suspense fallback={null}>
+          <DriveApplicantsModal
+            driveId={selectedDriveForApplicants.id}
+            driveTitle={selectedDriveForApplicants.title}
+            onClose={() => setSelectedDriveForApplicants(null)}
+          />
+        </Suspense>
       )}
     </div>
   );
