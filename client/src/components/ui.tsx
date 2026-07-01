@@ -3,6 +3,9 @@ import { AlertTriangle, LucideIcon, RefreshCcw } from "lucide-react";
 import { User } from "../lib/api";
 import { initials, userName } from "../core/utils/format";
 export { ConfirmDialog } from "./ui/ConfirmDialog";
+export { Badge } from "./ui/Badge";
+export { Modal } from "./ui/Modal";
+export { Tabs } from "./ui/Tabs";
 
 /* ============================================================
    METRIC — displays a numeric stat with a label

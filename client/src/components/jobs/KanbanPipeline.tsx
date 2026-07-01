@@ -28,10 +28,16 @@ import {
 } from "../../lib/api";
 
 interface KanbanPipelineProps {
+  /** The unique identifier of the job pipeline to view. */
   jobId: string;
+  /** Callback fired to navigate back to the job/recruiter list dashboard. */
   onBack: () => void;
 }
 
+/**
+ * KanbanPipeline renders a recruiter interface for tracking candidates across hiring stages
+ * (Applied, Viewed, Shortlisted, Interviewing, Hired, Rejected) alongside an AI candidate ranker.
+ */
 export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
   const [activeSubTab, setActiveSubTab] = useState<"pipeline" | "rankings">("pipeline");
   const [selectedCandidate, setSelectedCandidate] = useState<RecruiterJobPipelineCard | null>(null);
@@ -129,7 +135,8 @@ export function KanbanPipeline({ jobId, onBack }: KanbanPipelineProps) {
         pipelineQuery.isLoading ? (
           <KanbanSkeleton />
         ) : pipelineQuery.isError ? (
-          <ErrorState title="Pipeline failed to load" text={pipelineQuery.error?.message} onRetry={() => pipelineQuery.refetch()} />        ) : (
+          <ErrorState title="Pipeline failed to load" text={pipelineQuery.error?.message} onRetry={() => pipelineQuery.refetch()} />
+        ) : (
           <div className="relative">
             {/* Scroll indicator boundary fades */}
             <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-black/10 dark:from-black/25 to-transparent pointer-events-none z-10 lg:hidden" />
@@ -526,7 +533,7 @@ function CandidateDetailsOverlay({
               Hire Candidate
             </button>
             <button
-              className="btn-secondary border-rose-200/60 dark:border-rose-900/30 text-rose-750 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 py-2 text-xs font-semibold"
+              className="btn-secondary border-rose-200/60 dark:border-rose-900/30 text-rose-750 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20 py-2 text-xs font-semibold"
               onClick={() => onStatusChange(card.id, "REJECTED")}
               type="button"
               disabled={card.status === "REJECTED"}
@@ -596,4 +603,3 @@ function RankingsSkeleton() {
     </div>
   );
 }
-

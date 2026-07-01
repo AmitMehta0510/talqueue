@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Award,
   Briefcase,
   Building2,
   Calendar,
@@ -17,7 +16,6 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
-  Send,
   ShieldCheck,
   Star,
   User,

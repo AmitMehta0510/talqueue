@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, memo } from "react";
 import { Heart, Loader2, MessageSquare, Repeat2, Send, Star } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { FeedItem, FeedPost, Job, PostComment, Project } from "../../lib/api";
@@ -7,7 +7,7 @@ import { usePostQuery } from "../../hooks/usePlatformQueries";
 import { formatCount, formatDate, tagValues, titleCase, userHeadline, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
 import { HackathonCard } from "./HackathonCard";
-import { JobCard } from "../../features/jobs/components/JobCard";
+import { JobCard } from "./JobCard";
 import { CompanyFeedCard } from "./CompanyFeedCard";
 
 const projectTags = (project: Project) =>
@@ -15,7 +15,7 @@ const projectTags = (project: Project) =>
 
 const jobTags = (job: Job) => job.skillsRequired || [];
 
-export function FeedCard({
+export const FeedCard = memo(function FeedCard({
   item,
   position,
   trackImpression,
@@ -289,7 +289,7 @@ export function FeedCard({
       )}
     </article>
   );
-}
+});
 
 function CommentThread({
   comment,
