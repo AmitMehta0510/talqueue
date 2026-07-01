@@ -278,7 +278,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
     // Only platform admins or actual CollegeAdmin records can create departments (NOT CDCR)
   const canManageDepartments =
     isSuperOrPlatformAdmin(user) ||
-    Boolean(user?.collegeAdminships?.some((adm: any) => adm.collegeId === college?.id));
+    Boolean(user?.collegeAdminships?.some((adm) => adm.collegeId === college?.id));
 
   const submitDepartment = (event: FormEvent) => {
     event.preventDefault();
@@ -351,21 +351,21 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                   {isUserCdcr && (
                     <>
                       {/* College Admin: only if in collegeAdminships for this college */}
-                      {user?.collegeAdminships?.some((adm: any) => adm.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
+                      {user?.collegeAdminships?.some((adm) => adm.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
                           <Shield size={9} /> College Admin
                         </span>
                       )}
                       {/* TPO: only if in tpoMemberships for this college */}
-                      {user?.tpoMemberships?.some((t: any) => t.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
+                      {user?.tpoMemberships?.some((t) => t.collegeId === college.id) && !isSuperOrPlatformAdmin(user) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                           <ShieldCheck size={9} /> TPO
                         </span>
                       )}
                       {/* CDCR: only if in cdcrMemberships and NOT a higher role for this college */}
-                      {user?.cdcrMemberships?.some((c: any) => c.collegeId === college.id) &&
-                        !user?.tpoMemberships?.some((t: any) => t.collegeId === college.id) &&
-                        !user?.collegeAdminships?.some((adm: any) => adm.collegeId === college.id) && (
+                      {user?.cdcrMemberships?.some((c) => c.collegeId === college.id) &&
+                        !user?.tpoMemberships?.some((t) => t.collegeId === college.id) &&
+                        !user?.collegeAdminships?.some((adm) => adm.collegeId === college.id) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <Shield size={9} /> CDCR
                         </span>
@@ -522,8 +522,8 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
 
               <div className="flex-1 space-y-1">
                 {(college.departments || departmentsQuery.data || []).slice(0, 5).map((dept, i) => {
-                  const count = (dept as any)._count?.profiles ?? 0;
-                  const maxCount = Math.max(...(college.departments || departmentsQuery.data || []).slice(0, 5).map((d: any) => d._count?.profiles ?? 0), 1);
+                  const count = dept._count?.profiles ?? 0;
+                  const maxCount = Math.max(...(college.departments || departmentsQuery.data || []).slice(0, 5).map((d) => d._count?.profiles ?? 0), 1);
                   return (
                     <div key={dept.id} className="flex items-center gap-3 py-1.5">
                       <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0 text-[10px] font-black" style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}>
@@ -742,19 +742,19 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
             <div className="panel p-5">
               <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--text-muted)" }}>At a Glance</h3>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                {[
+                {([
                   { key: "smartClassrooms", label: "Smart Classrooms", icon: BookOpen },
                   { key: "labs", label: "Labs", icon: GraduationCap },
                   { key: "researchPapers", label: "Research Papers", icon: BookOpen },
                   { key: "mous", label: "MoUs", icon: Award },
                   { key: "annualEvents", label: "Events (Annual)", icon: Calendar },
                   { key: "startupsIncubated", label: "Startup Incubated", icon: TrendingUp },
-                ].filter(item => (college.glanceStats as any)?.[item.key] !== undefined).map(({ key, label, icon: Icon }) => (
+                ] as const).filter(item => college.glanceStats?.[item.key] !== undefined).map(({ key, label, icon: Icon }) => (
                   <div key={key} className="flex flex-col items-center text-center gap-1.5">
                     <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: "var(--bg-surface-2)" }}>
                       <Icon size={16} style={{ color: "var(--text-muted)" }} />
                     </div>
-                    <p className="text-lg font-extrabold" style={{ color: "var(--text-primary)" }}>{(college.glanceStats as any)[key]}</p>
+                    <p className="text-lg font-extrabold" style={{ color: "var(--text-primary)" }}>{college.glanceStats?.[key]}</p>
                     <p className="text-[10px] font-semibold leading-tight" style={{ color: "var(--text-muted)" }}>{label}</p>
                   </div>
                 ))}

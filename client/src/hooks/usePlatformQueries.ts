@@ -34,12 +34,13 @@ import {
   ReferralRequestPayload,
   ReferralRequestStatus,
   SearchResults,
+  SearchMutationResult,
+  RankedUser,
+  RankedProject,
   SendMessagePayload,
   User,
   UserSkill,
-  Event,
   RSVPStatus,
-  StandardDepartment,
   ExternalJobApplication,
   ExternalAppStatus,
   PlacementDrive,
@@ -49,8 +50,6 @@ import {
   CdcrMember,
   EligibilityResult,
   PlacementDriveRound,
-  AlumniClaim,
-  PlacementStats,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { useAuth } from "../core/contexts/AuthContext";
@@ -577,7 +576,7 @@ export const useAdminCollegesQuery = (limit = 20, cursor?: string) =>
 export const useSearchCollegesQuery = (q: string) =>
   useQuery({
     queryKey: ["colleges", "search", q],
-    queryFn: async ({ signal }) => {
+    queryFn: async () => {
       const result = await api.searchColleges(q);
       return result.data || [];
     },
@@ -804,12 +803,11 @@ export const useUpdateCompanyMutation = () => {
 };
 
 export const useRequestCompanyRegistrationMutation = () => {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: any) => {
+    mutationFn: (payload: unknown) => {
       if (!user) throw new Error("Login required");
       return api.requestCompanyRegistration(payload);
     },
@@ -2705,7 +2703,7 @@ export const usePlatformSearchMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (payload: PlatformSearchPayload | string): Promise<SearchResults> => {
+    mutationFn: async (payload: PlatformSearchPayload | string): Promise<SearchMutationResult> => {
       // Legacy string support
       if (typeof payload === "string") {
         const q = payload.trim();
@@ -2716,14 +2714,14 @@ export const usePlatformSearchMutation = () => {
           api.searchProjects({ q }),
         ]);
         // Server returns { user, relevanceScore }[] — flatten to raw User[]
-        const rawUsers: any[] = userResult.data || [];
-        const flatUsers = rawUsers.map((item: any) =>
-          item?.id ? item : { ...item?.user, affinityScore: item?.relevanceScore }
+        const rawUsers = (userResult.data || []) as (RankedUser | User)[];
+        const flatUsers = rawUsers.map((item) =>
+          "id" in item ? item : { ...item.user, affinityScore: item.relevanceScore }
         );
         // Server returns { project, relevanceScore }[] — flatten to raw Project[]
-        const rawProjects: any[] = projectResult.data || [];
-        const flatProjects = rawProjects.map((item: any) =>
-          item?.id ? item : { ...item?.project }
+        const rawProjects = (projectResult.data || []) as (RankedProject | Project)[];
+        const flatProjects = rawProjects.map((item) =>
+          "id" in item ? item : { ...item.project }
         );
         return { ...globalResult.data, users: flatUsers, projects: flatProjects };
       }
@@ -2731,27 +2729,33 @@ export const usePlatformSearchMutation = () => {
       const q = payload.q.trim();
 
       // Helper: server returns { user, relevanceScore, matchReasons }[] from searchUsers
-      const flattenUsers = (data: any[]): any[] => {
+      const flattenUsers = (data: (RankedUser | User)[]): User[] => {
         if (!data?.length) return [];
         // If first item is a raw user (has 'id'), return as-is
-        if (data[0]?.id) return data;
+        if ("id" in data[0]) return data as User[];
         // Otherwise flatten the wrapped format
-        return data.map((item: any) => ({
-          ...item.user,
-          affinityScore: item.relevanceScore,
-        }));
+        return data.map((item) => {
+          const ranked = item as RankedUser;
+          return {
+            ...ranked.user,
+            affinityScore: ranked.relevanceScore,
+          };
+        });
       };
 
       // Helper: server returns { project, relevanceScore }[] from searchProjects
-      const flattenProjects = (data: any[]): any[] => {
+      const flattenProjects = (data: (RankedProject | Project)[]): Project[] => {
         if (!data?.length) return [];
-        if (data[0]?.id) return data;
-        return data.map((item: any) => ({ ...item.project, relevanceScore: item.relevanceScore }));
+        if ("id" in data[0]) return data as Project[];
+        return data.map((item) => {
+          const ranked = item as RankedProject;
+          return { ...ranked.project, relevanceScore: ranked.relevanceScore };
+        });
       };
 
       // ── People ────────────────────────────────────────────────────────────
       if (payload.tab === "people") {
-        const f = (payload as any).people || {};
+        const f = payload.people || {};
         const result = await api.searchUsers({
           ...(q && { q }),
           ...(f.college && { collegeName: f.college }),
@@ -2762,24 +2766,24 @@ export const usePlatformSearchMutation = () => {
           ...(f.role && { role: f.role }),
           ...(f.verifiedSkillsOnly && { verifiedSkillsOnly: true }),
         });
-        return { users: flattenUsers(result.data as any) };
+        return { users: flattenUsers(result.data) };
       }
 
       // ── Projects ──────────────────────────────────────────────────────────
       if (payload.tab === "projects") {
-        const f = (payload as any).project || {};
+        const f = payload.project || {};
         const result = await api.searchProjects({
           ...(q && { q }),
           ...(f.techStack && { techStack: f.techStack }),
           ...(f.status && { status: f.status }),
           ...(f.acceptingCollaborators && { lookingForCollaborators: true }),
-        } as any);
-        return { projects: flattenProjects(result.data as any) };
+        });
+        return { projects: flattenProjects(result.data) };
       }
 
       // ── Jobs ──────────────────────────────────────────────────────────────
       if (payload.tab === "jobs") {
-        const f = (payload as any).job || {};
+        const f = payload.job || {};
         const result = await api.searchJobs({
           ...(q && { q }),
           ...(f.company && { companyName: f.company }),
@@ -2796,18 +2800,18 @@ export const usePlatformSearchMutation = () => {
 
       // ── Hackathons ────────────────────────────────────────────────────────
       if (payload.tab === "hackathons") {
-        const f = (payload as any).hack || {};
+        const f = payload.hack || {};
         const result = await api.searchHackathons({
           ...(q && { q }),
           ...(f.tags && { tags: f.tags }),
           ...(f.upcomingOnly && { upcomingOnly: true }),
-        } as any);
+        });
         return { hackathons: result.data };
       }
 
       // ── Companies ─────────────────────────────────────────────────────────
       if (payload.tab === "companies") {
-        const f = (payload as any).company || {};
+        const f = payload.company || {};
         const result = await api.searchCompanies({
           ...(q && { q }),
           ...(f.industry && { industry: f.industry }),
@@ -2820,7 +2824,7 @@ export const usePlatformSearchMutation = () => {
 
       // ── Communities ───────────────────────────────────────────────────────
       if (payload.tab === "communities") {
-        const f = (payload as any).community || {};
+        const f = payload.community || {};
         const result = await api.searchCommunities({
           ...(q && { q }),
           ...(f.type && { type: f.type }),
@@ -2833,7 +2837,7 @@ export const usePlatformSearchMutation = () => {
       // Run with whatever query is available; even empty query returns top results
       const searchQuery = q || undefined;
       const [globalResult, userResult, projectResult, jobResult, companyResult, communityResult] = await Promise.all([
-        searchQuery ? api.searchGlobal(searchQuery) : Promise.resolve({ data: {} as any }),
+        searchQuery ? api.searchGlobal(searchQuery) : Promise.resolve({ data: {} as SearchResults }),
         api.searchUsers({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
         api.searchProjects({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
         api.searchJobs({ ...(searchQuery && { q: searchQuery }), limit: 12 }),
@@ -2842,8 +2846,8 @@ export const usePlatformSearchMutation = () => {
       ]);
       return {
         ...(searchQuery ? globalResult.data : {}),
-        users: flattenUsers(userResult.data as any),
-        projects: flattenProjects(projectResult.data as any),
+        users: flattenUsers(userResult.data),
+        projects: flattenProjects(projectResult.data),
         jobs: jobResult.data.jobs,
         jobsTotal: jobResult.data.total,
         companies: companyResult.data,

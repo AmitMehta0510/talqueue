@@ -311,7 +311,7 @@ export function TpoDashboardPage() {
                   className="bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
                 >
                   <option value="">All Departments</option>
-                  {departmentsQuery.data?.map((dept: any) => (
+                  {departmentsQuery.data?.map((dept) => (
                     <option key={dept.id} value={dept.id}>
                       {dept.name}
                     </option>
