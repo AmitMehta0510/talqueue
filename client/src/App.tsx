@@ -84,7 +84,6 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function RequirePlatformAdmin({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
-  const location = useLocation();
 
   if (authStatus === "checking") {
     return <PageLoader />;

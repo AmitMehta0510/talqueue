@@ -39,7 +39,7 @@ const ROLE_PRIORITY = [
 export const getHighestPrivilegeRole = (user?: User | null): string | undefined => {
   if (!user?.roles || user.roles.length === 0) return user?.primaryRole ?? undefined;
   for (const roleName of ROLE_PRIORITY) {
-    if (user.roles.some((ur: any) => ur.role?.name === roleName)) return roleName;
+    if (user.roles.some((ur) => ur.role?.name === roleName)) return roleName;
   }
   // No recognised platform role — fall back to primaryRole
   return user.primaryRole ?? undefined;

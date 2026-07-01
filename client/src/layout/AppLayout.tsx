@@ -408,7 +408,7 @@ export function AppLayout() {
                           Recruiter Console
                         </Link>
                       )}
-                      {user.companyAdminships?.filter((a: any) => !a.officeCity).map((adminship: any) => (
+                      {user.companyAdminships?.filter((a) => !a.officeCity).map((adminship) => (
                         <Link
                           key={adminship.id}
                           to={`/companies/${adminship.company?.slug || adminship.companyId}/admin`}
@@ -420,7 +420,7 @@ export function AppLayout() {
                           {adminship.company?.name || "Company"} Console
                         </Link>
                       ))}
-                      {user.collegeAdminships?.map((adminship: any) => (
+                      {user.collegeAdminships?.map((adminship) => (
                         <Link
                           key={adminship.id}
                           to={`/colleges/${adminship.college?.normalizedKey || adminship.collegeId}`}
@@ -432,7 +432,7 @@ export function AppLayout() {
                           {adminship.college?.name || "College"} Admin Console
                         </Link>
                       ))}
-                      {user.cdcrMemberships?.map((membership: any) => (
+                      {user.cdcrMemberships?.map((membership) => (
                         <Link
                           key={membership.id}
                           to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}
@@ -444,7 +444,7 @@ export function AppLayout() {
                           {membership.college?.name || "College"} CDCR Console
                         </Link>
                       ))}
-                      {user.tpoMemberships?.map((membership: any) => (
+                      {user.tpoMemberships?.map((membership) => (
                         <Link
                           key={membership.id}
                           to={`/colleges/${membership.college?.normalizedKey || membership.collegeId}`}

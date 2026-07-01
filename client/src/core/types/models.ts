@@ -6,6 +6,65 @@ export type ApiEnvelope<T> = {
 
 export type RoleName = "STUDENT" | "PROFESSOR" | "PROFESSIONAL" | "RECRUITER";
 
+/**
+ * Represents a role associated with a user, matching the backend Role schema.
+ */
+export interface Role {
+  id?: string;
+  name?: string;
+  createdAt?: string;
+}
+
+/**
+ * Represents one entry of the User.roles array, mapping to the backend UserRole schema.
+ */
+export interface UserRoleEntry {
+  id?: string;
+  userId?: string;
+  roleId?: string;
+  role?: Role | null;
+  createdAt?: string;
+}
+
+/**
+ * Represents a college adminship association for a User.
+ */
+export interface CollegeAdminship {
+  id: string;
+  collegeId: string;
+  college?: {
+    id: string;
+    name: string;
+    normalizedKey?: string;
+  } | null;
+}
+
+/**
+ * Represents a CDCR membership association for a User.
+ */
+export interface CdcrMembership {
+  id: string;
+  collegeId: string;
+  college?: {
+    id: string;
+    name: string;
+    normalizedKey?: string;
+  } | null;
+}
+
+/**
+ * Represents a TPO membership association for a User.
+ */
+export interface TpoMembership {
+  id: string;
+  collegeId: string;
+  college?: {
+    id: string;
+    name: string;
+    normalizedKey?: string;
+  } | null;
+}
+
 export type User = {
   id: string;
   email?: string;
@@ -31,7 +90,7 @@ export type User = {
     college?: College | null;
     department?: Department | null;
   } | null;
-  roles?: Array<{ role?: { name?: string } }>;
+  roles?: UserRoleEntry[];
   companyAdminships?: Array<{
     id: string;
     companyId: string;
@@ -43,31 +102,9 @@ export type User = {
       logoUrl?: string | null;
     } | null;
   }>;
-  collegeAdminships?: Array<{
-    id: string;
-    collegeId: string;
-    college?: {
-      id: string;
-      name: string;
-    } | null;
-  }>;
-  cdcrMemberships?: Array<{
-    id: string;
-    collegeId: string;
-    college?: {
-      id: string;
-      name: string;
-    } | null;
-  }>;
-  tpoMemberships?: Array<{
-    id: string;
-    collegeId: string;
-    college?: {
-      id: string;
-      name: string;
-      normalizedKey?: string;
-    } | null;
-  }>;
+  collegeAdminships?: CollegeAdminship[];
+  cdcrMemberships?: CdcrMembership[];
+  tpoMemberships?: TpoMembership[];
   followersCount?: number;
   followingCount?: number;
   connectionCount?: number;
@@ -172,6 +209,10 @@ export type Department = {
   name: string;
   collegeId: string;
   createdAt?: string;
+  hod?: string | null;
+  _count?: {
+    profiles: number;
+  };
 };
 
 export type StandardDepartment = {
@@ -185,7 +226,7 @@ export type UserSkill = {
   level?: string;
   verified?: boolean;
   verificationSource?: string | null;
-  verificationProof?: any | null;
+  verificationProof?: unknown | null;
   skill?: {
     id: string;
     name?: string;
@@ -1442,9 +1483,9 @@ export type RankedProject   = { project: Project;   relevanceScore: number; matc
 export type RankedHackathon = { hackathon: Hackathon; relevanceScore: number; matchReasons: string[] };
 
 export type SearchResults = {
-  users?:       any[];
-  projects?:    any[];
-  hackathons?:  any[];
+  users?:       RankedUser[];
+  projects?:    RankedProject[];
+  hackathons?:  RankedHackathon[];
   jobs?:        Job[];
   companies?:   Company[];
   communities?: Community[];
@@ -1452,6 +1493,22 @@ export type SearchResults = {
   jobsTotal?:   number;
   [key: string]: unknown;
 };
+
+/**
+ * Represents the flattened search results returned by the search mutation hook.
+ */
+export interface SearchMutationResult {
+  users?: User[];
+  projects?: Project[];
+  hackathons?: (RankedHackathon | Hackathon)[];
+  jobs?: Job[];
+  companies?: Company[];
+  communities?: Community[];
+  topResults?: { type: string; score: number; data: unknown }[];
+  jobsTotal?: number;
+}
+
+
 
 export type NotificationType =
   | "LIKE"

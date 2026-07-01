@@ -813,9 +813,9 @@ const remainingApi = {
     request<SearchResults>(`/search/global${toQuery({ q, ...(omni && { omni: "true" }) })}`, options),
   searchUsers: (params: { q?: string; collegeIds?: string; collegeName?: string; departmentIds?: string; graduationYears?: string; skills?: string; role?: string; openToWork?: boolean; acceptingReferrals?: boolean; verifiedSkillsOnly?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<User[]>(`/search/users${toQuery({ ...params, limit: params.limit || 20 })}`, options),
-  searchProjects: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
+  searchProjects: (params: { q?: string; techStack?: string; status?: string; lookingForCollaborators?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<Project[]>(`/search/projects${toQuery({ ...params, limit: params.limit || 12 })}`, options),
-  searchHackathons: (params: { q?: string; limit?: number }, options?: EndpointOptions) =>
+  searchHackathons: (params: { q?: string; tags?: string; upcomingOnly?: boolean; limit?: number }, options?: EndpointOptions) =>
     request<Hackathon[]>(`/search/hackathons${toQuery({ ...params, limit: params.limit || 12 })}`, options),
   searchCompanies: (params: { q?: string; industry?: string; size?: string; location?: string; hiringEnabled?: string; referralEnabled?: string; limit?: number }, options?: EndpointOptions) =>
     request<Company[]>(`/search/companies${toQuery({ ...params, limit: params.limit || 20 })}`, options),
@@ -1006,7 +1006,7 @@ const remainingApi = {
 
   // Admin: Company Requests
   adminCompanyRequests: (status?: string, options?: EndpointOptions) =>
-    request<any[]>(`/admin/company-requests${status ? `?status=${status}` : ""}`, options),
+    request<CompanyRequest[]>(`/admin/company-requests${status ? `?status=${status}` : ""}`, options),
   adminApproveCompanyRequest: (requestId: string, body?: { logoUrl?: string; websiteUrl?: string; headquarters?: string; industry?: string }) =>
     request<{ success: boolean; company: any; job: any }>(`/admin/company-requests/${requestId}/approve`, { method: "POST", body: body || {} }),
   adminRejectCompanyRequest: (requestId: string, reviewNotes?: string) =>
@@ -1467,15 +1467,21 @@ export interface CompanyRequest {
   requestType: string;
   status: string;
   businessEmail: string;
+  corporateDoc?: string | null;
   reviewNotes?: string | null;
   createdAt: string;
   updatedAt: string;
   reviewedAt?: string | null;
+  requestedBy?: User;
+  requestedById?: string;
+  pendingJobData?: unknown;
   company?: {
     id: string;
     name: string;
     slug: string;
     logoUrl?: string | null;
     verificationStatus: string;
+    gstin?: string | null;
+    cin?: string | null;
   } | null;
 }

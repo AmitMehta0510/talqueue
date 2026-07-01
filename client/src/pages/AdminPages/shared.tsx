@@ -3,6 +3,7 @@ import { Search, Loader2, ChevronDown, X } from "lucide-react";
 import { titleCase, userName } from "../../core/utils/format";
 import { useAdminUsersQuery } from "../../hooks/usePlatformQueries";
 import { Avatar } from "../../components/ui";
+import { User } from "../../core/types/models";
 
 export const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -57,7 +58,7 @@ export function SearchBar({ value, onChange, placeholder }: { value: string; onC
 
 // ─── KPI CARD ──────────────────────────────────────────────────────────────────
 export function KpiCard({ label, value, icon: Icon, gradient, sub }: {
-  label: string; value: number | string; icon: any; gradient: string; sub?: string;
+  label: string; value: number | string; icon: React.ElementType; gradient: string; sub?: string;
 }) {
   return (
     <div className="relative overflow-hidden rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}>
@@ -117,7 +118,7 @@ export function DataTable({ headers, children, empty }: { headers: string[]; chi
 }
 
 // ─── LOAD MORE ─────────────────────────────────────────────────────────────────
-export function LoadMoreBtn({ query }: { query: any }) {
+export function LoadMoreBtn({ query }: { query: { hasNextPage?: boolean; fetchNextPage: () => void; isFetchingNextPage: boolean } }) {
   if (!query.hasNextPage) return null;
   return (
     <div className="flex justify-center pt-3">
@@ -135,11 +136,10 @@ export function LoadMoreBtn({ query }: { query: any }) {
 
 // ─── USER SEARCH AUTOCOMPLETE ──────────────────────────────────────────────────
 export function UserSearchAutocomplete({
-  value,
   onChange,
   placeholder = "Search user by name, username, or email...",
 }: {
-  value: string;
+  value?: string;
   onChange: (userId: string, label: string) => void;
   placeholder?: string;
 }) {
@@ -162,7 +162,7 @@ export function UserSearchAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (user: any) => {
+  const handleSelect = (user: User) => {
     const nameLabel = userName(user);
     setSelectedUser({
       id: user.id,
@@ -185,7 +185,7 @@ export function UserSearchAutocomplete({
       {selectedUser ? (
         <div className="flex items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2 text-xs transition duration-150">
           <div className="flex items-center gap-2">
-            <Avatar user={{ username: selectedUser.username, profile: { avatarUrl: selectedUser.avatarUrl } } as any} size="sm" />
+            <Avatar user={{ username: selectedUser.username, profile: { avatarUrl: selectedUser.avatarUrl } } as User} size="sm" />
             <div>
               <div className="font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{selectedUser.name}</div>
               <div className="text-[10px] leading-tight" style={{ color: "var(--text-muted)" }}>@{selectedUser.username}</div>
@@ -234,7 +234,7 @@ export function UserSearchAutocomplete({
               ) : matchedUsers.length === 0 ? (
                 <div className="px-3 py-3 text-center text-xs italic" style={{ color: "var(--text-muted)" }}>No users found</div>
               ) : (
-                matchedUsers.map((user: any) => {
+                matchedUsers.map((user: User) => {
                   const label = userName(user);
                   return (
                     <button

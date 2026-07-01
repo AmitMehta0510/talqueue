@@ -3,11 +3,12 @@ import { CheckCircle2, Loader2, RefreshCw, XCircle, FileText, ExternalLink } fro
 import { useToast } from "../../core/contexts/ToastContext";
 import { Avatar } from "../../components/ui";
 import { DataTable, StatusBadge, fmtRelative } from "./shared";
+import { CompanyRequest } from "../../lib/api";
 
 export function CompanyRequestsPanel() {
   const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState("PENDING");
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState<string | null>(null);
 
@@ -16,7 +17,7 @@ export function CompanyRequestsPanel() {
     try {
       const { api } = await import("../../lib/api");
       const res = await api.adminCompanyRequests(statusFilter);
-      setRequests((res.data as any[]) || []);
+      setRequests(res.data || []);
     } catch {
       showToast("error", "Failed to load company requests");
     } finally {
@@ -29,7 +30,7 @@ export function CompanyRequestsPanel() {
     loadRequests();
   }, [loadRequests]);
 
-  const handleApprove = async (r: any) => {
+  const handleApprove = async (r: CompanyRequest) => {
     setActionPending(r.id);
     try {
       const { api } = await import("../../lib/api");
@@ -41,14 +42,14 @@ export function CompanyRequestsPanel() {
         showToast("success", "Company approved and job posted!");
       }
       loadRequests();
-    } catch (err: any) {
-      showToast("error", err?.message || "Failed to approve request");
+    } catch (err: unknown) {
+      showToast("error", err instanceof Error ? err.message : "Failed to approve request");
     } finally {
       setActionPending(null);
     }
   };
 
-  const handleReject = async (r: any) => {
+  const handleReject = async (r: CompanyRequest) => {
     const notes = window.prompt("Rejection reason (optional):");
     if (notes === null) return;
     setActionPending(r.id);
@@ -62,8 +63,8 @@ export function CompanyRequestsPanel() {
         showToast("success", "Company request rejected");
       }
       loadRequests();
-    } catch (err: any) {
-      showToast("error", err?.message || "Failed to reject request");
+    } catch (err: unknown) {
+      showToast("error", err instanceof Error ? err.message : "Failed to reject request");
     } finally {
       setActionPending(null);
     }
@@ -119,8 +120,8 @@ export function CompanyRequestsPanel() {
               statusFilter === "PENDING" ? "Actions" : "Result"
             ]}
           >
-            {requests.map((r: any) => {
-              const jobData = r.pendingJobData || {};
+            {requests.map((r: CompanyRequest) => {
+              const jobData = (r.pendingJobData as Record<string, string>) || {};
               const isClaim = r.requestType === "COMPANY_CLAIM";
               const isRecruiter = r.requestType === "RECRUITER_ONBOARDING" && r.businessEmail;
               
