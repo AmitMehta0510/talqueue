@@ -2,6 +2,7 @@ import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, LucideIcon, RefreshCcw } from "lucide-react";
 import { User } from "../lib/api";
 import { initials, userName } from "../core/utils/format";
+export { ConfirmDialog } from "./ui/ConfirmDialog";
 
 /* ============================================================
    METRIC — displays a numeric stat with a label

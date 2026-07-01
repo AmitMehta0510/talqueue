@@ -14,11 +14,9 @@ import {
   ChevronRight,
   Clock,
   Loader2,
-  Plus,
   Send,
   Upload,
   X,
-  Mail,
 } from "lucide-react";
 import { useAuth } from "../core/contexts/AuthContext";
 import {
@@ -53,8 +51,8 @@ export function TpoDashboardPage() {
 
   // Resolve College Info
   const tpoCollege = useMemo(() => {
-    const adminships = (user as any)?.collegeAdminships || [];
-    return adminships[0]?.college || (user as any)?.profile?.college || null;
+    const adminships = user?.collegeAdminships || [];
+    return adminships[0]?.college || user?.profile?.college || null;
   }, [user]);
 
   const collegeId = tpoCollege?.id as string | undefined;
@@ -174,7 +172,7 @@ export function TpoDashboardPage() {
             TPO Admin Dashboard
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Managing placement operations and student profiles for <span className="font-semibold text-gray-800 dark:text-gray-200">{tpoCollege.name}</span>.
+            Managing placement operations and student profiles for <span className="font-semibold text-gray-800 dark:text-gray-200">{tpoCollege?.name || "your college"}</span>.
           </p>
         </div>
       </div>
@@ -277,7 +275,7 @@ export function TpoDashboardPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                  <span>Placement drives lists active and upcoming recruitment cycles targeted specifically at {tpoCollege.name} students.</span>
+                  <span>Placement drives lists active and upcoming recruitment cycles targeted specifically at {tpoCollege?.name || "your college"} students.</span>
                 </li>
               </ul>
             </div>

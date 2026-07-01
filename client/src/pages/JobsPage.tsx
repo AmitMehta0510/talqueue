@@ -1134,8 +1134,7 @@ export function JobsPage() {
               <article key={job.id} className="panel p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div
-                    className="flex h-10 w-10 items-center justify-center rounded-lg"
-                    style={{ background: "rgba(59,130,246,0.12)", color: "#3b82f6" }}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-glow)] text-[var(--brand)]"
                   >
                     <BriefcaseBusiness size={18} />
                   </div>

@@ -674,8 +674,7 @@ export function FeedPage() {
               style={{ borderColor: "var(--border)" }}
             >
               <div
-                className="flex items-center justify-center p-1 rounded-lg"
-                style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
+                className="flex items-center justify-center p-1 rounded-lg bg-[var(--bg-surface-warning)] text-[var(--text-warning)]"
               >
                 <Trophy size={14} className="stroke-[2.5]" />
               </div>

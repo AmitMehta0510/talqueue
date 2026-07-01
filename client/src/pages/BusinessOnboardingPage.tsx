@@ -347,7 +347,7 @@ export function BusinessOnboardingPage() {
   return (
     <div className="min-h-screen bg-surface text-primary flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Dynamic Background Gradients */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0f0e2e] rounded-full blur-[120px] opacity-40 pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-950 rounded-full blur-[120px] opacity-40 pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-950 rounded-full blur-[120px] opacity-35 pointer-events-none" />
 
       {/* Main Container */}
@@ -373,7 +373,7 @@ export function BusinessOnboardingPage() {
             {/* Card 1: Recruiter access */}
             <button
               onClick={() => setActiveFunnel("recruiter")}
-              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#11102a]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[var(--brand-glow)] transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <UserCheck size={120} className="text-indigo-400" />
@@ -397,7 +397,7 @@ export function BusinessOnboardingPage() {
             {/* Card 2: Company Claim */}
             <button
               onClick={() => setActiveFunnel("claim")}
-              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#161a35]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[var(--brand-glow)] transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Building2 size={120} className="text-indigo-400" />
@@ -421,7 +421,7 @@ export function BusinessOnboardingPage() {
             {/* Card 3: College/TPO Onboarding */}
             <button
               onClick={() => setActiveFunnel("tpo")}
-              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[#0e2133]/30 transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
+              className="group text-left p-6 rounded-2xl border border-base bg-surface-2/40 hover:border-indigo-500/50 hover:bg-[var(--brand-glow)] transition-all duration-500 relative overflow-hidden flex flex-col justify-between h-80 shadow-2xl"
             >
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
                 <GraduationCap size={120} className="text-indigo-400" />

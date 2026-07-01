@@ -28,47 +28,13 @@ import {
   useCollegePlacementSummaryQuery,
 } from "../hooks/usePlatformQueries";
 import { College } from "../lib/api";
-import { compactPayload, formatCount, formatDate, cleanLogoUrl } from "../core/utils/format";
+import { compactPayload, formatCount, formatDate, cleanLogoUrl, STATUS_CHIP_CLASSES } from "../core/utils/format";
 import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
 import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
 import { TpoInviteCompanyModal } from "../components/jobs/TpoInviteCompanyModal";
+import { isSuperOrPlatformAdmin, isCollegeAdminFor, isTpoFor, isCdcrFor } from "../core/utils/roles";
 
-// Role helpers
-const SUPER_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN"]);
-const COLLEGE_ADMIN_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "PLATFORM_ADMIN", "COLLEGE_ADMIN"]);
-
-function isSuperOrPlatformAdmin(user: any): boolean {
-  if (!user?.roles) return false;
-  return (user.roles as Array<{ role?: { name?: string } }>).some(
-    (r) => r.role?.name && SUPER_ADMIN_ROLES.has(r.role.name)
-  );
-}
-
-function isCollegeAdminFor(user: any, collegeId: string): boolean {
-  if (!user) return false;
-  // Platform admins can manage any college
-  if (isSuperOrPlatformAdmin(user)) return true;
-  // Check college-scoped admin assignment
-  const isAdmin = user.collegeAdminships?.some((adm: any) => adm.collegeId === collegeId);
-  const isTpo = user.tpoMemberships?.some((t: any) => t.collegeId === collegeId);
-  const isCdcr = user.cdcrMemberships?.some((cdcr: any) => cdcr.collegeId === collegeId);
-  return Boolean(isAdmin || isTpo || isCdcr);
-}
-
-function isTpoFor(user: any, collegeId: string): boolean {
-  if (!user) return false;
-  if (isSuperOrPlatformAdmin(user)) return true;
-  const isAdmin = user.collegeAdminships?.some((adm: any) => adm.collegeId === collegeId);
-  if (isAdmin) return true;
-  return Boolean(user.tpoMemberships?.some((t: any) => t.collegeId === collegeId));
-}
-
-function isCdcrFor(user: any, collegeId: string): boolean {
-  if (!user) return false;
-  // All higher roles also pass CDCR checks
-  if (isTpoFor(user, collegeId)) return true;
-  return Boolean(user.cdcrMemberships?.some((cdcr: any) => cdcr.collegeId === collegeId));
-}
+// Centralized role helpers imported from core/utils/roles
 
 const flattenColleges = (pages?: Array<{ colleges: College[] }>) =>
   (pages || []).flatMap((page) => page.colleges || []);
@@ -1064,9 +1030,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{drive.driveDate ? formatDate(drive.driveDate) : "—"}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                              drive.status === "ONGOING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                              drive.status === "UPCOMING" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                              "bg-slate-100 text-slate-500 border-slate-200"
+                              STATUS_CHIP_CLASSES[drive.status] || STATUS_CHIP_CLASSES.CLOSED
                             }`}>
                               {drive.status === "ONGOING" ? "Open" : drive.status === "UPCOMING" ? "Upcoming" : "Closed"}
                             </span>
@@ -1152,10 +1116,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           )}
                         </div>
                         <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                          invite.status === "ACCEPTED" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                          invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                          "bg-slate-100 text-slate-500 border-slate-200"
+                          STATUS_CHIP_CLASSES[invite.status] || "bg-slate-100 text-slate-500 border-slate-200"
                         }`}>
                           {invite.status}
                         </span>
@@ -1223,10 +1184,7 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
                           )}
                         </div>
                         <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          invite.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                          invite.status === "ACCEPTED" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                          invite.status === "REJECTED" ? "bg-rose-50 text-rose-700 border-rose-200" :
-                          "bg-slate-100 text-slate-500 border-slate-200"
+                          STATUS_CHIP_CLASSES[invite.status] || "bg-slate-100 text-slate-500 border-slate-200"
                         }`}>
                           {invite.status}
                         </span>

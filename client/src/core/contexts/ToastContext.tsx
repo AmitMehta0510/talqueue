@@ -32,7 +32,7 @@ const TOAST_CONFIG: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    bg: "dark:bg-[#0e0d1f] bg-white",
+    bg: "bg-white dark:bg-[var(--bg-surface-success)]",
     border: "dark:border-indigo-800/60 border-indigo-200",
     text: "dark:text-indigo-100 text-indigo-900",
     progress: "bg-indigo-500",
@@ -40,7 +40,7 @@ const TOAST_CONFIG: Record<
   },
   error: {
     icon: XCircle,
-    bg: "dark:bg-[#1f0d0d] bg-white",
+    bg: "bg-white dark:bg-[var(--bg-surface-danger)]",
     border: "dark:border-rose-800/60 border-rose-200",
     text: "dark:text-rose-100 text-rose-900",
     progress: "bg-rose-500",
@@ -48,7 +48,7 @@ const TOAST_CONFIG: Record<
   },
   warning: {
     icon: AlertTriangle,
-    bg: "dark:bg-[#1f1a0d] bg-white",
+    bg: "bg-white dark:bg-[var(--bg-surface-warning)]",
     border: "dark:border-amber-800/60 border-amber-200",
     text: "dark:text-amber-100 text-amber-900",
     progress: "bg-amber-500",
@@ -56,7 +56,7 @@ const TOAST_CONFIG: Record<
   },
   info: {
     icon: Info,
-    bg: "dark:bg-[#0d1520] bg-white",
+    bg: "bg-white dark:bg-[var(--bg-surface-info)]",
     border: "dark:border-blue-800/60 border-blue-200",
     text: "dark:text-blue-100 text-blue-900",
     progress: "bg-blue-500",
