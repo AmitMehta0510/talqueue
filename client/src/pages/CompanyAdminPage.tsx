@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent, useEffect } from "react";
+import { useState, useMemo, FormEvent, useEffect, lazy, Suspense } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Building2, Users, Briefcase, Shield, ShieldCheck, Plus, Trash2, MapPin, Loader2,
@@ -8,10 +8,10 @@ import { useAuth } from "../core/contexts/AuthContext";
 import { useToast } from "../core/contexts/ToastContext";
 import { api } from "../lib/api";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { Avatar } from "../components/ui";
+import { Avatar, PageLoader } from "../components/ui";
 import { userName } from "../core/utils/format";
 import { UserSearchAutocomplete } from "./AdminPages/shared";
-import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
+const KanbanPipeline = lazy(() => import("../components/recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
 import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
   useCompanyQuery,
@@ -788,7 +788,9 @@ export function CompanyAdminPage() {
             {activeTab === "jobs" && (
               managedJobId ? (
                 <div className="space-y-4 rounded-xl border p-5" style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-primary)" }}>
-                  <KanbanPipeline jobId={managedJobId} onBack={() => setManagedJobId(null)} />
+                  <Suspense fallback={<PageLoader />}>
+                    <KanbanPipeline jobId={managedJobId} onBack={() => setManagedJobId(null)} />
+                  </Suspense>
                 </div>
               ) : (
                 <div className="space-y-4">

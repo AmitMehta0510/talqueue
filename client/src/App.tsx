@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -11,34 +11,35 @@ import { isPlatformAdmin, isRecruiter, isTpo } from "./core/utils/roles";
 import { AuthProvider, useAuth } from "./core/contexts/AuthContext";
 import { ToastProvider } from "./core/contexts/ToastContext";
 import { AppLayout } from "./layout/AppLayout";
-import { AuthPage } from "./pages/AuthPage";
-import { ChatPage } from "./pages/ChatPage";
-import { CollegesPage } from "./pages/CollegesPage";
-import { CommunitiesPage } from "./pages/CommunitiesPage";
-import { CompaniesPage } from "./pages/CompaniesPage";
-import { DiscoverPage } from "./pages/DiscoverPage";
-import { FeedPage } from "./pages/FeedPage";
-import { HackathonsPage } from "./pages/HackathonsPage";
-import { JobsPage } from "./pages/JobsPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { ProjectsPage } from "./pages/ProjectsPage";
-import { SocialPage } from "./pages/SocialPage";
-import { TeamsPage } from "./pages/TeamsPage";
-import { UserProfilePage } from "./pages/UserProfilePage";
-import { ReferralsPage } from "./pages/ReferralsPage";
-import { ReputationPage } from "./pages/ReputationPage";
-import { RecruiterPage } from "./pages/RecruiterPage";
-import { RecruiterDrivePage } from "./pages/RecruiterDrivePage";
-import { AdminPage } from "./pages/AdminPage";
-import { CompanyAdminPage } from "./pages/CompanyAdminPage";
-import { EventsPage } from "./pages/EventsPage";
-import { PlacementDashboardPage } from "./pages/PlacementDashboardPage";
-import { BusinessOnboardingPage } from "./pages/BusinessOnboardingPage";
-import { TpoDashboardPage } from "./pages/TpoDashboardPage";
-import { PublicBatchPage } from "./pages/PublicBatchPage";
-import { InterviewsPage } from "./pages/InterviewsPage";
-import { SearchResultsPage } from "./pages/SearchResultsPage";
+
+const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
+const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
+const CollegesPage = lazy(() => import("./pages/CollegesPage").then(m => ({ default: m.CollegesPage })));
+const CommunitiesPage = lazy(() => import("./pages/CommunitiesPage").then(m => ({ default: m.CommunitiesPage })));
+const CompaniesPage = lazy(() => import("./pages/CompaniesPage").then(m => ({ default: m.CompaniesPage })));
+const DiscoverPage = lazy(() => import("./pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })));
+const FeedPage = lazy(() => import("./pages/FeedPage").then(m => ({ default: m.FeedPage })));
+const HackathonsPage = lazy(() => import("./pages/HackathonsPage").then(m => ({ default: m.HackathonsPage })));
+const JobsPage = lazy(() => import("./pages/JobsPage").then(m => ({ default: m.JobsPage })));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
+const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage").then(m => ({ default: m.ProjectsPage })));
+const SocialPage = lazy(() => import("./pages/SocialPage").then(m => ({ default: m.SocialPage })));
+const TeamsPage = lazy(() => import("./pages/TeamsPage").then(m => ({ default: m.TeamsPage })));
+const UserProfilePage = lazy(() => import("./pages/UserProfilePage").then(m => ({ default: m.UserProfilePage })));
+const ReferralsPage = lazy(() => import("./pages/ReferralsPage").then(m => ({ default: m.ReferralsPage })));
+const ReputationPage = lazy(() => import("./pages/ReputationPage").then(m => ({ default: m.ReputationPage })));
+const RecruiterPage = lazy(() => import("./pages/RecruiterPage").then(m => ({ default: m.RecruiterPage })));
+const RecruiterDrivePage = lazy(() => import("./pages/RecruiterDrivePage").then(m => ({ default: m.RecruiterDrivePage })));
+const AdminPage = lazy(() => import("./pages/AdminPage").then(m => ({ default: m.AdminPage })));
+const CompanyAdminPage = lazy(() => import("./pages/CompanyAdminPage").then(m => ({ default: m.CompanyAdminPage })));
+const EventsPage = lazy(() => import("./pages/EventsPage").then(m => ({ default: m.EventsPage })));
+const PlacementDashboardPage = lazy(() => import("./pages/PlacementDashboardPage").then(m => ({ default: m.PlacementDashboardPage })));
+const BusinessOnboardingPage = lazy(() => import("./pages/BusinessOnboardingPage").then(m => ({ default: m.BusinessOnboardingPage })));
+const TpoDashboardPage = lazy(() => import("./pages/TpoDashboardPage").then(m => ({ default: m.TpoDashboardPage })));
+const PublicBatchPage = lazy(() => import("./pages/PublicBatchPage").then(m => ({ default: m.PublicBatchPage })));
+const InterviewsPage = lazy(() => import("./pages/InterviewsPage").then(m => ({ default: m.InterviewsPage })));
+const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
 
 
 /** Syncs dark/light class to <html> based on OS preference. */
@@ -156,7 +157,8 @@ function AppRoutes() {
 
   return (
     <AppErrorBoundary>
-      <Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
         <Route
           path="/auth"
           element={
@@ -346,6 +348,7 @@ function AppRoutes() {
         </Route>
         <Route path="*" element={<Navigate to="/feed" replace />} />
       </Routes>
+      </Suspense>
     </AppErrorBoundary>
   );
 }

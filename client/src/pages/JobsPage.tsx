@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Briefcase,
@@ -37,13 +37,13 @@ import {
   useJobLocationsAutocompleteQuery,
 } from "../hooks/usePlatformQueries";
 import { useAuth } from "../core/contexts/AuthContext";
-import { EmptyState, InlineLoader, ErrorState, Avatar, SkeletonBlock } from "../components/ui";
+import { EmptyState, InlineLoader, ErrorState, Avatar, SkeletonBlock, PageLoader } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { JobDetailModal } from "../features/jobs/components/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { ExternalApplyModal } from "../components/forms/ExternalApplyModal";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
-import { KanbanPipeline } from "../components/recruiter/KanbanPipeline";
+const KanbanPipeline = lazy(() => import("../components/recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
 import { ApplicationKanbanBoard } from "../components/jobs/ApplicationKanbanBoard";
 import { PlacementDrivesTab } from "../components/jobs/PlacementDrivesTab";
 import { formatCount, formatDate, titleCase, cleanLogoUrl, userName, userHeadline, parseJobTitle } from "../core/utils/format";
@@ -1061,10 +1061,12 @@ export function JobsPage() {
 
   if (activeTab === "recruiter" && recruiterView.type === "pipeline") {
     return (
-      <KanbanPipeline
-        jobId={recruiterView.jobId}
-        onBack={() => setRecruiterView({ type: "dashboard" })}
-      />
+      <Suspense fallback={<PageLoader />}>
+        <KanbanPipeline
+          jobId={recruiterView.jobId}
+          onBack={() => setRecruiterView({ type: "dashboard" })}
+        />
+      </Suspense>
     );
   }
 

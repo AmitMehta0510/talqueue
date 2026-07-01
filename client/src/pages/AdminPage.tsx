@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../core/contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { PageLoader } from "../components/ui";
 import {
   useAdminStatsQuery,
   useUpdateUserStatusMutation,
@@ -18,21 +19,21 @@ import {
 } from "../hooks/usePlatformQueries";
 import { College, Company } from "../lib/api";
 
-// Sub-panel imports
-import { OverviewPanel } from "./AdminPages/OverviewPanel";
-import { UsersPanel } from "./AdminPages/UsersPanel";
-import { ModerationPanel } from "./AdminPages/ModerationPanel";
-import { HackathonsPanel } from "./AdminPages/HackathonsPanel";
-import { CollegesPanel } from "./AdminPages/CollegesPanel";
-import { CompaniesPanel } from "./AdminPages/CompaniesPanel";
-import { CommunitiesPanel } from "./AdminPages/CommunitiesPanel";
-import { ReferralsPanel } from "./AdminPages/ReferralsPanel";
-import { CompanyRequestsPanel } from "./AdminPages/CompanyRequestsPanel";
-import { OnboardingRequestsPanel } from "./AdminPages/OnboardingRequestsPanel";
-import { JobsPanel } from "./AdminPages/JobsPanel";
-import { EventsPanel } from "./AdminPages/EventsPanel";
-import { DiscoveredCompaniesPanel } from "./AdminPages/DiscoveredCompaniesPanel";
-import { InterviewPanel } from "./AdminPages/InterviewPanel";
+// Sub-panel lazy imports
+const OverviewPanel = lazy(() => import("./AdminPages/OverviewPanel").then(m => ({ default: m.OverviewPanel })));
+const UsersPanel = lazy(() => import("./AdminPages/UsersPanel").then(m => ({ default: m.UsersPanel })));
+const ModerationPanel = lazy(() => import("./AdminPages/ModerationPanel").then(m => ({ default: m.ModerationPanel })));
+const HackathonsPanel = lazy(() => import("./AdminPages/HackathonsPanel").then(m => ({ default: m.HackathonsPanel })));
+const CollegesPanel = lazy(() => import("./AdminPages/CollegesPanel").then(m => ({ default: m.CollegesPanel })));
+const CompaniesPanel = lazy(() => import("./AdminPages/CompaniesPanel").then(m => ({ default: m.CompaniesPanel })));
+const CommunitiesPanel = lazy(() => import("./AdminPages/CommunitiesPanel").then(m => ({ default: m.CommunitiesPanel })));
+const ReferralsPanel = lazy(() => import("./AdminPages/ReferralsPanel").then(m => ({ default: m.ReferralsPanel })));
+const CompanyRequestsPanel = lazy(() => import("./AdminPages/CompanyRequestsPanel").then(m => ({ default: m.CompanyRequestsPanel })));
+const OnboardingRequestsPanel = lazy(() => import("./AdminPages/OnboardingRequestsPanel").then(m => ({ default: m.OnboardingRequestsPanel })));
+const JobsPanel = lazy(() => import("./AdminPages/JobsPanel").then(m => ({ default: m.JobsPanel })));
+const EventsPanel = lazy(() => import("./AdminPages/EventsPanel").then(m => ({ default: m.EventsPanel })));
+const DiscoveredCompaniesPanel = lazy(() => import("./AdminPages/DiscoveredCompaniesPanel").then(m => ({ default: m.DiscoveredCompaniesPanel })));
+const InterviewPanel = lazy(() => import("./AdminPages/InterviewPanel").then(m => ({ default: m.InterviewPanel })));
 
 type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews";
 
@@ -191,50 +192,52 @@ export function AdminPage() {
 
           {/* ── Main Content ─────────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
-            {activeTab === "overview" && (
-              <OverviewPanel stats={stats} loading={statsQuery.isFetching} error={statsQuery.error} onRetry={statsQuery.refetch} />
-            )}
-            {activeTab === "users" && (
-              <UsersPanel
-                onAction={(type, userId, label) => setConfirmAction({ type, userId, label })}
-                currentUserId={currentUser?.id}
-                isSuperAdmin={isSuperAdmin}
-              />
-            )}
-            {activeTab === "moderation" && <ModerationPanel />}
-            {activeTab === "hackathons" && <HackathonsPanel />}
-            {activeTab === "colleges" && (
-              <CollegesPanel
-                selectedCollege={selectedCollege}
-                onSelectCollege={setSelectedCollege}
-                onRevokeAdmin={(collegeId, userId, label) =>
-                  setConfirmAction({ type: "revoke_college_admin", userId, label, extraId: collegeId })
-                }
-                onAssignAdmin={(collegeId, userId, label, collegeName) =>
-                  setConfirmAction({ type: "assign_college_admin", userId, label, extraId: collegeId, extraName: collegeName })
-                }
-              />
-            )}
-            {activeTab === "companies" && (
-              <CompaniesPanel
-                selectedCompany={selectedCompany}
-                onSelectCompany={setSelectedCompany}
-                onRevokeAdmin={(companyId, userId, label, officeCity) =>
-                  setConfirmAction({ type: "revoke_company_admin", userId, label, extraId: companyId, extraCity: officeCity })
-                }
-                onAssignAdmin={(companyId, userId, label, companyName, officeCity) =>
-                  setConfirmAction({ type: "assign_company_admin", userId, label, extraId: companyId, extraName: companyName, extraCity: officeCity })
-                }
-              />
-            )}
-            {activeTab === "communities" && <CommunitiesPanel />}
-            {activeTab === "referrals" && <ReferralsPanel />}
-            {activeTab === "company_requests" && <CompanyRequestsPanel />}
-            {activeTab === "onboarding" && <OnboardingRequestsPanel />}
-            {activeTab === "jobs" && <JobsPanel />}
-            {activeTab === "events" && <EventsPanel />}
-            {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
-            {activeTab === "interviews" && <InterviewPanel />}
+            <Suspense fallback={<PageLoader />}>
+              {activeTab === "overview" && (
+                <OverviewPanel stats={stats} loading={statsQuery.isFetching} error={statsQuery.error} onRetry={statsQuery.refetch} />
+              )}
+              {activeTab === "users" && (
+                <UsersPanel
+                  onAction={(type, userId, label) => setConfirmAction({ type, userId, label })}
+                  currentUserId={currentUser?.id}
+                  isSuperAdmin={isSuperAdmin}
+                />
+              )}
+              {activeTab === "moderation" && <ModerationPanel />}
+              {activeTab === "hackathons" && <HackathonsPanel />}
+              {activeTab === "colleges" && (
+                <CollegesPanel
+                  selectedCollege={selectedCollege}
+                  onSelectCollege={setSelectedCollege}
+                  onRevokeAdmin={(collegeId, userId, label) =>
+                    setConfirmAction({ type: "revoke_college_admin", userId, label, extraId: collegeId })
+                  }
+                  onAssignAdmin={(collegeId, userId, label, collegeName) =>
+                    setConfirmAction({ type: "assign_college_admin", userId, label, extraId: collegeId, extraName: collegeName })
+                  }
+                />
+              )}
+              {activeTab === "companies" && (
+                <CompaniesPanel
+                  selectedCompany={selectedCompany}
+                  onSelectCompany={setSelectedCompany}
+                  onRevokeAdmin={(companyId, userId, label, officeCity) =>
+                    setConfirmAction({ type: "revoke_company_admin", userId, label, extraId: companyId, extraCity: officeCity })
+                  }
+                  onAssignAdmin={(companyId, userId, label, companyName, officeCity) =>
+                    setConfirmAction({ type: "assign_company_admin", userId, label, extraId: companyId, extraName: companyName, extraCity: officeCity })
+                  }
+                />
+              )}
+              {activeTab === "communities" && <CommunitiesPanel />}
+              {activeTab === "referrals" && <ReferralsPanel />}
+              {activeTab === "company_requests" && <CompanyRequestsPanel />}
+              {activeTab === "onboarding" && <OnboardingRequestsPanel />}
+              {activeTab === "jobs" && <JobsPanel />}
+              {activeTab === "events" && <EventsPanel />}
+              {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
+              {activeTab === "interviews" && <InterviewPanel />}
+            </Suspense>
           </div>
         </div>
       </div>

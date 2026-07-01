@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { Building2, GraduationCap, Info, Loader2, MapPin, Plus, Search, Users, Shield, Trash2, UserPlus, Zap, CheckCircle2, XCircle, Clock, Calendar, ShieldCheck, UserCheck, UserX, TrendingUp, Award, BookOpen } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState, Metric } from "../components/ui";
@@ -30,7 +30,7 @@ import {
 import { College } from "../lib/api";
 import { compactPayload, formatCount, formatDate, cleanLogoUrl, STATUS_CHIP_CLASSES } from "../core/utils/format";
 import { CreateDriveModal } from "../components/jobs/CreateDriveModal";
-import { DriveApplicantsModal } from "../components/jobs/DriveApplicantsModal";
+const DriveApplicantsModal = lazy(() => import("../components/jobs/DriveApplicantsModal").then(m => ({ default: m.DriveApplicantsModal })));
 import { TpoInviteCompanyModal } from "../components/jobs/TpoInviteCompanyModal";
 import { isSuperOrPlatformAdmin, isCollegeAdminFor, isTpoFor, isCdcrFor } from "../core/utils/roles";
 
@@ -1463,11 +1463,13 @@ function CollegeDetail({ collegeId }: { collegeId: string }) {
         />
       )}
       {selectedDriveForApplicants && (
-        <DriveApplicantsModal
-          driveId={selectedDriveForApplicants.id}
-          driveTitle={selectedDriveForApplicants.title}
-          onClose={() => setSelectedDriveForApplicants(null)}
-        />
+        <Suspense fallback={null}>
+          <DriveApplicantsModal
+            driveId={selectedDriveForApplicants.id}
+            driveTitle={selectedDriveForApplicants.title}
+            onClose={() => setSelectedDriveForApplicants(null)}
+          />
+        </Suspense>
       )}
     </section>
   );
