@@ -17,7 +17,7 @@ export const fmtRelative = (d: string) => {
 
 // ─── STATUS BADGE ──────────────────────────────────────────────────────────────
 export function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, string> = {
+  const adminColors: Record<string, string> = {
     ACTIVE: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 ring-indigo-500/30",
     BANNED: "bg-rose-500/15 text-rose-600 dark:text-rose-400 ring-rose-500/30",
     INACTIVE: "bg-slate-500/15 text-slate-600 dark:text-slate-400 ring-slate-500/30",
@@ -31,8 +31,10 @@ export function StatusBadge({ status }: { status: string }) {
     PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30",
   };
 
+  const cls = adminColors[status.toUpperCase()] || "bg-slate-500/15 text-slate-500 ring-slate-500/30";
+
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${variants[status] || "bg-slate-500/15 text-slate-500 ring-slate-500/30"}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${cls}`}>
       {status}
     </span>
   );

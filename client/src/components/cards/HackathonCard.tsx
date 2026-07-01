@@ -36,7 +36,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
   if (end && now > end) {
     return {
       phase: "Completed",
-      colorClass: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+      colorClass: STATUS_CHIP_CLASSES.HACKATHON_COMPLETED,
       progress: 100,
       text: "Hackathon ended",
     };
@@ -49,7 +49,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
       const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
       return {
         phase: "Live",
-        colorClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
+        colorClass: STATUS_CHIP_CLASSES.HACKATHON_LIVE,
         progress: pct,
         text: `Happening Now (${pct}% elapsed)`,
         progressColor: "bg-gradient-to-r from-amber-500 to-orange-400",
@@ -57,7 +57,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
     }
     return {
       phase: "Closed",
-      colorClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
+      colorClass: STATUS_CHIP_CLASSES.HACKATHON_CLOSED,
       progress: 100,
       text: "Registration closed",
     };
@@ -85,7 +85,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
 
   return {
     phase: "Open",
-    colorClass: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+    colorClass: STATUS_CHIP_CLASSES.HACKATHON_OPEN,
     progress: pct,
     text,
     progressColor: "bg-gradient-to-r from-indigo-500 to-teal-400",

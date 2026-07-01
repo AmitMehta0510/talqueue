@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AppErrorBoundary, PageLoader } from "./components/ui";
+import { isPlatformAdmin, isRecruiter, isTpo } from "./core/utils/roles";
 import { AuthProvider, useAuth } from "./core/contexts/AuthContext";
 import { ToastProvider } from "./core/contexts/ToastContext";
 import { AppLayout } from "./layout/AppLayout";
@@ -89,11 +90,7 @@ function RequirePlatformAdmin({ children }: { children: ReactNode }) {
     return <PageLoader />;
   }
 
-  const isPlatformAdmin =
-    user?.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN") ||
-    user?.primaryRole === "SUPER_ADMIN";
-
-  if (!user || !isPlatformAdmin) {
+  if (!user || !isPlatformAdmin(user)) {
     return <Navigate to="/feed" replace />;
   }
 
@@ -107,11 +104,7 @@ function RequireRecruiter({ children }: { children: ReactNode }) {
     return <PageLoader />;
   }
 
-  const isRecruiter =
-    user?.primaryRole === "RECRUITER" ||
-    user?.roles?.some((ur: any) => ur.role?.name === "RECRUITER");
-
-  if (!user || !isRecruiter) {
+  if (!user || !isRecruiter(user)) {
     return <Navigate to="/feed" replace />;
   }
 
@@ -125,12 +118,7 @@ function RequireTpo({ children }: { children: ReactNode }) {
     return <PageLoader />;
   }
 
-  const isTpo =
-    user?.primaryRole === "TPO" ||
-    user?.primaryRole === "COLLEGE_ADMIN" ||
-    user?.roles?.some((ur: any) => ur.role?.name === "TPO" || ur.role?.name === "COLLEGE_ADMIN");
-
-  if (!user || !isTpo) {
+  if (!user || !isTpo(user)) {
     return <Navigate to="/feed" replace />;
   }
 

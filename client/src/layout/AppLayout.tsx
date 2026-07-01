@@ -34,6 +34,7 @@ import {
 import { useAuth } from "../core/contexts/AuthContext";
 import { formatCount, userHeadline, userName } from "../core/utils/format";
 import { Avatar } from "../components/ui";
+import { isPlatformAdmin } from "../core/utils/roles";
 import { useNotificationSocket } from "../hooks/useNotificationSocket";
 
 type NavSection = {
@@ -91,13 +92,7 @@ export function AppLayout() {
   const { user, apiOnline, apiStatus, logout } = useAuth();
   useNotificationSocket();
 
-  const isUserAdmin =
-    user &&
-    (
-      user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN" || ur.role?.name === "SUPER_ADMIN") ||
-      user.primaryRole === "PLATFORM_ADMIN" ||
-      user.primaryRole === "SUPER_ADMIN"
-    );
+  const isUserAdmin = isPlatformAdmin(user);
 
   const [mobileMenuOpen,     setMobileMenuOpen]     = useState(false);
   const [profileDropdownOpen,setProfileDropdownOpen] = useState(false);
@@ -461,14 +456,14 @@ export function AppLayout() {
                           {membership.college?.name || "College"} TPO Console
                         </Link>
                       ))}
-                      {user.roles?.some((ur: any) => ur.role?.name === "SUPER_ADMIN") ? (
+                      {user.roles?.some((ur) => ur.role?.name === "SUPER_ADMIN") ? (
                         <Link
                           to="/admin"
                           className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
                         >
                           Super Admin Console
                         </Link>
-                      ) : user.roles?.some((ur: any) => ur.role?.name === "PLATFORM_ADMIN") ? (
+                      ) : user.roles?.some((ur) => ur.role?.name === "PLATFORM_ADMIN") ? (
                         <Link
                           to="/admin"
                           className="block px-2 py-1.5 rounded-lg transition-all duration-150 font-bold text-indigo-700 dark:text-indigo-400"

@@ -17,15 +17,13 @@ import {
   useSentReferralRequestsQuery,
   useReviewReferralRequestMutation,
 } from "../hooks/usePlatformQueries";
-import { useAuth } from "../core/contexts/AuthContext";
 import { EmptyState, InlineLoader, ErrorState, Avatar } from "../components/ui";
-import { formatDate, titleCase, userName } from "../core/utils/format";
+import { formatDate, userName, STATUS_CHIP_CLASSES } from "../core/utils/format";
 import { ReferralRequest, ReferralRequestStatus } from "../lib/api";
 
 type TabType = "received" | "sent";
 
 export function ReferralsPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("received");
 
   const receivedQuery = useReceivedReferralRequestsQuery();
@@ -41,31 +39,33 @@ export function ReferralsPage() {
   };
 
   const renderStatusBadge = (status?: ReferralRequestStatus) => {
-    switch (status) {
+    const s = status || "PENDING";
+    const cls = STATUS_CHIP_CLASSES[s] || "bg-slate-50 text-slate-600 border-slate-200";
+    switch (s) {
       case "ACCEPTED":
         return (
-          <span className="chip bg-indigo-50 text-indigo-800 border-indigo-100 flex items-center gap-1 font-semibold">
+          <span className={`chip flex items-center gap-1 font-semibold ${cls}`}>
             <CheckCircle size={12} />
             Accepted
           </span>
         );
       case "REFERRED":
         return (
-          <span className="chip bg-teal-50 text-teal-800 border-teal-100 flex items-center gap-1 font-semibold">
+          <span className={`chip flex items-center gap-1 font-semibold ${cls}`}>
             <CheckCircle size={12} />
             Referred
           </span>
         );
       case "REJECTED":
         return (
-          <span className="chip bg-rose-50 text-rose-800 border-rose-100 flex items-center gap-1 font-semibold">
+          <span className={`chip flex items-center gap-1 font-semibold ${cls}`}>
             <XCircle size={12} />
             Declined
           </span>
         );
       default:
         return (
-          <span className="chip bg-slate-50 text-slate-600 border-slate-200 flex items-center gap-1 font-semibold">
+          <span className={`chip flex items-center gap-1 font-semibold ${cls}`}>
             <Clock size={12} />
             Pending
           </span>

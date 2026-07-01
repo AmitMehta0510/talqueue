@@ -62,11 +62,30 @@ export const formatDate = (value?: string, includeYear = true) => {
 };
 
 export const STATUS_CHIP_CLASSES: Record<string, string> = {
-  LIVE: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-  OPEN: "bg-blue-50 text-blue-700 border border-blue-200",
-  COMPLETED: "bg-slate-100 text-slate-500 border border-slate-200",
-  DRAFT: "bg-amber-50 text-amber-700 border border-amber-200",
-  ARCHIVED: "bg-rose-50 text-rose-600 border border-rose-200",
+  // Core Statuses (with dark mode support)
+  ACTIVE: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  INACTIVE: "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+  BANNED: "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50",
+  LIVE: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  OPEN: "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
+  COMPLETED: "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+  DRAFT: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50",
+  ARCHIVED: "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50",
+
+  // Placement Drives & Invitation States
+  PENDING: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50",
+  ACCEPTED: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  REJECTED: "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50",
+  REFERRED: "bg-teal-50 text-teal-800 border border-teal-100 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-900/50",
+  ONGOING: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  UPCOMING: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+  CLOSED: "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+
+  // Hackathons (specific phases)
+  HACKATHON_LIVE: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50 animate-pulse",
+  HACKATHON_COMPLETED: "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800",
+  HACKATHON_CLOSED: "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50",
+  HACKATHON_OPEN: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
 };
 
 
