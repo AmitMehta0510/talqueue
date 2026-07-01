@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CalendarDays, Check, MapPin, Trophy, Users, Clock, ArrowRight, ExternalLink, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Hackathon } from "../../lib/api";
@@ -92,7 +93,7 @@ const getTimelineInfo = (hackathon: Hackathon) => {
   };
 };
 
-export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
+export const HackathonCard = memo(function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
   const { user } = useAuth();
   const createPost = useCreatePostMutation();
   const { showToast } = useToast();
@@ -317,4 +318,4 @@ export function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
       )}
     </article>
   );
-}
+});

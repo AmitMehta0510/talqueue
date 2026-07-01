@@ -6,7 +6,6 @@ import {
   Building2,
   Gavel,
   Hash,
-  Loader2,
   Rocket,
   Search,
   SearchX,
@@ -25,9 +24,8 @@ import type {
 import { EngineerCard } from "../components/cards/SocialCards";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { HackathonCard } from "../components/cards/HackathonCard";
-import { JobCard } from "../features/jobs/components/JobCard";
-import { cleanLogoUrl, formatCount, titleCase, userName } from "../core/utils/format";
-import { Avatar } from "../components/ui";
+import { JobCard } from "../components/cards/JobCard";
+import { cleanLogoUrl, formatCount, titleCase } from "../core/utils/format";
 
 // ─── View All Footer Link ───────────────────────────────────────────────────
 

@@ -1,12 +1,12 @@
 import { Check, CheckCheck, Gift, MessageSquare, UserPlus, Users, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { SuggestedUser, User } from "../../lib/api";
 import { formatCount, titleCase, userHeadline, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
 
 type ConnectionStatus = "NONE" | "PENDING" | "ACCEPTED";
 
-export function EngineerCard({
+export const EngineerCard = memo(function EngineerCard({
   user,
   context,
   currentUserId,
@@ -292,16 +292,16 @@ export function EngineerCard({
       {!actionsInHeader && renderActions(false)}
     </article>
   );
-}
+});
 
-export function TeamRoleBadge({ value }: { value?: string | null }) {
+export const TeamRoleBadge = memo(function TeamRoleBadge({ value }: { value?: string | null }) {
   return (
     <span className="chip">
       <Users size={13} />
       {titleCase(value || "MEMBER")}
     </span>
   );
-}
+});
 
 // Re-export Link icon fix
 function LinkIcon({ size }: { size: number }) {

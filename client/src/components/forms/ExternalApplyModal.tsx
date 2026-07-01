@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ExternalLink, CheckCircle, ArrowRight, X, Globe } from "lucide-react";
 import { Job } from "../../lib/api";
 import { useCreateExternalApplicationMutation } from "../../hooks/usePlatformQueries";
+import { Modal } from "../ui";
 
 interface ExternalApplyModalProps {
   job: Job;
@@ -46,8 +47,7 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md overflow-hidden glass animate-scale-in" onClick={(e) => e.stopPropagation()}>
+    <Modal isOpen={true} onClose={onClose} size="sm" hideCloseButton={true}>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -141,7 +141,6 @@ export function ExternalApplyModal({ job, onClose }: ExternalApplyModalProps) {
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

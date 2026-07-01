@@ -18,7 +18,7 @@ import {
 import { useAuth } from "../core/contexts/AuthContext";
 import { PageLoader } from "../components/ui";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { JobDetailModal } from "../features/jobs/components/JobDetailModal";
+import { JobDetailModal } from "../components/jobs/JobDetailModal";
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { ExternalApplyModal } from "../components/forms/ExternalApplyModal";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
@@ -32,7 +32,7 @@ import { JobsCampusTab } from "../components/jobs/JobsCampusTab";
 import { JobsRecruiterTab } from "../components/jobs/JobsRecruiterTab";
 import { ROLE_MAPPINGS } from "../components/jobs/JobShared";
 
-const KanbanPipeline = lazy(() => import("../components/recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
+const KanbanPipeline = lazy(() => import("../components/jobs/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
 
 type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "campus-drives";
 type SubViewType = { type: "dashboard" } | { type: "pipeline"; jobId: string };

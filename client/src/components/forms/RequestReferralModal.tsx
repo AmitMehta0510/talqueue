@@ -4,6 +4,7 @@ import { User, ReferralRequestPayload } from "../../lib/api";
 import { useAuth } from "../../core/contexts/AuthContext";
 import { useCreateReferralRequestMutation } from "../../hooks/usePlatformQueries";
 import { userName } from "../../core/utils/format";
+import { Modal } from "../ui";
 
 interface RequestReferralModalProps {
   targetUser: User;
@@ -63,21 +64,9 @@ export function RequestReferralModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="absolute inset-0" />
-
-      <div className="relative w-full max-w-lg flex flex-col max-h-[90vh] z-10 glass animate-scale-in" onClick={(e) => e.stopPropagation()}>
-        <button
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-fg hover:bg-surface-2 hover:text-primary transition"
-          onClick={onClose}
-          type="button"
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
-
-        <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-          <div className="p-6 overflow-y-auto space-y-4 flex-1">
+    <Modal isOpen={true} onClose={onClose} size="md">
+      <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+        <div className="p-6 overflow-y-auto space-y-4 flex-1">
             <div className="flex items-center gap-1.5 text-primary font-bold text-base border-b border-base pb-3">
               <Sparkles size={18} className="text-brand" />
               <h3>Request Referral from {userName(targetUser)}</h3>
@@ -219,7 +208,6 @@ export function RequestReferralModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

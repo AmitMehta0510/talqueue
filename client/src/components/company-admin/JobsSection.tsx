@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Briefcase, Loader2, ChevronRight } from "lucide-react";
 import { PageLoader } from "../ui";
 
-const KanbanPipeline = lazy(() => import("../recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
+const KanbanPipeline = lazy(() => import("../jobs/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
 
 interface JobItem {
   id: string;

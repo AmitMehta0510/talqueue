@@ -1,17 +1,29 @@
+import React, { useState, useEffect, useMemo } from "react";
 import { BriefcaseBusiness, Loader2, Star, Check } from "lucide-react";
-import { Job } from "../../../lib/api";
-import { formatCount, titleCase, cleanLogoUrl, parseJobTitle } from "../../../core/utils/format";
-import { useAuth } from "../../../core/contexts/AuthContext";
+import { Job } from "../../lib/api";
+import { formatCount, titleCase, cleanLogoUrl, parseJobTitle } from "../../core/utils/format";
+import { useAuth } from "../../core/contexts/AuthContext";
 import {
   useCreatePostMutation,
   useSaveJobMutation,
   useSavedJobsQuery,
   useMyFullProfileQuery,
-} from "../../../hooks/usePlatformQueries";
-import { useToast } from "../../../core/contexts/ToastContext";
-import { useState, useEffect, useMemo } from "react";
+} from "../../hooks/usePlatformQueries";
+import { useToast } from "../../core/contexts/ToastContext";
 
-export function JobCard({ job, onClick }: { job: Job; onClick?: () => void }) {
+interface JobCardProps {
+  /** The job details to display. */
+  job: Job;
+  /** Optional click handler when card is selected. */
+  onClick?: () => void;
+}
+
+/**
+ * Renders a job opportunity card showcasing company details, position details,
+ * matching skill tags, salary estimates, application count, and actions to save/apply.
+ * Memoized using React.memo.
+ */
+export const JobCard = React.memo(function JobCard({ job, onClick }: JobCardProps) {
   const { cleanTitle, tags: parsedTags } = parseJobTitle(job.title || "");
   const { user } = useAuth();
   const createPost = useCreatePostMutation();
@@ -180,7 +192,6 @@ export function JobCard({ job, onClick }: { job: Job; onClick?: () => void }) {
         </div>
       </div>
 
-
       <div className="mt-5 flex items-center justify-between border-t border-base pt-4 text-xs text-muted-fg">
         <span>{salary || titleCase(job.workMode || "OPEN")}</span>
         <span>{formatCount(job.applicationsCount)} applicants</span>
@@ -230,4 +241,4 @@ export function JobCard({ job, onClick }: { job: Job; onClick?: () => void }) {
       )}
     </article>
   );
-}
+});

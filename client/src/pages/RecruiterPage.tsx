@@ -20,7 +20,7 @@ import { useAuth } from "../core/contexts/AuthContext";
 import { InlineLoader, ErrorState, PageLoader } from "../components/ui";
 
 const DriveApplicantsModal = lazy(() => import("../components/jobs/DriveApplicantsModal").then(m => ({ default: m.DriveApplicantsModal })));
-const KanbanPipeline = lazy(() => import("../components/recruiter/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
+const KanbanPipeline = lazy(() => import("../components/jobs/KanbanPipeline").then(m => ({ default: m.KanbanPipeline })));
 
 import { JobPostModal } from "../components/forms/JobPostModal";
 import { DriveInviteModal } from "../components/jobs/DriveInviteModal";
