@@ -16,6 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useUrlState } from "../core/utils/useUrlState";
 import { api, College, User as UserType } from "../lib/api";
 import {
   compactPayload,
@@ -119,7 +120,10 @@ export function ProfilePage() {
 
 function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>("about");
+  const [activeTab, setActiveTab] = useUrlState<Tab>("tab", "about", {
+    serialize: (val) => val === "about" ? "overview" : val,
+    deserialize: (str) => str === "overview" ? "about" : str as Tab
+  });
   const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [showEducationForm, setShowEducationForm] = useState(false);
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);

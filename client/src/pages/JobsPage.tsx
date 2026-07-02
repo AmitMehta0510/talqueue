@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useUrlState } from "../core/utils/useUrlState";
 import { Job, User } from "../lib/api";
 import {
   useJobsQuery,
@@ -55,11 +56,30 @@ export function JobsPage() {
   // Filters
   const [searchVal, setSearchVal] = useState("");
   const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>([]);
-  const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
-  const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 50]);
+  const [selectedJobTypes, setSelectedJobTypes] = useUrlState<string[]>("jobType", [], {
+    serialize: (val) => val.join(","),
+    deserialize: (str) => str ? str.split(",") : []
+  });
+  const [experience, setExperience] = useUrlState<string>("experience", "");
+  const [salaryRange, setSalaryRange] = useUrlState<[number, number]>("salary", [0, 50], {
+    serialize: (val) => `${val[0]}-${val[1]}`,
+    deserialize: (str) => {
+      const parts = str.split("-").map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return [parts[0], parts[1]] as [number, number];
+      }
+      return [0, 50];
+    }
+  });
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useUrlState<string[]>("skills", [], {
+    serialize: (val) => val.join(","),
+    deserialize: (str) => str ? str.split(",") : []
+  });
+  const [selectedLocations, setSelectedLocations] = useUrlState<string[]>("location", [], {
+    serialize: (val) => val.join(","),
+    deserialize: (str) => str ? str.split(",") : []
+  });
   const [searchSkillQ, setSearchSkillQ] = useState("");
   const [searchLocationQ, setSearchLocationQ] = useState("");
   const [stipendRange, setStipendRange] = useState<[number, number]>([0, 50]);
@@ -153,6 +173,7 @@ export function JobsPage() {
 
   const clearFilters = () => {
     setSearchVal(""); setSelectedWorkModes([]); setSelectedJobTypes([]);
+    setExperience("");
     setSalaryRange([0, 50]); setSelectedRoles([]); setSelectedSkills([]);
     setSelectedLocations([]); setSearchSkillQ(""); setSearchLocationQ("");
     setFreshness(null);
@@ -199,6 +220,7 @@ export function JobsPage() {
           selectedSkills.some((selected) => selected.toLowerCase().trim() === jobSkill.toLowerCase().trim())
         );
         const matchLoc = !selectedLocations.length || (job.location && selectedLocations.includes(job.location.trim()));
+        const isIndiaTab = selectedJobTypes.includes("INTERNSHIP") || (selectedJobTypes.length === 0 && false);
         const isInternshipTab = selectedJobTypes.includes("INTERNSHIP") || (selectedJobTypes.length === 0 && false);
         const matchStipend = !isInternshipTab || (() => {
           if (stipendRange[0] === 0 && stipendRange[1] >= 50) return true;
@@ -209,7 +231,8 @@ export function JobsPage() {
             (stipendRange[1] >= 50 || (job.salaryMin != null && job.salaryMin <= maxStipend));
         })();
         const matchPpo = !ppoOnly || job.ppoOffered === true;
-        return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc && matchStipend && matchPpo;
+        const matchExp = !experience || (job.experienceLevel && job.experienceLevel.toLowerCase().includes(experience.toLowerCase()));
+        return matchQ && matchW && matchT && matchS && matchR && matchSkills && matchLoc && matchStipend && matchPpo && matchExp;
       });
     }
 
@@ -289,6 +312,7 @@ export function JobsPage() {
     stipendRange,
     ppoOnly,
     userSkillNames,
+    experience,
   ]);
 
   useEffect(() => {
