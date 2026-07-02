@@ -25,6 +25,7 @@ import {
   Paperclip,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useUrlState } from "../core/utils/useUrlState";
 import { Avatar, EmptyState } from "../components/ui";
 import { useAuth } from "../core/contexts/AuthContext";
 import { useFileUpload } from "../features/storage/hooks/useFileUpload";
@@ -1324,9 +1325,9 @@ export function CommunitiesPage() {
   const { user } = useAuth();
 
   // Pre-fill query from ?q= URL param (e.g. from college Community button)
-  const initialQuery = urlParams.get("q") || "";
-  const [query, setQuery] = useState(initialQuery);
-  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  const initialQuery = urlParams.get("search") || urlParams.get("q") || "";
+  const [query, setQuery] = useUrlState("search", initialQuery, { replace: true });
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   // Debounce search query
   useEffect(() => {
@@ -1336,9 +1337,9 @@ export function CommunitiesPage() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const [activeTab, setActiveTab] = useState<Tab>(initialQuery ? "explore" : "joined");
-  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(Boolean(initialQuery));
-  const [categoryFilter, setCategoryFilter] = useState<CommunityCategory | "">("");
+  const [activeTab, setActiveTab] = useState<Tab>(query ? "explore" : "joined");
+  const [hasSetDefaultTab, setHasSetDefaultTab] = useState(Boolean(query));
+  const [categoryFilter, setCategoryFilter] = useUrlState<CommunityCategory | "">("category", "");
   const [typeFilter, setTypeFilter] = useState<CommunityType | "">("");
   const [showFilters, setShowFilters] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);

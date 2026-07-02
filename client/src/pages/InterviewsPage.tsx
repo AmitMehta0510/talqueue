@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MonitorPlay, Video } from "lucide-react";
+import { useUrlState } from "../core/utils/useUrlState";
 import { api, InterviewResource } from "../lib/api";
 import { useAuth } from "../core/contexts/AuthContext";
 import { useToast } from "../core/contexts/ToastContext";
@@ -32,7 +33,19 @@ export function InterviewsPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const [filters, setFilters] = useState<InterviewFilters>(EMPTY_FILTERS);
+  const [company, setCompany] = useUrlState("company", "");
+  const [role, setRole] = useUrlState("role", "");
+  const [difficulty, setDifficulty] = useUrlState("difficulty", "");
+
+  const [filtersState, setFiltersState] = useState<InterviewFilters>(EMPTY_FILTERS);
+
+  const filters = useMemo<InterviewFilters>(() => ({
+    ...filtersState,
+    companyTag: company as any,
+    roleTag: role as any,
+    difficulty: difficulty as any,
+  }), [filtersState, company, role, difficulty]);
+
   const [page, setPage] = useState(1);
   const [activeResource, setActiveResource] = useState<InterviewResource | null>(null);
 
@@ -47,9 +60,12 @@ export function InterviewsPage() {
 
   // Reset page to 1 whenever filters change
   const handleFiltersChange = useCallback((f: InterviewFilters) => {
-    setFilters(f);
+    setCompany(f.companyTag);
+    setRole(f.roleTag);
+    setDifficulty(f.difficulty);
+    setFiltersState(f);
     setPage(1);
-  }, []);
+  }, [setCompany, setRole, setDifficulty]);
 
   // ─── Query ────────────────────────────────────────────────────────────────
 

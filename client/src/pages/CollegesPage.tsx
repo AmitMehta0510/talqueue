@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
+import { useUrlState } from "../core/utils/useUrlState";
 import { Loader2, GraduationCap } from "lucide-react";
 import { EmptyState } from "../components/ui";
 import { useAuth } from "../core/contexts/AuthContext";
@@ -235,8 +236,9 @@ function CollegeDetailWrapper({ collegeId }: { collegeId: string }) {
 export function CollegesPage() {
   const { collegeSlug } = useParams();
   const { user } = useAuth();
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [query, setQuery] = useUrlState("search", "", { replace: true });
+  const [stateFilter, setStateFilter] = useUrlState("state", "");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -256,16 +258,21 @@ export function CollegesPage() {
   const isAdmin = isSuperOrPlatformAdmin(user);
 
   const filteredColleges = useMemo(() => {
+    let list = colleges;
     if (isSearching) {
-      return searchCollegesQuery.data || [];
+      list = searchCollegesQuery.data || [];
     }
     const normalizedQuery = query.trim().toLowerCase();
+    const normalizedState = stateFilter.trim().toLowerCase();
 
-    return colleges.filter((college) => {
-      const haystack = [college.name, college.city, college.state].filter(Boolean).join(" ").toLowerCase();
-      return !normalizedQuery || haystack.includes(normalizedQuery);
+    return list.filter((college) => {
+      const matchQuery = !normalizedQuery || 
+        [college.name, college.city, college.state].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
+      const matchState = !normalizedState || 
+        (college.state && college.state.toLowerCase() === normalizedState);
+      return matchQuery && matchState;
     });
-  }, [colleges, query, isSearching, searchCollegesQuery.data]);
+  }, [colleges, query, stateFilter, isSearching, searchCollegesQuery.data]);
 
   const createCollege = useCreateCollegeMutation();
 

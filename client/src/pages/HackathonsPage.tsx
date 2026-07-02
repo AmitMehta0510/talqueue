@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { useUrlState } from "../core/utils/useUrlState";
 import { HackathonCard } from "../components/cards/HackathonCard";
 import { Avatar, EmptyState, Metric } from "../components/ui";
 import { useAuth } from "../core/contexts/AuthContext";
@@ -1216,7 +1217,9 @@ export function HackathonsPage() {
   
   // Search and filter states
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<(typeof statusFilters)[number]>("ALL");
+  const [status, setStatus] = useUrlState<(typeof statusFilters)[number]>("status", "ALL");
+  const [mode, setMode] = useUrlState<string>("mode", "");
+  const [techStack, setTechStack] = useUrlState<string>("techStack", "");
   const [externalOnly, setExternalOnly] = useState(false);
 
   // Pass active filters directly to the backend query
@@ -1227,7 +1230,30 @@ export function HackathonsPage() {
   }), [query, status, externalOnly]);
 
   const hackathonsQuery = useHackathonsQuery(queryParams);
-  const hackathons = hackathonsQuery.data || [];
+  const hackathons = useMemo(() => {
+    const list = hackathonsQuery.data || [];
+    return list.filter((h) => {
+      const matchMode = !mode || (h.mode && h.mode.toLowerCase() === mode.toLowerCase());
+      const matchTech = !techStack || (() => {
+        const hTags = h.tags || [];
+        if (hTags.some(tag => tag.toLowerCase().includes(techStack.toLowerCase()))) {
+          return true;
+        }
+        const hObj = h as Record<string, unknown>;
+        if ("techStack" in hObj) {
+          const ts = hObj.techStack;
+          if (Array.isArray(ts)) {
+            return ts.some((tech) => typeof tech === "string" && tech.toLowerCase().includes(techStack.toLowerCase()));
+          }
+          if (typeof ts === "string") {
+            return ts.toLowerCase().includes(techStack.toLowerCase());
+          }
+        }
+        return false;
+      })();
+      return matchMode && matchTech;
+    });
+  }, [hackathonsQuery.data, mode, techStack]);
 
   if (hackathonSlug) {
     return <HackathonDetail hackathonId={hackathonSlug} />;
@@ -1279,13 +1305,15 @@ export function HackathonsPage() {
           </button>
 
           {/* Clear button if any filter is active */}
-          {(query || status !== "ALL" || externalOnly) && (
+          {(query || status !== "ALL" || externalOnly || mode || techStack) && (
             <button
               type="button"
               onClick={() => {
                 setQuery("");
                 setStatus("ALL");
                 setExternalOnly(false);
+                setMode("");
+                setTechStack("");
               }}
               className="text-xs font-semibold hover:text-rose-500 transition flex items-center gap-1 ml-auto"
               style={{ color: "var(--text-muted)" }}
