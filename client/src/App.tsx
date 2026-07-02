@@ -41,7 +41,9 @@ const AdminPage = lazy(() => import("./pages/AdminPage").then(m => ({ default: m
 const CompanyAdminPage = lazy(() => import("./pages/CompanyAdminPage").then(m => ({ default: m.CompanyAdminPage })));
 const EventsPage = lazy(() => import("./pages/EventsPage").then(m => ({ default: m.EventsPage })));
 const PlacementDashboardPage = lazy(() => import("./pages/PlacementDashboardPage").then(m => ({ default: m.PlacementDashboardPage })));
-const BusinessOnboardingPage = lazy(() => import("./pages/BusinessOnboardingPage").then(m => ({ default: m.BusinessOnboardingPage })));
+const OrganizationSelectorPage = lazy(() => import("./pages/OrganizationSelectorPage").then(m => ({ default: m.OrganizationSelectorPage })));
+const InstitutionOnboardingPage = lazy(() => import("./pages/InstitutionOnboardingPage").then(m => ({ default: m.InstitutionOnboardingPage })));
+const CompanyOnboardingPage = lazy(() => import("./pages/CompanyOnboardingPage").then(m => ({ default: m.CompanyOnboardingPage })));
 const TpoDashboardPage = lazy(() => import("./pages/TpoDashboardPage").then(m => ({ default: m.TpoDashboardPage })));
 const PublicBatchPage = lazy(() => import("./pages/PublicBatchPage").then(m => ({ default: m.PublicBatchPage })));
 const InterviewsPage = lazy(() => import("./pages/InterviewsPage").then(m => ({ default: m.InterviewsPage })));
@@ -329,12 +331,22 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
-            <Route
+             <Route
               path="admin"
               element={
-                <RequirePlatformAdmin>
-                  <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
-                </RequirePlatformAdmin>
+                <RequireAuth>
+                  <RequirePlatformAdmin>
+                    <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
+                  </RequirePlatformAdmin>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="onboarding"
+              element={
+                <RequireAuth>
+                  <PageTransitionWrapper><InstitutionOnboardingPage /></PageTransitionWrapper>
+                </RequireAuth>
               }
             />
           </Route>
@@ -408,6 +420,14 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
+             <Route
+              path="onboarding"
+              element={
+                <RequireAuth>
+                  <PageTransitionWrapper><CompanyOnboardingPage /></PageTransitionWrapper>
+                </RequireAuth>
+              }
+            />
           </Route>
 
           {/* 3. SHARED PLATFORM GATED TREE */}
@@ -445,15 +465,15 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
-            <Route
+             <Route
               path="/business"
               element={
                 <RequireAuth>
-                  <PageTransitionWrapper><BusinessOnboardingPage /></PageTransitionWrapper>
+                  <PageTransitionWrapper><OrganizationSelectorPage /></PageTransitionWrapper>
                 </RequireAuth>
               }
             />
-          </Route>
+           </Route>
 
           {/* Legacy flat route redirects */}
           <Route path="/feed" element={<Navigate to="/campus/feed" replace />} />
