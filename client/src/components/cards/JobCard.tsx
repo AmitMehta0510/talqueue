@@ -10,12 +10,16 @@ import {
   useMyFullProfileQuery,
 } from "../../hooks/usePlatformQueries";
 import { useToast } from "../../core/contexts/ToastContext";
+import { useImpressionTracking } from "../../hooks/useImpressionTracking";
 
 interface JobCardProps {
   /** The job details to display. */
   job: Job;
   /** Optional click handler when card is selected. */
   onClick?: () => void;
+  /** Optional impression tracking configurations. */
+  trackImpression?: boolean;
+  position?: number;
 }
 
 /**
@@ -23,7 +27,7 @@ interface JobCardProps {
  * matching skill tags, salary estimates, application count, and actions to save/apply.
  * Memoized using React.memo.
  */
-export const JobCard = React.memo(function JobCard({ job, onClick }: JobCardProps) {
+export const JobCard = React.memo(function JobCard({ job, onClick, trackImpression, position }: JobCardProps) {
   const { cleanTitle, tags: parsedTags } = parseJobTitle(job.title || "");
   const { user } = useAuth();
   const createPost = useCreatePostMutation();
@@ -31,6 +35,13 @@ export const JobCard = React.memo(function JobCard({ job, onClick }: JobCardProp
 
   const { data: savedJobs } = useSavedJobsQuery();
   const saveMutation = useSaveJobMutation();
+
+  const impressionRef = useImpressionTracking({
+    entityId: job.id,
+    entityType: "JOB",
+    enabled: trackImpression || false,
+    position,
+  });
 
   const profileQuery = useMyFullProfileQuery();
   const userSkillNames = useMemo(() => {
@@ -108,6 +119,7 @@ export const JobCard = React.memo(function JobCard({ job, onClick }: JobCardProp
 
   return (
     <article
+      ref={impressionRef}
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("button") || target.closest("a") || target.closest("input")) {

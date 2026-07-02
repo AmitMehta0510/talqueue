@@ -1,10 +1,11 @@
+import { memo } from "react";
 import { Check, ExternalLink, GitFork, Github, Plus, Star, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Project } from "../../lib/api";
 import { formatCount, titleCase, userName } from "../../core/utils/format";
 import { Avatar } from "../ui";
 
-export function ProjectCard({
+export const ProjectCard = memo(function ProjectCard({
   project,
   onJoin,
   currentUserId,
@@ -133,4 +134,5 @@ export function ProjectCard({
       </div>
     </article>
   );
-}
+});
+

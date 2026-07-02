@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import {
   Archive,
   Check,
@@ -142,7 +142,7 @@ function ConversationAvatar({ conversation, currentUserId }: { conversation?: Co
   );
 }
 
-function ConversationRow({
+const ConversationRow = memo(function ConversationRow({
   conversation,
   currentUserId,
   active,
@@ -199,7 +199,7 @@ function ConversationRow({
       </div>
     </Link>
   );
-}
+});
 
 
 function StartConversationPanel() {
@@ -431,7 +431,7 @@ function ReactionPicker({
   );
 }
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   message,
   currentUserId,
   isGroup,
@@ -632,7 +632,7 @@ function MessageBubble({
       </div>
     </article>
   );
-}
+});
 
 function Composer({
   conversationId,
@@ -1125,14 +1125,33 @@ function ActiveConversation({
       .map((tu) => userName(tu));
   }, [typingOthers, conversation.participants]);
 
-  const submitEdit = (event: FormEvent) => {
+  const submitEdit = useCallback((event: FormEvent) => {
     event.preventDefault();
     if (!editing || !editContent.trim()) return;
 
     messageActions.mutate({ action: "edit", messageId: editing.id, content: editContent.trim() });
     setEditing(null);
     setEditContent("");
-  };
+  }, [editing, editContent, messageActions]);
+
+  const handleDelete = useCallback((target: ChatMessage) => {
+    if (window.confirm("Delete this message?")) {
+      messageActions.mutate({ action: "delete", messageId: target.id });
+    }
+  }, [messageActions]);
+
+  const handleEdit = useCallback((target: ChatMessage) => {
+    setEditing(target);
+    setEditContent(target.content || "");
+  }, []);
+
+  const handleReact = useCallback((target: ChatMessage, emoji: string) => {
+    messageActions.mutate({ action: "react", messageId: target.id, emoji });
+  }, [messageActions]);
+
+  const handleClearReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
 
   return (
     <section className="grid h-full gap-5 xl:grid-cols-[1fr_23rem] overflow-x-hidden min-h-0">
@@ -1234,19 +1253,10 @@ function ActiveConversation({
                       currentUserId={user?.id}
                       isGroup={isGroupConversation(conversation)}
                       message={message}
-                      onDelete={(target) => {
-                        if (window.confirm("Delete this message?")) {
-                          messageActions.mutate({ action: "delete", messageId: target.id });
-                        }
-                      }}
-                      onEdit={(target) => {
-                        setEditing(target);
-                        setEditContent(target.content || "");
-                      }}
+                      onDelete={handleDelete}
+                      onEdit={handleEdit}
                       onForward={setForwarding}
-                      onReact={(target, emoji) =>
-                        messageActions.mutate({ action: "react", messageId: target.id, emoji })
-                      }
+                      onReact={handleReact}
                       onReply={setReplyTo}
                     />
                   </div>
@@ -1271,7 +1281,7 @@ function ActiveConversation({
         <Composer
           conversationId={conversation.id}
           replyTo={replyTo}
-          onClearReply={() => setReplyTo(null)}
+          onClearReply={handleClearReply}
           onStopTyping={emitStopTyping}
           onTyping={emitTyping}
         />

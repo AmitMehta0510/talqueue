@@ -116,6 +116,18 @@ export function ProfilePage() {
   return <ProfileWorkspace fallbackUser={user} />;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
+  { id: "about", label: "About", icon: User },
+  { id: "posts", label: "Posts & Reposts", icon: MessageSquare },
+  { id: "experience", label: "Experience", icon: Briefcase },
+  { id: "skills", label: "Skills", icon: Code2 },
+  { id: "education", label: "Education", icon: GraduationCap },
+  { id: "projects", label: "Projects", icon: FolderKanban },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
 function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
@@ -266,7 +278,7 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     return () => window.clearTimeout(timeout);
   }, [collegeQuery, educationForm.collegeName]);
 
-  const selectCollege = (college: College) => {
+  const selectCollege = useCallback((college: College) => {
     setCollegeQuery(college.name);
     setCollegeResults([]);
     setEducationForm((e) => ({
@@ -278,9 +290,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       customDepartmentName: "",
       fieldOfStudy: "",
     }));
-  };
+  }, []);
 
-  const changeCollegeQuery = (value: string) => {
+  const changeCollegeQuery = useCallback((value: string) => {
     setCollegeQuery(value);
     setEducationForm((e) => {
       if (value !== e.collegeName) {
@@ -297,9 +309,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       }
       return e;
     });
-  };
+  }, []);
 
-  const selectOtherCollege = () => {
+  const selectOtherCollege = useCallback(() => {
     setCollegeQuery("");
     setCollegeResults([]);
     setEducationForm((e) => ({
@@ -312,17 +324,17 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       customDepartmentName: "",
       fieldOfStudy: "",
     }));
-  };
+  }, []);
 
-  const cancelOtherCollege = () => {
+  const cancelOtherCollege = useCallback(() => {
     setEducationForm((e) => ({
       ...e,
       isOtherCollege: false,
       customCollegeName: "",
     }));
-  };
+  }, []);
 
-  const saveProfile = (event: FormEvent) => {
+  const saveProfile = useCallback((event: FormEvent) => {
     event.preventDefault();
     updateProfile.mutate(
       compactPayload({
@@ -332,9 +344,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
           : undefined,
       }),
     );
-  };
+  }, [profileForm, updateProfile]);
 
-  const submitExperience = async (event: FormEvent) => {
+  const submitExperience = useCallback(async (event: FormEvent) => {
     event.preventDefault();
     if (
       experienceForm.startDate &&
@@ -393,9 +405,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     } catch {
       // Mutation hook shows toast
     }
-  };
+  }, [experienceForm, editingExperienceId, updateExperience, addExperience, showToast]);
 
-  const submitEducation = async (event: FormEvent) => {
+  const submitEducation = useCallback(async (event: FormEvent) => {
     event.preventDefault();
     if (!educationForm.isOtherCollege && !educationForm.collegeId) {
       showToast("error", "Select a college from the list, or choose 'My college isn't listed'");
@@ -476,9 +488,9 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     } catch {
       // Mutation hook shows toast
     }
-  };
+  }, [educationForm, editingEducationId, updateEducation, addEducation, showToast]);
 
-  const handleEditExperience = (exp: any) => {
+  const handleEditExperience = useCallback((exp: any) => {
     setExperienceForm({
       companyName: exp.companyName || exp.company?.name || "",
       companyWebsiteUrl: exp.company?.websiteUrl || "",
@@ -498,22 +510,15 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     });
     setEditingExperienceId(exp.id);
     setShowExperienceForm(true);
-  };
+  }, []);
 
-  const handleCancelExperience = () => {
+  const handleCancelExperience = useCallback(() => {
     setExperienceForm(emptyExperienceForm);
     setShowExperienceForm(false);
     setEditingExperienceId(null);
-  };
+  }, []);
 
-  const handleEditEducation = (edu: any) => {
-    setFormFromEdu(edu);
-    setCollegeQuery(edu.college?.name || "");
-    setEditingEducationId(edu.id);
-    setShowEducationForm(true);
-  };
-
-  const setFormFromEdu = (edu: any) => {
+  const setFormFromEdu = useCallback((edu: any) => {
     const isOther = !edu.collegeId && Boolean(edu.customCollegeName);
     const standardId = edu.department?.standardDepartmentId || null;
     const isOtherDept = edu.departmentId ? !standardId : false;
@@ -535,15 +540,22 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
       backlogs: edu.backlogs !== null && edu.backlogs !== undefined ? edu.backlogs.toString() : "",
       currentYear: edu.currentYear !== null && edu.currentYear !== undefined ? edu.currentYear.toString() : "",
     });
-  };
+  }, []);
 
-  const handleCancelEducation = () => {
+  const handleEditEducation = useCallback((edu: any) => {
+    setFormFromEdu(edu);
+    setCollegeQuery(edu.college?.name || "");
+    setEditingEducationId(edu.id);
+    setShowEducationForm(true);
+  }, [setFormFromEdu]);
+
+  const handleCancelEducation = useCallback(() => {
     setEducationForm(emptyEducationForm);
     setCollegeQuery("");
     setCollegeResults([]);
     setShowEducationForm(false);
     setEditingEducationId(null);
-  };
+  }, []);
 
   const handleVerifyCollegeEmail = useCallback(async (educationId: string, email: string, code?: string) => {
     return verifyCollegeEmail.mutateAsync({ educationId, email, code });
@@ -563,15 +575,6 @@ function ProfileWorkspace({ fallbackUser }: { fallbackUser: UserType }) {
     );
   }
 
-  const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about", label: "About", icon: User },
-    { id: "posts", label: "Posts & Reposts", icon: MessageSquare },
-    { id: "experience", label: "Experience", icon: Briefcase },
-    { id: "skills", label: "Skills", icon: Code2 },
-    { id: "education", label: "Education", icon: GraduationCap },
-    { id: "projects", label: "Projects", icon: FolderKanban },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
 
   return (
     <div className="mx-auto max-w-5xl space-y-0">
@@ -743,33 +746,33 @@ function PostsTab({ userId }: { userId: string }) {
   const commentOnPost = useCommentOnPostMutation();
   const repost = useRepostMutation();
 
-  const handleLike = (id: string) => {
+  const handleLike = useCallback((id: string) => {
     if (postReaction.isPending) return;
     postReaction.mutate({ id, action: "like" });
-  };
+  }, [postReaction]);
 
-  const handleSave = (id: string) => {
+  const handleSave = useCallback((id: string) => {
     if (postReaction.isPending) return;
     postReaction.mutate({ id, action: "save" });
-  };
+  }, [postReaction]);
 
-  const handleComment = async (id: string, content: string, parentCommentId?: string) => {
+  const handleComment = useCallback(async (id: string, content: string, parentCommentId?: string) => {
     try {
       await commentOnPost.mutateAsync({ id, content, parentCommentId });
       return true;
     } catch {
       return false;
     }
-  };
+  }, [commentOnPost]);
 
-  const handleRepost = async (id: string, caption?: string) => {
+  const handleRepost = useCallback(async (id: string, caption?: string) => {
     try {
       await repost.mutateAsync({ id, caption });
       return true;
     } catch {
       return false;
     }
-  };
+  }, [repost]);
 
   const timeline = timelineQuery.data || [];
   const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
