@@ -1,13 +1,17 @@
-import { Outlet } from "react-router-dom";
+import { useAuth } from "../core/contexts/AuthContext";
+import { WorkspaceShell } from "./WorkspaceShell";
+import { getWorkspaceNavigation } from "./config/navigation";
 
-/**
- * CareerLayout is a thin structural wrapper for the Career Workspace.
- * Serving as a mounting point for routing in future phases.
- */
 export function CareerLayout() {
+  const { user } = useAuth();
+  const { pinned, dropdown, bottom } = getWorkspaceNavigation("CAREER", user);
+
   return (
-    <div className="workspace-career-shell w-full min-h-screen">
-      <Outlet />
-    </div>
+    <WorkspaceShell
+      workspaceTitle="Career Workspace"
+      pinnedSections={pinned}
+      dropdownSections={dropdown}
+      bottomTabs={bottom}
+    />
   );
 }

@@ -1,13 +1,20 @@
-import { Outlet } from "react-router-dom";
+import { useAuth } from "../core/contexts/AuthContext";
+import { useWorkspace } from "../hooks/useWorkspace";
+import { WorkspaceShell } from "./WorkspaceShell";
+import { getWorkspaceNavigation } from "./config/navigation";
 
-/**
- * SharedLayout is a thin structural wrapper for the Shared Workspace services.
- * Serving as a mounting point for routing in future phases.
- */
 export function SharedLayout() {
+  const { user } = useAuth();
+  const { activeWorkspace } = useWorkspace();
+
+  const { pinned, dropdown, bottom } = getWorkspaceNavigation(activeWorkspace, user);
+
   return (
-    <div className="workspace-shared-shell w-full min-h-screen">
-      <Outlet />
-    </div>
+    <WorkspaceShell
+      workspaceTitle={activeWorkspace === "CAMPUS" ? "Campus Workspace" : "Career Workspace"}
+      pinnedSections={pinned}
+      dropdownSections={dropdown}
+      bottomTabs={bottom}
+    />
   );
 }
