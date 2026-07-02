@@ -41,9 +41,11 @@ function getStoredRemember(): boolean {
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace>(getStoredWorkspace);
   const [rememberWorkspace, setRememberWorkspaceState] = useState<boolean>(getStoredRemember);
+  const [hasSelectedThisSession, setHasSelectedThisSession] = useState<boolean>(getStoredRemember);
 
   const setWorkspace = useCallback((workspace: Workspace) => {
     setActiveWorkspaceState(workspace);
+    setHasSelectedThisSession(true);
     try {
       localStorage.setItem(ACTIVE_WORKSPACE_KEY, workspace);
     } catch {
@@ -53,6 +55,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setRememberWorkspace = useCallback((remember: boolean) => {
     setRememberWorkspaceState(remember);
+    setHasSelectedThisSession(true);
     try {
       localStorage.setItem(REMEMBER_WORKSPACE_KEY, String(remember));
     } catch {
@@ -67,9 +70,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const nextWorkspace = event.newValue;
         if (nextWorkspace === "CAMPUS" || nextWorkspace === "CAREER") {
           setActiveWorkspaceState(nextWorkspace);
+          setHasSelectedThisSession(true);
         }
       } else if (event.key === REMEMBER_WORKSPACE_KEY) {
-        setRememberWorkspaceState(event.newValue === "true");
+        const isRemembered = event.newValue === "true";
+        setRememberWorkspaceState(isRemembered);
+        setHasSelectedThisSession(true);
       }
     };
 
@@ -84,7 +90,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setWorkspace,
     rememberWorkspace,
     setRememberWorkspace,
-  }), [activeWorkspace, setWorkspace, rememberWorkspace, setRememberWorkspace]);
+    hasSelectedThisSession,
+  }), [activeWorkspace, setWorkspace, rememberWorkspace, setRememberWorkspace, hasSelectedThisSession]);
 
   return (
     <WorkspaceContext.Provider value={value}>

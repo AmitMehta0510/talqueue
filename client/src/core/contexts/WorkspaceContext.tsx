@@ -19,6 +19,8 @@ export type WorkspaceContextValue = {
   rememberWorkspace: boolean;
   /** Updates the remember workspace preference */
   setRememberWorkspace: (remember: boolean) => void;
+  /** Tracks if a workspace selection has been committed during the current browser session */
+  hasSelectedThisSession: boolean;
 };
 
 /**
