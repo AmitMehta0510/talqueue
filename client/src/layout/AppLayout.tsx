@@ -30,7 +30,7 @@ import {
 import {
   NotificationBellButton,
   NotificationPreview,
-} from "../components/notifications/NotificationCenter";
+} from "../components/ui/NotificationCenter";
 import { useAuth } from "../core/contexts/AuthContext";
 import { formatCount, userHeadline, userName } from "../core/utils/format";
 import { Avatar } from "../components/ui";
