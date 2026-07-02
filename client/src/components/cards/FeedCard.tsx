@@ -112,9 +112,11 @@ export const FeedCard = memo(function FeedCard({
 
   if (item.type === "JOB") {
     return (
-      <div ref={impressionRef as any}>
-        <JobCard job={(item as any).job || item.data} />
-      </div>
+      <JobCard
+        job={(item as any).job || item.data}
+        trackImpression={trackImpression}
+        position={position}
+      />
     );
   }
 
