@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 // Artifacts directory for saving screenshots
-const ARTIFACTS_DIR = "C:/Users/theme/.gemini/antigravity-ide/brain/2b4fd7d0-1645-43fe-be09-d7e6402aa5f4";
+const ARTIFACTS_DIR = "C:/Users/theme/.gemini/antigravity-ide/brain/610b361f-ac33-44b2-b90a-6a3c676f1f1f";
 
 test.describe("Phase 4: E2E Browser Testing Layer", () => {
   // Before each test, setup mock API endpoints that are common
@@ -136,9 +136,8 @@ test.describe("Phase 4: E2E Browser Testing Layer", () => {
     await submitBtn.click();
 
     // Check for inline error message element inside AuthPage
-    const errorBlock = page.locator('div.bg-rose-50');
+    const errorBlock = page.locator("div").filter({ hasText: "Invalid email or password" }).first();
     await expect(errorBlock).toBeVisible();
-    await expect(errorBlock).toContainText("Invalid email or password");
 
     // Capture screenshot of the error card to the artifacts directory
     await errorBlock.screenshot({ path: `${ARTIFACTS_DIR}/auth_error_alert.png` });
@@ -223,7 +222,7 @@ test.describe("Phase 4: E2E Browser Testing Layer", () => {
     const profileCard = page.locator('aside.lg\\:col-span-3').first();
     await expect(profileCard).toBeVisible();
     await expect(profileCard.locator('h2')).toContainText("Test User E2E");
-    await expect(profileCard.locator('p.text-slate-400')).toContainText("@testuser");
-    await expect(profileCard.locator('p.text-slate-600')).toContainText("E2E Testing Specialist");
+    await expect(profileCard.locator("p").filter({ hasText: "@testuser" })).toBeVisible();
+    await expect(profileCard.locator("p").filter({ hasText: "E2E Testing Specialist" })).toBeVisible();
   });
 });
