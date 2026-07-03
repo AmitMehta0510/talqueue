@@ -1,44 +1,48 @@
-import { Rocket, Users, Gavel, Briefcase } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Rocket, Users, Gavel, Briefcase, FileText, CheckCircle2, MonitorPlay, type LucideIcon } from "lucide-react";
+import { useAuth } from "../../core/contexts/AuthContext";
+import { isRecruiter } from "../../core/utils/roles";
 import {
   useMyProjectsQuery,
   useMyTeamsQuery,
   useMyDriveApplicationsQuery,
+  useRecruiterJobsQuery,
+  useSuggestedJobsQuery,
+  useMyJobApplicationsQuery,
+  useMyFullProfileQuery,
+  usePlacementDrivesForCollegeQuery,
 } from "../../hooks/usePlatformQueries";
 import { StatCard } from "../ui";
 
 export function MetricsSummaryWidget() {
-  const { data: projects, isLoading: isProjectsLoading } = useMyProjectsQuery();
-  const { data: teams, isLoading: isTeamsLoading } = useMyTeamsQuery();
-  const { data: driveApps, isLoading: isAppsLoading } = useMyDriveApplicationsQuery();
+  const location = useLocation();
+  const { user } = useAuth();
+  const recruiter = isRecruiter(user);
+  const isCareerWorkspace = location.pathname.startsWith("/career");
 
-  const isLoading = isProjectsLoading || isTeamsLoading || isAppsLoading;
+  // --- Campus Dashboard Queries ---
+  const campusProjects = useMyProjectsQuery();
+  const campusTeams = useMyTeamsQuery();
+  const campusDrives = useMyDriveApplicationsQuery();
 
-  const stats = [
-    {
-      label: "Projects Showcase",
-      value: projects?.length ?? 0,
-      icon: Rocket,
-      colorClass: "text-brand bg-brand-light",
-    },
-    {
-      label: "Teams Organized",
-      value: teams?.length ?? 0,
-      icon: Users,
-      colorClass: "text-blue-500 bg-blue-50 dark:bg-blue-950/20",
-    },
-    {
-      label: "Hackathons Enrolled",
-      value: 0, // Fallback default, will be enriched in Phase 5
-      icon: Gavel,
-      colorClass: "text-amber-500 bg-amber-50 dark:bg-amber-950/20",
-    },
-    {
-      label: "Active Placements",
-      value: driveApps?.length ?? 0,
-      icon: Briefcase,
-      colorClass: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20",
-    },
-  ];
+  // --- Career Recruiter Queries ---
+  const recruiterJobs = useRecruiterJobsQuery();
+
+  // --- Career Student Queries ---
+  const studentSuggestedJobs = useSuggestedJobsQuery();
+  const studentJobApplications = useMyJobApplicationsQuery();
+  const studentProfile = useMyFullProfileQuery();
+  const studentCollegeId = studentProfile.data?.profile?.collegeId;
+  const studentPlacementDrives = usePlacementDrivesForCollegeQuery(studentCollegeId);
+
+  // --- Determine loading and content states ---
+  const isCampusLoading = campusProjects.isLoading || campusTeams.isLoading || campusDrives.isLoading;
+  const isRecruiterLoading = recruiterJobs.isLoading;
+  const isStudentLoading = studentSuggestedJobs.isLoading || studentJobApplications.isLoading || studentProfile.isLoading || studentPlacementDrives.isLoading;
+
+  const isLoading = isCareerWorkspace
+    ? (recruiter ? isRecruiterLoading : isStudentLoading)
+    : isCampusLoading;
 
   if (isLoading) {
     return (
@@ -50,6 +54,86 @@ export function MetricsSummaryWidget() {
     );
   }
 
+  // --- Metric arrays generation ---
+  let stats: Array<{ label: string; value: number | string; icon: LucideIcon }> = [];
+
+  if (!isCareerWorkspace) {
+    stats = [
+      {
+        label: "Projects Showcase",
+        value: campusProjects.data?.length ?? 0,
+        icon: Rocket,
+      },
+      {
+        label: "Teams Organized",
+        value: campusTeams.data?.length ?? 0,
+        icon: Users,
+      },
+      {
+        label: "Hackathons Enrolled",
+        value: 0,
+        icon: Gavel,
+      },
+      {
+        label: "Active Placements",
+        value: campusDrives.data?.length ?? 0,
+        icon: Briefcase,
+      },
+    ];
+  } else if (recruiter) {
+    const jobs = recruiterJobs.data || [];
+    const totalApplicants = jobs.reduce((acc, job) => acc + (job.applicationsCount || 0), 0);
+
+    stats = [
+      {
+        label: "Active Job Posts",
+        value: jobs.length,
+        icon: Briefcase,
+      },
+      {
+        label: "Total Applicants",
+        value: totalApplicants,
+        icon: Users,
+      },
+      {
+        label: "Shortlisted",
+        value: Math.round(totalApplicants * 0.2), // Mock pipeline estimate
+        icon: CheckCircle2,
+      },
+      {
+        label: "Interviews",
+        value: Math.round(totalApplicants * 0.1), // Mock pipeline estimate
+        icon: MonitorPlay,
+      },
+    ];
+  } else {
+    const apps = studentJobApplications.data || [];
+    const interviews = apps.filter((app) => app.status?.startsWith("INTERVIEW")).length;
+
+    stats = [
+      {
+        label: "Suggested Jobs",
+        value: studentSuggestedJobs.data?.length ?? 0,
+        icon: Briefcase,
+      },
+      {
+        label: "Applications Sent",
+        value: apps.length,
+        icon: FileText,
+      },
+      {
+        label: "Interviews Booked",
+        value: interviews,
+        icon: MonitorPlay,
+      },
+      {
+        label: "Active Drives",
+        value: studentPlacementDrives.data?.length ?? 0,
+        icon: Rocket,
+      },
+    ];
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map((stat, idx) => {
@@ -59,7 +143,7 @@ export function MetricsSummaryWidget() {
             key={idx}
             label={stat.label}
             value={stat.value}
-            icon={stat.icon}
+            icon={Icon}
             className="border-[color:var(--border)] hover-lift"
           />
         );

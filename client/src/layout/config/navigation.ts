@@ -55,6 +55,7 @@ export const campusBottomTabs: NavSection[] = [
 
 // CAREER CONFIGURATIONS
 export const careerPinnedSections: NavSection[] = [
+  { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career/companies",   label: "Companies",  icon: Building2 },
   { to: "/career/placements",  label: "Placements", icon: Calendar,          requiresAuth: true },
@@ -71,7 +72,7 @@ export const careerDropdownSections: NavSection[] = [
 export const careerBottomTabs: NavSection[] = [
   { to: "/career/placements",  label: "Timeline",   icon: Calendar,          requiresAuth: true },
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
-  { to: "/career/referrals",   label: "Referrals",  icon: Handshake,         requiresAuth: true },
+  { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
   { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
   { to: "/career/profile",     label: "Me",         icon: UserRound,         requiresAuth: true },
 ];

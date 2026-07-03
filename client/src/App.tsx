@@ -20,6 +20,7 @@ import { useWorkspace } from "./hooks/useWorkspace";
 
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
 const CampusDashboardPage = lazy(() => import("./pages/CampusDashboardPage").then(m => ({ default: m.CampusDashboardPage })));
+const CareerDashboardPage = lazy(() => import("./pages/CareerDashboardPage").then(m => ({ default: m.CareerDashboardPage })));
 const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
 const CollegesPage = lazy(() => import("./pages/CollegesPage").then(m => ({ default: m.CollegesPage })));
 const CommunitiesPage = lazy(() => import("./pages/CommunitiesPage").then(m => ({ default: m.CommunitiesPage })));
@@ -363,7 +364,7 @@ function AppRoutes() {
 
           {/* 2. CAREER WORKSPACE NESTED TREE */}
           <Route path="/career" element={<CareerLayout />}>
-            <Route index element={<Navigate to="/career/jobs" replace />} />
+            <Route index element={<PageTransitionWrapper><CareerDashboardPage /></PageTransitionWrapper>} />
             <Route path="jobs" element={<PageTransitionWrapper><JobsPage /></PageTransitionWrapper>} />
             <Route path="job/:jobId" element={<Navigate to="/career/jobs" replace />} />
             <Route path="companies" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
