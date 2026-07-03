@@ -6,7 +6,7 @@ import { Outlet } from "react-router-dom";
  */
 export function WorkspaceSelectorLayout() {
   return (
-    <div className="workspace-selector-shell w-full min-h-screen flex flex-col" style={{ background: "var(--bg-base)" }}>
+    <div className="workspace-selector-shell w-full min-h-screen flex flex-col" style={{ background: "#080b11" }}>
       <Outlet />
     </div>
   );
