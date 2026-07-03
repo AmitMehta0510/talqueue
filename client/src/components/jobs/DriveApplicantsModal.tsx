@@ -1,22 +1,11 @@
-import { useState } from "react";
 import { X } from "lucide-react";
-import {
-  useDriveApplicantsQuery,
-  useUpdateDriveApplicationStatusMutation,
-  useDriveRoundsQuery,
-  useCreateDriveRoundMutation,
-  useUpdateDriveRoundMutation,
-  useDeleteDriveRoundMutation,
-  useShortlistForRoundMutation,
-} from "../../hooks/usePlatformQueries";
-import { PlacementDriveApplicationStatus } from "../../lib/api";
 
 // Sub-components
 import { ApplicantFilters } from "./drive-applicants/ApplicantFilters";
 import { ApplicantList } from "./drive-applicants/ApplicantList";
 import { RoundManager } from "./drive-applicants/RoundManager";
 import { ShortlistWorkflow } from "./drive-applicants/ShortlistWorkflow";
-
+import { useDriveApplicants } from "../../hooks/useDriveApplicants";
 import {
   ACTIONABLE_STATUSES,
   STATUS_CONFIG,
@@ -34,134 +23,53 @@ export function DriveApplicantsModal({
   driveTitle,
   onClose,
 }: DriveApplicantsModalProps) {
-  const [activeTab, setActiveTab] = useState<"applicants" | "rounds">("applicants");
-
-  // Queries & Mutations
-  const applicantsQuery = useDriveApplicantsQuery(driveId);
-  const updateStatusMutation = useUpdateDriveApplicationStatusMutation();
-
-  const roundsQuery = useDriveRoundsQuery(driveId);
-  const createRoundMutation = useCreateDriveRoundMutation();
-  const updateRoundMutation = useUpdateDriveRoundMutation();
-  const deleteRoundMutation = useDeleteDriveRoundMutation(driveId);
-  const shortlistForRoundMutation = useShortlistForRoundMutation(driveId);
-
-  // Applicants filter states
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
-
-  // Round Creation/Editing State
-  const [showRoundForm, setShowRoundForm] = useState(false);
-  const [editingRoundId, setEditingRoundId] = useState<string | null>(null);
-  const [roundType, setRoundType] = useState("APTITUDE_TEST");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [venue, setVenue] = useState("");
-  const [meetLink, setMeetLink] = useState("");
-  const [durationMin, setDurationMin] = useState(60);
-  const [notes, setNotes] = useState("");
-
-  // Shortlisting workflow state
-  const [shortlistRoundId, setShortlistRoundId] = useState<string | null>(null);
-  const [selectedApps, setSelectedApps] = useState<string[]>([]);
-  const [targetStatus, setTargetStatus] = useState<PlacementDriveApplicationStatus | "">("");
-
-  const applicants = applicantsQuery.data || [];
-  const rounds = roundsQuery.data || [];
-
-  const filteredApplicants = applicants.filter((app) => {
-    if (statusFilter === "ALL") return true;
-    return app.status === statusFilter;
-  });
-
-  const handleStatusChange = async (applicationId: string, status: PlacementDriveApplicationStatus) => {
-    try {
-      await updateStatusMutation.mutateAsync({ applicationId, status });
-      setActiveDropdownId(null);
-    } catch {}
-  };
-
-  const handleStartEditRound = (round: any) => {
-    setEditingRoundId(round.id);
-    setRoundType(round.roundType);
-    setScheduledAt(round.scheduledAt ? new Date(round.scheduledAt).toISOString().slice(0, 16) : "");
-    setVenue(round.venue || "");
-    setMeetLink(round.meetLink || "");
-    setDurationMin(round.durationMin || 60);
-    setNotes(round.notes || "");
-    setShowRoundForm(true);
-  };
-
-  const handleResetRoundForm = () => {
-    setEditingRoundId(null);
-    setRoundType("APTITUDE_TEST");
-    setScheduledAt("");
-    setVenue("");
-    setMeetLink("");
-    setDurationMin(60);
-    setNotes("");
-    setShowRoundForm(false);
-  };
-
-  const handleSaveRound = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      roundType,
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
-      venue: venue || undefined,
-      meetLink: meetLink || undefined,
-      durationMin: Number(durationMin) || undefined,
-      notes: notes || undefined,
-    };
-
-    try {
-      if (editingRoundId) {
-        await updateRoundMutation.mutateAsync({ roundId: editingRoundId, body: payload });
-      } else {
-        await createRoundMutation.mutateAsync({ driveId, body: payload });
-      }
-      handleResetRoundForm();
-    } catch {}
-  };
-
-  const handleDeleteRound = async (roundId: string) => {
-    if (confirm("Are you sure you want to delete this round?")) {
-      await deleteRoundMutation.mutateAsync(roundId);
-    }
-  };
-
-  const handleStartShortlist = (roundId: string) => {
-    setShortlistRoundId(roundId);
-    setSelectedApps([]);
-    setTargetStatus("");
-  };
-
-  const handleToggleSelectApp = (appId: string) => {
-    setSelectedApps((prev) =>
-      prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]
-    );
-  };
-
-  const handleSelectAllApps = (isAll: boolean) => {
-    if (isAll) {
-      setSelectedApps(applicants.map((a) => a.id));
-    } else {
-      setSelectedApps([]);
-    }
-  };
-
-  const handleSaveShortlist = async () => {
-    if (selectedApps.length === 0) return;
-    try {
-      await shortlistForRoundMutation.mutateAsync({
-        roundId: shortlistRoundId!,
-        applicationIds: selectedApps,
-        updateStatus: targetStatus || undefined,
-      });
-      setShortlistRoundId(null);
-    } catch {}
-  };
-
-  const currentShortlistRound = rounds.find((r) => r.id === shortlistRoundId);
+  const {
+    activeTab,
+    setActiveTab,
+    applicantsQuery,
+    updateStatusMutation,
+    roundsQuery,
+    createRoundMutation,
+    updateRoundMutation,
+    shortlistForRoundMutation,
+    statusFilter,
+    setStatusFilter,
+    activeDropdownId,
+    setActiveDropdownId,
+    showRoundForm,
+    setShowRoundForm,
+    editingRoundId,
+    roundType,
+    setRoundType,
+    scheduledAt,
+    setScheduledAt,
+    venue,
+    setVenue,
+    meetLink,
+    setMeetLink,
+    durationMin,
+    setDurationMin,
+    notes,
+    setNotes,
+    shortlistRoundId,
+    setShortlistRoundId,
+    selectedApps,
+    targetStatus,
+    setTargetStatus,
+    applicants,
+    rounds,
+    filteredApplicants,
+    handleStatusChange,
+    handleStartEditRound,
+    handleResetRoundForm,
+    handleSaveRound,
+    handleDeleteRound,
+    handleStartShortlist,
+    handleToggleSelectApp,
+    handleSelectAllApps,
+    handleSaveShortlist,
+    currentShortlistRound,
+  } = useDriveApplicants(driveId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -178,101 +86,101 @@ export function DriveApplicantsModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-surface-3 text-muted-fg hover:text-primary transition"
+            className="text-secondary hover:text-primary transition"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Tab Switcher */}
-        {!shortlistRoundId && (
-          <div className="flex px-6 border-b border-base bg-surface shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab("applicants")}
-              className={`py-3 px-4 text-xs font-bold border-b-2 transition ${
-                activeTab === "applicants"
-                  ? "border-brand text-brand"
-                  : "border-transparent text-muted-fg hover:text-primary"
-              }`}
-            >
-              Applicants List
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("rounds")}
-              className={`py-3 px-4 text-xs font-bold border-b-2 transition ${
-                activeTab === "rounds"
-                  ? "border-brand text-brand"
-                  : "border-transparent text-muted-fg hover:text-primary"
-              }`}
-            >
-              Round Pipeline
-            </button>
-          </div>
-        )}
+        {/* Tab switcher */}
+        <div className="flex border-b border-base px-6 shrink-0 bg-surface">
+          <button
+            type="button"
+            onClick={() => setActiveTab("applicants")}
+            className={`px-4 py-3 text-xs font-bold transition border-b-2 ${
+              activeTab === "applicants"
+                ? "border-brand text-brand"
+                : "border-transparent text-secondary hover:text-primary"
+            }`}
+          >
+            All Candidates
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("rounds")}
+            className={`px-4 py-3 text-xs font-bold transition border-b-2 ${
+              activeTab === "rounds"
+                ? "border-brand text-brand"
+                : "border-transparent text-secondary hover:text-primary"
+            }`}
+          >
+            Evaluation Rounds
+          </button>
+        </div>
 
-        {/* APPLICANTS TAB */}
-        {activeTab === "applicants" && !shortlistRoundId && (
-          <>
-            <ApplicantFilters
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              filteredCount={filteredApplicants.length}
-              totalCount={applicants.length}
-              actionableStatuses={ACTIONABLE_STATUSES}
-              statusConfig={STATUS_CONFIG}
-            />
-
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
-              <ApplicantList
-                filteredApplicants={filteredApplicants}
-                totalCount={applicants.length}
-                isLoading={applicantsQuery.isLoading}
-                isError={applicantsQuery.isError}
+        {/* Tab Panels */}
+        <div className="flex-1 overflow-y-auto min-h-0 bg-surface flex flex-col">
+          {activeTab === "applicants" && (
+            <>
+              <ApplicantFilters
                 statusFilter={statusFilter}
-                statusConfig={STATUS_CONFIG}
+                setStatusFilter={setStatusFilter}
+                filteredCount={filteredApplicants.length}
+                totalCount={applicants.length}
                 actionableStatuses={ACTIONABLE_STATUSES}
-                activeDropdownId={activeDropdownId}
-                setActiveDropdownId={setActiveDropdownId}
-                onStatusChange={handleStatusChange}
-                isPending={updateStatusMutation.isPending}
+                statusConfig={STATUS_CONFIG}
+              />
+              <div className="flex-1 overflow-y-auto p-6 min-h-0">
+                <ApplicantList
+                  filteredApplicants={filteredApplicants}
+                  totalCount={applicants.length}
+                  isLoading={applicantsQuery.isLoading}
+                  isError={applicantsQuery.isError}
+                  statusFilter={statusFilter}
+                  statusConfig={STATUS_CONFIG}
+                  actionableStatuses={ACTIONABLE_STATUSES}
+                  activeDropdownId={activeDropdownId}
+                  setActiveDropdownId={setActiveDropdownId}
+                  onStatusChange={handleStatusChange}
+                  isPending={updateStatusMutation.isPending}
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === "rounds" && (
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+              <RoundManager
+                rounds={rounds}
+                isLoading={roundsQuery.isLoading}
+                showRoundForm={showRoundForm}
+                setShowRoundForm={setShowRoundForm}
+                editingRoundId={editingRoundId}
+                roundType={roundType}
+                setRoundType={setRoundType}
+                scheduledAt={scheduledAt}
+                setScheduledAt={setScheduledAt}
+                venue={venue}
+                setVenue={setVenue}
+                meetLink={meetLink}
+                setMeetLink={setMeetLink}
+                durationMin={durationMin}
+                setDurationMin={setDurationMin}
+                notes={notes}
+                setNotes={setNotes}
+                onSaveRound={handleSaveRound}
+                onResetRoundForm={handleResetRoundForm}
+                onEditRound={handleStartEditRound}
+                onDeleteRound={handleDeleteRound}
+                onStartShortlist={handleStartShortlist}
+                roundTypeLabels={ROUND_TYPE_LABELS}
+                isSaving={createRoundMutation.isPending || updateRoundMutation.isPending}
               />
             </div>
-          </>
-        )}
+          )}
+        </div>
 
-        {/* ROUNDS TIMELINE TAB */}
-        {activeTab === "rounds" && !shortlistRoundId && (
-          <RoundManager
-            rounds={rounds}
-            isLoading={roundsQuery.isLoading}
-            showRoundForm={showRoundForm}
-            setShowRoundForm={setShowRoundForm}
-            editingRoundId={editingRoundId}
-            roundType={roundType}
-            setRoundType={setRoundType}
-            scheduledAt={scheduledAt}
-            setScheduledAt={setScheduledAt}
-            venue={venue}
-            setVenue={setVenue}
-            meetLink={meetLink}
-            setMeetLink={setMeetLink}
-            durationMin={durationMin}
-            setDurationMin={setDurationMin}
-            notes={notes}
-            setNotes={setNotes}
-            onSaveRound={handleSaveRound}
-            onResetRoundForm={handleResetRoundForm}
-            onEditRound={handleStartEditRound}
-            onDeleteRound={handleDeleteRound}
-            onStartShortlist={handleStartShortlist}
-            roundTypeLabels={ROUND_TYPE_LABELS}
-            isSaving={createRoundMutation.isPending || updateRoundMutation.isPending}
-          />
-        )}
-
-        {/* SHORTLIST WORKFLOW STATE */}
+        {/* Shortlisting workflow overlay container */}
         {shortlistRoundId && currentShortlistRound && (
           <ShortlistWorkflow
             currentRound={currentShortlistRound}
@@ -290,8 +198,8 @@ export function DriveApplicantsModal({
             roundTypeLabels={ROUND_TYPE_LABELS}
           />
         )}
-
       </div>
     </div>
   );
 }
+export default DriveApplicantsModal;
