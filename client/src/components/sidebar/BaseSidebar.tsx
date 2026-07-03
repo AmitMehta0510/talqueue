@@ -77,6 +77,7 @@ export function BaseSidebar({
             <NavLink
               key={link.to}
               to={targetPath}
+              end={link.to === "/campus" || link.to === "/career"}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover-lift ${
                   isActive
