@@ -31,19 +31,19 @@ export const campusPinnedSections: NavSection[] = [
   { to: "/campus",             label: "Dashboard",        icon: LayoutDashboard },
   { to: "/campus/feed",        label: "Feed",             icon: Home },
   { to: "/campus/discover",    label: "Discover",         icon: Search },
+  { to: "/campus/communities", label: "Communities",      icon: Globe },
   { to: "/campus/projects",    label: "Projects",         icon: Rocket },
-  { to: "/campus/hackathons",  label: "Hackathons",       icon: Gavel },
-  { to: "/campus/placements",  label: "Placement Drives", icon: Calendar,          requiresAuth: true },
+  { to: "/campus/teams",       label: "Teams",            icon: Users,             requiresAuth: true },
 ];
 
 export const campusDropdownSections: NavSection[] = [
-  { to: "/campus/communities", label: "Communities",icon: Globe },
-  { to: "/campus/teams",         label: "Teams",      icon: Users,         requiresAuth: true },
-  { to: "/campus/colleges",      label: "Colleges",   icon: GraduationCap },
-  { to: "/campus/events",        label: "Events",     icon: Calendar },
-  { to: "/campus/tpo-dashboard", label: "TPO Portal", icon: BriefcaseBusiness, requiresAuth: true },
-  { to: "/campus/admin",         label: "Admin Panel",icon: Gavel,         requiresAuth: true },
-  { to: "/campus/profile",       label: "Profile",    icon: UserRound,     requiresAuth: true },
+  { to: "/campus/hackathons",  label: "Hackathons",       icon: Gavel },
+  { to: "/campus/events",      label: "Events",           icon: Calendar },
+  { to: "/campus/colleges",    label: "Colleges",         icon: GraduationCap },
+  { to: "/campus/placements",  label: "Placement Drives", icon: Calendar,          requiresAuth: true },
+  { to: "/campus/tpo-dashboard", label: "TPO Portal",     icon: BriefcaseBusiness, requiresAuth: true },
+  { to: "/campus/admin",       label: "Admin Panel",      icon: Gavel,             requiresAuth: true },
+  { to: "/campus/profile",     label: "Profile",          icon: UserRound,         requiresAuth: true },
 ];
 
 export const campusBottomTabs: NavSection[] = [
@@ -60,13 +60,13 @@ export const careerPinnedSections: NavSection[] = [
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career/companies",   label: "Companies",  icon: Building2 },
   { to: "/career/referrals",   label: "Referrals",  icon: Handshake,         requiresAuth: true },
-  { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
+  { to: "/career/reputation",  label: "Reputation", icon: Award,             requiresAuth: true },
 ];
 
 export const careerDropdownSections: NavSection[] = [
+  { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
   { to: "/career/recruiter",   label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
   { to: "/career/profile",     label: "Profile",    icon: UserRound,         requiresAuth: true },
-  { to: "/career/reputation",  label: "Reputation", icon: Award,             requiresAuth: true },
 ];
 
 export const careerBottomTabs: NavSection[] = [
