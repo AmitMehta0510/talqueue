@@ -12,11 +12,12 @@ import { isPlatformAdmin, isRecruiter, isTpo } from "./core/utils/roles";
 import { AuthProvider, useAuth } from "./core/contexts/AuthContext";
 import { ToastProvider } from "./core/contexts/ToastContext";
 import { WorkspaceProvider } from "./core/contexts/WorkspaceProvider";
-import { CampusLayout } from "./layout/CampusLayout";
-import { CareerLayout } from "./layout/CareerLayout";
-import { SharedLayout } from "./layout/SharedLayout";
-import { WorkspaceSelectorLayout } from "./layout/WorkspaceSelectorLayout";
 import { useWorkspace } from "./hooks/useWorkspace";
+
+const CampusLayout = lazy(() => import("./layout/CampusLayout").then(m => ({ default: m.CampusLayout })));
+const CareerLayout = lazy(() => import("./layout/CareerLayout").then(m => ({ default: m.CareerLayout })));
+const SharedLayout = lazy(() => import("./layout/SharedLayout").then(m => ({ default: m.SharedLayout })));
+const WorkspaceSelectorLayout = lazy(() => import("./layout/WorkspaceSelectorLayout").then(m => ({ default: m.WorkspaceSelectorLayout })));
 
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
 const CampusDashboardPage = lazy(() => import("./pages/CampusDashboardPage").then(m => ({ default: m.CampusDashboardPage })));
