@@ -31,7 +31,7 @@ export function RecentApplicationsWidget() {
     </Link>
   ) : (
     <Link
-      to="/career/placements"
+      to="/campus/placements"
       className="inline-flex items-center gap-0.5 text-[10px] text-brand hover:underline font-bold"
     >
       Track Funnel
@@ -141,7 +141,7 @@ export function RecentApplicationsWidget() {
           {apps.slice(0, 4).map((app: JobApplication) => (
             <Link
               key={app.id}
-              to="/career/placements"
+              to="/campus/placements"
               className="flex items-center justify-between p-2.5 rounded-xl border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--bg-surface-2)] transition-all duration-200"
             >
               <div className="flex items-center gap-3 min-w-0">

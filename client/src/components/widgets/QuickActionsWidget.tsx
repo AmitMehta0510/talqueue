@@ -83,7 +83,7 @@ export function QuickActionsWidget() {
       label: "Placement Board",
       description: "Track campus recruitment",
       icon: GraduationCap,
-      to: "/career/placements",
+      to: "/campus/placements",
       colorClass: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20",
     },
     {

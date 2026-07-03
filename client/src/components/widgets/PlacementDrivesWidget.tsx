@@ -19,7 +19,7 @@ export function PlacementDrivesWidget() {
 
   const headerAction = (
     <Link
-      to="/career/placements"
+      to="/campus/placements"
       className="inline-flex items-center gap-0.5 text-[10px] text-brand hover:underline font-bold"
     >
       View Board
@@ -74,7 +74,7 @@ export function PlacementDrivesWidget() {
             return (
               <Link
                 key={drive.id}
-                to={`/career/placements?activeDriveId=${drive.id}`}
+                to={`/campus/placements?activeDriveId=${drive.id}`}
                 className="flex items-start gap-3 p-2 rounded-xl border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--bg-surface-2)] transition-all duration-200"
               >
                 {/* Company Logo / Briefcase Icon */}

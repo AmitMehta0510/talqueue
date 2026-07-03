@@ -28,11 +28,12 @@ export type NavSection = {
 
 // CAMPUS CONFIGURATIONS
 export const campusPinnedSections: NavSection[] = [
-  { to: "/campus",             label: "Dashboard",  icon: LayoutDashboard },
-  { to: "/campus/feed",        label: "Feed",       icon: Home },
-  { to: "/campus/discover",    label: "Discover",   icon: Search },
-  { to: "/campus/projects",    label: "Projects",   icon: Rocket },
-  { to: "/campus/hackathons",  label: "Hackathons", icon: Gavel },
+  { to: "/campus",             label: "Dashboard",        icon: LayoutDashboard },
+  { to: "/campus/feed",        label: "Feed",             icon: Home },
+  { to: "/campus/discover",    label: "Discover",         icon: Search },
+  { to: "/campus/projects",    label: "Projects",         icon: Rocket },
+  { to: "/campus/hackathons",  label: "Hackathons",       icon: Gavel },
+  { to: "/campus/placements",  label: "Placement Drives", icon: Calendar,          requiresAuth: true },
 ];
 
 export const campusDropdownSections: NavSection[] = [
@@ -58,7 +59,6 @@ export const careerPinnedSections: NavSection[] = [
   { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career/companies",   label: "Companies",  icon: Building2 },
-  { to: "/career/placements",  label: "Placements", icon: Calendar,          requiresAuth: true },
   { to: "/career/referrals",   label: "Referrals",  icon: Handshake,         requiresAuth: true },
   { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
 ];
@@ -70,7 +70,6 @@ export const careerDropdownSections: NavSection[] = [
 ];
 
 export const careerBottomTabs: NavSection[] = [
-  { to: "/career/placements",  label: "Timeline",   icon: Calendar,          requiresAuth: true },
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
   { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },

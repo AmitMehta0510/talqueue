@@ -361,6 +361,14 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
+            <Route
+              path="placements"
+              element={
+                <RequireAuth>
+                  <PageTransitionWrapper><PlacementDashboardPage /></PageTransitionWrapper>
+                </RequireAuth>
+              }
+            />
           </Route>
 
           {/* 2. CAREER WORKSPACE NESTED TREE */}
@@ -380,14 +388,6 @@ function AppRoutes() {
               }
             />
             <Route path="interviews" element={<PageTransitionWrapper><InterviewsPage /></PageTransitionWrapper>} />
-            <Route
-              path="placements"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><PlacementDashboardPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
             <Route
               path="recruiter"
               element={
@@ -512,7 +512,7 @@ function AppRoutes() {
           <Route path="/companies/:companySlug" element={<CompanyRedirect />} />
           <Route path="/companies/:companySlug/admin" element={<CompanyAdminRedirect />} />
           <Route path="/interviews" element={<Navigate to="/career/interviews" replace />} />
-          <Route path="/placements" element={<Navigate to="/career/placements" replace />} />
+          <Route path="/placements" element={<Navigate to="/campus/placements" replace />} />
           <Route path="/reputation" element={<Navigate to="/career/reputation" replace />} />
           <Route path="/recruiter" element={<Navigate to="/career/recruiter" replace />} />
           <Route path="/recruiter/drive/:driveId" element={<RecruiterDriveRedirect />} />
