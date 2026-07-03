@@ -18,7 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { RoleName } from "../lib/api";
-import { getErrorMessage, titleCase, userName } from "../core/utils/format";
+import { getErrorMessage, userName } from "../core/utils/format";
 import { useAuth } from "../core/contexts/AuthContext";
 import { useToast } from "../core/contexts/ToastContext";
 
@@ -152,27 +152,12 @@ export function AuthPage() {
           ============================================================ */}
       <aside className="hidden md:flex md:w-[48%] xl:w-[45%] relative flex-col overflow-hidden">
         {/* Dark indigo gradient background */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(145deg, #0d0c2e 0%, #1e1a6e 40%, #231e80 70%, #120e4a 100%)",
-          }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0d0c2e] via-[#1e1a6e] to-[#120e4a]" />
 
         {/* Animated glow orbs */}
-        <div
-          className="absolute top-[-80px] left-[-60px] h-72 w-72 rounded-full opacity-25 blur-3xl"
-          style={{ background: "radial-gradient(circle, #818cf8, transparent)" }}
-        />
-        <div
-          className="absolute bottom-[-60px] right-[-40px] h-64 w-64 rounded-full opacity-20 blur-3xl"
-          style={{ background: "radial-gradient(circle, #4f46e5, transparent)" }}
-        />
-        <div
-          className="absolute top-[40%] right-[10%] h-48 w-48 rounded-full opacity-10 blur-2xl"
-          style={{ background: "radial-gradient(circle, #a5b4fc, transparent)" }}
-        />
+        <div className="absolute top-[-80px] left-[-60px] h-72 w-72 rounded-full opacity-25 blur-3xl bg-indigo-400" />
+        <div className="absolute bottom-[-60px] right-[-40px] h-64 w-64 rounded-full opacity-20 blur-3xl bg-indigo-600" />
+        <div className="absolute top-[40%] right-[10%] h-48 w-48 rounded-full opacity-10 blur-2xl bg-indigo-300" />
 
         {/* Content */}
         <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-12 text-white">
@@ -244,11 +229,10 @@ export function AuthPage() {
           >
             {/* Stacked avatar circles */}
             <div className="flex -space-x-2">
-              {["#818cf8", "#6366f1", "#4f46e5", "#4338ca"].map((c, i) => (
+              {["bg-indigo-400", "bg-indigo-500", "bg-indigo-650", "bg-indigo-800"].map((bgClass, i) => (
                 <div
                   key={i}
-                  className="h-7 w-7 rounded-full border-2 border-[#1e1a6e] flex items-center justify-center text-[9px] font-black text-white"
-                  style={{ background: c }}
+                  className={`h-7 w-7 rounded-full border-2 border-[#1e1a6e] flex items-center justify-center text-[9px] font-black text-white ${bgClass}`}
                 >
                   {["AK", "SR", "PM", "NK"][i]}
                 </div>
@@ -462,14 +446,7 @@ export function AuthPage() {
 
             {/* Error message */}
             {message && (
-              <div
-                className="flex items-start gap-2 rounded-xl border px-3.5 py-3 text-sm animate-fade-up"
-                style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  borderColor: "rgba(239, 68, 68, 0.25)",
-                  color: "#ef4444",
-                }}
-              >
+              <div className="flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 text-rose-500 px-3.5 py-3 text-sm animate-fade-up">
                 <ShieldCheck size={15} className="mt-0.5 shrink-0 opacity-80" />
                 <span className="whitespace-pre-line">{message}</span>
               </div>
@@ -491,8 +468,29 @@ export function AuthPage() {
                 : mode === "login" ? "Sign In" : "Create Account"}
             </button>
 
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-4">
+              <div className="h-px flex-1 bg-border" style={{ backgroundColor: "var(--border)" }} />
+              <span className="text-[10px] text-muted-fg uppercase tracking-wider">or continue with</span>
+              <div className="h-px flex-1 bg-border" style={{ backgroundColor: "var(--border)" }} />
+            </div>
+
+            {/* GitHub OAuth Button */}
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = `${import.meta.env.VITE_API_URL || "/api/v1"}/auth/github`;
+              }}
+              className="w-full btn-secondary py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 border-base"
+            >
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+              </svg>
+              GitHub
+            </button>
+
             {/* Mode switch hint */}
-            <p className="text-center text-xs pt-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-center text-xs pt-4" style={{ color: "var(--text-muted)" }}>
               {mode === "login" ? (
                 <>
                   Don't have an account?{" "}

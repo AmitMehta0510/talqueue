@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../core/contexts/AuthContext";
+import { isRecruiter } from "../core/utils/roles";
 import { Header } from "./components/Header";
 import { BottomNavigation } from "./components/BottomNavigation";
 
@@ -65,7 +66,7 @@ export function AppLayout() {
   const { user, apiOnline, apiStatus, logout } = useAuth();
 
   const visibleSections = sections.filter((section) => {
-    if (section.to === "/recruiter" && user?.primaryRole !== "RECRUITER") return false;
+    if (section.to === "/recruiter" && !isRecruiter(user)) return false;
     return true;
   });
 

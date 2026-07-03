@@ -49,6 +49,7 @@ const PublicBatchPage = lazy(() => import("./pages/PublicBatchPage").then(m => (
 const InterviewsPage = lazy(() => import("./pages/InterviewsPage").then(m => ({ default: m.InterviewsPage })));
 const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
 const WorkspaceSelectorPage = lazy(() => import("./pages/WorkspaceSelectorPage").then(m => ({ default: m.WorkspaceSelectorPage })));
+const LandingPage = lazy(() => import("./pages/LandingPage").then(m => ({ default: m.LandingPage })));
 
 
 /** Syncs dark/light class to <html> based on OS preference. */
@@ -208,19 +209,24 @@ const ProfileRedirect = () => {
   return <Navigate to={activeWorkspace === "CAMPUS" ? "/campus/profile" : "/career/profile"} replace />;
 };
 
-// Root route component that redirects to workspace context or shows SelectorPage
+// Root route component that redirects to workspace context, shows LandingPage or redirects to selection
 function WorkspaceRootElement() {
+  const { user } = useAuth();
   const { activeWorkspace, rememberWorkspace, hasSelectedThisSession } = useWorkspace();
+
+  if (!user) {
+    return (
+      <PageTransitionWrapper>
+        <LandingPage />
+      </PageTransitionWrapper>
+    );
+  }
 
   if (rememberWorkspace || hasSelectedThisSession) {
     return <Navigate to={activeWorkspace === "CAMPUS" ? "/campus" : "/career"} replace />;
   }
 
-  return (
-    <PageTransitionWrapper>
-      <WorkspaceSelectorPage />
-    </PageTransitionWrapper>
-  );
+  return <Navigate to="/workspace-select" replace />;
 }
 
 function AppRoutes() {
@@ -246,7 +252,10 @@ function AppRoutes() {
             }
           />
 
-          {/* Root gate route / selector page */}
+          {/* Public root route (auth-aware redirects or LandingPage) */}
+          <Route path="/" element={<WorkspaceRootElement />} />
+
+          {/* Gated workspace selection route */}
           <Route
             element={
               <RequireAuth>
@@ -254,7 +263,7 @@ function AppRoutes() {
               </RequireAuth>
             }
           >
-            <Route path="/" element={<WorkspaceRootElement />} />
+            <Route path="/workspace-select" element={<WorkspaceSelectorPage />} />
           </Route>
 
           {/* 1. CAMPUS WORKSPACE NESTED TREE */}
