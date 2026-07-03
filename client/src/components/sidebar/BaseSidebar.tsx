@@ -40,7 +40,7 @@ export function BaseSidebar({
             title={`Switch to ${activeWorkspace === "CAMPUS" ? "Career" : "Campus"}`}
             className="flex items-center justify-center h-10 w-10 mx-auto rounded-xl bg-brand-light text-brand hover:scale-105 transition-all duration-200"
           >
-            <RefreshCw size={18} className="animate-pulse" />
+            <RefreshCw size={18} className="hover:rotate-180 transition-transform duration-500 ease-out" />
           </button>
         ) : (
           <div className="flex flex-col gap-2.5">
@@ -114,15 +114,6 @@ export function BaseSidebar({
                   {user.roles?.map(r => r.role?.name).filter(Boolean).join(", ") || "User"}
                 </p>
               </div>
-            )}
-            {!isCollapsed && (
-              <button
-                onClick={() => logout()}
-                title="Log Out"
-                className="text-muted hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-500/10"
-              >
-                <LogOut size={14} />
-              </button>
             )}
           </div>
         )}
