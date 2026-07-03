@@ -10,6 +10,7 @@ export { FilterChip } from "./ui/FilterChip";
 export { SearchInput } from "./ui/SearchInput";
 export { StatCard } from "./ui/StatCard";
 export { RoleGuard } from "./ui/RoleGuard";
+export { WidgetContainer } from "./ui/WidgetContainer";
 
 /* ============================================================
    METRIC — displays a numeric stat with a label

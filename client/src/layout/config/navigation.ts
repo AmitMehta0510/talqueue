@@ -1,4 +1,5 @@
 import {
+  LayoutDashboard,
   Home,
   Search,
   Handshake,
@@ -27,14 +28,15 @@ export type NavSection = {
 
 // CAMPUS CONFIGURATIONS
 export const campusPinnedSections: NavSection[] = [
-  { to: "/campus/feed",        label: "Home",       icon: Home },
+  { to: "/campus",             label: "Dashboard",  icon: LayoutDashboard },
+  { to: "/campus/feed",        label: "Feed",       icon: Home },
   { to: "/campus/discover",    label: "Discover",   icon: Search },
   { to: "/campus/projects",    label: "Projects",   icon: Rocket },
   { to: "/campus/hackathons",  label: "Hackathons", icon: Gavel },
-  { to: "/campus/communities", label: "Communities",icon: Globe },
 ];
 
 export const campusDropdownSections: NavSection[] = [
+  { to: "/campus/communities", label: "Communities",icon: Globe },
   { to: "/campus/teams",         label: "Teams",      icon: Users,         requiresAuth: true },
   { to: "/campus/colleges",      label: "Colleges",   icon: GraduationCap },
   { to: "/campus/events",        label: "Events",     icon: Calendar },
@@ -44,9 +46,9 @@ export const campusDropdownSections: NavSection[] = [
 ];
 
 export const campusBottomTabs: NavSection[] = [
-  { to: "/campus/feed",        label: "Home",       icon: Home },
-  { to: "/campus/discover",    label: "Discover",   icon: Search },
+  { to: "/campus/feed",        label: "Feed",       icon: Home },
   { to: "/campus/projects",    label: "Projects",   icon: Rocket },
+  { to: "/campus",             label: "Dashboard",  icon: LayoutDashboard },
   { to: "/campus/communities", label: "Spaces",     icon: Globe },
   { to: "/campus/profile",     label: "Me",         icon: UserRound,     requiresAuth: true },
 ];

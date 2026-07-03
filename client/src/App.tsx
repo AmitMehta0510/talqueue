@@ -19,6 +19,7 @@ import { WorkspaceSelectorLayout } from "./layout/WorkspaceSelectorLayout";
 import { useWorkspace } from "./hooks/useWorkspace";
 
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
+const CampusDashboardPage = lazy(() => import("./pages/CampusDashboardPage").then(m => ({ default: m.CampusDashboardPage })));
 const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
 const CollegesPage = lazy(() => import("./pages/CollegesPage").then(m => ({ default: m.CollegesPage })));
 const CommunitiesPage = lazy(() => import("./pages/CommunitiesPage").then(m => ({ default: m.CommunitiesPage })));
@@ -268,7 +269,7 @@ function AppRoutes() {
 
           {/* 1. CAMPUS WORKSPACE NESTED TREE */}
           <Route path="/campus" element={<CampusLayout />}>
-            <Route index element={<Navigate to="/campus/feed" replace />} />
+            <Route index element={<PageTransitionWrapper><CampusDashboardPage /></PageTransitionWrapper>} />
             <Route path="feed" element={<PageTransitionWrapper><FeedPage /></PageTransitionWrapper>} />
             <Route path="discover" element={<PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>} />
             <Route path="projects" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
