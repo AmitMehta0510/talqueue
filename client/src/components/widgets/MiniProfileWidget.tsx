@@ -1,4 +1,5 @@
-import { ShieldCheck, Award, Github, Check } from "lucide-react";
+import { ShieldCheck, Award, Github, Check, GraduationCap, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useMyFullProfileQuery } from "../../hooks/usePlatformQueries";
 import { WidgetContainer } from "../ui/WidgetContainer";
 import { Avatar, SkeletonBlock } from "../ui";
@@ -38,9 +39,15 @@ export function MiniProfileWidget() {
 
   const isCollegeVerified = profile.verifiedEngineer;
   const reputation = profile.reputationScore || 0;
-  const trustLevel = profile.trustLevel || "UNVERIFIED";
+  const rawTrustLevel = profile.trustLevel || "UNVERIFIED";
+  const trustLevel = rawTrustLevel.charAt(0) + rawTrustLevel.slice(1).toLowerCase();
   const githubUrl = profile.profile?.githubUrl;
   const githubUsername = githubUrl ? githubUrl.replace(/\/$/, "").split("/").pop() : null;
+
+  // Retrieve current education details
+  const currentEducation = profile.educations?.find((edu) => edu.current) || profile.educations?.[0];
+  const cgpa = currentEducation?.cgpa;
+  const backlogs = currentEducation?.backlogs;
 
   return (
     <WidgetContainer title="Developer Dossier">
@@ -73,13 +80,31 @@ export function MiniProfileWidget() {
             Reputation
           </span>
         </div>
-        <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-surface-2 border border-[color:var(--border)]">
+        <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-surface-2 border border-[color:var(--border)]" title={rawTrustLevel}>
           <ShieldCheck size={14} className="text-brand mb-1" />
           <span className="text-xs font-black text-primary truncate max-w-full px-1">
             {trustLevel}
           </span>
           <span className="text-[8px] uppercase tracking-wide text-muted font-bold mt-0.5">
             Trust Level
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-surface-2 border border-[color:var(--border)]" title={currentEducation?.degree ? `${currentEducation.degree} in ${currentEducation.fieldOfStudy || ""}` : "No Education Info"}>
+          <GraduationCap size={14} className="text-indigo-500 mb-1" />
+          <span className="text-xs font-black text-primary">
+            {cgpa !== undefined && cgpa !== null ? cgpa : "N/A"}
+          </span>
+          <span className="text-[8px] uppercase tracking-wide text-muted font-bold mt-0.5">
+            CGPA
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-surface-2 border border-[color:var(--border)]" title={`${backlogs || 0} active backlogs`}>
+          <AlertCircle size={14} className={backlogs && backlogs > 0 ? "text-rose-500 mb-1" : "text-emerald-500 mb-1"} />
+          <span className="text-xs font-black text-primary">
+            {backlogs !== undefined && backlogs !== null ? backlogs : 0}
+          </span>
+          <span className="text-[8px] uppercase tracking-wide text-muted font-bold mt-0.5">
+            Backlogs
           </span>
         </div>
       </div>
@@ -103,15 +128,18 @@ export function MiniProfileWidget() {
             </span>
           </a>
         ) : (
-          <div className="flex items-center justify-between text-muted">
-            <span className="flex items-center gap-1.5">
+          <Link
+            to="/campus/profile"
+            className="flex items-center justify-between text-muted hover:text-brand transition-colors duration-200"
+          >
+            <span className="flex items-center gap-1.5 font-medium">
               <Github size={12} />
               GitHub Account
             </span>
-            <span className="text-[8px] bg-surface-3 px-1.5 py-0.5 rounded font-black tracking-wide uppercase">
-              Not Connected
+            <span className="text-[8px] bg-surface-3 hover:bg-surface-4 px-1.5 py-0.5 rounded font-black tracking-wide uppercase cursor-pointer transition-colors">
+              Connect
             </span>
-          </div>
+          </Link>
         )}
       </div>
     </WidgetContainer>

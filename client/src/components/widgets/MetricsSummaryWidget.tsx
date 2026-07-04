@@ -1,5 +1,5 @@
-import { useLocation } from "react-router-dom";
-import { Rocket, Users, Gavel, Briefcase, FileText, CheckCircle2, MonitorPlay, type LucideIcon } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
+import { Rocket, Users, Gavel, Briefcase, FileText, CheckCircle2, MonitorPlay, type LucideIcon, Trophy, FolderGit2 } from "lucide-react";
 import { useAuth } from "../../core/contexts/AuthContext";
 import { isRecruiter } from "../../core/utils/roles";
 import {
@@ -46,7 +46,7 @@ export function MetricsSummaryWidget() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((n) => (
           <div key={n} className="panel p-4 h-24 flex items-center justify-between border rounded-2xl animate-pulse bg-[color:var(--bg-surface)] border-[color:var(--border)]" />
         ))}
@@ -55,29 +55,33 @@ export function MetricsSummaryWidget() {
   }
 
   // --- Metric arrays generation ---
-  let stats: Array<{ label: string; value: number | string; icon: LucideIcon }> = [];
+  let stats: Array<{ label: string; value: number | string; icon: LucideIcon; to?: string }> = [];
 
   if (!isCareerWorkspace) {
     stats = [
       {
-        label: "Projects Showcase",
+        label: "Projects",
         value: campusProjects.data?.length ?? 0,
-        icon: Rocket,
+        icon: FolderGit2,
+        to: "/campus/projects",
       },
       {
-        label: "Teams Organized",
+        label: "Team Members",
         value: campusTeams.data?.length ?? 0,
         icon: Users,
+        to: "/campus/teams",
       },
       {
-        label: "Hackathons Enrolled",
+        label: "Hackathons",
         value: 0,
-        icon: Gavel,
+        icon: Trophy,
+        to: "/campus/hackathons",
       },
       {
-        label: "Active Placements",
+        label: "Placement Drives",
         value: campusDrives.data?.length ?? 0,
         icon: Briefcase,
+        to: "/campus/placements",
       },
     ];
   } else if (recruiter) {
@@ -89,21 +93,25 @@ export function MetricsSummaryWidget() {
         label: "Active Job Posts",
         value: jobs.length,
         icon: Briefcase,
+        to: "/career/recruiter",
       },
       {
         label: "Total Applicants",
         value: totalApplicants,
         icon: Users,
+        to: "/career/recruiter",
       },
       {
         label: "Shortlisted",
         value: Math.round(totalApplicants * 0.2), // Mock pipeline estimate
         icon: CheckCircle2,
+        to: "/career/recruiter",
       },
       {
         label: "Interviews",
         value: Math.round(totalApplicants * 0.1), // Mock pipeline estimate
         icon: MonitorPlay,
+        to: "/career/recruiter",
       },
     ];
   } else {
@@ -115,37 +123,54 @@ export function MetricsSummaryWidget() {
         label: "Suggested Jobs",
         value: studentSuggestedJobs.data?.length ?? 0,
         icon: Briefcase,
+        to: "/career/jobs",
       },
       {
         label: "Applications Sent",
         value: apps.length,
         icon: FileText,
+        to: "/career/jobs",
       },
       {
         label: "Interviews Booked",
         value: interviews,
         icon: MonitorPlay,
+        to: "/career/interviews",
       },
       {
         label: "Active Drives",
         value: studentPlacementDrives.data?.length ?? 0,
         icon: Rocket,
+        to: "/campus/placements",
       },
     ];
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
       {stats.map((stat, idx) => {
         const Icon = stat.icon;
-        return (
+        const cardContent = (
           <StatCard
-            key={idx}
             label={stat.label}
             value={stat.value}
             icon={Icon}
-            className="border-[color:var(--border)] hover-lift"
+            className="border-[color:var(--border)] hover-lift h-full"
           />
+        );
+
+        if (stat.to) {
+          return (
+            <Link key={idx} to={stat.to} className="block no-underline h-full">
+              {cardContent}
+            </Link>
+          );
+        }
+
+        return (
+          <div key={idx} className="h-full">
+            {cardContent}
+          </div>
         );
       })}
     </div>

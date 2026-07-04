@@ -1,9 +1,11 @@
+import React from "react";
 import { Link } from "react-router-dom";
-import { FolderGit2, Star, GitFork, Plus } from "lucide-react";
+import { FolderGit2, Plus } from "lucide-react";
 import { useMyProjectsQuery } from "../../hooks/usePlatformQueries";
 import { WidgetContainer } from "../ui/WidgetContainer";
 import { SkeletonBlock } from "../ui";
 import { Project } from "../../lib/api";
+import { formatDate } from "../../core/utils/format";
 
 export function YourProjectsWidget() {
   const { data: projects, isLoading, error } = useMyProjectsQuery();
@@ -21,12 +23,14 @@ export function YourProjectsWidget() {
   if (isLoading) {
     return (
       <WidgetContainer title="Your Projects" action={headerAction}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[1, 2].map((n) => (
-            <div key={n} className="p-3 border rounded-2xl space-y-2 border-[color:var(--border)]">
-              <SkeletonBlock className="h-3.5 w-1/3" />
-              <SkeletonBlock className="h-3 w-3/4" />
-              <SkeletonBlock className="h-2.5 w-1/2" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="flex gap-3">
+              <SkeletonBlock className="h-10 w-10 rounded-xl shrink-0" />
+              <div className="flex-1 space-y-2">
+                <SkeletonBlock className="h-3 w-3/4" />
+                <SkeletonBlock className="h-2.5 w-1/2" />
+              </div>
             </div>
           ))}
         </div>
@@ -53,61 +57,64 @@ export function YourProjectsWidget() {
             <p className="font-bold text-primary">No projects uploaded yet</p>
             <p className="text-[10px]">Sync your GitHub repos to showcase accomplishments</p>
           </div>
-          <Link
-            to="/campus/projects"
-            className="btn-primary mt-2 text-[10px] py-1.5 px-3 rounded-lg"
-          >
-            Create First Project
-          </Link>
+          <div className="flex gap-2 mt-2">
+            <Link
+              to="/campus/projects"
+              className="btn-primary text-[10px] py-1.5 px-3 rounded-lg"
+            >
+              Create First Project
+            </Link>
+            <Link
+              to="/campus/profile"
+              className="btn-secondary text-[10px] py-1.5 px-3 rounded-lg"
+            >
+              Link GitHub Repos
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {projects.slice(0, 4).map((project: Project) => (
-            <Link
-              key={project.id}
-              to={`/campus/projects/${project.slug}`}
-              className="p-3 border rounded-xl hover:border-brand-glow hover:bg-[color:var(--bg-surface-2)] transition-all duration-200 flex flex-col justify-between border-[color:var(--border)]"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-xs font-bold text-primary truncate hover:text-brand transition-colors duration-200">
-                    {project.title}
-                  </h4>
-                  {project.githubUrl && (
-                    <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-secondary px-1 py-0.5 rounded uppercase font-black tracking-wide border border-[color:var(--border)]">
-                      GitHub
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted line-clamp-2 mt-1 leading-normal">
-                  {project.description || "No description provided."}
-                </p>
-              </div>
-
-              {/* Project Footer Meta */}
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-[color:var(--border)] text-[9px] text-muted">
-                {project.primaryLanguage ? (
-                  <span className="font-bold truncate max-w-20 text-[9px]">
-                    {project.primaryLanguage}
-                  </span>
-                ) : (
-                  <span />
-                )}
-                {project.githubUrl && (
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-0.5 font-semibold">
-                      <Star size={8} />
-                      {project.starsCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5 font-semibold">
-                      <GitFork size={8} />
-                      {project.forksCount || 0}
-                    </span>
+        <div className="flex flex-col h-full justify-between">
+          <div className="space-y-3.5">
+            {projects.slice(0, 3).map((project: Project) => {
+              const isCompleted = project.status === "COMPLETED" || project.deploymentStatus === "PRODUCTION";
+              return (
+                <Link
+                  key={project.id}
+                  to={`/campus/projects/${project.slug}`}
+                  className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--bg-surface-2)] transition-all duration-200"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-brand-light text-brand shrink-0 border border-brand/5">
+                      <FolderGit2 size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-primary truncate hover:text-brand transition-colors duration-200">
+                        {project.title}
+                      </h4>
+                      <p className="text-[10px] text-secondary truncate mt-0.5 font-medium">
+                        Updated {project.updatedAt ? formatDate(project.updatedAt) : "recently"}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            </Link>
-          ))}
+
+                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
+                    isCompleted
+                      ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                      : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                  }`}>
+                    {isCompleted ? "Completed" : "In Progress"}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <Link
+            to="/campus/projects"
+            className="text-[11px] text-brand hover:underline font-bold mt-4 block"
+          >
+            View all projects →
+          </Link>
         </div>
       )}
     </WidgetContainer>

@@ -29,35 +29,33 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`panel p-5 flex flex-col justify-between transition-all duration-300 hover-lift ${
+      className={`panel p-4 flex items-center gap-4 transition-all duration-300 hover-lift border rounded-2xl ${
         highlight
           ? "border-indigo-500/50 bg-indigo-500/5 dark:bg-indigo-500/10 shadow-glow-sm"
-          : "bg-surface"
+          : "bg-[color:var(--bg-surface)] border-[color:var(--border)]"
       } ${className}`}
       {...props}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-secondary tracking-wide uppercase">
-            {label}
-          </p>
-          <h4 className="text-2xl font-bold text-primary tracking-tight">
-            {value}
-          </h4>
+      {Icon && (
+        <div
+          className={`p-3 rounded-xl flex items-center justify-center shrink-0 ${
+            highlight
+              ? "bg-indigo-500/20 text-indigo-400"
+              : "bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400"
+          }`}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-        {Icon && (
-          <div
-            className={`p-2.5 rounded-lg flex items-center justify-center ${
-              highlight
-                ? "bg-indigo-500/10 text-indigo-500"
-                : "bg-slate-100 dark:bg-slate-900 text-muted-fg"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-          </div>
-        )}
+      )}
+      <div className="space-y-0.5 min-w-0">
+        <h4 className="text-xl font-black text-primary tracking-tight truncate">
+          {value}
+        </h4>
+        <p className="text-[11px] font-bold text-secondary tracking-wide truncate">
+          {label}
+        </p>
       </div>
-      {trend && <div className="mt-3 flex items-center">{trend}</div>}
+      {trend && <div className="ml-auto shrink-0">{trend}</div>}
     </div>
   );
 }

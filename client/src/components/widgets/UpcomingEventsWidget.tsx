@@ -1,4 +1,6 @@
-import { Calendar, MapPin, Video } from "lucide-react";
+import React from "react";
+import { Calendar, MapPin, Video, Laptop, Award } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useEventsQuery } from "../../hooks/usePlatformQueries";
 import { WidgetContainer } from "../ui/WidgetContainer";
 import { SkeletonBlock } from "../ui";
@@ -6,6 +8,14 @@ import { Event } from "../../lib/api";
 
 export function UpcomingEventsWidget() {
   const { data: events, isLoading, error } = useEventsQuery();
+
+  const getEventIcon = (type: string) => {
+    const t = type.toLowerCase();
+    if (t.includes("hackathon")) return Laptop;
+    if (t.includes("workshop") || t.includes("course") || t.includes("bootcamp")) return Laptop;
+    if (t.includes("placement") || t.includes("talk") || t.includes("hiring")) return Award;
+    return Calendar;
+  };
 
   if (isLoading) {
     return (
@@ -43,48 +53,65 @@ export function UpcomingEventsWidget() {
           <span>No upcoming events scheduled</span>
         </div>
       ) : (
-        <div className="space-y-3.5">
-          {events.slice(0, 4).map((event: Event) => (
-            <div
-              key={event.id}
-              className="flex items-start gap-3 p-2 rounded-xl border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--bg-surface-2)] transition-all duration-200"
-            >
-              {/* Event Date Block */}
-              <div className="flex flex-col items-center justify-center h-10 w-10 rounded-xl bg-brand-light text-brand shrink-0 border border-brand/5">
-                <span className="text-[10px] font-black uppercase leading-none">
-                  {new Date(event.startDate).toLocaleString("en-US", { month: "short" })}
-                </span>
-                <span className="text-sm font-black leading-none mt-0.5">
-                  {new Date(event.startDate).getDate()}
-                </span>
-              </div>
+        <div className="flex flex-col h-full justify-between">
+          <div className="space-y-3.5">
+            {events.slice(0, 3).map((event: Event) => {
+              const EventIcon = getEventIcon(event.type);
+              const eventDate = new Date(event.startDate);
+              const monthStr = eventDate.toLocaleString("en-US", { month: "short" }).toUpperCase();
+              const dayStr = eventDate.getDate().toString().padStart(2, "0");
 
-              {/* Event Details */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-primary truncate hover:text-brand transition-colors duration-200">
-                  {event.title}
-                </h4>
-                <div className="flex items-center gap-2 mt-1 text-[10px] text-muted">
-                  <span className="px-1.5 py-0.5 rounded bg-surface-3 text-[9px] font-extrabold uppercase tracking-wide border border-[color:var(--border)]">
-                    {event.type}
-                  </span>
-                  <span className="flex items-center gap-0.5 truncate">
-                    {event.meetingUrl ? (
-                      <>
-                        <Video size={10} />
-                        Online
-                      </>
-                    ) : (
-                      <>
-                        <MapPin size={10} />
-                        {event.location || "On campus"}
-                      </>
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+              return (
+                <Link
+                  key={event.id}
+                  to="/campus/events"
+                  className="flex items-center justify-between p-2 rounded-xl border border-transparent hover:border-[color:var(--border)] hover:bg-[color:var(--bg-surface-2)] transition-all duration-200"
+                >
+                  {/* Event Icon Block */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-brand-light text-brand shrink-0 border border-brand/5">
+                      <EventIcon size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-primary truncate">
+                        {event.title}
+                      </h4>
+                      <p className="text-[10px] text-secondary truncate mt-0.5 font-medium flex items-center gap-1">
+                        {event.meetingUrl ? (
+                          <>
+                            <Video size={10} className="shrink-0" />
+                            Online
+                          </>
+                        ) : (
+                          <>
+                            <MapPin size={10} className="shrink-0" />
+                            {event.location || "On campus"}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Event Date Block (Right aligned) */}
+                  <div className="flex flex-col items-center justify-center pl-2 shrink-0 text-right">
+                    <span className="text-xs font-extrabold text-primary leading-none">
+                      {dayStr}
+                    </span>
+                    <span className="text-[8px] font-black uppercase text-muted tracking-wider mt-0.5">
+                      {monthStr}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          <Link
+            to="/campus/events"
+            className="text-[11px] text-brand hover:underline font-bold mt-4 block"
+          >
+            View all events →
+          </Link>
         </div>
       )}
     </WidgetContainer>
