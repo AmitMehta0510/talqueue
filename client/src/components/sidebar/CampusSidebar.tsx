@@ -14,7 +14,7 @@ export function CampusSidebar() {
 
   return (
     <BaseSidebar
-      activeWorkspace={activeWorkspace}
+      activeWorkspace="CAMPUS"
       workspaceTitle="Campus Workspace"
       links={links}
       onSwitchWorkspace={toggleWorkspace}

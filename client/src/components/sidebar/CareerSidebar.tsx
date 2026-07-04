@@ -14,7 +14,7 @@ export function CareerSidebar() {
 
   return (
     <BaseSidebar
-      activeWorkspace={activeWorkspace}
+      activeWorkspace="CAREER"
       workspaceTitle="Career Workspace"
       links={links}
       onSwitchWorkspace={toggleWorkspace}

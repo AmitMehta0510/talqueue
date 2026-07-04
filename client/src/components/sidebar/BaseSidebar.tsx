@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LucideIcon, ChevronLeft, ChevronRight, RefreshCw, LogOut } from "lucide-react";
+import { LucideIcon, ChevronsLeft, ChevronsRight, RefreshCw, LogOut } from "lucide-react";
 import { useAuth } from "../../core/contexts/AuthContext";
 import { Avatar } from "../ui";
 
@@ -27,41 +27,79 @@ export function BaseSidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, logout } = useAuth();
 
+  const isCareer = activeWorkspace === "CAREER";
+
   return (
     <aside
-      className={`hidden lg:flex lg:flex-col border-r h-[calc(100vh-4rem)] sticky top-16 shrink-0 transition-all duration-300 select-none bg-[color:var(--bg-surface)] border-[color:var(--border)]`}
-      style={{ width: isCollapsed ? "4.5rem" : "16rem" }}
+      className={`hidden lg:flex lg:flex-col border-r h-[calc(100vh-4rem)] sticky top-16 shrink-0 transition-all duration-300 select-none border-[color:var(--border)]`}
+      style={{
+        width: isCollapsed ? "4rem" : "14.5rem",
+        background: isCareer
+          ? "linear-gradient(180deg, #070d19 0%, #050a14 100%)"
+          : "linear-gradient(180deg, #0d0f22 0%, #080a16 100%)"
+      }}
     >
       {/* Workspace Context Switcher Header */}
       <div className="p-4 border-b border-[color:var(--border)] flex flex-col gap-2">
         {isCollapsed ? (
           <button
-            onClick={onSwitchWorkspace}
-            title={`Switch to ${activeWorkspace === "CAMPUS" ? "Career" : "Campus"}`}
-            className="flex items-center justify-center h-10 w-10 mx-auto rounded-xl bg-brand-light text-brand hover:scale-105 transition-all duration-200"
+            onClick={() => setIsCollapsed(false)}
+            title="Expand Sidebar"
+            className="flex items-center justify-center h-9 w-9 mx-auto rounded-xl transition-all duration-200 hover:scale-105"
+            style={{
+              background: isCareer ? "rgba(13, 148, 136, 0.15)" : "rgba(99, 102, 241, 0.15)",
+              color: isCareer ? "#14b8a6" : "var(--brand)",
+            }}
           >
-            <RefreshCw size={18} className="hover:rotate-180 transition-transform duration-500 ease-out" />
+            <ChevronsRight size={16} />
           </button>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-widest font-black text-brand">
-                Workspace
-              </span>
-              <button
-                onClick={onSwitchWorkspace}
-                className="text-[10px] text-muted hover:text-brand transition-colors duration-200 flex items-center gap-1 font-bold"
-              >
-                <RefreshCw size={10} />
-                Switch
-              </button>
-            </div>
-            <div className="flex items-center justify-between bg-surface-2 p-2.5 rounded-xl border border-[color:var(--border)]">
-              <span className="text-sm font-black text-primary truncate mr-1">
-                {workspaceTitle}
-              </span>
-              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 shadow-sm" />
-            </div>
+          <div className="flex gap-1.5 items-center w-full">
+            {isCareer ? (
+              <>
+                <button
+                  onClick={onSwitchWorkspace}
+                  className="flex-1 flex items-center justify-between px-3.5 py-2 rounded-xl transition-all duration-200 font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] shadow-md text-sm h-9"
+                  style={{
+                    background: "linear-gradient(135deg, #0d9488, #0891b2)",
+                    color: "#ffffff",
+                    boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)"
+                  }}
+                >
+                  <span>Career</span>
+                  <RefreshCw size={14} className="opacity-80" />
+                </button>
+                <button
+                  onClick={() => setIsCollapsed(true)}
+                  className="flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 hover:bg-surface-3 hover:scale-[1.05] active:scale-[0.95] text-muted hover:text-primary shrink-0 border border-[color:var(--border)] bg-surface-2"
+                  title="Collapse Sidebar"
+                >
+                  <ChevronsLeft size={16} style={{ color: "#14b8a6" }} />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={onSwitchWorkspace}
+                  className="flex-1 flex items-center justify-between px-3.5 py-2 rounded-xl transition-all duration-200 font-black hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] shadow-md text-sm h-9"
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+                    color: "#ffffff",
+                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.25)"
+                  }}
+                >
+                  <span>Campus</span>
+                  <RefreshCw size={14} className="opacity-80" />
+                </button>
+                <button
+                  onClick={() => setIsCollapsed(true)}
+                  className="flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 hover:bg-surface-3 hover:scale-[1.05] active:scale-[0.95] text-muted hover:text-primary shrink-0 border border-[color:var(--border)] bg-surface-2"
+                  title="Collapse Sidebar"
+                >
+                  <ChevronsLeft size={16} style={{ color: "var(--brand)" }} />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -81,10 +119,24 @@ export function BaseSidebar({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover-lift ${
                   isActive
-                    ? "bg-[color:var(--brand-light)] text-[color:var(--brand)] font-bold shadow-sm"
+                    ? "font-bold shadow-sm"
                     : "text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--bg-surface-3)]"
                 } ${isCollapsed ? "justify-center" : ""}`
               }
+              style={({ isActive }) => {
+                if (!isActive) return {};
+                if (isCareer) {
+                  return {
+                    background: "rgba(13, 148, 136, 0.15)",
+                    color: "#14b8a6",
+                  };
+                } else {
+                  return {
+                    background: "rgba(99, 102, 241, 0.18)",
+                    color: "var(--brand)",
+                  };
+                }
+              }}
               title={isCollapsed ? link.label : undefined}
             >
               <Icon size={18} className="shrink-0 stroke-[2px]" />
@@ -96,8 +148,8 @@ export function BaseSidebar({
         })}
       </nav>
 
-      {/* Footer Area with Collapse Toggle and User Info */}
-      <div className="p-3 border-t border-[color:var(--border)] space-y-3 bg-surface-2/30">
+      {/* Footer Area with User Info */}
+      <div className="p-3 border-t border-[color:var(--border)] bg-surface-2/30">
         {/* User Card */}
         {user && (
           <div
@@ -118,14 +170,6 @@ export function BaseSidebar({
             )}
           </div>
         )}
-
-        {/* Collapse Button */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full flex items-center justify-center py-2 text-xs text-muted hover:text-primary transition-colors border border-[color:var(--border)] rounded-xl bg-surface-2 hover:bg-surface-3"
-        >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
       </div>
     </aside>
   );

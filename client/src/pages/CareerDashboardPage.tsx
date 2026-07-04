@@ -1,5 +1,4 @@
 import { WelcomeBanner } from "../components/widgets/WelcomeBanner";
-import { MiniProfileWidget } from "../components/widgets/MiniProfileWidget";
 import { MetricsSummaryWidget } from "../components/widgets/MetricsSummaryWidget";
 import { RecentApplicationsWidget } from "../components/widgets/RecentApplicationsWidget";
 import { ActiveJobsWidget } from "../components/widgets/ActiveJobsWidget";
@@ -15,23 +14,15 @@ export function CareerDashboardPage() {
         {/* Top welcome splash card */}
         <WelcomeBanner />
 
-        {/* 12-column grid configuration */}
-        <div className="grid grid-cols-12 gap-6 items-start">
-          {/* Dossier profile card */}
-          <div className="col-span-12 lg:col-span-3">
-            <MiniProfileWidget />
-          </div>
-
-          {/* Core metrics and jobs/applications feed */}
-          <div className="col-span-12 lg:col-span-9 space-y-6">
-            <MetricsSummaryWidget />
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 lg:col-span-8">
-                <RecentApplicationsWidget />
-              </div>
-              <div className="col-span-12 lg:col-span-4">
-                <ActiveJobsWidget />
-              </div>
+        {/* Metrics + feed — full width (no dossier card) */}
+        <div className="space-y-6">
+          <MetricsSummaryWidget />
+          <div className="grid grid-cols-12 gap-6">
+            <div className="col-span-12 lg:col-span-8">
+              <RecentApplicationsWidget />
+            </div>
+            <div className="col-span-12 lg:col-span-4">
+              <ActiveJobsWidget />
             </div>
           </div>
         </div>
@@ -49,3 +40,4 @@ export function CareerDashboardPage() {
   );
 }
 export default CareerDashboardPage;
+

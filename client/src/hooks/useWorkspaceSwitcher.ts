@@ -1,27 +1,32 @@
 import { useCallback } from "react";
 import { useWorkspace } from "./useWorkspace";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Custom hook providing actions to switch between Campus and Career workspaces.
- * Note: Actual route navigation triggers are deferred to Phase 3.
  */
 export function useWorkspaceSwitcher() {
   const { activeWorkspace, setWorkspace } = useWorkspace();
+  const navigate = useNavigate();
 
   /** Switches the active workspace to CAMPUS */
   const switchToCampus = useCallback(() => {
     setWorkspace("CAMPUS");
-  }, [setWorkspace]);
+    navigate("/campus");
+  }, [setWorkspace, navigate]);
 
   /** Switches the active workspace to CAREER */
   const switchToCareer = useCallback(() => {
     setWorkspace("CAREER");
-  }, [setWorkspace]);
+    navigate("/career");
+  }, [setWorkspace, navigate]);
 
   /** Toggles the active workspace context to the other workspace */
   const toggleWorkspace = useCallback(() => {
-    setWorkspace(activeWorkspace === "CAMPUS" ? "CAREER" : "CAMPUS");
-  }, [activeWorkspace, setWorkspace]);
+    const target = activeWorkspace === "CAMPUS" ? "CAREER" : "CAMPUS";
+    setWorkspace(target);
+    navigate(target === "CAMPUS" ? "/campus" : "/career");
+  }, [activeWorkspace, setWorkspace, navigate]);
 
   return {
     switchToCampus,
