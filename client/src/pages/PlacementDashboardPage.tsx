@@ -136,11 +136,11 @@ export function PlacementDashboardPage() {
 
   // Aggregate stats
   const stats = useMemo(() => {
-    let total = apps.length;
-    let inProgress = drives.filter((d) => d.status === "ONGOING" || d.status === "UPCOMING").length;
-    let offers = apps.filter((a) => a.status === "SELECTED" || a.status === "PPO_OFFERED").length;
-    let myInProgressApps = apps.filter((a) => a.status === "APPLIED" || a.status === "SHORTLISTED" || a.status.startsWith("INTERVIEW")).length;
-    let successRate = total > 0 ? Math.round(((offers + myInProgressApps) / total) * 100) : 0;
+    const total = apps.length;
+    const inProgress = drives.filter((d) => d.status === "ONGOING" || d.status === "UPCOMING").length;
+    const offers = apps.filter((a) => a.status === "SELECTED" || a.status === "PPO_OFFERED").length;
+    const myInProgressApps = apps.filter((a) => a.status === "APPLIED" || a.status === "SHORTLISTED" || a.status.startsWith("INTERVIEW")).length;
+    const successRate = total > 0 ? Math.round(((offers + myInProgressApps) / total) * 100) : 0;
 
     return { total, inProgress, offers, successRate };
   }, [apps, drives]);

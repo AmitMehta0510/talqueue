@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { useUrlState } from "../core/utils/useUrlState";
 import { ProjectCard } from "../components/cards/ProjectCard";
 import { CreateProjectForm } from "../components/forms/CreateProjectForm";
 import { Avatar, EmptyState, Metric } from "../components/ui";
@@ -413,9 +414,9 @@ function InviteUserPanel({ project }: { project: Project }) {
         placeholder="Invite message"
       />
       <div className="mt-4 space-y-2">
-        {users.slice(0, 5).map((item: any) => {
+        {users.slice(0, 5).map((item: User | { user: User }) => {
           // API returns { user, relevanceScore } or raw user — handle both
-          const foundUser: User = item?.id ? item : item?.user;
+          const foundUser: User = "id" in item ? item : item.user;
           if (!foundUser) return null;
           const isPending = invites.some(
             (inv) => inv.invitedUserId === foundUser.id && inv.status === "PENDING"
@@ -814,8 +815,8 @@ export function ProjectsPage() {
   const projectsQuery = useProjectsQuery(24);
   const createProject = useCreateProjectMutation();
   const joinProject = useJoinProjectMutation();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("ALL");
+  const [query, setQuery] = useUrlState("search", "");
+  const [status, setStatus] = useUrlState("status", "ALL");
   const [pendingJoinIds, setPendingJoinIds] = useState<Set<string>>(new Set());
   const projects = projectsQuery.data || [];
   const filteredProjects = useMemo(() => {

@@ -208,6 +208,7 @@ export type Department = {
   id: string;
   name: string;
   collegeId: string;
+  standardDepartmentId?: string | null;
   createdAt?: string;
   hod?: string | null;
   _count?: {
@@ -257,6 +258,9 @@ export type Experience = {
   verificationScore?: number;
   workEmailVerified?: boolean;
   workEmail?: string | null;
+  managerName?: string | null;
+  managerEmail?: string | null;
+  managerLinkedinUrl?: string | null;
   techStack?: string[];
   skillsUsed?: string[];
   teamSize?: number | null;

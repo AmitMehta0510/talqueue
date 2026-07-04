@@ -152,7 +152,9 @@ function CreateHackathonPanel({ disabled }: { disabled?: boolean }) {
     try {
       const res = await uploadBanner(file, "avatar");
       setForm((current) => ({ ...current, bannerUrl: res.fileUrl }));
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -1216,11 +1218,16 @@ export function HackathonsPage() {
   const { user } = useAuth();
   
   // Search and filter states
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlState("search", "");
   const [status, setStatus] = useUrlState<(typeof statusFilters)[number]>("status", "ALL");
   const [mode, setMode] = useUrlState<string>("mode", "");
   const [techStack, setTechStack] = useUrlState<string>("techStack", "");
-  const [externalOnly, setExternalOnly] = useState(false);
+  const [externalStr, setExternalStr] = useUrlState("external", "false");
+  const externalOnly = externalStr === "true";
+  const setExternalOnly = (val: boolean | ((prev: boolean) => boolean)) => {
+    const nextVal = typeof val === "function" ? val(externalOnly) : val;
+    setExternalStr(String(nextVal));
+  };
 
   // Pass active filters directly to the backend query
   const queryParams = useMemo(() => ({
@@ -1283,11 +1290,11 @@ export function HackathonsPage() {
             value={status}
             onChange={(event) => setStatus(event.target.value as (typeof statusFilters)[number])}
           >
-            <option value="ALL">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="LIVE">Live</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="DRAFT">Draft</option>
+            {statusFilters.map((sf) => (
+              <option key={sf} value={sf}>
+                {sf === "ALL" ? "All Statuses" : titleCase(sf)}
+              </option>
+            ))}
           </select>
 
           {/* Toggle buttons */}

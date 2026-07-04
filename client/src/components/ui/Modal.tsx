@@ -29,6 +29,14 @@ const SIZE_CLASSES = {
   full: "max-w-full h-full",
 };
 
+const getFocusableElements = (container: HTMLElement): HTMLElement[] => {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]'
+    )
+  ).filter((el) => el.tabIndex !== -1);
+};
+
 /**
  * A highly accessible, reusable Modal component featuring focus trapping,
  * escape key closure, overlay click detection, body scroll lock, and portal rendering.
@@ -117,14 +125,6 @@ export function Modal({
     if (e.target === overlayRef.current) {
       onClose();
     }
-  };
-
-  const getFocusableElements = (container: HTMLElement): HTMLElement[] => {
-    return Array.from(
-      container.querySelectorAll<HTMLElement>(
-        'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]'
-      )
-    ).filter((el) => el.tabIndex !== -1);
   };
 
   return createPortal(
