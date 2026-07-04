@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, GraduationCap, Search } from "lucide-react";
 import {
@@ -95,7 +95,7 @@ export function RecruiterPage() {
   const updateAppMutation = useUpdateApplicationStatusMutation(selectedJobIdForApps);
 
   // Set default selected job in Applications tab when jobs load
-  useMemo(() => {
+  useEffect(() => {
     if (activeJobs.length > 0 && !selectedJobIdForApps) {
       setSelectedJobIdForApps(activeJobs[0].id);
     }

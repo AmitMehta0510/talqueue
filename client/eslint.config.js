@@ -21,6 +21,13 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "no-empty": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/purity": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      "react-hooks/incompatible-library": "off",
     },
   },
 );

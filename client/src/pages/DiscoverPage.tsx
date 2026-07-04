@@ -196,14 +196,6 @@ export function DiscoverPage() {
   const collaborators = useSuggestedCollaboratorsQuery(6);
   const teammates = useSuggestedTeammatesQuery(6);
 
-  // Auto-search when URL has an initial query
-  useEffect(() => {
-    if (initialQuery) {
-      doSearch(initialQuery, emptyFilters);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const doSearch = useCallback(
     (q: string, f: TalentFilters) => {
       setHasSearched(true);
@@ -225,6 +217,14 @@ export function DiscoverPage() {
     },
     [search]
   );
+
+  // Auto-search when URL has an initial query
+  useEffect(() => {
+    if (initialQuery) {
+      doSearch(initialQuery, emptyFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
