@@ -273,7 +273,7 @@ function AppRoutes() {
           <Route path="/campus" element={<CampusLayout />}>
             <Route index element={<PageTransitionWrapper><CampusDashboardPage /></PageTransitionWrapper>} />
             <Route path="feed" element={<PageTransitionWrapper><FeedPage /></PageTransitionWrapper>} />
-            <Route path="discover" element={<PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>} />
+
             <Route path="projects" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
             <Route path="projects/:projectSlug" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
             <Route path="project/:projectSlug" element={<ProjectRedirect />} />
@@ -461,6 +461,13 @@ function AppRoutes() {
               }
             />
             <Route path="/search" element={<PageTransitionWrapper><SearchResultsPage /></PageTransitionWrapper>} />
+            {/* Discover is a shared feature — accessible from both Campus and Career workspaces */}
+            <Route
+              path="/discover"
+              element={
+                <PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>
+              }
+            />
             <Route
               path="/notifications"
               element={
@@ -489,7 +496,8 @@ function AppRoutes() {
 
           {/* Legacy flat route redirects */}
           <Route path="/feed" element={<Navigate to="/campus/feed" replace />} />
-          <Route path="/discover" element={<Navigate to="/campus/discover" replace />} />
+          {/* /campus/discover is legacy — Discover is now a shared route at /discover */}
+          <Route path="/campus/discover" element={<Navigate to="/discover" replace />} />
           <Route path="/projects" element={<Navigate to="/campus/projects" replace />} />
           <Route path="/projects/:projectSlug" element={<ProjectRedirect />} />
           <Route path="/colleges" element={<Navigate to="/campus/colleges" replace />} />

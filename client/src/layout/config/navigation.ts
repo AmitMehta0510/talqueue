@@ -30,7 +30,7 @@ export type NavSection = {
 export const campusPinnedSections: NavSection[] = [
   { to: "/campus",             label: "Dashboard",        icon: LayoutDashboard },
   { to: "/campus/feed",        label: "Feed",             icon: Home },
-  { to: "/campus/discover",    label: "Discover",         icon: Search },
+  { to: "/discover",          label: "Discover",         icon: Search },
   { to: "/campus/communities", label: "Communities",      icon: Globe },
   { to: "/campus/projects",    label: "Projects",         icon: Rocket },
   { to: "/campus/teams",       label: "Teams",            icon: Users,             requiresAuth: true },
@@ -57,6 +57,7 @@ export const campusBottomTabs: NavSection[] = [
 // CAREER CONFIGURATIONS
 export const careerPinnedSections: NavSection[] = [
   { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
+  { to: "/discover",           label: "Discover",   icon: Search },
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career/companies",   label: "Companies",  icon: Building2 },
   { to: "/career/referrals",   label: "Referrals",  icon: Handshake,         requiresAuth: true },

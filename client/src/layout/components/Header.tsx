@@ -94,12 +94,14 @@ export function Header({
     <header className="sticky top-0 z-40 border-b" style={glassStyle}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
-        {/* Left: Logo & Search */}
-        <div className="flex items-center gap-3 flex-1 md:flex-initial">
+        {/* Left: Logo */}
+        <div className="flex items-center gap-3 md:flex-1">
           <LogoSection />
+        </div>
 
-          {/* Global Search */}
-          <div className="relative hidden md:block w-64 max-w-xs ml-2">
+        {/* Center: Global Search */}
+        <div className="hidden md:flex justify-center flex-1 max-w-md">
+          <div className="relative w-full max-w-xs">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
               size={15}
@@ -107,7 +109,7 @@ export function Header({
             />
             <input
               type="text"
-              className="field pl-9 py-1.5 text-xs"
+              className="field pl-9 py-1.5 text-xs w-full"
               style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}
               placeholder="Search engineers, skills, jobs..."
               onKeyDown={(e) => {
@@ -121,7 +123,7 @@ export function Header({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 md:flex-1 md:justify-end">
           
           {/* API Health indicator for administrators */}
           {isUserAdmin && (

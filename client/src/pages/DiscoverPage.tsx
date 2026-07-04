@@ -56,6 +56,7 @@ interface TalentFilters {
   gradYear: string;
   role: string;
   skills: string;
+  currentCompany: string;
   openToWork: boolean;
   acceptingReferrals: boolean;
   verifiedSkillsOnly: boolean;
@@ -67,6 +68,7 @@ const emptyFilters: TalentFilters = {
   gradYear: "",
   role: "",
   skills: "",
+  currentCompany: "",
   openToWork: false,
   acceptingReferrals: false,
   verifiedSkillsOnly: false,
@@ -213,6 +215,8 @@ export function DiscoverPage() {
           year: f.gradYear,
           skills: f.skills,
           role: f.role,
+          // TODO: wire currentCompany on backend (POST /api/v1/search/users ?currentCompany=)
+          currentCompany: f.currentCompany || undefined,
           openToWork: f.openToWork,
           acceptingReferrals: f.acceptingReferrals,
           verifiedSkillsOnly: f.verifiedSkillsOnly,
@@ -339,13 +343,13 @@ export function DiscoverPage() {
                     className="text-xl font-black tracking-tight leading-none"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Talent Directory
+                    Discover People
                   </h1>
                   <p
                     className="text-xs mt-0.5"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    Find engineers, collaborators &amp; teammates
+                    Find engineers, collaborators, teammates &amp; referrers
                   </p>
                 </div>
               </div>
@@ -507,7 +511,7 @@ export function DiscoverPage() {
                 </label>
 
                 {/* Skills */}
-                <label className="block sm:col-span-2">
+                <label className="block">
                   <span className="field-label">Skills (comma-separated)</span>
                   <input
                     id="filter-skills"
@@ -516,6 +520,20 @@ export function DiscoverPage() {
                     value={filters.skills}
                     onChange={(e) =>
                       setFilters((f) => ({ ...f, skills: e.target.value }))
+                    }
+                  />
+                </label>
+
+                {/* Current Company */}
+                <label className="block">
+                  <span className="field-label">Current Company</span>
+                  <input
+                    id="filter-current-company"
+                    className="field text-sm"
+                    placeholder="e.g. Meesho, Google, Razorpay"
+                    value={filters.currentCompany}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, currentCompany: e.target.value }))
                     }
                   />
                 </label>
