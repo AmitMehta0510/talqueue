@@ -11,7 +11,7 @@ import { JobsExploreTab } from "./JobsExploreTab";
 import { JobsRecommendedTab } from "./JobsRecommendedTab";
 import { JobsSavedTab } from "./JobsSavedTab";
 import { JobsApplicationsTab } from "./JobsApplicationsTab";
-import { JobsCampusTab } from "./JobsCampusTab";
+import { JobsOffersTab } from "./JobsOffersTab";
 import { JobsRecruiterTab } from "./JobsRecruiterTab";
 import { useJobsWorkspace, TabType } from "../../hooks/useJobsWorkspace";
 import { Job, User } from "../../lib/api";
@@ -105,7 +105,7 @@ export function JobsPageContent() {
       { key: "recommended" as TabType, label: "Recommended" },
       { key: "applications" as TabType, label: "My Applications" },
       { key: "saved" as TabType, label: "Saved" },
-      { key: "campus-drives" as TabType, label: "Campus Drives" },
+      { key: "offers" as TabType, label: "Offers Received" },
     ] : []),
     ...(isRecruiter ? [{ key: "recruiter" as TabType, label: "Recruiter" }] : []),
   ];
@@ -240,10 +240,8 @@ export function JobsPageContent() {
           />
         )}
 
-        {activeTab === "campus-drives" && collegeId && (
-          <JobsCampusTab
-            collegeId={collegeId}
-          />
+        {activeTab === "offers" && (
+          <JobsOffersTab />
         )}
 
         {activeTab === "recruiter" && (

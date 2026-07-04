@@ -1,5 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
-import { Rocket, Users, Gavel, Briefcase, FileText, CheckCircle2, MonitorPlay, type LucideIcon, Trophy, FolderGit2 } from "lucide-react";
+import { Gift, Users, Briefcase, FileText, CheckCircle2, MonitorPlay, type LucideIcon, Trophy, FolderGit2 } from "lucide-react";
 import { useAuth } from "../../core/contexts/AuthContext";
 import { isRecruiter } from "../../core/utils/roles";
 import {
@@ -9,8 +9,7 @@ import {
   useRecruiterJobsQuery,
   useSuggestedJobsQuery,
   useMyJobApplicationsQuery,
-  useMyFullProfileQuery,
-  usePlacementDrivesForCollegeQuery,
+  useMyExternalApplicationsQuery,
 } from "../../hooks/usePlatformQueries";
 import { StatCard } from "../ui";
 
@@ -31,14 +30,12 @@ export function MetricsSummaryWidget() {
   // --- Career Student Queries ---
   const studentSuggestedJobs = useSuggestedJobsQuery();
   const studentJobApplications = useMyJobApplicationsQuery();
-  const studentProfile = useMyFullProfileQuery();
-  const studentCollegeId = studentProfile.data?.profile?.collegeId;
-  const studentPlacementDrives = usePlacementDrivesForCollegeQuery(studentCollegeId);
+  const studentExternalApps = useMyExternalApplicationsQuery();
 
   // --- Determine loading and content states ---
   const isCampusLoading = campusProjects.isLoading || campusTeams.isLoading || campusDrives.isLoading;
   const isRecruiterLoading = recruiterJobs.isLoading;
-  const isStudentLoading = studentSuggestedJobs.isLoading || studentJobApplications.isLoading || studentProfile.isLoading || studentPlacementDrives.isLoading;
+  const isStudentLoading = studentSuggestedJobs.isLoading || studentJobApplications.isLoading || studentExternalApps.isLoading;
 
   const isLoading = isCareerWorkspace
     ? (recruiter ? isRecruiterLoading : isStudentLoading)
@@ -115,8 +112,11 @@ export function MetricsSummaryWidget() {
       },
     ];
   } else {
-    const apps = studentJobApplications.data || [];
-    const interviews = apps.filter((app) => app.status?.startsWith("INTERVIEW")).length;
+    const platformApps = studentJobApplications.data || [];
+    const externalApps = studentExternalApps.data || [];
+    const totalApplications = platformApps.length + externalApps.length;
+    const interviews = platformApps.filter((app) => app.status?.startsWith("INTERVIEW")).length;
+    const offersReceived = externalApps.filter((app) => app.status === "OFFER_RECEIVED").length;
 
     stats = [
       {
@@ -127,9 +127,9 @@ export function MetricsSummaryWidget() {
       },
       {
         label: "Applications Sent",
-        value: apps.length,
+        value: totalApplications,
         icon: FileText,
-        to: "/career/jobs",
+        to: "/career/jobs?tab=applications",
       },
       {
         label: "Interviews Booked",
@@ -138,10 +138,10 @@ export function MetricsSummaryWidget() {
         to: "/career/interviews",
       },
       {
-        label: "Active Drives",
-        value: studentPlacementDrives.data?.length ?? 0,
-        icon: Rocket,
-        to: "/campus/placements",
+        label: "Offers Received",
+        value: offersReceived,
+        icon: Gift,
+        to: "/career/jobs?tab=applications",
       },
     ];
   }

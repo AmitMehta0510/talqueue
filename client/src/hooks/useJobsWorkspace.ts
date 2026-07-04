@@ -17,7 +17,7 @@ import {
   useJobLocationsAutocompleteQuery,
 } from "./usePlatformQueries";
 
-export type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "campus-drives";
+export type TabType = "explore" | "recommended" | "applications" | "saved" | "recruiter" | "offers";
 export type SubViewType = { type: "dashboard" } | { type: "pipeline"; jobId: string };
 
 export function useJobsWorkspace() {
