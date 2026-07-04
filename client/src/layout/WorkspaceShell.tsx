@@ -41,6 +41,7 @@ export function WorkspaceShell({
         showWorkspaceContext={true}
         workspaceTitle={workspaceTitle}
         onSwitchWorkspace={toggleWorkspace}
+        showChatIcon={true}
       />
 
       {/* Sidebar + content area flex wrapper */}

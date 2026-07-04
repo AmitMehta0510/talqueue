@@ -4,6 +4,7 @@ import { Search, Menu, X, Briefcase, type LucideIcon } from "lucide-react";
 import { User } from "../../lib/api";
 import { LogoSection } from "./LogoSection";
 import { NotificationArea } from "./NotificationArea";
+import { ChatIconButton } from "./ChatIconButton";
 import { UserMenu } from "./UserMenu";
 import { isPlatformAdmin } from "../../core/utils/roles";
 
@@ -35,6 +36,8 @@ type HeaderProps = {
   workspaceTitle?: string;
   /** Switch context action trigger */
   onSwitchWorkspace?: () => void;
+  /** Show chat icon button (workspace layouts only) */
+  showChatIcon?: boolean;
 };
 
 const glassStyle: React.CSSProperties = {
@@ -59,6 +62,7 @@ export function Header({
   showWorkspaceContext = false,
   workspaceTitle = "",
   onSwitchWorkspace,
+  showChatIcon = false,
 }: HeaderProps) {
   const navigate = useNavigate();
   const isUserAdmin = isPlatformAdmin(user);
@@ -144,6 +148,9 @@ export function Header({
             <Briefcase size={14} className="shrink-0" />
             <span>Business</span>
           </Link>
+
+          {/* Chat icon — workspace layouts only, authenticated users */}
+          {user && showChatIcon && <ChatIconButton />}
 
           {/* Notifications area */}
           <NotificationArea user={user} />
