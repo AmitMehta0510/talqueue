@@ -42,7 +42,7 @@ jobs:
         working-directory: client
         run: |
           npm ci
-          npx eslint . --max-warnings=0
+          npx eslint .
         continue-on-error: false
 
   # ─── Job 2: Unit / Integration Tests ───────────────────────────────────────

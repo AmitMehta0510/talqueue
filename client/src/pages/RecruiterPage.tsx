@@ -82,9 +82,9 @@ export function RecruiterPage() {
   const withdrawInviteMutation = useWithdrawDriveInviteMutation(companyId);
   const respondToInviteMutation = useRespondToDriveInviteMutation(null);
   const myPostedDrivesQuery = useMyPostedDrivesQuery();
-  const postedDrives = myPostedDrivesQuery.data || [];
+  const postedDrives = useMemo(() => myPostedDrivesQuery.data || [], [myPostedDrivesQuery.data]);
 
-  const activeJobs = jobsQuery.data || [];
+  const activeJobs = useMemo(() => jobsQuery.data || [], [jobsQuery.data]);
 
   // Applications Query
   const appsQuery = useRecruiterClaimJobApplicationsQuery(
