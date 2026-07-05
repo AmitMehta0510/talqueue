@@ -58,7 +58,7 @@ export class JobPersister {
       description: parsed.description,
       requirements: parsed.requirements?.value?.join("\n") ?? "",
       responsibilities: parsed.responsibilities?.value?.join("\n") ?? "",
-      benefits: parsed.benefits?.value?.join("\n") ?? "",
+      perks: parsed.benefits?.value?.join("\n") ?? "",
       location: loc?.raw || parsed.location?.value?.city || "Not specified",
       type: (parsed.jobType?.value || "FULL_TIME") as any,
       workMode: (parsed.workMode?.value || "ONSITE") as any,

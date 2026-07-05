@@ -286,7 +286,7 @@ function buildJobDocument(job: any, isPromoted: boolean, hasActiveAd: boolean): 
     companyName:      job.company?.name || job.companyName || "Unknown Company",
     requirements:     job.requirements,
     responsibilities: job.responsibilities,
-    benefits:         job.benefits,
+    benefits:         job.perks,
     status:           job.status,
     type:             job.type,
     workMode:         job.workMode,

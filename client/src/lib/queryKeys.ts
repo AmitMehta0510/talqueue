@@ -88,7 +88,7 @@ export const queryKeys = {
   },
   jobs: {
     all: ["jobs"] as const,
-    list: (params?: Record<string, unknown>) => ["jobs", "list", params ?? {}] as const,
+    list: (params?: Record<string, unknown>) => ["jobs", "list", JSON.stringify(params ?? {}, Object.keys(params ?? {}).sort())] as const,
     detail: (slug: string) => ["jobs", "detail", slug] as const,
     company: (companyId: string) => ["jobs", "company", companyId] as const,
     recruiter: () => ["jobs", "recruiter"] as const,

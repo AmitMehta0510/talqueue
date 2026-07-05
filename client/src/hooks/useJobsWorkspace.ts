@@ -74,9 +74,23 @@ export function useJobsWorkspace() {
   const prevTab = useRef(activeTab);
 
   // Reset pagination on tab/filter change
+  // IMPORTANT: selectedJobTypes, selectedSkills, selectedLocations come from useUrlState
+  // and return a NEW array reference on every render (deserialized from URL string).
+  // Using them directly as deps would reset page on every render. 
+  // So we serialize them to stable strings for comparison.
   useEffect(() => {
     setJobPage(1);
-  }, [activeTab, searchVal, selectedWorkModes, selectedJobTypes, selectedSkills, selectedLocations, selectedRoles, freshness]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    searchVal,
+    selectedWorkModes.join(","),
+    selectedJobTypes.join(","),
+    selectedSkills.join(","),
+    selectedLocations.join(","),
+    selectedRoles.join(","),
+    freshness,
+  ]);
 
   // Queries
   const jobsQuery = useJobsQuery(

@@ -30,10 +30,32 @@ export interface JobDetailDrawerProps {
   isEmployeesFetching: boolean;
 }
 
+// Detect if a string contains HTML tags
+function isHtmlContent(text: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(text);
+}
+
+// Render rich HTML job descriptions (from ATS scrapers)
+function renderHtmlContent(text: string | null | undefined) {
+  if (!text) return null;
+  return (
+    <div
+      className="prose prose-sm max-w-none text-sm leading-relaxed job-description-html"
+      style={{ color: "var(--text-secondary)" }}
+      dangerouslySetInnerHTML={{ __html: text }}
+    />
+  );
+}
+
 // Helper to render plain text lists as neat bulleted list items in premium UI/UX
 function renderDynamicList(text: string | null | undefined) {
   if (!text) return null;
-  
+
+  // If the content contains HTML, render it as HTML
+  if (isHtmlContent(text)) {
+    return renderHtmlContent(text);
+  }
+
   // Split lines, remove bullet markers, and clean whitespace
   const lines = text
     .split(/\r?\n/)

@@ -178,61 +178,62 @@ export function JobsExploreTab({
           </p>
         )}
 
-        {isLoading ? (
-          <div className="space-y-2.5 max-h-[calc(100vh-210px)] overflow-y-auto pr-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <JobRowCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : isError ? (
-          <ErrorState title="Couldn't load jobs" text="Check your connection and try again." onRetry={refetch} />
-        ) : filteredJobs.length > 0 ? (
-          <div className="space-y-2.5 max-h-[calc(100vh-210px)] overflow-y-auto pr-1">
-            {filteredJobs.map((job) => (
-              <JobRowCard
-                key={job.id}
-                job={job}
-                isSelected={selectedJob?.id === job.id}
-                hasApplied={appliedJobIds.has(job.id)}
-                isSaved={savedJobIds.has(job.id)}
-                isSaveLoading={isSavePending && pendingSaveJobId === job.id}
-                onSelect={() => setSelectedJob(job)}
-                onSaveToggle={(e) => onSaveToggle(e, job.id)}
-                isRecruiter={isRecruiter}
-                userSkillNames={userSkillNames}
+        <div className="flex flex-col" style={{ maxHeight: "calc(100vh - 210px)" }}>
+          {/* Scrollable job list */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 min-h-0">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <JobRowCardSkeleton key={i} />
+              ))
+            ) : isError ? (
+              <ErrorState title="Couldn't load jobs" text="Check your connection and try again." onRetry={refetch} />
+            ) : filteredJobs.length > 0 ? (
+              filteredJobs.map((job) => (
+                <JobRowCard
+                  key={job.id}
+                  job={job}
+                  isSelected={selectedJob?.id === job.id}
+                  hasApplied={appliedJobIds.has(job.id)}
+                  isSaved={savedJobIds.has(job.id)}
+                  isSaveLoading={isSavePending && pendingSaveJobId === job.id}
+                  onSelect={() => setSelectedJob(job)}
+                  onSaveToggle={(e) => onSaveToggle(e, job.id)}
+                  isRecruiter={isRecruiter}
+                  userSkillNames={userSkillNames}
+                />
+              ))
+            ) : (
+              <EmptyState
+                icon={BriefcaseBusiness}
+                title="No jobs match your filters"
+                text="Try adjusting the filters on the left or changing your search term."
               />
-            ))}
+            )}
           </div>
-        ) : (
-          <EmptyState
-            icon={BriefcaseBusiness}
-            title="No jobs match your filters"
-            text="Try adjusting the filters on the left or changing your search term."
-          />
-        )}
 
-        {/* Pagination */}
-        {filteredJobs.length > 0 && (
-          <div className="flex items-center justify-between border-t pt-4 mt-2 px-1 shrink-0" style={{ borderColor: "var(--border)" }}>
-            <button
-              type="button"
-              disabled={jobPage <= 1}
-              onClick={() => setJobPage((p) => Math.max(1, p - 1))}
-              className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-50"
-            >
-              ← Previous
-            </button>
-            <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>Page {jobPage} of {totalPages || 1}</span>
-            <button
-              type="button"
-              disabled={jobPage >= (totalPages || 1)}
-              onClick={() => setJobPage((p) => p + 1)}
-              className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-50"
-            >
-              Next →
-            </button>
-          </div>
-        )}
+          {/* Pagination — always visible at bottom, never hidden by scroll */}
+          {!isLoading && !isError && filteredJobs.length > 0 && (
+            <div className="flex items-center justify-between border-t pt-3 mt-2 px-1 shrink-0" style={{ borderColor: "var(--border)" }}>
+              <button
+                type="button"
+                disabled={jobPage <= 1}
+                onClick={() => setJobPage((p) => Math.max(1, p - 1))}
+                className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-50"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>Page {jobPage} of {totalPages || 1}</span>
+              <button
+                type="button"
+                disabled={jobPage >= (totalPages || 1)}
+                onClick={() => { setJobPage((p) => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-50"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Details drawer (right col) */}
