@@ -6,8 +6,9 @@ import { isTechOrInternRole } from "../utils/roleFilter";
 /**
  * GreenhouseAdapter — fetches and normalizes jobs from the Greenhouse public board API.
  *
- * API: GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs
+ * API: GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true
  * - Returns `jobs[]` with `id`, `title`, `absolute_url`, `location`, `content` (HTML), `updated_at`
+ * - `?content=true` is REQUIRED — without it, `job.content` is null for all jobs
  * - No structured employment type field on the public board API — falls through to Tier 2/3 classification
  */
 export class GreenhouseAdapter implements ATSAdapter {
@@ -15,7 +16,7 @@ export class GreenhouseAdapter implements ATSAdapter {
 
   async fetchJobs(token: string, company: CompanyRow): Promise<RawJobInput[]> {
     const response = await resilientGet(
-      `https://boards-api.greenhouse.io/v1/boards/${token}/jobs`,
+      `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=true`,
     );
 
     const rawJobs: any[] = response.data?.jobs ?? [];

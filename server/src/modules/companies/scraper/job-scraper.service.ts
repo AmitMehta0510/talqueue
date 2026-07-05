@@ -5,26 +5,61 @@ import { JobType, WorkMode, JobStatus } from "@prisma/client";
 import { syncJobsToElasticBulk } from "services/elasticSync";
 import { resilientGet, resilientPost } from "shared/services/network/resilientHttp";
 
-// ── Pipeline v2 — shadow mode integration ────────────────────────────────────
-// When PIPELINE_V2_SHADOW_MODE=true, the new extraction pipeline runs in
-// parallel with the existing scraper. It writes ONLY to the new nullable
-// v2 fields (rawHtml, techStackJson, locationCity, etc.) and does NOT
-// modify any v1 fields. This allows progressive validation before cutover.
+// ── Pipeline v2 ───────────────────────────────────────────────────────────────
 //
-// Set PIPELINE_V2_SHADOW_MODE=true in .env to enable.
-// Set PIPELINE_V2_SHADOW_MODE=false (default) to keep existing behavior.
+// PIPELINE_V2_PRIMARY=true  → All ATS companies go through the full v2
+//   pipeline (adapter → JobPipeline → JobPersister). This is the production
+//   mode. getJobDescription() template fallbacks are eliminated.
+//
+// PIPELINE_V2_PRIMARY=false (default) → Existing v1 path runs. The v2
+//   pipeline still runs in shadow mode if PIPELINE_V2_SHADOW_MODE=true,
+//   writing only to v2-only DB columns for validation.
+//
+// Set PIPELINE_V2_PRIMARY=true in .env when ready for full production cutover.
+
 import { getJobPipeline, JobPipeline } from "../../../pipeline/JobPipeline";
 import { JobPersister } from "../../../pipeline/persistence/JobPersister";
+import { ATSAdapterRegistry } from "../../../pipeline/adapters/ATSAdapterRegistry";
+import { GreenhouseAdapter }  from "../../../pipeline/adapters/GreenhouseAdapter";
+import { LeverAdapter }       from "../../../pipeline/adapters/LeverAdapter";
+import { AshbyAdapter }       from "../../../pipeline/adapters/AshbyAdapter";
+import { WorkdayAdapter }     from "../../../pipeline/adapters/WorkdayAdapter";
+import { BambooHRAdapter }    from "../../../pipeline/adapters/BambooHRAdapter";
+import { ICIMSAdapter }       from "../../../pipeline/adapters/ICIMSAdapter";
+import { PaylocityAdapter }   from "../../../pipeline/adapters/PaylocityAdapter";
+import type { RawJobInput }   from "../../../pipeline/interfaces/ATSAdapter";
 
+const PIPELINE_V2_PRIMARY     = process.env.PIPELINE_V2_PRIMARY     === "true";
 const PIPELINE_V2_SHADOW_MODE = process.env.PIPELINE_V2_SHADOW_MODE === "true";
-let _shadowPipeline: JobPipeline | null = null;
-let _shadowPersister: JobPersister | null = null;
 
-function getShadowPipeline(): { pipeline: JobPipeline; persister: JobPersister } {
-  if (!_shadowPipeline) _shadowPipeline = getJobPipeline({ enableLLM: false });
-  if (!_shadowPersister) _shadowPersister = new JobPersister();
-  return { pipeline: _shadowPipeline, persister: _shadowPersister };
+// ── Singleton adapter registry ────────────────────────────────────────────────
+let _registry: ATSAdapterRegistry | null = null;
+function getRegistry(): ATSAdapterRegistry {
+  if (!_registry) {
+    _registry = new ATSAdapterRegistry()
+      .register(new GreenhouseAdapter())
+      .register(new LeverAdapter())
+      .register(new AshbyAdapter())
+      .register(new WorkdayAdapter())
+      .register(new BambooHRAdapter())
+      .register(new ICIMSAdapter())
+      .register(new PaylocityAdapter());
+  }
+  return _registry;
 }
+
+// ── Singleton pipeline + persister ────────────────────────────────────────────
+let _pipeline: JobPipeline | null = null;
+let _persister: JobPersister | null = null;
+
+function getV2Pipeline(): { pipeline: JobPipeline; persister: JobPersister } {
+  if (!_pipeline) _pipeline = getJobPipeline({ enableLLM: false });
+  if (!_persister) _persister = new JobPersister();
+  return { pipeline: _pipeline, persister: _persister };
+}
+
+// Backward-compat alias for shadow-mode callers
+function getShadowPipeline() { return getV2Pipeline(); }
 
 /**
  * Run the v2 pipeline on a raw job input in shadow mode.
@@ -882,15 +917,157 @@ function isLocationInIndia(location: string | null | undefined): boolean {
 }
 
 /**
+// ───────────────────────────────────────────────────────────────────────────
+// PIPELINE V2 PRIMARY PATH
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * processCompanyV2 — production v2 pipeline path.
+ *
+ * Routes the company through:
+ *   1. ATSAdapterRegistry → resolve adapter by atsSource / static maps
+ *   2. adapter.fetchJobs()  → normalized RawJobInput[]
+ *   3. JobPipeline.process() → ParsedJob with all structured fields
+ *   4. JobPersister.upsert() → Prisma upsert with v1 + v2 DB columns
+ *
+ * No getJobDescription() templates. No hardcoded fallbacks.
+ * If a job has zero real content (e.g. Workday detail fetch failed) it is
+ * stored with empty description/requirements — the frontend handles this
+ * gracefully with a "No description available" state.
+ */
+async function processCompanyV2(company: CompanyRow): Promise<ProcessResult> {
+  const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
+  const activeSlugs: string[] = [];
+
+  try {
+    const lookupKey = company.slug.replace(/-[a-z0-9]{5}$/i, "");
+    const registry = getRegistry();
+    const { pipeline, persister } = getV2Pipeline();
+
+    // ── Determine ATS source & token ───────────────────────────────────────
+    let atsSource = company.atsSource || null;
+    let atsToken  = company.atsToken  || null;
+
+    // Fallback: resolve from static lookup maps if DB fields are absent
+    if (!atsSource || !atsToken) {
+      if (GREENHOUSE_TOKENS[lookupKey]) {
+        atsSource = "greenhouse"; atsToken = GREENHOUSE_TOKENS[lookupKey];
+      } else if (LEVER_TOKENS[lookupKey]) {
+        atsSource = "lever";      atsToken = LEVER_TOKENS[lookupKey];
+      } else if (ASHBY_TOKENS[lookupKey]) {
+        atsSource = "ashby";     atsToken = ASHBY_TOKENS[lookupKey];
+      }
+    }
+
+    // No ATS source — skip (mock handled in v1 path)
+    if (!atsSource || !atsToken || !registry.has(atsSource)) {
+      return result;
+    }
+
+    const adapter = registry.get(atsSource as any);
+
+    // ── Fetch jobs from ATS adapter ───────────────────────────────────────
+    let rawInputs: RawJobInput[];
+    try {
+      rawInputs = await adapter.fetchJobs(atsToken, company);
+    } catch (fetchErr: any) {
+      const summary = formatScraperError(fetchErr);
+      if (isExpectedScraperError(summary)) {
+        console.warn(`[Job Scraper v2] Skipping ${company.name}: ${summary}`);
+      } else {
+        console.error(`[Job Scraper v2] Adapter failed for ${company.name}: ${summary}`);
+      }
+      return result;
+    }
+
+    // ── Run each job through the pipeline ─────────────────────────────────
+    for (const rawInput of rawInputs) {
+      const slug: string = (rawInput as any)._slug || slugify(
+        `${company.slug}-${rawInput.title}-${rawInput.externalId.slice(-8)}`,
+        { lower: true, strict: true },
+      );
+      activeSlugs.push(slug);
+
+      try {
+        // Inject applyUrl + atsSource for the persister (stored in _applyUrl, _atsSource)
+        (rawInput as any)._atsSource = atsSource;
+
+        const parsedJob = await pipeline.process(rawInput);
+
+        const { id, isNew } = await persister.upsert(parsedJob, company, slug);
+        result.processedJobIds.push(id);
+        if (isNew) result.created++; else result.updated++;
+
+      } catch (jobErr: any) {
+        console.warn(
+          `[Job Scraper v2] Job upsert failed for "${rawInput.title}" at ${company.name}: ${jobErr?.message ?? jobErr}`,
+        );
+      }
+    }
+
+    // ── Stale job cleanup ──────────────────────────────────────────────────
+    if (activeSlugs.length > 0) {
+      const deleted = await prisma.job.deleteMany({
+        where: {
+          companyId: company.id,
+          slug: { notIn: activeSlugs },
+          externalJobId: { not: null },
+        },
+      });
+      result.staleArchived = deleted.count;
+    }
+
+    // ── Recalculate isIndian flag ─────────────────────────────────────────────
+    const openJobs = await prisma.job.findMany({
+      where: { companyId: company.id, status: "OPEN" },
+      select: { location: true },
+    });
+    const hasIndiaJobs = openJobs.some((j) => isLocationInIndia(j.location));
+    const isCompanyHqIndia =
+      company.country?.toLowerCase() === "india" ||
+      company.country?.toLowerCase() === "in" ||
+      company.headquarters?.toLowerCase().includes("india");
+    await prisma.company.update({
+      where: { id: company.id },
+      data: { isIndian: !!(hasIndiaJobs || isCompanyHqIndia) },
+    });
+
+  } catch (err: any) {
+    const summary = formatScraperError(err);
+    if (isExpectedScraperError(summary)) {
+      console.warn(`[Job Scraper v2] Skipping ${company.name}: ${summary}`);
+    } else {
+      console.error(`[Job Scraper v2] Failed to process ${company.name}: ${summary}`);
+    }
+  }
+
+  return result;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// PER-COMPANY PROCESSOR (v1 legacy path + v2 delegation gate)
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
  * Processes all jobs for a single company (Greenhouse / Lever / Ashby / mock fallback).
  * Returns counts and the IDs of every upserted job for downstream Elastic sync.
+ *
+ * When PIPELINE_V2_PRIMARY=true, delegates immediately to processCompanyV2().
+ * Otherwise runs the v1 path with optional shadow mode.
  *
  * Inner try/catch absorbs network and Prisma errors so a single company failure
  * never breaks the surrounding batch.
  */
 export async function processCompany(company: CompanyRow): Promise<ProcessResult> {
+  // ── v2 primary gate ──────────────────────────────────────────────────
+  if (PIPELINE_V2_PRIMARY) {
+    return processCompanyV2(company);
+  }
+
+  // ── v1 legacy path (below) ──────────────────────────────────────────────
   const result: ProcessResult = { created: 0, updated: 0, staleArchived: 0, processedJobIds: [] };
   const activeSlugs: string[] = [];
+
 
   const lookupKey = company.slug.replace(/-[a-z0-9]{5}$/i, "");
 

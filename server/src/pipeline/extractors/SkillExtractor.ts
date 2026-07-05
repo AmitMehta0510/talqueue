@@ -3,6 +3,7 @@ import type { CategorizedSkill, TechStack, SkillCategory } from "../interfaces/P
 import type { Extracted } from "../interfaces/ExtractionResult";
 import { normalizeSkill, SKILL_CATEGORIES } from "./SkillNormalizer";
 import { HtmlCleaner } from "../cleaner/HtmlCleaner";
+import { BoundarySkillMatcher } from "./BoundarySkillMatcher";
 
 /**
  * SkillExtractor — Stage 3a of the extraction pipeline.
@@ -22,6 +23,7 @@ import { HtmlCleaner } from "../cleaner/HtmlCleaner";
  * De-duplication: a skill appearing in both required and preferred is promoted to required only.
  */
 export class SkillExtractor {
+  private readonly boundaryMatcher = new BoundarySkillMatcher();
   // ── Context-based NER patterns ──────────────────────────────────────────────
   // These match "experience with X", "proficient in X", "knowledge of X" etc.
   // The capture group is the candidate technology name.
@@ -160,6 +162,22 @@ export class SkillExtractor {
           category,
           isRequired: true,
           confidence: 0.8,
+        });
+      }
+    }
+
+    // ── BoundarySkillMatcher: fast-path regex pass ──────────────────────────
+    // Catches skills mentioned as bare bullets / comma lists without context verbs.
+    // Results are merged into required (not preferred) with high confidence.
+    const boundaryMatches = this.boundaryMatcher.match(fullText);
+    for (const match of boundaryMatches) {
+      if (!requiredMap.has(match.canonical)) {
+        requiredMap.set(match.canonical, {
+          name: match.canonical,
+          raw: match.raw,
+          category: match.category,
+          isRequired: true,
+          confidence: match.confidence,
         });
       }
     }

@@ -1,12 +1,12 @@
 import slugify from "slugify";
 import type { ATSAdapter, ATSSource, RawJobInput, CompanyRow } from "../interfaces/ATSAdapter";
-import { resilientPost } from "shared/services/network/resilientHttp";
+import { resilientGet } from "shared/services/network/resilientHttp";
 import { isTechOrInternRole } from "../utils/roleFilter";
 
 /**
  * AshbyAdapter — fetches and normalizes jobs from the Ashby posting API.
  *
- * API: POST https://api.ashbyhq.com/posting-api/job-board/{token}
+ * API: GET https://api.ashbyhq.com/posting-api/job-board/{token}
  * - Returns `jobs[]` with `id`, `title`, `descriptionPlain`, `requirementsPlain`,
  *   `responsibilitiesPlain`, `employmentType` (Tier-1), `location`, `isRemote`,
  *   `workplaceType`, `jobUrl`, `publishedAt`
@@ -15,9 +15,8 @@ export class AshbyAdapter implements ATSAdapter {
   readonly source: ATSSource = "ashby";
 
   async fetchJobs(token: string, company: CompanyRow): Promise<RawJobInput[]> {
-    const response = await resilientPost(
+    const response = await resilientGet(
       `https://api.ashbyhq.com/posting-api/job-board/${token}`,
-      {},
     );
 
     const rawJobs: any[] = response.data?.jobs ?? [];
