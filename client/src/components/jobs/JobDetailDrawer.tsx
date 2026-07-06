@@ -93,7 +93,7 @@ export function JobDetailDrawer({
   const { cleanTitle, tags } = parseJobTitle(job.title || "");
   const referralFriendlyEmployees = employees.filter((emp) => emp.user?.acceptingReferrals);
 
-  const jobSkills = (job.skillsRequired || []) as string[];
+  const jobSkills = [...new Set((job.skillsRequired || []) as string[])];
   const matchingSkills = jobSkills.filter((s) => userSkillNames?.has(s.toLowerCase().trim()));
   const missingSkills = jobSkills.filter((s) => !userSkillNames?.has(s.toLowerCase().trim()));
 

@@ -45,7 +45,7 @@ export function JobRowCard({
     ONSITE: "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600",
   };
 
-  const jobSkills = (job.skillsRequired || []) as string[];
+  const jobSkills = [...new Set((job.skillsRequired || []) as string[])];
   const matchingSkills = jobSkills.filter((s) => userSkillNames?.has(s.toLowerCase().trim()));
   const matchPercentage = jobSkills.length
     ? Math.round((matchingSkills.length / jobSkills.length) * 100)
@@ -153,9 +153,9 @@ export function JobRowCard({
                 {matchPercentage}% Skill Match
               </span>
             )}
-            {job.skillsRequired && job.skillsRequired.length > 0 && (
+            {jobSkills.length > 0 && (
               <div className="flex flex-wrap items-center gap-1">
-                {job.skillsRequired.slice(0, 4).map((skill) => (
+                {jobSkills.slice(0, 4).map((skill) => (
                   <span
                     key={skill}
                     className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold border"
@@ -168,9 +168,9 @@ export function JobRowCard({
                     {skill}
                   </span>
                 ))}
-                {job.skillsRequired.length > 4 && (
+                {jobSkills.length > 4 && (
                   <span className="text-[9px] font-medium pl-0.5" style={{ color: "var(--text-muted)" }}>
-                    +{job.skillsRequired.length - 4}
+                    +{jobSkills.length - 4}
                   </span>
                 )}
               </div>

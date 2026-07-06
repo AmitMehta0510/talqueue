@@ -58,7 +58,7 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
     );
   }, [profileQuery.data?.skills]);
 
-  const jobSkills = (job.skillsRequired || []) as string[];
+  const jobSkills = [...new Set((job.skillsRequired || []) as string[])];
   const matchingSkills = jobSkills.filter((s) => userSkillNames.has(s.toLowerCase().trim()));
   const missingSkills = jobSkills.filter((s) => !userSkillNames.has(s.toLowerCase().trim()));
 
