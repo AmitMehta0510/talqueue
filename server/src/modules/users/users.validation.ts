@@ -16,6 +16,8 @@ export const updateProfileSchema = z.object({
 
   location: z.string().max(120).optional(),
 
+  country: z.string().max(2).toUpperCase().optional().nullable(),
+
   avatarUrl: z.string().optional(),
 
   bannerUrl: z.string().optional(),

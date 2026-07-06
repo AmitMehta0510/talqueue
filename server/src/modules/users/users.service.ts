@@ -25,6 +25,7 @@ export interface UpdateProfileData {
   bio?: string;
   headline?: string;
   location?: string;
+  country?: string;  // ISO 3166-1 alpha-2, e.g. "IN", "US"
   avatarUrl?: string;
   bannerUrl?: string;
   resumeUrl?: string;

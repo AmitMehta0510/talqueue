@@ -16,6 +16,11 @@ export const buildFeedContext = async (userId: string) => {
           id: true,
         },
       },
+      profile: {
+        select: {
+          country: true,  // ISO 3166-1 alpha-2, e.g. "IN", "US"
+        },
+      },
     },
   });
 
@@ -104,6 +109,9 @@ export const buildFeedContext = async (userId: string) => {
   const isFresher =
     user.experiences.length === 0 && user.engineeringScore < 150;
 
+  // Normalise country to ISO-2 upper-case (e.g. "in" -> "IN")
+  const userCountry: string | null = (user.profile?.country ?? null)?.toUpperCase() || null;
+
   return {
     followingIds,
 
@@ -120,5 +128,7 @@ export const buildFeedContext = async (userId: string) => {
     isFresher,
 
     userRole: user.primaryRole,
+
+    userCountry,
   };
 };

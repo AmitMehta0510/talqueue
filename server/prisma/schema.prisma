@@ -786,6 +786,8 @@ model Profile {
 
   location String?
 
+  country String?   // ISO 3166-1 alpha-2, e.g. "IN", "US"
+
   resumeUrl String?
 
   bannerUrl String?
@@ -812,6 +814,7 @@ model Profile {
 
   @@index([collegeId])
   @@index([departmentId])
+  @@index([country])
 }
 
 model CodingProfile {

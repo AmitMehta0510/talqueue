@@ -18,6 +18,7 @@ export type FeedContext = {
   interactionMap: Map<string, number>;
   affinityMap: Map<string, number>;
   userRole?: string | null;
+  userCountry?: string | null;  // ISO country code e.g. "IN", "US"
 };
 
 export type RankedFeedItem<T = any> = {
@@ -310,6 +311,16 @@ export const calculateFeedScore = (
 
       if (item.type === "INTERNSHIP" && context.isFresher) {
         score += FEED_SCORE_WEIGHTS.jobs.fresherInternship;
+      }
+
+      // India-location boost: prioritise jobs from India for Indian users
+      if (context.userCountry === "IN") {
+        const jobCountry = (item.locationCountry || item.company?.country || "").toUpperCase();
+        const jobLocation  = (item.location || "").toLowerCase();
+        const indianCities = /\b(india|bengaluru|bangalore|mumbai|delhi|hyderabad|pune|chennai|kolkata|noida|gurugram|gurgaon|ahmedabad|jaipur|surat|lucknow|kochi|indore|bhopal|chandigarh)\b/;
+        if (jobCountry === "IN" || jobCountry === "IND" || indianCities.test(jobLocation)) {
+          score += FEED_SCORE_WEIGHTS.jobs.indiaLocationBoost;
+        }
       }
 
       score += (item.applicationsCount || 0) * FEED_SCORE_WEIGHTS.jobs.application;

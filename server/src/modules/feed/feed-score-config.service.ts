@@ -48,6 +48,7 @@ export const FEED_SCORE_WEIGHTS = {
     view: 0.1,
     remote: 20,
     interaction: 6,
+    indiaLocationBoost: 60,  // boost for India-location jobs shown to Indian users
   },
 
   companies: {
