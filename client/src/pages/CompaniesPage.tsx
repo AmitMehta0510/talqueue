@@ -672,7 +672,7 @@ function CompanyDetail({ slug }: { slug: string }) {
                         {[job.location, titleCase(job.workMode), titleCase(job.experienceLevel)].filter(Boolean).join(" · ")}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {job.type && (
+                        {job.type && job.type.toUpperCase() !== "UNKNOWN" && (
                           <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
                             {titleCase(job.type)}
                           </span>

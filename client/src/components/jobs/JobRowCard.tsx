@@ -211,7 +211,7 @@ export function JobRowCard({
                 {titleCase(job.workMode)}
               </span>
             )}
-            {job.type && (
+            {job.type && job.type.toUpperCase() !== "UNKNOWN" && (
               <span className="rounded-lg border px-2 py-0.5 text-[10px] font-semibold" style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-secondary)" }}>
                 {titleCase(job.type)}
               </span>

@@ -61,7 +61,7 @@ export function JobsRecruiterTab({
                 {job.title}
               </h3>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                {[job.location, titleCase(job.workMode), titleCase(job.type)]
+                {[job.location, titleCase(job.workMode), job.type && job.type.toUpperCase() !== "UNKNOWN" ? titleCase(job.type) : ""]
                   .filter(Boolean)
                   .join(" · ")}
               </p>

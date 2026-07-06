@@ -110,10 +110,12 @@ export function JobDetailModal({ job, onClose, hasAppliedAlready = false }: JobD
                 <Globe size={13} />
                 {titleCase(job.workMode || "Remote")}
               </span>
-              <span className="flex items-center gap-1">
-                <BriefcaseBusiness size={13} />
-                {titleCase(job.type || "Full Time")}
-              </span>
+              {job.type && job.type.toUpperCase() !== "UNKNOWN" && (
+                <span className="flex items-center gap-1">
+                  <BriefcaseBusiness size={13} />
+                  {titleCase(job.type)}
+                </span>
+              )}
               {salary && (
                 <span className="flex items-center gap-1 text-brand font-medium">
                   <DollarSign size={13} />

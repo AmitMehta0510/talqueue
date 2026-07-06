@@ -61,7 +61,7 @@ export const FeedCard = memo(function FeedCard({
     ? userHeadline(author) || titleCase(post.type)
     : isProject
       ? project.lookingFor || titleCase(project.status)
-      : [job.company?.name, titleCase(job.workMode), titleCase(job.type)].filter(Boolean).join(" - ");
+      : [job.company?.name, titleCase(job.workMode), job.type && job.type.toUpperCase() !== "UNKNOWN" ? titleCase(job.type) : ""].filter(Boolean).join(" - ");
   const impressionRef = useImpressionTracking({
     entityId,
     entityType: item.type,

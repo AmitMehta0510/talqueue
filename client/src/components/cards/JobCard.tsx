@@ -109,7 +109,7 @@ export const JobCard = React.memo(function JobCard({ job, onClick, trackImpressi
       return;
     }
     createPost.mutate({
-      content: `Opportunity: ${job.title} at ${job.company?.name || "Company"}\n\nLocation: ${job.location || "Remote"}\nType: ${titleCase(job.type)}\n${salary ? `Salary: ${salary}\n` : ""}\nDescription: ${job.description}\n${job.applyUrl ? `Apply Link: ${job.applyUrl}` : ""}`,
+      content: `Opportunity: ${job.title} at ${job.company?.name || "Company"}\n\nLocation: ${job.location || "Remote"}${job.type && job.type.toUpperCase() !== "UNKNOWN" ? `\nType: ${titleCase(job.type)}` : ""}\n${salary ? `Salary: ${salary}\n` : ""}\nDescription: ${job.description}\n${job.applyUrl ? `Apply Link: ${job.applyUrl}` : ""}`,
       type: "GENERAL",
       collegeId: user.profile.collegeId,
       departmentId: user.profile.departmentId,
@@ -176,7 +176,7 @@ export const JobCard = React.memo(function JobCard({ job, onClick, trackImpressi
             </div>
           )}
           <p className="mt-1.5 text-xs text-muted-fg font-medium">
-            {job.company?.name || "Company"} - {job.location || "Remote"} - {titleCase(job.type)}
+            {[job.company?.name || "Company", job.location || "Remote", job.type && job.type.toUpperCase() !== "UNKNOWN" ? titleCase(job.type) : ""].filter(Boolean).join(" - ")}
           </p>
           {job.skillsRequired && job.skillsRequired.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
