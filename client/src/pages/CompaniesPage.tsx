@@ -669,7 +669,7 @@ function CompanyDetail({ slug }: { slug: string }) {
                         </div>
                       )}
                       <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                        {[job.location, titleCase(job.workMode), titleCase(job.experienceLevel)].filter(Boolean).join(" · ")}
+                        {[job.location, titleCase(job.workMode), job.experienceLevel && job.experienceLevel.toLowerCase() !== "unknown" ? titleCase(job.experienceLevel) : ""].filter(Boolean).join(" · ")}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.type && job.type.toUpperCase() !== "UNKNOWN" && (

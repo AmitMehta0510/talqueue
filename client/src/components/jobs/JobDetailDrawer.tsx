@@ -162,7 +162,7 @@ export function JobDetailDrawer({
           {salary && <span className="flex items-center gap-1 font-semibold" style={{ color: "var(--text-primary)" }}><IndianRupee size={11} />{salary}</span>}
           {job.workMode && <span className="flex items-center gap-1"><Briefcase size={11} />{titleCase(job.workMode)}</span>}
           {job.type && job.type.toUpperCase() !== "UNKNOWN" && <span className="flex items-center gap-1"><Clock size={11} />{titleCase(job.type)}</span>}
-          {job.experienceLevel && <span className="flex items-center gap-1"><Star size={11} />{titleCase(job.experienceLevel)}</span>}
+          {job.experienceLevel && job.experienceLevel.toLowerCase() !== "unknown" && <span className="flex items-center gap-1"><Star size={11} />{titleCase(job.experienceLevel)}</span>}
         </div>
 
         {/* CTA */}

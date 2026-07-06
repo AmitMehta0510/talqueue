@@ -184,7 +184,7 @@ export function JobRowCard({
                 {job.location}
               </span>
             )}
-            {job.experienceLevel && (
+            {job.experienceLevel && job.experienceLevel.toLowerCase() !== "unknown" && (
               <span className="flex items-center gap-1">
                 <Briefcase size={11} />
                 {titleCase(job.experienceLevel)}
