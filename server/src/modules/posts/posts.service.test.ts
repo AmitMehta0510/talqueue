@@ -1,15 +1,25 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
+import { mockDeep, mockReset, DeepMockProxy } from "vitest-mock-extended";
+import { PrismaClient } from "@prisma/client";
+
+// Mock the Prisma module before importing prisma
+vi.mock("shared/database/prisma", () => ({
+  __esModule: true,
+  default: mockDeep<PrismaClient>(),
+}));
+
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import {
   createPost,
   updatePost,
   validateAndProcessMedia,
-  extractAndProcessMedia,
   createComment,
   getFeed,
   toggleLike,
 } from "./posts.service";
+
+const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
 vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notification-1" }),
@@ -91,6 +101,7 @@ describe("Posts Service - Media Processing", () => {
 
 describe("Posts Service - createPost and updatePost Functions", () => {
   beforeEach(() => {
+    mockReset(prismaMock);
     vi.clearAllMocks();
   });
 
@@ -104,7 +115,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       tags: [],
     };
 
-    (prisma.post.create as any) = vi.fn().mockResolvedValue(mockCreatedPost);
+    prismaMock.post.create.mockResolvedValue(mockCreatedPost as any);
 
     const result = await createPost("user-1", {
       content: "Hello World",
@@ -112,7 +123,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       images: ["https://example.com/img1.jpg"],
     });
 
-    expect(prisma.post.create).toHaveBeenCalled();
+    expect(prismaMock.post.create).toHaveBeenCalled();
     expect(result.media).toEqual(["https://example.com/img1.jpg"]);
   });
 
@@ -133,9 +144,8 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       tags: [{ id: "tag-1", tag: "tech" }],
     };
 
-    (prisma.post.findFirst as any) = vi.fn().mockResolvedValue(mockExistingPost);
+    prismaMock.post.findFirst.mockResolvedValue(mockExistingPost as any);
 
-    // Mock prisma.$transaction to behave like an interactive transaction
     const mockTx = {
       postTag: {
         deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -144,9 +154,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
         update: vi.fn().mockResolvedValue(mockUpdatedPost),
       },
     };
-    (prisma.$transaction as any) = vi
-      .fn()
-      .mockImplementation((callback) => callback(mockTx));
+    prismaMock.$transaction.mockImplementation(async (callback) => callback(mockTx as any));
 
     const result = await updatePost("user-1", "post-1", {
       content: "Updated Hello World",
@@ -154,7 +162,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       tags: ["Tech ", "tech", "  "], // should trim, lowercase, deduplicate, filter empty
     });
 
-    expect(prisma.post.findFirst).toHaveBeenCalledWith({
+    expect(prismaMock.post.findFirst).toHaveBeenCalledWith({
       where: {
         id: "post-1",
         deletedAt: null,
@@ -179,7 +187,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
   });
 
   test("updatePost should throw AppError 404 if post is soft-deleted (deletedAt is not null)", async () => {
-    (prisma.post.findFirst as any) = vi.fn().mockResolvedValue(null);
+    prismaMock.post.findFirst.mockResolvedValue(null);
 
     await expect(
       updatePost("user-1", "post-1", {
@@ -187,7 +195,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       })
     ).rejects.toThrow(AppError);
 
-    expect(prisma.post.findFirst).toHaveBeenCalledWith({
+    expect(prismaMock.post.findFirst).toHaveBeenCalledWith({
       where: {
         id: "post-1",
         deletedAt: null,
@@ -205,7 +213,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       tags: [],
     };
 
-    (prisma.post.create as any) = vi.fn().mockResolvedValue(mockCreatedPost);
+    prismaMock.post.create.mockResolvedValue(mockCreatedPost as any);
     const { createNotification } = await import("modules/notifications/notifications.service");
 
     await createPost("user-1", {
@@ -214,7 +222,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       mentions: ["user-2"],
     });
 
-    expect(prisma.post.create).toHaveBeenCalled();
+    expect(prismaMock.post.create).toHaveBeenCalled();
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(createNotification).toHaveBeenCalledWith(
@@ -237,9 +245,9 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       _count: { replies: 0 },
     };
 
-    (prisma.post.findUnique as any) = vi.fn().mockResolvedValue(mockPost);
-    (prisma.comment.create as any) = vi.fn().mockResolvedValue(mockComment);
-    (prisma.post.update as any) = vi.fn().mockResolvedValue({});
+    prismaMock.post.findUnique.mockResolvedValue(mockPost as any);
+    prismaMock.comment.create.mockResolvedValue(mockComment as any);
+    prismaMock.post.update.mockResolvedValue({} as any);
     const { createNotification } = await import("modules/notifications/notifications.service");
 
     await createComment("user-1", "post-1", {
@@ -263,14 +271,14 @@ describe("Posts Service - createPost and updatePost Functions", () => {
       { id: "post-1", authorId: "user-2", content: "Post 1" },
       { id: "post-2", authorId: "user-2", content: "Post 2" },
     ];
-    (prisma.post.findMany as any) = vi.fn().mockResolvedValue(mockPosts);
-    (prisma.like.findMany as any) = vi.fn().mockResolvedValue([{ postId: "post-1" }]);
-    (prisma.savedPost.findMany as any) = vi.fn().mockResolvedValue([{ postId: "post-2" }]);
+    prismaMock.post.findMany.mockResolvedValue(mockPosts as any);
+    prismaMock.like.findMany.mockResolvedValue([{ postId: "post-1" }] as any);
+    prismaMock.savedPost.findMany.mockResolvedValue([{ postId: "post-2" }] as any);
 
     const result = await getFeed("user-1", { limit: 10 });
 
-    expect(prisma.post.findMany).toHaveBeenCalled();
-    expect(prisma.like.findMany).toHaveBeenCalledWith(
+    expect(prismaMock.post.findMany).toHaveBeenCalled();
+    expect(prismaMock.like.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           userId: "user-1",
@@ -278,7 +286,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
         },
       })
     );
-    expect(prisma.savedPost.findMany).toHaveBeenCalledWith(
+    expect(prismaMock.savedPost.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           userId: "user-1",
@@ -295,7 +303,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
 
   test("toggleLike should perform atomic like creation successfully on first call", async () => {
     const mockPost = { id: "post-1", authorId: "user-2" };
-    (prisma.post.findUnique as any) = vi.fn().mockResolvedValue(mockPost);
+    prismaMock.post.findUnique.mockResolvedValue(mockPost as any);
 
     const mockTx = {
       like: {
@@ -305,11 +313,11 @@ describe("Posts Service - createPost and updatePost Functions", () => {
         update: vi.fn().mockResolvedValue({}),
       },
     };
-    (prisma.$transaction as any) = vi.fn().mockImplementation((callback) => callback(mockTx));
+    prismaMock.$transaction.mockImplementation(async (callback) => callback(mockTx as any));
 
     const result = await toggleLike("user-1", "post-1");
 
-    expect(prisma.post.findUnique).toHaveBeenCalledWith({
+    expect(prismaMock.post.findUnique).toHaveBeenCalledWith({
       where: { id: "post-1" },
       select: { id: true, authorId: true },
     });
@@ -328,7 +336,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
 
   test("toggleLike should fallback to deleting like on P2002 constraint collision error", async () => {
     const mockPost = { id: "post-1", authorId: "user-2" };
-    (prisma.post.findUnique as any) = vi.fn().mockResolvedValue(mockPost);
+    prismaMock.post.findUnique.mockResolvedValue(mockPost as any);
 
     const createErr = new Error("Unique constraint violation");
     (createErr as any).code = "P2002";
@@ -352,12 +360,12 @@ describe("Posts Service - createPost and updatePost Functions", () => {
     };
 
     let txCount = 0;
-    (prisma.$transaction as any) = vi.fn().mockImplementation((callback) => {
+    prismaMock.$transaction.mockImplementation(async (callback) => {
       txCount++;
       if (txCount === 1) {
-        return callback(mockTxFirst);
+        return callback(mockTxFirst as any);
       } else {
-        return callback(mockTxSecond);
+        return callback(mockTxSecond as any);
       }
     });
 
