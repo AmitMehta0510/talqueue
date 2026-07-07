@@ -132,7 +132,8 @@ export const findComplementaryTeammates = async (
   const candidates = await prisma.user.findMany({
     where: {
       id: { not: userId },
-      deletedAt: null,
+      // User model does not have deletedAt — filter by active status instead
+      status: "ACTIVE",
       skills: {
         some: {
           skill: {
@@ -145,9 +146,11 @@ export const findComplementaryTeammates = async (
       id: true,
       username: true,
       engineeringScore: true,
-      profile: { select: { fullName: true, avatar: true, headline: true } },
+      // Profile field is 'avatarUrl', not 'avatar'
+      profile: { select: { fullName: true, avatarUrl: true, headline: true } },
+      // Cannot mix include + select — use nested select throughout
       skills: {
-        include: { skill: { select: { name: true } } },
+        select: { skill: { select: { name: true } } },
         take: 20,
       },
     },
@@ -166,7 +169,7 @@ export const findComplementaryTeammates = async (
       id: candidate.id,
       username: candidate.username,
       fullName: candidate.profile?.fullName ?? null,
-      avatar: candidate.profile?.avatar ?? null,
+      avatar: candidate.profile?.avatarUrl ?? null,
       headline: candidate.profile?.headline ?? null,
       dominantCategory,
       matchedSkills,
