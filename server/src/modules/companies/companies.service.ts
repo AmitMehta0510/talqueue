@@ -1,7 +1,7 @@
 import { CompanySize, CompanyType, Prisma, VerificationStatus, BusinessRequestType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 import { trackInteraction } from "modules/interaction/interaction-tracking.service";
 import { trackRecommendationImpression } from "modules/discovery/recommendation-memory.service";

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, lazy, Suspense } from "react";
+import { ReactNode, useEffect, useState, lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -55,20 +55,46 @@ const WorkspaceSelectorPage = lazy(() => import("./pages/WorkspaceSelectorPage")
 const LandingPage = lazy(() => import("./pages/LandingPage").then(m => ({ default: m.LandingPage })));
 
 
-/** Syncs dark/light class to <html> based on OS preference. */
-function DarkModeSync() {
-  useEffect(() => {
-    const apply = (dark: boolean) => {
-      document.documentElement.classList.toggle("dark", dark);
-    };
+import { DarkModeContext } from "./core/contexts/DarkModeContext";
 
+const THEME_KEY = "ep-theme";
+
+/**
+ * Reads localStorage for a saved preference first; falls back to OS setting.
+ * Persists user toggles to localStorage so the choice survives refreshes.
+ */
+function DarkModeProvider({ children }: { children: ReactNode }) {
+  const getInitial = () => {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "dark") return true;
+    if (saved === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  };
+
+  const [isDark, setIsDark] = useState(getInitial);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+    localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+  }, [isDark]);
+
+  // Keep in sync if OS changes AND the user has never overridden manually
+  useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    apply(mq.matches);
-    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    const handler = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem(THEME_KEY)) setIsDark(e.matches);
+    };
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
-  return null;
+
+  const toggle = () => setIsDark((d) => !d);
+
+  return (
+    <DarkModeContext.Provider value={{ isDark, toggle }}>
+      {children}
+    </DarkModeContext.Provider>
+  );
 }
 
 /** Wraps page content in an animation key so the fade-in fires on each route change. */
@@ -536,14 +562,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <DarkModeSync />
-      <ToastProvider>
-        <AuthProvider>
-          <WorkspaceProvider>
-            <AppRoutes />
-          </WorkspaceProvider>
-        </AuthProvider>
-      </ToastProvider>
+      <DarkModeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <WorkspaceProvider>
+              <AppRoutes />
+            </WorkspaceProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </DarkModeProvider>
     </BrowserRouter>
   );
 }

@@ -1,8 +1,41 @@
 import prisma from "shared/database/prisma";
 import { determineTrustLevel } from "../engineering/engineering-trust.service";
 
+/** Centralised score weights — change here to adjust ranking across the platform. */
+const SCORE_WEIGHTS = {
+  PROJECT: {
+    VERIFIED:          25,
+    COMPLETED:         20,
+    LIVE_DEPLOYMENT:   15,
+    STARS_PER:        0.5, MAX_STARS:         20,
+    FORKS_PER:        0.3, MAX_FORKS:         10,
+    CONTRIBUTORS_PER:   2, MAX_CONTRIBUTORS:  20,
+    COMMITS_PER:     0.05, MAX_COMMITS:       25,
+    FEATURED:          15,
+    RECENT_ACTIVITY:   10,  // committed in last 30 days
+  },
+  EXPERIENCE: {
+    VERIFIED:          20,
+    WORK_EMAIL:        15,
+    ENGINEERING_ROLE:  10,
+    MONTHS_PER:       0.8, MAX_DURATION:      20,
+    TECH_STACK:         5,
+    SKILLS_USED:        5,
+    SUSPICIOUS_PENALTY:-25,
+    CAP_PER:           60,
+  },
+  HACKATHON: {
+    VERIFIED_WIN:      40,
+    UNVERIFIED_WIN:    10,
+  },
+  SUBMISSION_SCORE_FACTOR: 0.5,
+  SUBMISSION_VERIFIED_PROJECT: 10,
+  GLOBAL_CAP: 10_000,
+} as const;
+
 export const calculateEngineeringScore = async (
-    userId: string
+    userId: string,
+    options: { persist?: boolean } = { persist: true },
   ) => {
 
     // Concurrently fetch User scores, Projects, Experiences, Hackathons & Submissions
@@ -71,260 +104,96 @@ export const calculateEngineeringScore = async (
 
     // PROJECT SCORING
     for (const project of projects) {
-
-      //
       // Verified project
-      //
-      if (project.verified) {
-        score += 25;
-      }
+      if (project.verified) score += SCORE_WEIGHTS.PROJECT.VERIFIED;
 
-      //
       // Completed project
-      //
-      if (
-        project.status ===
-        "COMPLETED"
-      ) {
-        score += 20;
-      }
+      if (project.status === "COMPLETED") score += SCORE_WEIGHTS.PROJECT.COMPLETED;
 
-      //
       // Live deployment
-      //
-      if (
-        project.deploymentStatus ===
-        "LIVE"
-      ) {
-        score += 15;
-      }
+      if (project.deploymentStatus === "LIVE") score += SCORE_WEIGHTS.PROJECT.LIVE_DEPLOYMENT;
 
-      //
       // GitHub stars
-      //
-      score += Math.min(
-        project.starsCount * 0.5,
-        20
-      );
+      score += Math.min(project.starsCount * SCORE_WEIGHTS.PROJECT.STARS_PER, SCORE_WEIGHTS.PROJECT.MAX_STARS);
 
-      //
       // Forks
-      //
-      score += Math.min(
-        project.forksCount * 0.3,
-        10
-      );
+      score += Math.min(project.forksCount * SCORE_WEIGHTS.PROJECT.FORKS_PER, SCORE_WEIGHTS.PROJECT.MAX_FORKS);
 
-      //
       // Contributors
-      //
-      score += Math.min(
-        project.contributorsCount * 2,
-        20
-      );
+      score += Math.min(project.contributorsCount * SCORE_WEIGHTS.PROJECT.CONTRIBUTORS_PER, SCORE_WEIGHTS.PROJECT.MAX_CONTRIBUTORS);
 
-      //
       // Commit activity
-      //
-      score += Math.min(
-        project.commitCount * 0.05,
-        25
-      );
+      score += Math.min(project.commitCount * SCORE_WEIGHTS.PROJECT.COMMITS_PER, SCORE_WEIGHTS.PROJECT.MAX_COMMITS);
 
-      //
       // Featured project
-      //
-      if (project.featured) {
-        score += 15;
-      }
+      if (project.featured) score += SCORE_WEIGHTS.PROJECT.FEATURED;
 
-      //
-      // Fresh repo activity
-      //
-      if (
-        project.repoUpdatedAt
-      ) {
-
-        const diffDays =
-          Math.floor(
-            (
-              Date.now() -
-              new Date(
-                project.repoUpdatedAt
-              ).getTime()
-            ) /
-            (
-              1000 *
-              60 *
-              60 *
-              24
-            )
-          );
-
-        if (diffDays <= 30) {
-          score += 10;
-        }
+      // Fresh repo activity (updated in last 30 days)
+      if (project.repoUpdatedAt) {
+        const diffDays = Math.floor((Date.now() - new Date(project.repoUpdatedAt).getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 30) score += SCORE_WEIGHTS.PROJECT.RECENT_ACTIVITY;
       }
     }
 
     // EXPERIENCE SCORING
     for (const experience of experiences) {
-
       let experienceScore = 0;
 
-      //
       // Verified experience
-      //
-      if (experience.verified) {
-        experienceScore += 20;
-      }
+      if (experience.verified) experienceScore += SCORE_WEIGHTS.EXPERIENCE.VERIFIED;
 
-      //
       // Work email verified
-      //
-      if (
-        experience.workEmailVerified
-      ) {
-        experienceScore += 15;
+      if (experience.workEmailVerified) experienceScore += SCORE_WEIGHTS.EXPERIENCE.WORK_EMAIL;
+
+      // Engineering role title check
+      const engineeringKeywords = ["engineer", "developer", "backend", "frontend", "full stack", "software", "sde", "devops", "data", "ml", "ai"];
+      if (engineeringKeywords.some((kw) => experience.title.toLowerCase().includes(kw))) {
+        experienceScore += SCORE_WEIGHTS.EXPERIENCE.ENGINEERING_ROLE;
       }
 
-      //
-      // Current engineering role
-      //
-      const engineeringKeywords = [
-        "engineer",
-        "developer",
-        "backend",
-        "frontend",
-        "full stack",
-        "software",
-        "sde",
-        "devops",
-        "data",
-        "ml",
-        "ai",
-      ];
-
-      const title =
-        experience.title.toLowerCase();
-
-      const isEngineeringRole =
-        engineeringKeywords.some(
-          (keyword) =>
-            title.includes(keyword)
-        );
-
-      if (isEngineeringRole) {
-        experienceScore += 10;
-      }
-
-      //
-      // Duration scoring
-      //
-      const endDate =
-        experience.endDate ||
-        new Date();
-
-      const months =
-        (
-          (
-            endDate.getTime() -
-            experience.startDate.getTime()
-          ) /
-          (
-            1000 *
-            60 *
-            60 *
-            24 *
-            30
-          )
-        );
-
-      //
-      // Ignore suspiciously short experiences
-      //
+      // Duration scoring — ignore suspiciously short stints (< 3 months)
+      const endDate = experience.endDate || new Date();
+      const months = (endDate.getTime() - experience.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
       if (months >= 3) {
-        experienceScore +=
-          Math.min(
-            months * 0.8,
-            20
-          );
+        experienceScore += Math.min(months * SCORE_WEIGHTS.EXPERIENCE.MONTHS_PER, SCORE_WEIGHTS.EXPERIENCE.MAX_DURATION);
       }
 
-      //
-      // Tech stack exists
-      //
-      if (
-        experience.techStack &&
-        Array.isArray(
-          experience.techStack
-        )
-      ) {
-        experienceScore += 5;
+      // Tech stack listed
+      if (experience.techStack && Array.isArray(experience.techStack)) {
+        experienceScore += SCORE_WEIGHTS.EXPERIENCE.TECH_STACK;
       }
 
-      //
-      // Skills used
-      //
-      if (
-        experience.skillsUsed &&
-        Array.isArray(
-          experience.skillsUsed
-        )
-      ) {
-        experienceScore += 5;
+      // Skills used listed
+      if (experience.skillsUsed && Array.isArray(experience.skillsUsed)) {
+        experienceScore += SCORE_WEIGHTS.EXPERIENCE.SKILLS_USED;
       }
 
-      //
-      // Suspicious penalty
-      //
-      if (
-        experience.suspicious
-      ) {
-        experienceScore -= 25;
-      }
+      // Suspicious flag penalty
+      if (experience.suspicious) experienceScore += SCORE_WEIGHTS.EXPERIENCE.SUSPICIOUS_PENALTY;
 
-      //
-      // Cap per experience
-      //
-      experienceScore =
-        Math.min(
-          experienceScore,
-          60
-        );
+      // Cap per experience entry
+      experienceScore = Math.min(experienceScore, SCORE_WEIGHTS.EXPERIENCE.CAP_PER);
 
       score += experienceScore;
     }
 
-    // Hackathon wins
+    // Hackathon wins — verified wins: 40 pts each, unverified: 10 pts each
     const hackathonWinsCount = hackathonWinsList.length;
-    const verifiedHackathonWinsCount = hackathonWinsList.filter((win) => win.hackathon?.verified).length;
-    score += hackathonWinsCount * 40;
+    const verifiedHackathonWinsCount = hackathonWinsList.filter(
+      (win) => win.hackathon?.verified,
+    ).length;
+    const unverifiedWinsCount = hackathonWinsCount - verifiedHackathonWinsCount;
+    score += verifiedHackathonWinsCount * SCORE_WEIGHTS.HACKATHON.VERIFIED_WIN;
+    score += unverifiedWinsCount * SCORE_WEIGHTS.HACKATHON.UNVERIFIED_WIN;
 
     // Submission engineering scores
-    for (  const submission of submissions ) {
-
-      score +=
-        (
-          submission.engineeringScore ||
-          0
-        ) * 0.5;
-
-      //
-      // Verified project
-      //
-      if (
-        submission.verifiedProject
-      ) {
-        score += 10;
-      }
+    for (const submission of submissions) {
+      score += (submission.engineeringScore || 0) * SCORE_WEIGHTS.SUBMISSION_SCORE_FACTOR;
+      if (submission.verifiedProject) score += SCORE_WEIGHTS.SUBMISSION_VERIFIED_PROJECT;
     }
 
-    // Clamp
-    score = Math.min(
-      Math.round(score),
-      10000
-    );
+    // Clamp to global cap
+    score = Math.min(Math.round(score), SCORE_WEIGHTS.GLOBAL_CAP);
 
     // IN-MEMORY COMPILATION: Prep aggregates for single-write Trust update
     const verifiedProjects = projects.filter((p) => p.verified).length;
@@ -341,17 +210,13 @@ export const calculateEngineeringScore = async (
       verifiedHackathonWins: verifiedHackathonWinsCount,
     });
 
-    // Consolidated single write update query
-    await prisma.user.update({
-      where: {
-        id: userId,
-      },
-
-      data: {
-        engineeringScore: score,
-        trustLevel,
-      },
-    });
+    // Persist to DB (skip if persist:false — useful for dry-runs and bulk loops)
+    if (options.persist !== false) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { engineeringScore: score, trustLevel },
+      });
+    }
 
     return score;
   };

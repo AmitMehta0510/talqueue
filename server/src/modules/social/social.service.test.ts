@@ -88,7 +88,7 @@ import { reviewConnectionSchema } from "./social.validation";
 // ─────────────────────────────────────────────────────────────────────────────
 // Module-level mocks — side-effect services (no real network I/O needed)
 // ─────────────────────────────────────────────────────────────────────────────
-vi.mock("modules/notificatios/notifications.service", () => ({
+vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({}),
 }));
 

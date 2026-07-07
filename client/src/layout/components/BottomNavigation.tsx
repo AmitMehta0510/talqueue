@@ -40,6 +40,7 @@ export function BottomNavigation({ tabs, user }: BottomNavigationProps) {
               key={tab.to}
               to={locked ? "/auth" : tab.to}
               state={locked ? { from: { pathname: tab.to } } : undefined}
+              aria-label={locked ? `${tab.label} (sign in required)` : tab.label}
               className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 min-w-0"
             >
               {({ isActive }) => (

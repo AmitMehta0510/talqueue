@@ -80,7 +80,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 // Module-level mocks — side-effect services (never need real I/O in unit tests)
 // ─────────────────────────────────────────────────────────────────────────────
-vi.mock("modules/notificatios/notifications.service", () => ({
+vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({}),
   createNotificationsBulk: vi.fn().mockResolvedValue([]),
 }));

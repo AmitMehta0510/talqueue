@@ -94,7 +94,7 @@ vi.mock("shared/database/prisma", () => ({
 // Stub heavy side-effect services — NOT under test
 // ---------------------------------------------------------------------------
 
-vi.mock("modules/notificatios/notifications.service", () => ({
+vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-stub-1" }),
   createNotificationsBulk: vi.fn().mockResolvedValue([]),
 }));

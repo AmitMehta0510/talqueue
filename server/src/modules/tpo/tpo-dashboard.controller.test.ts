@@ -23,7 +23,7 @@ vi.mock("shared/database/prisma", () => ({
   },
 }));
 
-vi.mock("modules/notificatios/notifications.service", () => ({
+vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({}),
 }));
 
@@ -68,7 +68,7 @@ vi.mock("shared/errors/AppError", () => ({
 }));
 
 import prisma from "shared/database/prisma";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 import {
   requireTpoRole,

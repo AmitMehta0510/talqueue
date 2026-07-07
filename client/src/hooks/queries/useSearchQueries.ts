@@ -36,6 +36,22 @@ export const useSkillSearchQuery = (query: string) =>
     staleTime: 5 * 60_000,
   });
 
+/**
+ * Global search query — caches results for 30s per unique query string.
+ * Replaces the manual fetch pattern in SearchResultsPage.
+ */
+export const useGlobalSearchQuery = (query: string) =>
+  useQuery({
+    queryKey: queryKeys.search.global(query),
+    queryFn: async ({ signal }) => {
+      const result = await api.searchGlobal(query.trim(), true, { signal });
+      return result.data as SearchResults;
+    },
+    enabled: query.trim().length > 0,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
 
 export const usePlatformSearchMutation = () => {
   const { showToast } = useToast();

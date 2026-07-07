@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { isCollegeAdminOrCdcr } from "./placementDrives.service";
 import { PlacementDriveApplicationStatus } from "@prisma/client";
-import { createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { createNotificationsBulk } from "modules/notifications/notifications.service";
 import { enqueueEmail } from "services/mailQueue";
 
 interface CreateRoundData {

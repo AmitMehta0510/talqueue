@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { createNotification, createNotificationsBulk } from "modules/notifications/notifications.service";
 
 import { calculateUserAffinity } from "modules/affinity/affinity.service";
 

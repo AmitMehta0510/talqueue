@@ -17,7 +17,7 @@ import { calculateEngineeringScore } from "modules/reputation/engineering-score.
 
 import { calculateUserAffinity } from "modules/affinity/affinity.service";
 
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 type CommunityWriteClient = Prisma.TransactionClient | typeof prisma;
 

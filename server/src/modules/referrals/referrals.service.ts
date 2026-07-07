@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 
 import AppError from "shared/errors/AppError";
 
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 import { addReputation } from "modules/reputation/reputation.service";
 import { createActivity } from "modules/activities/activity.service";

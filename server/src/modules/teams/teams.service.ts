@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import AppError from "shared/errors/AppError";
 
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 import {
   addReputation,

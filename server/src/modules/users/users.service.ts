@@ -25,7 +25,7 @@ export interface UpdateProfileData {
   bio?: string;
   headline?: string;
   location?: string;
-  country?: string;  // ISO 3166-1 alpha-2, e.g. "IN", "US"
+  country?: string | null;  // ISO 3166-1 alpha-2, e.g. "IN", "US" — null clears the field
   avatarUrl?: string;
   bannerUrl?: string;
   resumeUrl?: string;

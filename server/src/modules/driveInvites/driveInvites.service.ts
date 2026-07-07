@@ -1,7 +1,7 @@
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { isCollegeAdminOrCdcr } from "modules/placementDrives/placementDrives.service";
-import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { createNotification, createNotificationsBulk } from "modules/notifications/notifications.service";
 import { enqueueEmail } from "services/mailQueue";
 
 interface SendInviteData {

@@ -8,7 +8,7 @@ import redis from "shared/database/redis";
 import AppError from "shared/errors/AppError";
 import asyncHandler from "shared/utils/asyncHandler";
 import { successResponse } from "shared/utils/apiResponse";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 import { NotificationType } from "@prisma/client";
 import { sendOtpEmail } from "infra/mail/brevo-mailer.service";
 import { grantRole } from "modules/admin/admin.service";

@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { PlacementDriveApplicationStatus, CollegeOfferPolicy, Prisma } from "@prisma/client";
 import { processPlacementSelection } from "services/placementLockService";
-import { createNotification, createNotificationsBulk } from "modules/notificatios/notifications.service";
+import { createNotification, createNotificationsBulk } from "modules/notifications/notifications.service";
 import { enqueueEmail } from "services/mailQueue";
 
 interface CreatePlacementDriveData {

@@ -4,7 +4,7 @@ import slugify from "slugify";
 import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { createCommunity } from "modules/community/community.service";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 interface AuthUser {
   id: string;

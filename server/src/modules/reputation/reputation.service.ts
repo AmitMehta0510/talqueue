@@ -1,6 +1,6 @@
 import prisma from "shared/database/prisma";
 
-import { createNotification,} from "modules/notificatios/notifications.service";
+import { createNotification,} from "modules/notifications/notifications.service";
 import { createActivity } from "modules/activities/activity.service";
 
 export const addReputation =  async (    userId: string,

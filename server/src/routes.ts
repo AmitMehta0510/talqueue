@@ -17,7 +17,7 @@ import hackathonRoutes from "modules/hackathons/hackathons.routes";
 import interactionTrackingRoutes from "modules/interaction/interaction-tracking.routes";
 import jobApplicationRoutes from "modules/jobApplications/jobApplications.routes";
 import jobRoutes from "modules/jobs/jobs.routes";
-import notificationRoutes from "modules/notificatios/notifications.routes";
+import notificationRoutes from "modules/notifications/notifications.routes";
 import postRoutes from "modules/posts/posts.routes";
 import projectRoutes from "modules/projects/projects.routes";
 import recommendationRoutes from "modules/recommendations/recommendations.routes";

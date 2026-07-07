@@ -2,7 +2,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { getPresignedDownloadUrl } from "shared/services/s3";
 import { JobStatus, Prisma } from "@prisma/client";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 import slugify from "slugify";
 import { syncJobToElastic, syncHackathonToElastic, syncProjectToElastic } from "services/elasticSync";
 

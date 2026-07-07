@@ -9,6 +9,7 @@ import {
   Star,
   Award,
   ArrowUpRight,
+  ArrowUp,
   Sparkles,
   Rocket,
   Briefcase,
@@ -197,6 +198,17 @@ export function FeedPage() {
 
   // Whether any interaction mutation is in-flight (used to disable FeedCard CTAs)
   const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
+
+  // Scroll-to-top button visibility — only setState when threshold crosses
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const should = window.scrollY > 400;
+      setShowScrollTop((prev) => (prev === should ? prev : should));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -810,6 +822,23 @@ export function FeedPage() {
           </div>
         </div>
       )}
+      {/* ── SCROLL TO TOP BUTTON ────────────────────────────────────── */}
+      <button
+        type="button"
+        aria-label="Scroll to top"
+        title="Scroll to top"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        className="fixed bottom-24 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition-all duration-300 lg:bottom-8"
+        style={{
+          background: "var(--brand)",
+          color: "#fff",
+          opacity: showScrollTop ? 1 : 0,
+          pointerEvents: showScrollTop ? "auto" : "none",
+          transform: showScrollTop ? "translateY(0)" : "translateY(12px)",
+        }}
+      >
+        <ArrowUp size={16} />
+      </button>
     </div>
   );
 }

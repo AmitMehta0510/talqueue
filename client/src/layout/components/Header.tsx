@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Briefcase, type LucideIcon } from "lucide-react";
+import { Search, Menu, X, Briefcase, Sun, Moon, type LucideIcon } from "lucide-react";
+import { useDarkMode } from "../../core/contexts/DarkModeContext";
+import type { NavSection } from "../config/navigation";
 import { User } from "../../lib/api";
 import { LogoSection } from "./LogoSection";
 import { NotificationArea } from "./NotificationArea";
@@ -8,12 +10,6 @@ import { ChatIconButton } from "./ChatIconButton";
 import { UserMenu } from "./UserMenu";
 import { isPlatformAdmin } from "../../core/utils/roles";
 
-type NavSection = {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  requiresAuth?: boolean;
-};
 
 type HeaderProps = {
   /** Current authenticated user */
@@ -66,6 +62,7 @@ export function Header({
 }: HeaderProps) {
   const navigate = useNavigate();
   const isUserAdmin = isPlatformAdmin(user);
+  const { isDark, toggle: toggleDark } = useDarkMode();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -135,6 +132,19 @@ export function Header({
               <span>{apiStatus === "checking" ? "Ping…" : apiOnline ? "API OK" : "API Offline"}</span>
             </div>
           )}
+
+          {/* Dark / Light mode toggle */}
+          <button
+            type="button"
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            onClick={toggleDark}
+            className="icon-btn rounded-full transition-all duration-300"
+          >
+            {isDark
+              ? <Sun size={16} className="text-amber-400" />
+              : <Moon size={16} />}
+          </button>
 
           {/* Business Button */}
           <Link

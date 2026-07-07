@@ -6,7 +6,7 @@ export interface PlacementStats {
     totalDrives: number;
     totalApplicants: number;
     totalSelected: number;
-    placementPercent: number;
+    placementPercent: number | null;
     avgPackageLPA: number | null;
     maxPackageLPA: number | null;
     totalInternshipDrives: number;
@@ -122,8 +122,8 @@ export const getCollegePlacementStats = async (
     }
   }
 
-  const placementPercent =
-    totalApplicants > 0 ? Math.round((totalSelected / totalApplicants) * 1000) / 10 : 0;
+  const placementPercent: number | null =
+    totalApplicants > 0 ? Math.round((totalSelected / totalApplicants) * 1000) / 10 : null;
 
   const toLPA = (lakh: number | null): number | null =>
     lakh !== null && lakh !== undefined ? Math.round((lakh / 100000) * 10) / 10 : null;

@@ -26,7 +26,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import asyncHandler from "shared/utils/asyncHandler";
 import { successResponse } from "shared/utils/apiResponse";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 import { NotificationType } from "@prisma/client";
 
 // ---------------------------------------------------------------------------

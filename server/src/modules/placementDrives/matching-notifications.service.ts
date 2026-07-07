@@ -1,6 +1,6 @@
 import prisma from "shared/database/prisma";
 import { checkDriveEligibility } from "modules/placementDrives/placementDrives.service";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 import { NotificationType } from "@prisma/client";
 
 /**

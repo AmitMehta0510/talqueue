@@ -14,6 +14,7 @@ import {
   Award,
   Gavel,
   UserRound,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { User } from "../../lib/api";
@@ -73,6 +74,7 @@ export const careerDropdownSections: NavSection[] = [
 export const careerBottomTabs: NavSection[] = [
   { to: "/career/jobs",        label: "Jobs",       icon: BriefcaseBusiness },
   { to: "/career",             label: "Dashboard",  icon: LayoutDashboard },
+  { to: "/chat",               label: "Chat",       icon: MessageSquare,     requiresAuth: true },
   { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
   { to: "/career/profile",     label: "Me",         icon: UserRound,         requiresAuth: true },
 ];

@@ -110,7 +110,7 @@ vi.mock("services/forumSyncService", () => ({
 
 import prisma from "shared/database/prisma";
 import { createComment, createPost, toggleLike } from "./posts.service";
-import { createNotification } from "modules/notificatios/notifications.service";
+import { createNotification } from "modules/notifications/notifications.service";
 
 // ---------------------------------------------------------------------------
 // Typed fixture factories

@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useGlobalSearchQuery } from "../hooks/queries/useSearchQueries";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -275,58 +276,24 @@ export function SearchResultsPage() {
   const navigate = useNavigate();
   const q = searchParams.get("q") ?? "";
 
-  const [results, setResults] = useState<SearchResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState(q);
 
   // Keep input in sync when URL param changes
+  useEffect(() => { setInputValue(q); }, [q]);
+
+  // Update document title and restore on unmount
   useEffect(() => {
-    setInputValue(q);
+    document.title = q ? `Search: "${q}" | Engineering Hub` : "Search | Engineering Hub";
+    return () => { document.title = "Engineering Hub"; };
   }, [q]);
 
-  // Update document title
-  useEffect(() => {
-    document.title = q
-      ? `Search: "${q}" | Engineering Hub`
-      : "Search | Engineering Hub";
-    return () => {
-      document.title = "Engineering Hub";
-    };
-  }, [q]);
-
-  const fetchResults = useCallback(
-    async (query: string, signal?: AbortSignal) => {
-      if (!query.trim()) {
-        setResults(null);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const envelope = await api.searchGlobal(query, true, { signal });
-        setResults(envelope.data);
-      } catch (err: any) {
-        if (err?.name === "AbortError") return;
-        setError("Something went wrong. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  // Fetch on query change
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchResults(q, controller.signal);
-    return () => controller.abort();
-  }, [q, fetchResults]);
+  // ── React Query — cached, retried, signal-cancelled automatically ──────────
+  const { data: results, isLoading: loading, isError } = useGlobalSearchQuery(q);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = inputValue.trim();
-    if (trimmed) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    if (trimmed && trimmed !== q) navigate(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
   // Typed slices
@@ -416,7 +383,7 @@ export function SearchResultsPage() {
       )}
 
       {/* ── Error state ──────────────────────────────────────────── */}
-      {!loading && error && (
+      {!loading && isError && (
         <div
           className="rounded-xl p-6 text-center border"
           style={{
@@ -433,18 +400,12 @@ export function SearchResultsPage() {
           <p className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
             Search failed
           </p>
-          <p className="text-sm">{error}</p>
-          <button
-            onClick={() => fetchResults(q)}
-            className="btn-primary mt-4 text-xs"
-          >
-            Retry
-          </button>
+          <p className="text-sm">Something went wrong. Please try again.</p>
         </div>
       )}
 
       {/* ── Empty query ───────────────────────────────────────────── */}
-      {!loading && !error && !q && (
+      {!loading && !isError && !q && (
         <div
           className="rounded-xl p-12 text-center border"
           style={{

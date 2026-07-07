@@ -11,7 +11,7 @@ import {
   toggleLike,
 } from "./posts.service";
 
-vi.mock("modules/notificatios/notifications.service", () => ({
+vi.mock("modules/notifications/notifications.service", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notification-1" }),
 }));
 
@@ -206,7 +206,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
     };
 
     (prisma.post.create as any) = vi.fn().mockResolvedValue(mockCreatedPost);
-    const { createNotification } = await import("modules/notificatios/notifications.service");
+    const { createNotification } = await import("modules/notifications/notifications.service");
 
     await createPost("user-1", {
       content: "Hello World @user-2",
@@ -240,7 +240,7 @@ describe("Posts Service - createPost and updatePost Functions", () => {
     (prisma.post.findUnique as any) = vi.fn().mockResolvedValue(mockPost);
     (prisma.comment.create as any) = vi.fn().mockResolvedValue(mockComment);
     (prisma.post.update as any) = vi.fn().mockResolvedValue({});
-    const { createNotification } = await import("modules/notificatios/notifications.service");
+    const { createNotification } = await import("modules/notifications/notifications.service");
 
     await createComment("user-1", "post-1", {
       content: "Nice post @user-3",
