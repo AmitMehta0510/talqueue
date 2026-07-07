@@ -7,6 +7,7 @@ import { successResponse } from "shared/utils/apiResponse";
 import AppError from "shared/errors/AppError";
 
 import { searchResdexCandidates, ResdexSearchFilters } from "./resdex.service";
+import { parseNaturalLanguageQuery } from "./resdex-nlp-parser";
 
 /**
  * POST /api/v1/resdex/search
@@ -137,6 +138,44 @@ export const resdexSearchHandler = asyncHandler(
           },
         },
         `Found ${result.total} candidate(s).`
+      )
+    );
+  }
+);
+
+/**
+ * POST /api/v1/resdex/nl-search
+ * Natural language recruiter search — converts free text to structured Elasticsearch filters.
+ */
+export const nlSearchHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication required.", 401);
+
+    const isAuthorized =
+      user.primaryRole === "SUPER_ADMIN" ||
+      user.primaryRole === "RECRUITER" ||
+      user.primaryRole === "TPO" ||
+      user.roles?.some((ur: any) =>
+        ["SUPER_ADMIN", "ADMIN", "PLATFORM_ADMIN", "RECRUITER", "TPO"].includes(ur.role?.name)
+      ) ||
+      !!(await prisma.companyAdmin.findFirst({ where: { userId: user.id }, select: { id: true } }));
+
+    if (!isAuthorized) throw new AppError("Access denied. Recruiter or TPO account required.", 403);
+
+    const rawQuery = typeof req.body?.query === "string" ? req.body.query.trim() : "";
+    if (!rawQuery) throw new AppError("query field is required.", 400);
+
+    const size = Math.min(Number(req.body?.size) || 20, 50);
+    const from = Math.max(Number(req.body?.from) || 0, 0);
+
+    const parsedFilters = parseNaturalLanguageQuery(rawQuery);
+    const result = await searchResdexCandidates({ ...parsedFilters, size, from });
+
+    return res.status(200).json(
+      successResponse(
+        { candidates: result.candidates, total: result.total, parsedFilters },
+        `Found ${result.total} candidate(s) for: "${rawQuery}"`
       )
     );
   }

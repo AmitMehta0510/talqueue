@@ -33,6 +33,71 @@ const SCORE_WEIGHTS = {
   GLOBAL_CAP: 10_000,
 } as const;
 
+// ─── Developer Level System ─────────────────────────────────────────────────
+
+export interface EngineerLevel {
+  /** Ordinal rank (1 = lowest) */
+  rank: number;
+  /** Display label for the level */
+  label: string;
+  /** Minimum score required to reach this level */
+  minScore: number;
+  /** Score threshold for the next level (null if max) */
+  nextLevelScore: number | null;
+  /** Progress towards the next level, 0–100% */
+  progress: number;
+  /** Emoji badge icon */
+  badge: string;
+}
+
+const LEVELS = [
+  { rank: 1, label: "Newbie",             minScore: 0,     badge: "🌱" },
+  { rank: 2, label: "Apprentice",         minScore: 100,   badge: "⚡" },
+  { rank: 3, label: "Associate Engineer", minScore: 500,   badge: "🔧" },
+  { rank: 4, label: "Software Engineer",  minScore: 1_500, badge: "💻" },
+  { rank: 5, label: "Senior Engineer",    minScore: 3_000, badge: "🚀" },
+  { rank: 6, label: "Staff Engineer",     minScore: 5_000, badge: "🏗️" },
+  { rank: 7, label: "Principal Engineer", minScore: 7_500, badge: "🎯" },
+  { rank: 8, label: "Kernel Architect",   minScore: 9_500, badge: "🏆" },
+] as const;
+
+/**
+ * Maps a raw engineering score to a named developer level with progress info.
+ * Useful for profile badges, leaderboards, and gamification nudges.
+ */
+export const getEngineerLevel = (score: number): EngineerLevel => {
+  type LevelEntry = { rank: number; label: string; minScore: number; badge: string };
+  let currentLevel: LevelEntry = LEVELS[0];
+  for (const level of LEVELS) {
+    if (score >= level.minScore) currentLevel = level;
+    else break;
+  }
+
+  const currentIndex = LEVELS.findIndex((l) => l.rank === currentLevel.rank);
+  const nextLevel: LevelEntry | undefined = LEVELS[currentIndex + 1];
+  const nextLevelScore: number | null = nextLevel?.minScore ?? null;
+
+  const progress = nextLevelScore
+    ? Math.min(
+        Math.round(
+          ((score - currentLevel.minScore) /
+            (nextLevelScore - currentLevel.minScore)) *
+            100,
+        ),
+        100,
+      )
+    : 100; // Already at max level
+
+  return {
+    rank: currentLevel.rank,
+    label: currentLevel.label,
+    badge: currentLevel.badge,
+    minScore: currentLevel.minScore,
+    nextLevelScore,
+    progress,
+  };
+};
+
 export const calculateEngineeringScore = async (
     userId: string,
     options: { persist?: boolean } = { persist: true },

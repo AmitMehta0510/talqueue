@@ -8,7 +8,7 @@ import {
   addTeamReputation,
 } from "modules/reputation/reputation.service";
 import { createActivity } from "modules/activities/activity.service";
-import { fetchGithubRepository } from "modules/github/github.service";
+import { fetchGithubRepository, verifyContributorAuthorship } from "modules/github/github.service";
 import {
   calculateProjectVerificationScore,
   calculateProjectEngineeringScore,
@@ -138,28 +138,43 @@ export const createProject = async (
     ]).catch(console.error);
 
     //
-    // GITHUB SYNC
+    // GITHUB SYNC + AUTHORSHIP VERIFICATION
     //
     if (project.githubUrl) {
-      fetchGithubRepository(project.githubUrl)
-        .then(async (githubData) => {
+      // Fetch user's GitHub handle for authorship check
+      prisma.profile
+        .findUnique({ where: { userId }, select: { githubUrl: true } })
+        .then(async (profile: { githubUrl: string | null } | null) => {
+          // Extract GitHub username from profile URL if present
+          const githubHandle = profile?.githubUrl
+            ? profile.githubUrl.replace(/\/+$/, "").split("/").pop() ?? ""
+            : "";
+
+          // Run repo fetch + author verification concurrently
+          const [githubData, authorshipResult] = await Promise.all([
+            fetchGithubRepository(project.githubUrl!),
+            githubHandle
+              ? verifyContributorAuthorship(project.githubUrl!, githubHandle)
+              : Promise.resolve({ verified: false }),
+          ]);
+
+          const commitAuthorVerified = authorshipResult.verified;
+          const { plagiarismRiskLevel, isFork, parentRepo, ...repoFields } = githubData;
+
           const verificationScore = calculateProjectVerificationScore({
             ...project,
-            ...githubData,
+            ...repoFields,
+            commitAuthorVerified,
+            plagiarismRiskLevel,
           });
 
           const verified = verificationScore >= 60;
 
           await prisma.project.update({
-            where: {
-              id: project.id,
-            },
-
+            where: { id: project.id },
             data: {
-              ...githubData,
-
+              ...repoFields,
               verified,
-
               lastGithubSyncAt: new Date(),
             },
           });
@@ -171,19 +186,14 @@ export const createProject = async (
                 "PROJECT_VERIFIED",
                 40,
                 "Verified engineering project",
-                {
-                  projectId: project.id,
-                },
+                { projectId: project.id },
               ),
-
               createActivity(
                 userId,
                 "PROJECT_VERIFIED",
                 "Verified a project",
                 `Project "${project.title}" became verified`,
-                {
-                  projectId: project.id,
-                },
+                { projectId: project.id },
               ),
             ]);
           }

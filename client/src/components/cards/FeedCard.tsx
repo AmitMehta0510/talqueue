@@ -9,6 +9,7 @@ import { Avatar } from "../ui";
 import { HackathonCard } from "./HackathonCard";
 import { JobCard } from "./JobCard";
 import { CompanyFeedCard } from "./CompanyFeedCard";
+import { RichPostContent } from "./RichPostContent";
 
 const projectTags = (project: Project) =>
   Array.isArray(project.techStack) ? project.techStack.map(String) : project.searchTags || [];
@@ -152,9 +153,15 @@ export const FeedCard = memo(function FeedCard({
         </div>
       )}
 
-      <p className="mt-4 whitespace-pre-line text-sm leading-6 text-secondary">
-        {content}
-      </p>
+      {isPost ? (
+        <div className="mt-4">
+          <RichPostContent content={content} maxLines={6} />
+        </div>
+      ) : (
+        <p className="mt-4 line-clamp-3 whitespace-pre-line text-sm leading-6 text-secondary">
+          {content}
+        </p>
+      )}
 
       {tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">

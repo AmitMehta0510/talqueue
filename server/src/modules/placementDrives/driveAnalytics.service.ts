@@ -220,3 +220,113 @@ export const getCollegePlacementStats = async (
     recentDrives,
   };
 };
+
+// ─── Student Placement Probability ────────────────────────────────────────────
+
+export interface PlacementProbabilityResult {
+  probability: number; // 0–100
+  factors: {
+    engineeringScore: number;   // 0–40
+    cgpa: number;               // 0–25
+    verifiedSkills: number;     // 0–20
+    liveProjects: number;       // 0–10
+    experience: number;         // 0–5
+  };
+  recommendation: string;
+}
+
+/**
+ * Computes a student's placement probability (0–100%) using a weighted scoring model.
+ * Factors and their max contribution:
+ *  - Engineering Score  → 40 pts  (normalized from 0–10,000)
+ *  - CGPA               → 25 pts  (CGPA / 10 × 25)
+ *  - Verified Skills    → 20 pts  (3 pts per skill, capped at 20)
+ *  - Live Projects      → 10 pts  (5 pts each, capped at 10)
+ *  - Experience tenure  → 5 pts   (1 pt per 6 months, capped at 5)
+ */
+export const getStudentPlacementProbability = async (
+  userId: string,
+): Promise<PlacementProbabilityResult> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      engineeringScore: true,
+      // CGPA lives on Education records, not Profile
+      educations: {
+        select: { cgpa: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      // Verified skills — relation name on User is 'skills' (UserSkill[])
+      skills: {
+        where: { verified: true },
+        select: { id: true },
+      },
+      // Live projects — relation name on User is 'ownedProjects' (Project[])
+      ownedProjects: {
+        where: { liveUrl: { not: null } },
+        select: { id: true },
+        take: 10,
+      },
+      // Experience tenure
+      experiences: {
+        select: { startDate: true, endDate: true },
+      },
+    },
+  });
+
+  if (!user) throw new AppError("User not found", 404);
+
+  // ── Factor 1: Engineering Score (0–40) ─────────────────────────────────────
+  const rawScore = user.engineeringScore ?? 0;
+  const engineeringFactor = Math.min(Math.round((rawScore / 10_000) * 40), 40);
+
+  // ── Factor 2: CGPA (0–25) ──────────────────────────────────────────────────
+  const cgpa = user.educations[0]?.cgpa ?? 0;
+  const cgpaFactor = Math.min(Math.round((cgpa / 10) * 25), 25);
+
+  // ── Factor 3: Verified Skills (0–20) ──────────────────────────────────────
+  const verifiedSkillsCount = user.skills.length;
+  const skillsFactor = Math.min(verifiedSkillsCount * 3, 20);
+
+  // ── Factor 4: Live Projects (0–10) ────────────────────────────────────────
+  const liveProjectsCount = user.ownedProjects.length;
+  const projectsFactor = Math.min(liveProjectsCount * 5, 10);
+
+  // ── Factor 5: Experience tenure in months (0–5) ───────────────────────────
+  let totalExperienceMonths = 0;
+  for (const exp of user.experiences) {
+    if (exp.startDate) {
+      const end = exp.endDate ?? new Date();
+      const diffMs = end.getTime() - new Date(exp.startDate).getTime();
+      totalExperienceMonths += diffMs / (1000 * 60 * 60 * 24 * 30);
+    }
+  }
+  const experienceFactor = Math.min(Math.floor(totalExperienceMonths / 6), 5);
+
+  const probability = engineeringFactor + cgpaFactor + skillsFactor + projectsFactor + experienceFactor;
+
+  // ── Recommendation ────────────────────────────────────────────────────────
+  let recommendation: string;
+  if (probability >= 80) {
+    recommendation = "Highly placeable — strong engineering portfolio and CGPA. Prioritise for referrals.";
+  } else if (probability >= 60) {
+    recommendation = "Good placement odds. Recommend adding 1–2 more verified projects and verified skills.";
+  } else if (probability >= 40) {
+    recommendation = "Moderate risk. Improve CGPA if possible, complete profile, and add live project links.";
+  } else {
+    recommendation = "High placement risk. Needs significant profile improvement before next drive.";
+  }
+
+  return {
+    probability: Math.min(probability, 100),
+    factors: {
+      engineeringScore: engineeringFactor,
+      cgpa: cgpaFactor,
+      verifiedSkills: skillsFactor,
+      liveProjects: projectsFactor,
+      experience: experienceFactor,
+    },
+    recommendation,
+  };
+};

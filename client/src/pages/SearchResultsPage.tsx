@@ -432,7 +432,7 @@ export function SearchResultsPage() {
       )}
 
       {/* ── No results ───────────────────────────────────────────── */}
-      {!loading && !error && q && results && !hasAnyResults && (
+      {!loading && !isError && q && results && !hasAnyResults && (
         <div
           className="rounded-xl p-12 text-center border"
           style={{
@@ -469,7 +469,7 @@ export function SearchResultsPage() {
       )}
 
       {/* ── Results ──────────────────────────────────────────────── */}
-      {!loading && !error && results && hasAnyResults && (
+      {!loading && !isError && results && hasAnyResults && (
         <div className="space-y-10">
 
           {/* ── Section: People ─────────────────────────────── */}

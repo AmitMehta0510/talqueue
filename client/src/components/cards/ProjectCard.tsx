@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Check, ExternalLink, GitFork, Github, Plus, Star, Users } from "lucide-react";
+import { Check, ExternalLink, GitFork, Github, Play, Plus, Star, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Project } from "../../lib/api";
 import { formatCount, titleCase, userName } from "../../core/utils/format";
@@ -21,6 +21,16 @@ export const ProjectCard = memo(function ProjectCard({
     : project.searchTags || [];
   const isOwner = project.ownerId === currentUserId || project.owner?.id === currentUserId;
   const memberCount = project._count?.members || project.members?.length || 0;
+
+  /** Build a StackBlitz URL from a GitHub repo URL, or return null */
+  const stackBlitzUrl = project.githubUrl
+    ? (() => {
+        const match = project.githubUrl
+          .replace(/\/+$/, "")
+          .match(/github\.com\/([\/\w.-]+)/);
+        return match ? `https://stackblitz.com/github/${match[1]}` : null;
+      })()
+    : null;
 
   return (
     <article className="panel p-5 hover-lift">
@@ -99,6 +109,18 @@ export const ProjectCard = memo(function ProjectCard({
               title="GitHub"
             >
               <Github size={15} />
+            </a>
+          )}
+          {stackBlitzUrl && (
+            <a
+              className="icon-btn h-8 w-8"
+              href={stackBlitzUrl}
+              rel="noreferrer"
+              target="_blank"
+              title="Run in StackBlitz"
+              style={{ color: "var(--brand)" }}
+            >
+              <Play size={14} fill="currentColor" />
             </a>
           )}
           {project.liveUrl && (

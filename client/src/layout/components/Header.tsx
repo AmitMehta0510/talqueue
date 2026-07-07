@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { Search, Menu, X, Briefcase, Sun, Moon, type LucideIcon } from "lucide-react";
 import { useDarkMode } from "../../core/contexts/DarkModeContext";
@@ -9,6 +9,7 @@ import { NotificationArea } from "./NotificationArea";
 import { ChatIconButton } from "./ChatIconButton";
 import { UserMenu } from "./UserMenu";
 import { isPlatformAdmin } from "../../core/utils/roles";
+import { CommandPalette } from "./CommandPalette";
 
 
 type HeaderProps = {
@@ -44,7 +45,7 @@ const glassStyle: React.CSSProperties = {
 };
 
 /**
- * Sticky Header layout component. Includes logo, search input, top navigation,
+ * Sticky Header layout component. Includes logo, CMD+K search trigger, top navigation,
  * notification indicators, and user dropdown triggers.
  */
 export function Header({
@@ -66,6 +67,7 @@ export function Header({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close overlays on outside click
@@ -79,6 +81,18 @@ export function Header({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // CMD+K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleSearchSubmit = (value: string) => {
     if (onSearch) {
       onSearch(value);
@@ -87,92 +101,136 @@ export function Header({
     }
   };
 
+  const isMac =
+    typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
+
   return (
-    <header className="sticky top-0 z-40 border-b" style={glassStyle}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        
-        {/* Left: Logo */}
-        <div className="flex items-center gap-3 md:flex-1">
-          <LogoSection />
-        </div>
-
-        {/* Center: Global Search */}
-        <div className="hidden md:flex justify-center flex-1 max-w-md">
-          <div className="relative w-full max-w-xs">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-              size={15}
-              style={{ color: "var(--text-muted)" }}
-            />
-            <input
-              type="text"
-              className="field pl-9 py-1.5 text-xs w-full"
-              style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}
-              placeholder="Search engineers, skills, jobs..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val) handleSearchSubmit(val);
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2.5 shrink-0 md:flex-1 md:justify-end">
+    <>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <header className="sticky top-0 z-40 border-b" style={glassStyle}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           
-          {/* API Health indicator for administrators */}
-          {isUserAdmin && (
-            <div
-              className="hidden xl:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xxs font-medium border"
-              style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}
+          {/* Left: Logo */}
+          <div className="flex items-center gap-3 md:flex-1">
+            <LogoSection />
+          </div>
+
+          {/* Center: CMD+K Trigger */}
+          <div className="hidden md:flex justify-center flex-1 max-w-md">
+            <button
+              id="command-palette-trigger"
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              title="Open command palette (Ctrl+K)"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
+                maxWidth: "320px",
+                padding: "7px 14px",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface-2)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "13px",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(99,102,241,0.5)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 3px rgba(99,102,241,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+              }}
             >
-              <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${apiOnline ? "bg-indigo-500" : "bg-rose-500 animate-ping"}`} />
-              <span>{apiStatus === "checking" ? "Ping…" : apiOnline ? "API OK" : "API Offline"}</span>
+              <Search size={14} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "left" }}>Search engineers, skills, jobs…</span>
+              <kbd
+                style={{
+                  padding: "2px 6px",
+                  fontSize: "11px",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "5px",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.02em",
+                  color: "var(--text-muted)",
+                  flexShrink: 0,
+                }}
+              >
+                {isMac ? "⌘K" : "Ctrl+K"}
+              </kbd>
+            </button>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2.5 shrink-0 md:flex-1 md:justify-end">
+            
+            {/* API Health indicator for administrators */}
+            {isUserAdmin && (
+              <div
+                className="hidden xl:flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xxs font-medium border"
+                style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${apiOnline ? "bg-indigo-500" : "bg-rose-500 animate-ping"}`} />
+                <span>{apiStatus === "checking" ? "Ping…" : apiOnline ? "API OK" : "API Offline"}</span>
+              </div>
+            )}
+
+            {/* CMD+K mobile trigger */}
+            <button
+              type="button"
+              className="md:hidden icon-btn rounded-full"
+              title="Search (Ctrl+K)"
+              onClick={() => setPaletteOpen(true)}
+            >
+              <Search size={16} />
+            </button>
+
+            {/* Dark / Light mode toggle */}
+            <button
+              type="button"
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={toggleDark}
+              className="icon-btn rounded-full transition-all duration-300"
+            >
+              {isDark
+                ? <Sun size={16} className="text-amber-400" />
+                : <Moon size={16} />}
+            </button>
+
+            {/* Business Button */}
+            <Link
+              to="/business"
+              className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:scale-105 border"
+              style={{
+                background: "linear-gradient(135deg, var(--brand-light), rgba(99,102,241,0.15))",
+                borderColor: "rgba(99,102,241,0.3)",
+                color: "var(--brand)",
+              }}
+              title="Business — Register your company or college"
+            >
+              <Briefcase size={14} className="shrink-0" />
+              <span>Business</span>
+            </Link>
+
+            {/* Chat icon — workspace layouts only, authenticated users */}
+            {user && showChatIcon && <ChatIconButton />}
+
+            {/* Notifications area */}
+            <NotificationArea user={user} />
+
+            {/* Profile User Menu Trigger */}
+            <div>
+              <UserMenu user={user} logout={logout} />
             </div>
-          )}
-
-          {/* Dark / Light mode toggle */}
-          <button
-            type="button"
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={toggleDark}
-            className="icon-btn rounded-full transition-all duration-300"
-          >
-            {isDark
-              ? <Sun size={16} className="text-amber-400" />
-              : <Moon size={16} />}
-          </button>
-
-          {/* Business Button */}
-          <Link
-            to="/business"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:scale-105 border"
-            style={{
-              background: "linear-gradient(135deg, var(--brand-light), rgba(99,102,241,0.15))",
-              borderColor: "rgba(99,102,241,0.3)",
-              color: "var(--brand)",
-            }}
-            title="Business — Register your company or college"
-          >
-            <Briefcase size={14} className="shrink-0" />
-            <span>Business</span>
-          </Link>
-
-          {/* Chat icon — workspace layouts only, authenticated users */}
-          {user && showChatIcon && <ChatIconButton />}
-
-          {/* Notifications area */}
-          <NotificationArea user={user} />
-
-          {/* Profile User Menu Trigger */}
-          <div>
-            <UserMenu user={user} logout={logout} />
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
