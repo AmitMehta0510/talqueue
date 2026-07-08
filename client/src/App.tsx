@@ -1,68 +1,45 @@
-import { ReactNode, useEffect, useState, lazy, Suspense } from "react";
+import { ReactNode, useCallback, useEffect, useState, lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
   useLocation,
-  useParams,
 } from "react-router-dom";
 import { AppErrorBoundary, PageLoader } from "./components/ui";
+import RouteErrorPage from "./components/error/RouteErrorPage";
 import { isPlatformAdmin, isRecruiter, isTpo } from "./core/utils/roles";
 import { AuthProvider, useAuth } from "./core/contexts/AuthContext";
 import { ToastProvider } from "./core/contexts/ToastContext";
 import { WorkspaceProvider } from "./core/contexts/WorkspaceProvider";
 import { useWorkspace } from "./hooks/useWorkspace";
-
-const CampusLayout = lazy(() => import("./layout/CampusLayout").then(m => ({ default: m.CampusLayout })));
-const CareerLayout = lazy(() => import("./layout/CareerLayout").then(m => ({ default: m.CareerLayout })));
-const SharedLayout = lazy(() => import("./layout/SharedLayout").then(m => ({ default: m.SharedLayout })));
-const WorkspaceSelectorLayout = lazy(() => import("./layout/WorkspaceSelectorLayout").then(m => ({ default: m.WorkspaceSelectorLayout })));
-
-const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
-const CampusDashboardPage = lazy(() => import("./pages/CampusDashboardPage").then(m => ({ default: m.CampusDashboardPage })));
-const CareerDashboardPage = lazy(() => import("./pages/CareerDashboardPage").then(m => ({ default: m.CareerDashboardPage })));
-const ChatPage = lazy(() => import("./pages/ChatPage").then(m => ({ default: m.ChatPage })));
-const CollegesPage = lazy(() => import("./pages/CollegesPage").then(m => ({ default: m.CollegesPage })));
-const CommunitiesPage = lazy(() => import("./pages/CommunitiesPage").then(m => ({ default: m.CommunitiesPage })));
-const CompaniesPage = lazy(() => import("./pages/CompaniesPage").then(m => ({ default: m.CompaniesPage })));
-const DiscoverPage = lazy(() => import("./pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })));
-const FeedPage = lazy(() => import("./pages/FeedPage").then(m => ({ default: m.FeedPage })));
-const HackathonsPage = lazy(() => import("./pages/HackathonsPage").then(m => ({ default: m.HackathonsPage })));
-const JobsPage = lazy(() => import("./pages/JobsPage").then(m => ({ default: m.JobsPage })));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
-const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
-const ProjectsPage = lazy(() => import("./pages/ProjectsPage").then(m => ({ default: m.ProjectsPage })));
-const SocialPage = lazy(() => import("./pages/SocialPage").then(m => ({ default: m.SocialPage })));
-const TeamsPage = lazy(() => import("./pages/TeamsPage").then(m => ({ default: m.TeamsPage })));
-const UserProfilePage = lazy(() => import("./pages/UserProfilePage").then(m => ({ default: m.UserProfilePage })));
-const ReferralsPage = lazy(() => import("./pages/ReferralsPage").then(m => ({ default: m.ReferralsPage })));
-const ReputationPage = lazy(() => import("./pages/ReputationPage").then(m => ({ default: m.ReputationPage })));
-const RecruiterPage = lazy(() => import("./pages/RecruiterPage").then(m => ({ default: m.RecruiterPage })));
-const RecruiterDrivePage = lazy(() => import("./pages/RecruiterDrivePage").then(m => ({ default: m.RecruiterDrivePage })));
-const AdminPage = lazy(() => import("./pages/AdminPage").then(m => ({ default: m.AdminPage })));
-const CompanyAdminPage = lazy(() => import("./pages/CompanyAdminPage").then(m => ({ default: m.CompanyAdminPage })));
-const EventsPage = lazy(() => import("./pages/EventsPage").then(m => ({ default: m.EventsPage })));
-const PlacementDashboardPage = lazy(() => import("./pages/PlacementDashboardPage").then(m => ({ default: m.PlacementDashboardPage })));
-const OrganizationSelectorPage = lazy(() => import("./pages/OrganizationSelectorPage").then(m => ({ default: m.OrganizationSelectorPage })));
-const InstitutionOnboardingPage = lazy(() => import("./pages/InstitutionOnboardingPage").then(m => ({ default: m.InstitutionOnboardingPage })));
-const CompanyOnboardingPage = lazy(() => import("./pages/CompanyOnboardingPage").then(m => ({ default: m.CompanyOnboardingPage })));
-const TpoDashboardPage = lazy(() => import("./pages/TpoDashboardPage").then(m => ({ default: m.TpoDashboardPage })));
-const PublicBatchPage = lazy(() => import("./pages/PublicBatchPage").then(m => ({ default: m.PublicBatchPage })));
-const InterviewsPage = lazy(() => import("./pages/InterviewsPage").then(m => ({ default: m.InterviewsPage })));
-const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
-const WorkspaceSelectorPage = lazy(() => import("./pages/WorkspaceSelectorPage").then(m => ({ default: m.WorkspaceSelectorPage })));
-const LandingPage = lazy(() => import("./pages/LandingPage").then(m => ({ default: m.LandingPage })));
-
-
 import { DarkModeContext } from "./core/contexts/DarkModeContext";
+
+import { CampusRoutes } from "./routes/campus.routes";
+import { CareerRoutes } from "./routes/career.routes";
+import { SharedRoutes } from "./routes/shared.routes";
+import {
+  ProjectRedirect,
+  CollegeRedirect,
+  CollegeBatchRedirect,
+  CommunityRedirect,
+  TeamRedirect,
+  HackathonRedirect,
+  CompanyRedirect,
+  CompanyAdminRedirect,
+  RecruiterDriveRedirect,
+  ProfileRedirect,
+} from "./routes/redirects";
+
+// ─── Lazy imports (top-level / cross-workspace pages) ─────────────────────────
+const WorkspaceSelectorLayout = lazy(() => import("./layout/WorkspaceSelectorLayout").then(m => ({ default: m.WorkspaceSelectorLayout })));
+const AuthPage                = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
+const LandingPage             = lazy(() => import("./pages/LandingPage").then(m => ({ default: m.LandingPage })));
+const WorkspaceSelectorPage   = lazy(() => import("./pages/WorkspaceSelectorPage").then(m => ({ default: m.WorkspaceSelectorPage })));
+// ─────────────────────────────────────────────────────────────────────────────
 
 const THEME_KEY = "ep-theme";
 
-/**
- * Reads localStorage for a saved preference first; falls back to OS setting.
- * Persists user toggles to localStorage so the choice survives refreshes.
- */
 function DarkModeProvider({ children }: { children: ReactNode }) {
   const getInitial = () => {
     const saved = localStorage.getItem(THEME_KEY);
@@ -78,7 +55,6 @@ function DarkModeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
   }, [isDark]);
 
-  // Keep in sync if OS changes AND the user has never overridden manually
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
@@ -97,23 +73,18 @@ function DarkModeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Wraps page content in an animation key so the fade-in fires on each route change. */
+/** Wraps page content so the fade-in animation fires on each route change. */
 function PageTransitionWrapper({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  return (
-    <div key={pathname} className="page-enter">
-      {children}
-    </div>
-  );
+  return <div key={pathname} className="page-enter">{children}</div>;
 }
 
 /**
- * Generic route guard. Calls `useAuth()` exactly once, shows a `PageLoader`
- * while auth is resolving, then either renders children or redirects.
+ * Generic route guard. Calls `useAuth()` exactly once, shows a loader
+ * while auth resolves, then either renders children or redirects.
  *
- * @param predicate  — receives the resolved `User` and must return `true` to allow access.
- * @param fallback   — path to redirect to if the predicate fails (default: "/auth" for
- *                     unauthenticated users, "/feed" for role failures).
+ * @param predicate - receives the resolved User; must return true to allow access.
+ * @param fallback  - redirect target when the predicate fails.
  */
 function Require({
   predicate,
@@ -127,18 +98,14 @@ function Require({
   const { authStatus, user } = useAuth();
   const location = useLocation();
 
-  if (authStatus === "checking") {
-    return <PageLoader />;
-  }
+  if (authStatus === "checking") return <PageLoader />;
 
-  // Not authenticated at all
   if (!user) {
     const to = fallback ?? "/auth";
     const state = to === "/auth" ? { from: location } : undefined;
     return <Navigate to={to} replace state={state} />;
   }
 
-  // Authenticated but fails the role predicate
   if (predicate && !predicate(user)) {
     return <Navigate to={fallback ?? "/feed"} replace />;
   }
@@ -146,11 +113,10 @@ function Require({
   return children;
 }
 
-/** Convenience alias — requires authentication only, no role check. */
+/** Convenience alias — auth check only, no role predicate. */
 const RequireAuth = ({ children }: { children: ReactNode }) => (
   <Require>{children}</Require>
 );
-
 
 function PublicOnly({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -159,9 +125,7 @@ function PublicOnly({ children }: { children: ReactNode }) {
     (location.state as { from?: { pathname?: string; search?: string } } | null)
       ?.from || { pathname: "/feed", search: "" };
 
-  if (authStatus === "checking") {
-    return <PageLoader />;
-  }
+  if (authStatus === "checking") return <PageLoader />;
 
   if (user) {
     return (
@@ -175,58 +139,6 @@ function PublicOnly({ children }: { children: ReactNode }) {
   return children;
 }
 
-// Redirect helpers for parameter legacy paths
-const ProjectRedirect = () => {
-  const { projectSlug } = useParams();
-  return <Navigate to={`/campus/projects/${projectSlug || ""}`} replace />;
-};
-
-const CollegeRedirect = () => {
-  const { collegeSlug } = useParams();
-  return <Navigate to={`/campus/colleges/${collegeSlug || ""}`} replace />;
-};
-
-const CollegeBatchRedirect = () => {
-  const { collegeSlug, graduationYear } = useParams();
-  return <Navigate to={`/campus/colleges/${collegeSlug || ""}/batch/${graduationYear || ""}`} replace />;
-};
-
-const CommunityRedirect = () => {
-  const { communitySlug } = useParams();
-  return <Navigate to={`/campus/communities/${communitySlug || ""}`} replace />;
-};
-
-const TeamRedirect = () => {
-  const { teamId } = useParams();
-  return <Navigate to={`/campus/teams/${teamId || ""}`} replace />;
-};
-
-const HackathonRedirect = () => {
-  const { hackathonSlug } = useParams();
-  return <Navigate to={`/campus/hackathons/${hackathonSlug || ""}`} replace />;
-};
-
-const CompanyRedirect = () => {
-  const { companySlug } = useParams();
-  return <Navigate to={`/career/companies/${companySlug || ""}`} replace />;
-};
-
-const CompanyAdminRedirect = () => {
-  const { companySlug } = useParams();
-  return <Navigate to={`/career/companies/${companySlug || ""}/admin`} replace />;
-};
-
-const RecruiterDriveRedirect = () => {
-  const { driveId } = useParams();
-  return <Navigate to={`/career/recruiter/drive/${driveId || ""}`} replace />;
-};
-
-const ProfileRedirect = () => {
-  const { activeWorkspace } = useWorkspace();
-  return <Navigate to={activeWorkspace === "CAMPUS" ? "/campus/profile" : "/career/profile"} replace />;
-};
-
-// Root route component that redirects to workspace context, shows LandingPage or redirects to selection
 function WorkspaceRootElement() {
   const { user } = useAuth();
   const { activeWorkspace, rememberWorkspace, hasSelectedThisSession } = useWorkspace();
@@ -246,292 +158,71 @@ function WorkspaceRootElement() {
   return <Navigate to="/workspace-select" replace />;
 }
 
+// Shared guard props passed into extracted route trees
+const guardProps = { Require, RequireAuth, PageTransitionWrapper } as const;
+
 function AppRoutes() {
   const { loading } = useAuth();
 
-  if (loading) {
-    return <PageLoader />;
-  }
+  if (loading) return <PageLoader />;
 
   return (
     <AppErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Authentication gateway route */}
+          {/* Auth gateway */}
           <Route
             path="/auth"
             element={
               <PublicOnly>
-                <PageTransitionWrapper>
-                  <AuthPage />
-                </PageTransitionWrapper>
+                <PageTransitionWrapper><AuthPage /></PageTransitionWrapper>
               </PublicOnly>
             }
           />
 
-          {/* Public root route (auth-aware redirects or LandingPage) */}
+          {/* Root — auth-aware redirect or LandingPage */}
           <Route path="/" element={<WorkspaceRootElement />} />
 
-          {/* Gated workspace selection route */}
-          <Route
-            element={
-              <RequireAuth>
-                <WorkspaceSelectorLayout />
-              </RequireAuth>
-            }
-          >
+          {/* Workspace selector */}
+          <Route element={<RequireAuth><WorkspaceSelectorLayout /></RequireAuth>}>
             <Route path="/workspace-select" element={<WorkspaceSelectorPage />} />
           </Route>
 
-          {/* 1. CAMPUS WORKSPACE NESTED TREE */}
-          <Route path="/campus" element={<CampusLayout />}>
-            <Route index element={<PageTransitionWrapper><CampusDashboardPage /></PageTransitionWrapper>} />
-            <Route path="feed" element={<PageTransitionWrapper><FeedPage /></PageTransitionWrapper>} />
+          {/* ── Workspace route subtrees (see routes/*.routes.tsx) ── */}
+          <CampusRoutes {...guardProps} />
+          <CareerRoutes {...guardProps} />
+          <SharedRoutes {...guardProps} />
 
-            <Route path="projects" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
-            <Route path="projects/:projectSlug" element={<PageTransitionWrapper><ProjectsPage /></PageTransitionWrapper>} />
-            <Route path="project/:projectSlug" element={<ProjectRedirect />} />
-            <Route path="colleges" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
-            <Route path="colleges/:collegeSlug" element={<PageTransitionWrapper><CollegesPage /></PageTransitionWrapper>} />
-            <Route path="colleges/:collegeSlug/batch/:graduationYear" element={<PageTransitionWrapper><PublicBatchPage /></PageTransitionWrapper>} />
-            <Route path="communities" element={<PageTransitionWrapper><CommunitiesPage /></PageTransitionWrapper>} />
-            <Route
-              path="communities/:communitySlug"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><CommunitiesPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="teams"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><TeamsPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="teams/:teamId"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><TeamsPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route path="team/:teamId" element={<TeamRedirect />} />
-            <Route
-              path="social"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><SocialPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route path="hackathons" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
-            <Route path="hackathons/:hackathonSlug" element={<PageTransitionWrapper><HackathonsPage /></PageTransitionWrapper>} />
-            <Route path="hackathon/:hackathonSlug" element={<HackathonRedirect />} />
-            <Route
-              path="events"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><EventsPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="profile"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ProfilePage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="tpo-dashboard"
-              element={
-                <Require predicate={isTpo}>
-                  <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
-                </Require>
-              }
-            />
-             <Route
-              path="admin"
-              element={
-                <Require predicate={isPlatformAdmin}>
-                  <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
-                </Require>
-              }
-            />
-            <Route
-              path="onboarding"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><InstitutionOnboardingPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="placements"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><PlacementDashboardPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-          </Route>
-
-          {/* 2. CAREER WORKSPACE NESTED TREE */}
-          <Route path="/career" element={<CareerLayout />}>
-            <Route index element={<PageTransitionWrapper><CareerDashboardPage /></PageTransitionWrapper>} />
-            <Route path="jobs" element={<PageTransitionWrapper><JobsPage /></PageTransitionWrapper>} />
-            <Route path="job/:jobId" element={<Navigate to="/career/jobs" replace />} />
-            <Route path="companies" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
-            <Route path="companies/:companySlug" element={<PageTransitionWrapper><CompaniesPage /></PageTransitionWrapper>} />
-            <Route path="company/:companySlug" element={<CompanyRedirect />} />
-            <Route
-              path="companies/:companySlug/admin"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><CompanyAdminPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route path="interviews" element={<PageTransitionWrapper><InterviewsPage /></PageTransitionWrapper>} />
-            <Route
-              path="recruiter"
-              element={
-                <Require predicate={isRecruiter}>
-                  <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
-                </Require>
-              }
-            />
-            <Route
-              path="recruiter/drive/:driveId"
-              element={
-                <Require predicate={isRecruiter}>
-                  <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
-                </Require>
-              }
-            />
-            <Route
-              path="profile"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ProfilePage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="referrals"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ReferralsPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="reputation"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ReputationPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-             <Route
-              path="onboarding"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><CompanyOnboardingPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-          </Route>
-
-          {/* 3. SHARED PLATFORM GATED TREE */}
-          <Route element={<SharedLayout />}>
-            <Route
-              path="/chat"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ChatPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/chat/:conversationId"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><ChatPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route path="/search" element={<PageTransitionWrapper><SearchResultsPage /></PageTransitionWrapper>} />
-            {/* Discover is a shared feature — accessible from both Campus and Career workspaces */}
-            <Route
-              path="/discover"
-              element={
-                <PageTransitionWrapper><DiscoverPage /></PageTransitionWrapper>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><NotificationsPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/users/:username"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><UserProfilePage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-             <Route
-              path="/business"
-              element={
-                <RequireAuth>
-                  <PageTransitionWrapper><OrganizationSelectorPage /></PageTransitionWrapper>
-                </RequireAuth>
-              }
-            />
-           </Route>
-
-          {/* Legacy flat route redirects */}
-          <Route path="/feed" element={<Navigate to="/campus/feed" replace />} />
-          {/* /campus/discover is legacy — Discover is now a shared route at /discover */}
-          <Route path="/campus/discover" element={<Navigate to="/discover" replace />} />
-          <Route path="/projects" element={<Navigate to="/campus/projects" replace />} />
-          <Route path="/projects/:projectSlug" element={<ProjectRedirect />} />
-          <Route path="/colleges" element={<Navigate to="/campus/colleges" replace />} />
-          <Route path="/colleges/:collegeSlug" element={<CollegeRedirect />} />
+          {/* ── Legacy flat-URL redirects ── */}
+          <Route path="/feed"                         element={<Navigate to="/campus/feed" replace />} />
+          <Route path="/campus/discover"              element={<Navigate to="/discover" replace />} />
+          <Route path="/projects"                     element={<Navigate to="/campus/projects" replace />} />
+          <Route path="/projects/:projectSlug"        element={<ProjectRedirect />} />
+          <Route path="/colleges"                     element={<Navigate to="/campus/colleges" replace />} />
+          <Route path="/colleges/:collegeSlug"        element={<CollegeRedirect />} />
           <Route path="/colleges/:collegeSlug/batch/:graduationYear" element={<CollegeBatchRedirect />} />
-          <Route path="/communities" element={<Navigate to="/campus/communities" replace />} />
-          <Route path="/communities/:communitySlug" element={<CommunityRedirect />} />
-          <Route path="/teams" element={<Navigate to="/campus/teams" replace />} />
-          <Route path="/teams/:teamId" element={<TeamRedirect />} />
-          <Route path="/social" element={<Navigate to="/campus/social" replace />} />
-          <Route path="/hackathons" element={<Navigate to="/campus/hackathons" replace />} />
-          <Route path="/hackathons/:hackathonSlug" element={<HackathonRedirect />} />
-          <Route path="/events" element={<Navigate to="/campus/events" replace />} />
-          <Route path="/tpo-dashboard" element={<Navigate to="/campus/tpo-dashboard" replace />} />
-          <Route path="/admin" element={<Navigate to="/campus/admin" replace />} />
-          <Route path="/profile" element={<RequireAuth><ProfileRedirect /></RequireAuth>} />
-
-          <Route path="/jobs" element={<Navigate to="/career/jobs" replace />} />
-          <Route path="/companies" element={<Navigate to="/career/companies" replace />} />
-          <Route path="/companies/:companySlug" element={<CompanyRedirect />} />
+          <Route path="/communities"                  element={<Navigate to="/campus/communities" replace />} />
+          <Route path="/communities/:communitySlug"   element={<CommunityRedirect />} />
+          <Route path="/teams"                        element={<Navigate to="/campus/teams" replace />} />
+          <Route path="/teams/:teamId"                element={<TeamRedirect />} />
+          <Route path="/social"                       element={<Navigate to="/campus/social" replace />} />
+          <Route path="/hackathons"                   element={<Navigate to="/campus/hackathons" replace />} />
+          <Route path="/hackathons/:hackathonSlug"    element={<HackathonRedirect />} />
+          <Route path="/events"                       element={<Navigate to="/campus/events" replace />} />
+          <Route path="/tpo-dashboard"                element={<Navigate to="/campus/tpo-dashboard" replace />} />
+          <Route path="/admin"                        element={<Navigate to="/campus/admin" replace />} />
+          <Route path="/profile"                      element={<RequireAuth><ProfileRedirect /></RequireAuth>} />
+          <Route path="/jobs"                         element={<Navigate to="/career/jobs" replace />} />
+          <Route path="/companies"                    element={<Navigate to="/career/companies" replace />} />
+          <Route path="/companies/:companySlug"       element={<CompanyRedirect />} />
           <Route path="/companies/:companySlug/admin" element={<CompanyAdminRedirect />} />
-          <Route path="/interviews" element={<Navigate to="/career/interviews" replace />} />
-          <Route path="/placements" element={<Navigate to="/campus/placements" replace />} />
-          <Route path="/reputation" element={<Navigate to="/career/reputation" replace />} />
-          <Route path="/recruiter" element={<Navigate to="/career/recruiter" replace />} />
-          <Route path="/recruiter/drive/:driveId" element={<RecruiterDriveRedirect />} />
+          <Route path="/interviews"                   element={<Navigate to="/career/interviews" replace />} />
+          <Route path="/placements"                   element={<Navigate to="/campus/placements" replace />} />
+          <Route path="/reputation"                   element={<Navigate to="/career/reputation" replace />} />
+          <Route path="/recruiter"                    element={<Navigate to="/career/recruiter" replace />} />
+          <Route path="/recruiter/drive/:driveId"     element={<RecruiterDriveRedirect />} />
 
-          {/* Catch-all wildcards */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
@@ -554,4 +245,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-

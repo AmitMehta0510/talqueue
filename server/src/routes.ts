@@ -44,6 +44,7 @@ import interviewRoutes from "modules/interviews/interviews.routes";
 import matchmakingRoutes from "modules/matchmaking/matchmaking.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
+import docsRouter from "shared/openapi/docs.routes";
 
 export const API_PREFIX = "/api/v1";
 
@@ -128,6 +129,9 @@ export const registerApiRoutes = (app: Express) => {
   app.get(`${API_PREFIX}/health`, (req, res) => {
     res.json(successResponse({ status: "ok" }));
   });
+
+  // OpenAPI Swagger UI — rate-limiter exempt (static doc serving)
+  app.use(`${API_PREFIX}`, docsRouter);
 
   for (const { key, path, router } of apiRouteEntries) {
     let rateLimiter;

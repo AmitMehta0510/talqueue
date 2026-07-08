@@ -10,6 +10,9 @@ const envSchema = z.object({
   // stored in an HttpOnly cookie — see auth.service.ts for the full flow.
   JWT_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.string().default("30"),
+  // Optional basic-auth password for /api/v1/docs in production.
+  // Leave unset (default) to allow open access in dev/test.
+  DOCS_PASSWORD: z.string().optional(),
 
   // Client (required in production for CORS — optional in dev/test)
   CLIENT_URL: z.string().optional(),
