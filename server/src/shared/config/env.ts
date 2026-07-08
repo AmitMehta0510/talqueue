@@ -6,7 +6,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
-  JWT_EXPIRES_IN: z.string().default("7d"),
+  // Short-lived access token (15 min). Pairs with a 30-day refresh token
+  // stored in an HttpOnly cookie — see auth.service.ts for the full flow.
+  JWT_EXPIRES_IN: z.string().default("15m"),
+  REFRESH_TOKEN_TTL_DAYS: z.string().default("30"),
 
   // Client (required in production for CORS — optional in dev/test)
   CLIENT_URL: z.string().optional(),

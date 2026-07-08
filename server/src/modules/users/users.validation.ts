@@ -1,190 +1,105 @@
 import { z } from "zod";
 
-export const updateProfileSchema = z.object({
-  fullName: z.string().min(2).optional(),
-  username: z.string()
-  .min(3)
-  .max(30)
-  .regex(
-    /^[a-zA-Z0-9_.]+$/,
-    "Username can only contain letters, numbers, underscores, and dots",
-  )
-  .optional(),
-  bio: z.string().max(1000).optional(),
-
-  headline: z.string().max(160).optional(),
-
-  location: z.string().max(120).optional(),
-
-  country: z.string().max(2).toUpperCase().optional().nullable(),
-
-  avatarUrl: z.string().optional(),
-
-  bannerUrl: z.string().optional(),
-
-  resumeUrl: z.string().optional(),
-
-  availabilityText: z.string().max(240).optional(),
-
-  githubUrl: z.string().optional(),
-  linkedinUrl: z.string().optional(),
-  portfolioUrl: z.string().optional(),
-  leetcodeUrl: z.string().optional().nullable(),
-  hackerrankUrl: z.string().optional().nullable(),
-  gfgUrl: z.string().optional().nullable(),
-
-  graduationYear: z.number().optional(),
-
-  collegeId: z.string().uuid().optional(),
-  departmentId: z.string().uuid().optional(),
+// ── Profile ──────────────────────────────────────────────────────────────────
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  username: z
+    .string()
+    .trim()
+    .min(3)
+    .max(30)
+    .regex(/^[a-zA-Z0-9_.]+$/, "Username can only contain letters, numbers, underscores, and dots")
+    .transform((v) => v.toLowerCase())
+    .optional(),
+  bio: z.string().trim().max(500).optional(),
+  headline: z.string().trim().max(120).optional(),
+  location: z.string().trim().max(100).optional(),
+  avatarUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  bannerUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  resumeUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  availabilityText: z.string().trim().max(120).optional(),
+  githubUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  linkedinUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  portfolioUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  leetcodeUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  hackerrankUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  gfgUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  graduationYear: z.number().int().min(1990).max(2040).optional(),
+  collegeId: z.string().cuid().optional(),
+  departmentId: z.string().cuid().optional(),
+  departmentName: z.string().trim().max(120).optional(),
   acceptingReferrals: z.boolean().optional(),
   openToWork: z.boolean().optional(),
   openToInternship: z.boolean().optional(),
-  availabilityStatus: z.string().optional(),
+  acceptingCollaborators: z.boolean().optional(),
+  acceptingMentorship: z.boolean().optional(),
 });
 
-export const addSkillSchema = z.object({
-  skillId: z.string().uuid(),
-
-  level: z.enum([
-    "BEGINNER",
-    "INTERMEDIATE",
-    "ADVANCED",
-    "EXPERT",
-  ]),
+// ── Skills ────────────────────────────────────────────────────────────────────
+export const AddSkillSchema = z.object({
+  skillId: z.string().cuid(),
+  level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]),
 });
 
-export const addExperienceSchema = z.object({
-  companyName: z.string().min(1),
-  title: z.string().min(1),
+export const CreateCustomSkillSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+});
 
+export const SearchSkillsQuerySchema = z.object({
+  q: z.string().trim().min(1).max(100),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Number(v) : 12))
+    .pipe(z.number().int().min(1).max(50)),
+});
+
+// ── Experience ────────────────────────────────────────────────────────────────
+export const AddExperienceSchema = z.object({
+  companyName: z.string().trim().min(1).max(120),
+  companyWebsiteUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  title: z.string().trim().min(1).max(120),
   employmentType: z.enum([
-      "FULL_TIME",
-      "INTERN",
-      "INTERNSHIP",
-      "CONTRACT",
-      "FREELANCE",
+    "FULL_TIME", "PART_TIME", "CONTRACT", "INTERNSHIP",
+    "FREELANCE", "VOLUNTEER", "SELF_EMPLOYED", "OTHER",
   ]),
-
-  startDate: z.string(),
-
-  endDate: z.string().optional(),
-
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be YYYY-MM-DD").optional(),
   isCurrent: z.boolean().optional(),
-
-  description: z.string().optional(),
-
-  workEmail: z.string().email().optional(),
-
-  managerName: z.string().optional(),
-
-  managerEmail: z.string().email().optional(),
-
-  managerLinkedinUrl: z.string().optional(),
-
-  companyWebsiteUrl: z.string().optional(),
-
-  documents: z.any().optional(),
-
-  skillsUsed: z.array(z.string()).optional(),
-
-  achievements: z.any().optional(),
-
-  techStack: z.array(z.string()).optional(),
-
-  teamSize: z.number().int().positive().optional(),
+  description: z.string().trim().max(2000).optional(),
+  workEmail: z.string().email().optional().or(z.literal("")),
+  managerName: z.string().trim().max(100).optional(),
+  managerEmail: z.string().email().optional().or(z.literal("")),
+  managerLinkedinUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  skillsUsed: z.array(z.string().cuid()).max(20).optional(),
+  techStack: z.array(z.string().trim().max(50)).max(20).optional(),
+  teamSize: z.number().int().min(1).max(100000).optional(),
 });
 
-export const addEducationSchema = z
-  .object({
-    collegeId: z.string().uuid().optional(),
+export const UpdateExperienceSchema = AddExperienceSchema.partial();
 
-    customCollegeName: z.string().min(2).max(120).optional(),
-
-    departmentId: z.string().uuid().optional(),
-
-    degree: z.string().optional(),
-
-    fieldOfStudy: z.string().optional(),
-
-    startYear: z.number().int().optional(),
-
-    endYear: z.number().int().optional(),
-
-    current: z.boolean().optional(),
-
-    // Academic performance fields (editable by student after each semester)
-    cgpa: z.number().min(0).max(10).optional().nullable(),
-    backlogs: z.number().int().min(0).optional().nullable(),
-    currentYear: z.number().int().min(1).max(8).optional().nullable(),
-  })
-  .superRefine((val, ctx) => {
-    if (!val.collegeId && !val.customCollegeName?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Either collegeId or customCollegeName is required",
-        path: ["collegeId"],
-      });
-    }
-  });
-
-export const updateExperienceSchema = z.object({
-  title: z.string().min(1).optional(),
-
-  employmentType: z.enum([
-    "FULL_TIME",
-    "INTERN",
-    "INTERNSHIP",
-    "CONTRACT",
-    "FREELANCE",
-  ]).optional(),
-
-  startDate: z.string().optional(),
-
-  endDate: z.string().optional(),
-
-  isCurrent: z.boolean().optional(),
-
-  description: z.string().optional(),
-
-  workEmail: z.string().email().optional(),
-
-  managerName: z.string().optional(),
-
-  managerEmail: z.string().email().optional(),
-
-  managerLinkedinUrl: z.string().optional(),
-
-  companyWebsiteUrl: z.string().optional(),
-
-  skillsUsed: z.array(z.string()).optional(),
-
-  techStack: z.array(z.string()).optional(),
-
-  teamSize: z.number().int().positive().optional(),
-});
-
-export const updateEducationSchema = z.object({
-  collegeId: z.string().uuid().optional(),
-
-  customCollegeName: z.string().min(2).max(120).optional(),
-
-  departmentId: z.string().uuid().optional(),
-
-  degree: z.string().optional(),
-
-  fieldOfStudy: z.string().optional(),
-
-  startYear: z.number().int().optional(),
-
-  endYear: z.number().int().optional(),
-
+// ── Education ─────────────────────────────────────────────────────────────────
+export const AddEducationSchema = z.object({
+  collegeId: z.string().cuid().optional(),
+  customCollegeName: z.string().trim().max(120).optional(),
+  departmentId: z.string().cuid().optional(),
+  departmentName: z.string().trim().max(120).optional(),
+  degree: z.string().trim().max(100).optional(),
+  fieldOfStudy: z.string().trim().max(100).optional(),
+  startYear: z.number().int().min(1980).max(2040).optional(),
+  endYear: z.number().int().min(1980).max(2040).optional(),
   current: z.boolean().optional(),
-
-  // Academic performance fields (editable by student after each semester)
-  cgpa: z.number().min(0).max(10).optional().nullable(),
-
-  backlogs: z.number().int().min(0).optional().nullable(),
-
-  currentYear: z.number().int().min(1).max(8).optional().nullable(),
 });
+
+export const UpdateEducationSchema = AddEducationSchema.partial();
+
+// ── Backward-compatible aliases (used by users.controller.ts) ─────────────────
+// The controller was written before this validation file existed and imports
+// lowercase-named schemas. These aliases ensure the controller compiles without
+// modification while routes can import the PascalCase names.
+export const updateProfileSchema  = UpdateProfileSchema;
+export const addSkillSchema       = AddSkillSchema;
+export const addExperienceSchema  = AddExperienceSchema;
+export const updateExperienceSchema = UpdateExperienceSchema;
+export const addEducationSchema   = AddEducationSchema;
+export const updateEducationSchema = UpdateEducationSchema;

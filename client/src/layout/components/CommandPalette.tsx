@@ -13,6 +13,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
   type KeyboardEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -66,7 +67,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     [navigate, onClose],
   );
 
-  const ALL_ITEMS: CommandItem[] = [
+  const ALL_ITEMS = useMemo<CommandItem[]>(() => [
     // Navigation
     { id: "home", label: "Home Feed", description: "Your personalised engineer feed", group: "Navigation", icon: <Home size={16} />, action: () => go("/"), keywords: "home feed" },
     { id: "explore", label: "Explore", description: "Discover engineers and projects", group: "Navigation", icon: <Search size={16} />, action: () => go("/explore"), keywords: "explore discover" },
@@ -85,7 +86,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     // Discover
     { id: "search-all", label: "Search Engineers", description: "Full-text search across the platform", group: "Discover", icon: <Search size={16} />, action: () => { go(`/search${query ? `?q=${encodeURIComponent(query)}` : ""}`); }, keywords: "search find engineers" },
     { id: "interviews", label: "Interview Prep", description: "DSA, system design, mock interviews", group: "Discover", icon: <ArrowRight size={16} />, action: () => go("/interviews"), keywords: "interview prep dsa" },
-  ];
+  ], [go]);
 
   const filtered = query.trim()
     ? ALL_ITEMS.filter((item) => {

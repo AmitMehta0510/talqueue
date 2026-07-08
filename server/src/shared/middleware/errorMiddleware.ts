@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import AppError from "../errors/AppError";
+import logger from "../logger";
 
 const errorMiddleware = (
   err: any,
@@ -8,8 +9,8 @@ const errorMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  // Always log the error for audit / debugging purposes on the server console
-  console.error("Error handled by middleware:", err);
+  // Always log the error for audit / debugging purposes
+  logger.error("Unhandled request error", { err });
 
   if (err instanceof ZodError) {
     return res.status(400).json({

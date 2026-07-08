@@ -30,6 +30,7 @@ import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
 import { ensureCoreCommunitiesExist } from "modules/community/community.service";
 import { startMailWorker } from "services/mailQueue";
+import logger from "shared/logger";
 
 const PORT = process.env.PORT || 5000;
 
@@ -39,20 +40,18 @@ const server =
 initializeSocket(server);
 
 server.listen(PORT, async () => {
+  logger.info(`Server listening on port ${PORT}`, { port: PORT, env: process.env.NODE_ENV });
 
-  console.log(
-    `Server is running on port ${PORT}`
-  );
   const isHealthy = await checkElasticsearchHealth();
   if (isHealthy) {
     await initElasticsearchIndices();
   } else {
-    console.warn("Skipping Elasticsearch index initialization because health check failed.");
+    logger.warn("Elasticsearch health check failed — skipping index initialization");
   }
 
   // Ensure core communities (general, sde-prep, etc.) exist — idempotent
   await ensureCoreCommunitiesExist().catch((err) =>
-    console.error("[Community Bootstrap] Failed:", err)
+    logger.error("Community bootstrap failed", { err })
   );
 
   // Start background mail queue worker
@@ -64,11 +63,11 @@ server.listen(PORT, async () => {
 // Sequence: stop HTTP intake → disconnect Prisma pool → quit Redis socket.
 // Forced exit after 10 s in case graceful drain hangs (e.g. stuck keep-alive).
 const gracefulShutdown = (signal: string) => {
-  console.log(`\n[${signal}] Graceful shutdown initiated...`);
+  logger.info(`Graceful shutdown initiated`, { signal });
 
   // Force-exit fallback — prevents infinite hang
   const forceExitTimer = setTimeout(() => {
-    console.error("Graceful shutdown timed out after 10s. Forcing exit.");
+    logger.error("Graceful shutdown timed out after 10s — forcing exit");
     process.exit(1);
   }, 10_000);
 
@@ -77,21 +76,20 @@ const gracefulShutdown = (signal: string) => {
 
   // 1. Stop accepting new HTTP connections
   server.close(async () => {
-    console.log("HTTP server closed.");
+    logger.info("HTTP server closed");
 
     try {
       // 2. Release Prisma connection pool
       await prisma.$disconnect();
-      console.log("Prisma disconnected.");
+      logger.info("Prisma disconnected");
 
       // 3. Release Redis socket
       await redis.quit();
-      console.log("Redis disconnected.");
+      logger.info("Redis disconnected. Shutdown complete.");
 
-      console.log("Shutdown complete. Exiting.");
       process.exit(0);
     } catch (err) {
-      console.error("Error during shutdown cleanup:", err);
+      logger.error("Error during shutdown cleanup", { err });
       process.exit(1);
     }
   });
@@ -101,11 +99,11 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
 
 process.on("uncaughtException", (err) => {
-  console.error("\n[CRITICAL] UNCAUGHT EXCEPTION: Shutting down server gracefully...", err);
+  logger.error("UNCAUGHT EXCEPTION — shutting down", { err });
   gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error("\n[CRITICAL] UNHANDLED REJECTION: Shutting down server gracefully...", reason);
+  logger.error("UNHANDLED REJECTION — shutting down", { reason });
   gracefulShutdown("UNHANDLED_REJECTION");
 });

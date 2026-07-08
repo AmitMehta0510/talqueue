@@ -1,21 +1,33 @@
 import { Request, Response, NextFunction } from "express";
 import redis from "shared/database/redis";
+import logger from "shared/logger";
 
 /**
- * Creates an Express middleware for rate limiting using a sliding window algorithm in Redis.
+ * Creates an Express middleware for rate limiting using a sliding window
+ * algorithm in Redis.
  *
- * @param tier - The rate limit tier name (used in redis key).
- * @param limit - Max number of requests allowed in the window.
- * @param windowSeconds - The size of the sliding window in seconds.
+ * For authenticated requests the limiter keys on `userId` (preventing
+ * quota bypass by IP rotation). For anonymous requests it falls back to
+ * the real client IP resolved via `trust proxy` (set in app.ts).
+ *
+ * @param tier          - Rate limit tier name (used in the Redis key).
+ * @param limit         - Max requests allowed within the window.
+ * @param windowSeconds - Sliding-window size in seconds.
  */
 export function createRateLimiter(tier: string, limit: number, windowSeconds: number) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const ip = req.ip || req.socket?.remoteAddress || "unknown";
-    const key = `ratelimit:${tier}:${ip}`;
+    // Prefer per-user key so auth'd users can't rotate IPs to bypass limits.
+    const userId = (req as any).user?.id;
+    const identifier = userId
+      ? `uid:${userId}`
+      : (req.ip || req.socket?.remoteAddress || "unknown");
+
+    const key = `ratelimit:${tier}:${identifier}`;
     const now = Date.now();
     const windowStart = now - windowSeconds * 1000;
-    
-    // Member must be unique to avoid overwriting scores or collapsing concurrent requests in the same millisecond.
+
+    // Member must be unique to avoid overwriting scores or collapsing
+    // concurrent requests arriving in the same millisecond.
     const member = `${now}-${Math.random()}`;
 
     try {
@@ -31,11 +43,8 @@ export function createRateLimiter(tier: string, limit: number, windowSeconds: nu
         throw new Error("Redis multi pipeline execution returned null or undefined results.");
       }
 
-      // results is an array of [Error | null, result] tuples for each pipeline command:
-      // Index 0: ZADD
-      // Index 1: ZREMRANGEBYSCORE
-      // Index 2: ZCOUNT
-      // Index 3: EXPIRE
+      // results is an array of [Error | null, result] tuples:
+      // Index 0: ZADD  Index 1: ZREMRANGEBYSCORE  Index 2: ZCOUNT  Index 3: EXPIRE
       const zcountResult = results[2];
       if (!zcountResult) {
         throw new Error("Missing ZCOUNT command response in pipeline execution results.");
@@ -59,7 +68,7 @@ export function createRateLimiter(tier: string, limit: number, windowSeconds: nu
       next();
     } catch (err: any) {
       // Fail-soft: log warning and proceed so rate limiter issues don't block access
-      console.warn(`[RateLimiter] Redis rate limiting failed for key ${key}, passing request through:`, err?.message || err);
+      logger.warn("Rate limiter Redis failure — passing request through", { key, err: err?.message });
       next();
     }
   };
@@ -68,3 +77,4 @@ export function createRateLimiter(tier: string, limit: number, windowSeconds: nu
 export const authRateLimiter = createRateLimiter("auth", 10, 60);
 export const searchRateLimiter = createRateLimiter("search", 60, 60);
 export const apiRateLimiter = createRateLimiter("api", 120, 60);
+

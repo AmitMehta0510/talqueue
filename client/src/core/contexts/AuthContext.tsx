@@ -136,6 +136,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient, refreshUser],
   );
 
+  // When the API client's refresh-token interceptor detects a fully-expired
+  // session (RT gone), it dispatches "auth:expired" so we clear state here
+  // without a page reload or circular import.
+  useEffect(() => {
+    const onExpired = () => clearSession();
+    window.addEventListener("auth:expired", onExpired);
+    return () => window.removeEventListener("auth:expired", onExpired);
+  }, [clearSession]);
+
   const login = useCallback(
     async (body: { email: string; password: string }) => {
       const result = await api.login(body);

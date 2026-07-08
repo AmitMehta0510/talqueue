@@ -5,6 +5,8 @@ import { Prisma, UserStatus } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
 import AppError from "shared/errors/AppError";
 import { generateToken, verifyToken } from "shared/utils/jwt";
+import logger from "shared/logger";
+import { env } from "shared/config/env";
 import { authUserSelect } from "./auth.selectors";
 import {
   LoginInput,
@@ -15,13 +17,24 @@ import {
 const BCRYPT_ROUNDS = 12;
 const PUBLIC_SIGNUP_ROLES = new Set<string>(publicSignupRoles);
 
-// Redis key prefix for revoked token hashes.
+// ─── Access Token Revocation ────────────────────────────────────────────────
+// Redis key prefix for revoked access token hashes.
 // Each key is stored with a TTL equal to the token's remaining lifetime so
 // Redis handles expiry automatically — no prune loop needed.
 const REVOKED_TOKEN_KEY_PREFIX = "auth:revoked:";
-
 const buildRevokedKey = (tokenHash: string) =>
   `${REVOKED_TOKEN_KEY_PREFIX}${tokenHash}`;
+
+// ─── Refresh Token ───────────────────────────────────────────────────────────
+// Refresh tokens are opaque 64-byte random hex strings.
+// We store a SHA-256 hash of the raw token in Redis (never the raw token itself)
+// keyed as  auth:rt:<hash>  with a 30-day TTL.
+// On rotation we atomically delete the old key and create a new one.
+const REFRESH_TOKEN_KEY_PREFIX = "auth:rt:";
+const REFRESH_TOKEN_TTL_SECONDS = Number(env.REFRESH_TOKEN_TTL_DAYS) * 24 * 60 * 60;
+
+const buildRefreshKey = (tokenHash: string) =>
+  `${REFRESH_TOKEN_KEY_PREFIX}${tokenHash}`;
 
 const isUniqueConstraintError = (
   error: unknown,
@@ -57,6 +70,55 @@ const assertActiveUser = (status: UserStatus) => {
 const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 
+// ─── Refresh Token Helpers ───────────────────────────────────────────────────
+
+/**
+ * Generates a new opaque refresh token for the given user, stores its hash in
+ * Redis with a 30-day TTL, and returns the **raw** token to be sent to the
+ * client as an HttpOnly cookie.
+ */
+export const generateRefreshToken = async (userId: string): Promise<string> => {
+  const rawToken = randomBytes(64).toString("hex");
+  const tokenHash = hashToken(rawToken);
+  await redis.setex(buildRefreshKey(tokenHash), REFRESH_TOKEN_TTL_SECONDS, userId);
+  return rawToken;
+};
+
+/**
+ * Validates an incoming refresh token, deletes the old Redis entry (rotation),
+ * and issues a fresh access token + refresh token pair.
+ *
+ * Throws 401 if the token is invalid or not found in Redis.
+ */
+export const rotateRefreshToken = async (rawToken: string) => {
+  const tokenHash = hashToken(rawToken);
+  const userId = await redis.get(buildRefreshKey(tokenHash));
+
+  if (!userId) {
+    throw new AppError("Invalid or expired refresh token", 401);
+  }
+
+  // Rotate: delete old RT and issue new pair atomically-ish
+  await redis.del(buildRefreshKey(tokenHash));
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: authUserSelect,
+  });
+
+  if (!user || user.status !== "ACTIVE") {
+    throw new AppError("Invalid or expired refresh token", 401);
+  }
+
+  const [accessToken, refreshToken] = await Promise.all([
+    Promise.resolve(generateToken(userId)),
+    generateRefreshToken(userId),
+  ]);
+
+  return { accessToken, refreshToken, user };
+};
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
  * Checks whether a token has been revoked by looking up its SHA-256 hash
  * in Redis. Returns false (i.e. allows the request) if Redis is unavailable
@@ -68,7 +130,7 @@ export const isTokenRevoked = async (token: string): Promise<boolean> => {
     const val = await redis.get(buildRevokedKey(tokenHash));
     return val === "1";
   } catch (err: any) {
-    console.warn("[Auth] Redis revocation check failed — treating token as valid:", err?.message);
+    logger.warn("Auth: Redis revocation check failed — treating token as valid", { err: err?.message });
     return false;
   }
 };
@@ -140,9 +202,11 @@ export const registerUser = async (data: RegisterInput) => {
     });
 
     const token = generateToken(user.id);
+    const refreshToken = await generateRefreshToken(user.id);
 
     return {
       token,
+      refreshToken,
       user,
     };
   } catch (error) {
@@ -178,35 +242,42 @@ export const loginUser = async (data: LoginInput) => {
 
   assertActiveUser(safeUser.status);
 
-  const token = generateToken(safeUser.id);
+  const accessToken = generateToken(safeUser.id);
+  const refreshToken = await generateRefreshToken(safeUser.id);
 
   return {
-    token,
+    token: accessToken,
+    refreshToken,
     user: safeUser,
   };
 };
 
-export const logoutUser = async (token: string) => {
-  const decoded = verifyToken(token);
+export const logoutUser = async (accessToken: string, rawRefreshToken?: string) => {
+  // Revoke the access token
+  const decoded = verifyToken(accessToken);
   const expiresAt = decoded.exp ? decoded.exp * 1000 : Date.now();
-
   const ttlSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 
   if (ttlSeconds > 0) {
-    const tokenHash = hashToken(token);
+    const tokenHash = hashToken(accessToken);
     try {
-      // Store the hash with a TTL equal to the token's remaining lifetime.
-      // Redis will auto-expire the key, so no prune job is needed.
       await redis.setex(buildRevokedKey(tokenHash), ttlSeconds, "1");
     } catch (err: any) {
-      // Log but don't surface — the client session will still be cleared.
-      console.warn("[Auth] Redis revocation write failed:", err?.message);
+      logger.warn("Auth: Redis revocation write failed", { err: err?.message });
     }
   }
 
-  return {
-    loggedOut: true,
-  };
+  // Also revoke the refresh token if provided
+  if (rawRefreshToken) {
+    const rtHash = hashToken(rawRefreshToken);
+    try {
+      await redis.del(buildRefreshKey(rtHash));
+    } catch (err: any) {
+      logger.warn("Auth: refresh token revocation failed", { err: err?.message });
+    }
+  }
+
+  return { loggedOut: true };
 };
 
 export const triggerEmailVerificationOTP = async (email: string) => {
@@ -223,7 +294,7 @@ export const triggerEmailVerificationOTP = async (email: string) => {
 
   await redis.setex(redisKey, 600, otpCode);
 
-  console.log(`[EmailVerification] Verification code for ${email} is '${otpCode}'`);
+  logger.debug("EmailVerification: OTP generated", { email });
 
   return {
     success: true,
@@ -282,7 +353,7 @@ export const initiateForgotPasswordFlow = async (email: string) => {
     const token = randomBytes(16).toString("hex");
     const redisKey = `password:reset:${email}`;
     await redis.setex(redisKey, 900, token);
-    console.log(`[ForgotPassword] Password reset token for ${email} is '${token}'`);
+    logger.debug("ForgotPassword: reset token generated", { email });
   }
 
   // User-enumeration protection: return success regardless of user existence

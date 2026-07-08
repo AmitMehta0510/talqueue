@@ -107,7 +107,23 @@ function PageTransitionWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-function RequireAuth({ children }: { children: ReactNode }) {
+/**
+ * Generic route guard. Calls `useAuth()` exactly once, shows a `PageLoader`
+ * while auth is resolving, then either renders children or redirects.
+ *
+ * @param predicate  — receives the resolved `User` and must return `true` to allow access.
+ * @param fallback   — path to redirect to if the predicate fails (default: "/auth" for
+ *                     unauthenticated users, "/feed" for role failures).
+ */
+function Require({
+  predicate,
+  fallback,
+  children,
+}: {
+  predicate?: (user: NonNullable<ReturnType<typeof useAuth>["user"]>) => boolean;
+  fallback?: string;
+  children: ReactNode;
+}) {
   const { authStatus, user } = useAuth();
   const location = useLocation();
 
@@ -115,54 +131,26 @@ function RequireAuth({ children }: { children: ReactNode }) {
     return <PageLoader />;
   }
 
+  // Not authenticated at all
   if (!user) {
-    return <Navigate to="/auth" replace state={{ from: location }} />;
+    const to = fallback ?? "/auth";
+    const state = to === "/auth" ? { from: location } : undefined;
+    return <Navigate to={to} replace state={state} />;
+  }
+
+  // Authenticated but fails the role predicate
+  if (predicate && !predicate(user)) {
+    return <Navigate to={fallback ?? "/feed"} replace />;
   }
 
   return children;
 }
 
-function RequirePlatformAdmin({ children }: { children: ReactNode }) {
-  const { authStatus, user } = useAuth();
+/** Convenience alias — requires authentication only, no role check. */
+const RequireAuth = ({ children }: { children: ReactNode }) => (
+  <Require>{children}</Require>
+);
 
-  if (authStatus === "checking") {
-    return <PageLoader />;
-  }
-
-  if (!user || !isPlatformAdmin(user)) {
-    return <Navigate to="/feed" replace />;
-  }
-
-  return children;
-}
-
-function RequireRecruiter({ children }: { children: ReactNode }) {
-  const { authStatus, user } = useAuth();
-
-  if (authStatus === "checking") {
-    return <PageLoader />;
-  }
-
-  if (!user || !isRecruiter(user)) {
-    return <Navigate to="/feed" replace />;
-  }
-
-  return children;
-}
-
-function RequireTpo({ children }: { children: ReactNode }) {
-  const { authStatus, user } = useAuth();
-
-  if (authStatus === "checking") {
-    return <PageLoader />;
-  }
-
-  if (!user || !isTpo(user)) {
-    return <Navigate to="/feed" replace />;
-  }
-
-  return children;
-}
 
 function PublicOnly({ children }: { children: ReactNode }) {
   const { authStatus, user } = useAuth();
@@ -362,21 +350,17 @@ function AppRoutes() {
             <Route
               path="tpo-dashboard"
               element={
-                <RequireAuth>
-                  <RequireTpo>
-                    <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
-                  </RequireTpo>
-                </RequireAuth>
+                <Require predicate={isTpo}>
+                  <PageTransitionWrapper><TpoDashboardPage /></PageTransitionWrapper>
+                </Require>
               }
             />
              <Route
               path="admin"
               element={
-                <RequireAuth>
-                  <RequirePlatformAdmin>
-                    <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
-                  </RequirePlatformAdmin>
-                </RequireAuth>
+                <Require predicate={isPlatformAdmin}>
+                  <PageTransitionWrapper><AdminPage /></PageTransitionWrapper>
+                </Require>
               }
             />
             <Route
@@ -417,21 +401,17 @@ function AppRoutes() {
             <Route
               path="recruiter"
               element={
-                <RequireAuth>
-                  <RequireRecruiter>
-                    <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
-                  </RequireRecruiter>
-                </RequireAuth>
+                <Require predicate={isRecruiter}>
+                  <PageTransitionWrapper><RecruiterPage /></PageTransitionWrapper>
+                </Require>
               }
             />
             <Route
               path="recruiter/drive/:driveId"
               element={
-                <RequireAuth>
-                  <RequireRecruiter>
-                    <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
-                  </RequireRecruiter>
-                </RequireAuth>
+                <Require predicate={isRecruiter}>
+                  <PageTransitionWrapper><RecruiterDrivePage /></PageTransitionWrapper>
+                </Require>
               }
             />
             <Route

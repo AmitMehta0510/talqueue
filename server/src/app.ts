@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 import errorMiddleware from "shared/middleware/errorMiddleware";
 import { successResponse } from "shared/utils/apiResponse";
@@ -10,6 +11,11 @@ import { startDailyLimitsResetCron } from "infra/crons/daily-limits-reset.cron";
 import { registerApiRoutes } from "./routes";
 
 const app = express();
+
+// Trust exactly one proxy hop (Nginx in production).
+// Without this, req.ip resolves to the Nginx container's private IP and
+// the entire platform collapses to a single rate-limit bucket.
+app.set("trust proxy", 1);
 
 // In production restrict CORS to the client origin declared in CLIENT_URL.
 // In development/test allow all origins (origin: true) for convenience.
@@ -24,6 +30,8 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
+// Parses HttpOnly cookies — required for the refresh token flow
+app.use(cookieParser());
 
 registerApiRoutes(app);
 

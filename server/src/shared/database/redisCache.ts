@@ -1,4 +1,5 @@
 import redis from "./redis";
+import logger from "../logger";
 
 /**
  * Generic helper to fetch data from Redis cache, or run the callback function
@@ -19,7 +20,7 @@ export async function getOrSetCache<T>(
       return JSON.parse(cachedValue) as T;
     }
   } catch (err) {
-    console.warn(`[RedisCache] Cache read failed for key ${cacheKey}:`, err);
+    logger.warn("RedisCache: read failed", { cacheKey, err });
   }
 
   const freshData = await fetchFn();
@@ -27,7 +28,7 @@ export async function getOrSetCache<T>(
   try {
     await redis.set(cacheKey, JSON.stringify(freshData), "EX", ttlSeconds);
   } catch (err) {
-    console.warn(`[RedisCache] Cache write failed for key ${cacheKey}:`, err);
+    logger.warn("RedisCache: write failed", { cacheKey, err });
   }
 
   return freshData;
@@ -41,9 +42,9 @@ export async function getOrSetCache<T>(
 export async function bustCache(cacheKey: string): Promise<void> {
   try {
     await redis.del(cacheKey);
-    console.log(`[RedisCache] Busted cache key: ${cacheKey}`);
+    logger.debug("RedisCache: busted key", { cacheKey });
   } catch (err) {
-    console.error(`[RedisCache] Failed to bust cache key ${cacheKey}:`, err);
+    logger.error("RedisCache: bust failed", { cacheKey, err });
   }
 }
 
@@ -57,9 +58,9 @@ export async function bustCachePattern(pattern: string): Promise<void> {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(keys);
-      console.log(`[RedisCache] Busted cache pattern: ${pattern} (removed ${keys.length} keys)`);
+      logger.debug("RedisCache: busted pattern", { pattern, count: keys.length });
     }
   } catch (err) {
-    console.error(`[RedisCache] Failed to bust cache pattern ${pattern}:`, err);
+    logger.error("RedisCache: pattern bust failed", { pattern, err });
   }
 }
