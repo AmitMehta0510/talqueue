@@ -37,9 +37,14 @@ services:
     image: redis:7-alpine
     container_name: engineers-platform-redis-prod
     restart: always
+    # Enable AOF persistence so data survives container/host restarts.
+    # This preserves: rate-limit windows, OTP codes, revoked token hashes.
+    command: redis-server --appendonly yes
     # Ports NOT exposed to host
     expose:
       - "6379"
+    volumes:
+      - redis_data_prod:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -55,8 +60,11 @@ services:
     env_file: .env.production
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
-      # ES_JAVA_OPTS from .env.production — default 256m for small droplets
+      # xpack.security.enabled=true requires HTTP basic auth for all ES requests.
+      # Credentials are injected from .env.production (ELASTIC_USERNAME / ELASTIC_PASSWORD).
+      # Generate a strong password: openssl rand -hex 32
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - "ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms256m -Xmx256m}"
     # Ports NOT exposed to host
     expose:
@@ -65,7 +73,7 @@ services:
     volumes:
       - elasticsearch_data_prod:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
+      test: ["CMD-SHELL", "curl -s -u ${ELASTIC_USERNAME:-elastic}:${ELASTIC_PASSWORD} http://localhost:9200/_cat/health | grep -qE 'green|yellow'"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -86,7 +94,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       CLIENT_URL: ${CLIENT_URL}
-      ELASTICSEARCH_NODE: http://elasticsearch:9200
+      # Include credentials in the URL so the ES client authenticates automatically.
+      ELASTICSEARCH_NODE: "http://${ELASTIC_USERNAME:-elastic}:${ELASTIC_PASSWORD}@elasticsearch:9200"
       REDIS_URL: "redis://redis:6379"
       AWS_REGION: ${AWS_REGION:-ap-south-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -166,6 +175,7 @@ services:
 
 volumes:
   postgres_data_prod:
+  redis_data_prod:
   elasticsearch_data_prod:
   letsencrypt_certs:
   certbot_webroot:

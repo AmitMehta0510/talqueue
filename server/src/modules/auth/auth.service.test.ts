@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, test, expect, vi, beforeEach } from "vitest";
 import { generateToken } from "shared/utils/jwt";
 import {
   isTokenRevoked,
@@ -15,9 +15,9 @@ import redis from "shared/database/redis";
 vi.mock("shared/database/redis", () => {
   return {
     default: {
-      setex: vi.fn(),
-      get: vi.fn(),
-      del: vi.fn(),
+      setex: vi.fn().mockResolvedValue("OK"),
+      get: vi.fn().mockResolvedValue(null),
+      del: vi.fn().mockResolvedValue(1),
     },
   };
 });
@@ -27,12 +27,18 @@ describe("Auth Service Token Management", () => {
     const userId = "test-user-id";
     const token = generateToken(userId);
 
-    expect(isTokenRevoked(token)).toBe(false);
+    // Before logout: revocation key does not exist in Redis
+    vi.mocked(redis.get).mockResolvedValueOnce(null);
+    expect(await isTokenRevoked(token)).toBe(false);
 
     const logoutResult = await logoutUser(token);
     expect(logoutResult.loggedOut).toBe(true);
+    // logoutUser should have written the revoked hash to Redis
+    expect(redis.setex).toHaveBeenCalled();
 
-    expect(isTokenRevoked(token)).toBe(true);
+    // After logout: simulate Redis returning the stored "1" sentinel
+    vi.mocked(redis.get).mockResolvedValueOnce("1");
+    expect(await isTokenRevoked(token)).toBe(true);
   });
 
   test("should set primaryRole to STUDENT on registration", async () => {
@@ -85,6 +91,10 @@ describe("Auth Service Token Management", () => {
 });
 
 describe("Auth Service OTP Verification", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   test("triggerEmailVerificationOTP should save random code in Redis", async () => {
     const email = "user@example.com";
     const mockUser = { id: "user-id-123", email };
@@ -96,9 +106,12 @@ describe("Auth Service OTP Verification", () => {
     expect(result.success).toBe(true);
     expect(redis.setex).toHaveBeenCalled();
     const calls = vi.mocked(redis.setex).mock.calls;
-    expect(calls[0][0]).toBe(`otp:email:${email}`);
-    expect(calls[0][1]).toBe(600); // 10 minutes TTL
-    expect(calls[0][2]).toHaveLength(6); // 6-digit OTP
+    // Use the last call — ensures we target the OTP setex specifically
+    // even if other setex calls have occurred in a prior test in this file.
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[0]).toBe(`otp:email:${email}`);
+    expect(lastCall[1]).toBe(600); // 10 minutes TTL
+    expect(lastCall[2]).toHaveLength(6); // 6-digit OTP
   });
 
   test("verifyOtpToken should update user's email verified status and delete OTP from Redis", async () => {

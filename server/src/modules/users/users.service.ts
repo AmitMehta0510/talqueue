@@ -11,6 +11,7 @@ import { createHash, randomBytes } from "crypto";
 import slugify from "slugify";
 import { verifyUserSkills } from "./skill-verification.service";
 import { ensureOfficialDepartmentCommunity } from "modules/colleges/colleges.service";
+import { getOrSetCache, bustCache } from "shared/database/redisCache";
 
 type UserWriteClient = Prisma.TransactionClient | typeof prisma;
 
@@ -87,6 +88,40 @@ export interface AddEducationData {
 const MAX_SKILLS = 30;
 const DEFAULT_SECTION_LIMIT = 20;
 const MAX_SECTION_LIMIT = 50;
+
+// ─── Standard Department Cache ──────────────────────────────────────────────
+// StandardDepartment rows are reference data — they change only on admin
+// mutations and are queried on every profile edit that involves a department
+// name string. Caching them for 1 hour eliminates the full-table scan from
+// the hot write path and is invalidated explicitly when data changes.
+const STANDARD_DEPT_CACHE_KEY = "ref:standardDepartments";
+const STANDARD_DEPT_CACHE_TTL = 60 * 60; // 1 hour
+
+type StandardDeptRow = {
+  id: string;
+  name: string;
+  aliases: string[];
+};
+
+/**
+ * Returns the full StandardDepartment list from Redis cache (1-hour TTL).
+ * Falls back to a live Prisma query on cache miss. Exported so admin routes
+ * can call bustCache(STANDARD_DEPT_CACHE_KEY) after create/update/delete.
+ */
+export const getCachedStandardDepartments = () =>
+  getOrSetCache<StandardDeptRow[]>(
+    STANDARD_DEPT_CACHE_KEY,
+    STANDARD_DEPT_CACHE_TTL,
+    () =>
+      prisma.standardDepartment.findMany({
+        select: { id: true, name: true, aliases: true },
+      })
+  );
+
+/** Call this from admin endpoints after any StandardDepartment mutation. */
+export const bustStandardDepartmentCache = () =>
+  bustCache(STANDARD_DEPT_CACHE_KEY);
+// ────────────────────────────────────────────────────────────────────────────
 
 const userProfileSelect = {
   id: true,
@@ -540,7 +575,9 @@ export const resolveCollegeDepartment = async (
   }
 
   // 3. Check alias or direct match on StandardDepartment
-  const standardDepts = await tx.standardDepartment.findMany();
+  // Uses a Redis-cached list (1-hour TTL) to avoid a full-table scan on every
+  // profile update. The cache is busted by admin endpoints on any mutation.
+  const standardDepts = await getCachedStandardDepartments();
   const normalizedInput = input.toLowerCase();
 
   const matchedStandard = standardDepts.find((sd) =>

@@ -2,6 +2,27 @@ import "shared/config/loadEnv";
 import app from "./app";
 import http from "http";
 
+// ─── Critical Startup Guards ────────────────────────────────────────────────
+// Fail immediately with a clear message if any secret required for secure
+// operation is absent. This runs before any network sockets are opened so
+// an improperly configured deployment never accepts public traffic.
+const REQUIRED_ENV: Record<string, string | undefined> = {
+  JWT_SECRET: process.env.JWT_SECRET,
+  DATABASE_URL: process.env.DATABASE_URL,
+  REDIS_URL: process.env.REDIS_URL,
+};
+
+for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+  if (!value || value.trim() === "") {
+    console.error(
+      `\n[FATAL] Required environment variable "${key}" is not set.\n` +
+      `Set it in your .env file or container environment and restart the server.\n`
+    );
+    process.exit(1);
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 import { initializeSocket } from "modules/chat/socket";
 import { checkElasticsearchHealth } from "services/elasticClient";
 import { initElasticsearchIndices } from "services/elasticIndexManager";

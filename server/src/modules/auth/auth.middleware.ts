@@ -24,7 +24,7 @@ export const protect = async (
   }
 
   try {
-    if (isTokenRevoked(token)) {
+    if (await isTokenRevoked(token)) {
       return next(new AppError("Invalid token", 401));
     }
 
@@ -69,7 +69,7 @@ export const optionalProtect = async (
   }
 
   try {
-    if (isTokenRevoked(token)) {
+    if (await isTokenRevoked(token)) {
       return next();
     }
 

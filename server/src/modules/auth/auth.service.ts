@@ -14,9 +14,14 @@ import {
 
 const BCRYPT_ROUNDS = 12;
 const PUBLIC_SIGNUP_ROLES = new Set<string>(publicSignupRoles);
-const TOKEN_PRUNE_INTERVAL_MS = 60_000;
-const revokedTokenHashes = new Map<string, number>();
-let lastTokenPruneAt = 0;
+
+// Redis key prefix for revoked token hashes.
+// Each key is stored with a TTL equal to the token's remaining lifetime so
+// Redis handles expiry automatically — no prune loop needed.
+const REVOKED_TOKEN_KEY_PREFIX = "auth:revoked:";
+
+const buildRevokedKey = (tokenHash: string) =>
+  `${REVOKED_TOKEN_KEY_PREFIX}${tokenHash}`;
 
 const isUniqueConstraintError = (
   error: unknown,
@@ -52,38 +57,20 @@ const assertActiveUser = (status: UserStatus) => {
 const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 
-const pruneExpiredRevokedTokens = (now = Date.now()) => {
-  if (now - lastTokenPruneAt < TOKEN_PRUNE_INTERVAL_MS) {
-    return;
-  }
-
-  for (const [tokenHash, expiresAt] of revokedTokenHashes) {
-    if (expiresAt <= now) {
-      revokedTokenHashes.delete(tokenHash);
-    }
-  }
-
-  lastTokenPruneAt = now;
-};
-
-export const isTokenRevoked = (token: string) => {
-  const now = Date.now();
-
-  pruneExpiredRevokedTokens(now);
-
+/**
+ * Checks whether a token has been revoked by looking up its SHA-256 hash
+ * in Redis. Returns false (i.e. allows the request) if Redis is unavailable
+ * so that a cache failure does not lock users out.
+ */
+export const isTokenRevoked = async (token: string): Promise<boolean> => {
   const tokenHash = hashToken(token);
-  const expiresAt = revokedTokenHashes.get(tokenHash);
-
-  if (!expiresAt) {
+  try {
+    const val = await redis.get(buildRevokedKey(tokenHash));
+    return val === "1";
+  } catch (err: any) {
+    console.warn("[Auth] Redis revocation check failed — treating token as valid:", err?.message);
     return false;
   }
-
-  if (expiresAt <= now) {
-    revokedTokenHashes.delete(tokenHash);
-    return false;
-  }
-
-  return true;
 };
 
 export const registerUser = async (data: RegisterInput) => {
@@ -203,9 +190,18 @@ export const logoutUser = async (token: string) => {
   const decoded = verifyToken(token);
   const expiresAt = decoded.exp ? decoded.exp * 1000 : Date.now();
 
-  if (expiresAt > Date.now()) {
-    pruneExpiredRevokedTokens();
-    revokedTokenHashes.set(hashToken(token), expiresAt);
+  const ttlSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+
+  if (ttlSeconds > 0) {
+    const tokenHash = hashToken(token);
+    try {
+      // Store the hash with a TTL equal to the token's remaining lifetime.
+      // Redis will auto-expire the key, so no prune job is needed.
+      await redis.setex(buildRevokedKey(tokenHash), ttlSeconds, "1");
+    } catch (err: any) {
+      // Log but don't surface — the client session will still be cleared.
+      console.warn("[Auth] Redis revocation write failed:", err?.message);
+    }
   }
 
   return {
