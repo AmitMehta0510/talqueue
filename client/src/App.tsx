@@ -15,9 +15,9 @@ import { WorkspaceProvider } from "./core/contexts/WorkspaceProvider";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { DarkModeContext } from "./core/contexts/DarkModeContext";
 
-import { CampusRoutes } from "./routes/campus.routes";
-import { CareerRoutes } from "./routes/career.routes";
-import { SharedRoutes } from "./routes/shared.routes";
+import { campusRoutes } from "./routes/campus.routes";
+import { careerRoutes } from "./routes/career.routes";
+import { sharedRoutes } from "./routes/shared.routes";
 import {
   ProjectRedirect,
   CollegeRedirect,
@@ -189,9 +189,9 @@ function AppRoutes() {
           </Route>
 
           {/* ── Workspace route subtrees (see routes/*.routes.tsx) ── */}
-          <CampusRoutes {...guardProps} />
-          <CareerRoutes {...guardProps} />
-          <SharedRoutes {...guardProps} />
+          {campusRoutes(guardProps)}
+          {careerRoutes(guardProps)}
+          {sharedRoutes(guardProps)}
 
           {/* ── Legacy flat-URL redirects ── */}
           <Route path="/feed"                         element={<Navigate to="/campus/feed" replace />} />

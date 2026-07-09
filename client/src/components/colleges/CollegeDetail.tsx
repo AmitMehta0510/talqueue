@@ -493,7 +493,7 @@ export function CollegeDetail({
                 </div>
               </div>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                <span className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCount(college._count?.profiles ?? 0)}</span> students active on Engineering Hub
+                <span className="font-bold" style={{ color: "var(--text-primary)" }}>{formatCount(college._count?.profiles ?? 0)}</span> students active on Forge
               </p>
             </div>
 

@@ -24,7 +24,7 @@ type GuardComponents = {
   PageTransitionWrapper: React.ComponentType<{ children: React.ReactNode }>;
 };
 
-export function SharedRoutes({ RequireAuth, PageTransitionWrapper }: GuardComponents) {
+export function sharedRoutes({ RequireAuth, PageTransitionWrapper }: GuardComponents) {
   return (
     <Route element={<SharedLayout />} errorElement={<RouteErrorPage />}>
       <Route

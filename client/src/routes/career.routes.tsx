@@ -36,7 +36,7 @@ type GuardComponents = {
   PageTransitionWrapper: React.ComponentType<{ children: React.ReactNode }>;
 };
 
-export function CareerRoutes({ Require, RequireAuth, PageTransitionWrapper }: GuardComponents) {
+export function careerRoutes({ Require, RequireAuth, PageTransitionWrapper }: GuardComponents) {
   return (
     <Route path="/career" element={<CareerLayout />} errorElement={<RouteErrorPage />}>
       <Route index element={<PageTransitionWrapper><CareerDashboardPage /></PageTransitionWrapper>} />

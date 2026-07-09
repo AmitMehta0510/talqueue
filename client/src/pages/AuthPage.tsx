@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
-  Code2,
   Eye,
   EyeOff,
   Gavel,
@@ -164,15 +163,15 @@ export function AuthPage() {
           {/* Logo */}
           <div>
             <div className="inline-flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-400 text-indigo-950 shadow-glow">
-                <Code2 size={22} />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-700 overflow-hidden shadow-glow">
+                <img src="/favicon.png" alt="Forge" className="w-full h-full object-contain p-1.5" draggable={false} />
               </div>
               <div>
                 <div className="text-base font-black tracking-tight leading-none">
-                  Engineering
+                  Forge
                 </div>
                 <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-indigo-300/80 leading-none mt-0.5">
-                  Hub
+                  Build. Ship. Get Hired.
                 </div>
               </div>
             </div>
@@ -262,15 +261,15 @@ export function AuthPage() {
         <div className="w-full max-w-md">
           {/* Mobile-only logo */}
           <div className="md:hidden flex items-center gap-2.5 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 text-white shadow-glow-sm">
-              <Code2 size={20} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-700 overflow-hidden shadow-glow-sm">
+              <img src="/favicon.png" alt="Forge" className="w-full h-full object-contain p-1.5" draggable={false} />
             </div>
             <div>
               <div className="text-sm font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Engineering Hub
+                Forge
               </div>
               <div className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>
-                Professional Network
+                Build. Ship. Get Hired.
               </div>
             </div>
           </div>

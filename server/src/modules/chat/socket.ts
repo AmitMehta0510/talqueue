@@ -124,7 +124,7 @@ export const initializeSocket =
             );
           }
 
-          if (isTokenRevoked(token)) {
+          if (await isTokenRevoked(token)) {
             return next(new Error("Unauthorized"));
           }
 

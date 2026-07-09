@@ -78,7 +78,7 @@ export function OfficesSection({
           <div className="space-y-3">
             <input
               className="field"
-              placeholder="Office Name (e.g. Headquarters, Engineering Hub) *"
+              placeholder="Office Name (e.g. Headquarters, R&D Center, Innovation Hub) *"
               value={officeName}
               onChange={(e) => setOfficeName(e.target.value)}
               required

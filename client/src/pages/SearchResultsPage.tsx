@@ -283,8 +283,8 @@ export function SearchResultsPage() {
 
   // Update document title and restore on unmount
   useEffect(() => {
-    document.title = q ? `Search: "${q}" | Engineering Hub` : "Search | Engineering Hub";
-    return () => { document.title = "Engineering Hub"; };
+    document.title = q ? `Search: "${q}" | Forge` : "Search | Forge";
+    return () => { document.title = "Forge"; };
   }, [q]);
 
   // ── React Query — cached, retried, signal-cancelled automatically ──────────

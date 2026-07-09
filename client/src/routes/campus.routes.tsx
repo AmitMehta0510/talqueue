@@ -49,7 +49,7 @@ type GuardComponents = {
   PageTransitionWrapper: React.ComponentType<{ children: React.ReactNode }>;
 };
 
-export function CampusRoutes({ Require, RequireAuth, PageTransitionWrapper }: GuardComponents) {
+export function campusRoutes({ Require, RequireAuth, PageTransitionWrapper }: GuardComponents) {
   return (
     <Route path="/campus" element={<CampusLayout />} errorElement={<RouteErrorPage />}>
       <Route index element={<PageTransitionWrapper><CampusDashboardPage /></PageTransitionWrapper>} />

@@ -116,7 +116,7 @@ export const registerApiRoutes = (app: Express) => {
     res.json(
       successResponse(
         {
-          name: "Engineering Platform API",
+          name: "Forge API",
           version: "v1",
           status: "ok",
           routes: apiRouteMap,

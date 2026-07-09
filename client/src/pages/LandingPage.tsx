@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Code2,
   GraduationCap,
   BriefcaseBusiness,
   ArrowRight,
@@ -34,15 +33,15 @@ export function LandingPage() {
       {/* Header Bar */}
       <header className="w-full max-w-7xl mx-auto px-6 h-16 flex items-center justify-between border-b border-base relative z-10">
         <div className="inline-flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-indigo-950 shadow-glow">
-            <Code2 size={18} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 overflow-hidden shadow-glow">
+            <img src="/favicon.png" alt="Forge" className="w-full h-full object-contain p-1.5" draggable={false} />
           </div>
           <div>
             <div className="text-sm font-black tracking-tight leading-none text-primary">
-              Engineering
+              Forge
             </div>
             <div className="text-[9px] font-bold tracking-[0.15em] uppercase text-indigo-400/80 leading-none mt-0.5">
-              Hub
+              Build. Ship. Get Hired.
             </div>
           </div>
         </div>
@@ -60,11 +59,11 @@ export function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center animate-fade-up w-full">
             <div className="lg:col-span-7 space-y-6 text-left">
               <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-primary">
-                Engineering begins with <br />
+                Your career starts with{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-                  Projects & Collaboration
+                  what you build,
                 </span>
-                ,<br />not just Resumes.
+                <br />not just your resume.
               </h1>
               <p className="text-secondary text-sm max-w-lg leading-relaxed">
                 Build real projects. Collaborate with peers. Showcase verified contributions. Get noticed by the right opportunities.
@@ -267,7 +266,7 @@ export function LandingPage() {
           />
         </div>
         <div className="text-[10px] text-muted-fg font-medium tracking-wider">
-          PLATFORM HIGHLIGHTS • DARK UI • REALTIME UPDATES • SECURE & SCALABLE
+          FORGE © 2026 • DARK UI • REALTIME UPDATES • SECURE & SCALABLE
         </div>
       </footer>
     </div>

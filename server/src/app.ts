@@ -73,7 +73,7 @@ setImmediate(async () => {
 app.get("/", (req, res) => {
   res.json(
     successResponse({
-      name: "Engineering Platform API",
+      name: "Forge API",
       status: "ok",
       api: "/api/v1",
     }),
