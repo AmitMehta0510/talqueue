@@ -34,9 +34,8 @@ export function BaseSidebar({
       className={`hidden lg:flex lg:flex-col border-r h-[calc(100vh-4rem)] sticky top-16 shrink-0 transition-all duration-300 select-none border-[color:var(--border)]`}
       style={{
         width: isCollapsed ? "4rem" : "14.5rem",
-        background: isCareer
-          ? "linear-gradient(180deg, #070d19 0%, #050a14 100%)"
-          : "linear-gradient(180deg, #0d0f22 0%, #080a16 100%)"
+        background: "var(--bg-surface)",
+        borderRight: "1px solid var(--border)",
       }}
     >
       {/* Workspace Context Switcher Header */}
