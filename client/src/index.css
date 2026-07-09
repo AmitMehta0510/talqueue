@@ -31,11 +31,15 @@
   --text-warning: #d97706;
   --text-danger: #dc2626;
   --text-info: #2563eb;
+  --text-success: #16a34a;
 
   /* Brand */
   --brand: #4f46e5;
   --brand-light: #eef2ff;
   --brand-glow: rgba(79, 70, 229, 0.18);
+
+  /* Career workspace accent (teal) */
+  --career-accent: #0d9488;
 
   /* Glass — crisp white with indigo-tinted border, layered shadow for real depth */
   --glass-bg: rgba(255, 255, 255, 0.92);
@@ -96,12 +100,16 @@
   --text-warning: #f59e0b;
   --text-danger: #f87171;
   --text-info: #60a5fa;
+  --text-success: #4ade80;
 
   /* Brand — Sharp, elegant Electric Indigo accents */
   --brand: #6366f1;
   /* Electric Indigo for primary buttons/highlights */
   --brand-light: rgba(99, 102, 241, 0.10);
   --brand-glow: rgba(99, 102, 241, 0.18);
+
+  /* Career workspace accent (teal) — lighter for dark bg */
+  --career-accent: #2dd4bf;
 
   /* Glass — Indigo-tinted premium frosted glass */
   --glass-bg: rgba(13, 18, 34, 0.70);

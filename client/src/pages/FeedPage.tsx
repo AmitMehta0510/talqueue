@@ -254,7 +254,7 @@ export function FeedPage() {
           {user ? (
             <div className="panel overflow-hidden">
               {/* Cover gradient */}
-              <div className="h-16 w-full" style={{ background: "linear-gradient(135deg, #4f46e5, #6366f1)" }} />
+              <div className="h-16 w-full" style={{ background: "linear-gradient(135deg, var(--brand), rgba(99,102,241,0.7))" }} />
               <div className="p-4 relative">
                 {/* Avatar overlapping cover */}
                 <div

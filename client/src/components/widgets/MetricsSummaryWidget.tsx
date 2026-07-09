@@ -68,9 +68,9 @@ function computeProfileStrength(profile: User): number {
 }
 
 function strengthLabel(pct: number): { label: string; color: string } {
-  if (pct >= 80) return { label: "Strong", color: "#22c55e" };
-  if (pct >= 50) return { label: "Good", color: "#f59e0b" };
-  return { label: "Needs Work", color: "#f87171" };
+  if (pct >= 80) return { label: "Strong",     color: "var(--text-success, #22c55e)" };
+  if (pct >= 50) return { label: "Good",        color: "var(--text-warning)" };
+  return           { label: "Needs Work",  color: "var(--text-danger)" };
 }
 
 // ─── Circular Progress Ring ───────────────────────────────────────────────────
@@ -190,7 +190,7 @@ export function MetricsSummaryWidget() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((n) => (
           <div key={n} className="panel p-4 h-24 flex items-center justify-between border rounded-2xl animate-pulse bg-[color:var(--bg-surface)] border-[color:var(--border)]" />
         ))}
@@ -209,7 +209,7 @@ export function MetricsSummaryWidget() {
     ];
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           const cardContent = (
@@ -249,7 +249,7 @@ export function MetricsSummaryWidget() {
     ];
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           const cardContent = (
@@ -302,7 +302,7 @@ export function MetricsSummaryWidget() {
   ).length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
       {/* Applications */}
       <Link to="/career/jobs?tab=applications" className="block no-underline h-full">
@@ -353,7 +353,7 @@ export function MetricsSummaryWidget() {
           </div>
           <div
             className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "rgba(20,184,166,0.12)", color: "#14b8a6" }}
+            style={{ background: "rgba(13,148,136,0.12)", color: "var(--career-accent, #0d9488)" }}
           >
             <UserCheck size={18} />
           </div>
@@ -379,7 +379,7 @@ export function MetricsSummaryWidget() {
           </div>
           <div
             className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
+            style={{ background: "rgba(245,158,11,0.12)", color: "var(--text-warning)" }}
           >
             <CalendarCheck size={18} />
           </div>

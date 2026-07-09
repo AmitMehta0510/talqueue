@@ -569,7 +569,7 @@ function CompanyDetail({ slug }: { slug: string }) {
         ) : (
           <div
             className="h-44 w-full sm:h-56"
-            style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)" }}
+            style={{ background: "linear-gradient(135deg, var(--brand) 0%, rgba(124,58,237,0.8) 50%, rgba(99,102,241,0.9) 100%)" }}
           />
         )}
         <div className="px-6 pb-6">

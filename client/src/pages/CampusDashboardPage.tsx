@@ -40,7 +40,7 @@ export function CampusDashboardPage() {
       <MetricsSummaryWidget />
 
       {/* 3-Column Grid Configuration */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <PlacementDrivesWidget />
         <YourProjectsWidget />
         <UpcomingEventsWidget />

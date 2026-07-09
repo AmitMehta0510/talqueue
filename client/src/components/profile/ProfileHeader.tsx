@@ -57,7 +57,7 @@ export function ProfileHeader({
         style={
           profile.profile?.bannerUrl
             ? { backgroundImage: `url(${profile.profile.bannerUrl})` }
-            : { background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)" }
+            : { background: "linear-gradient(135deg, var(--brand-light) 0%, var(--brand-glow) 50%, rgba(99,102,241,0.25) 100%)" }
         }
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
