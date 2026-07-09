@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Briefcase, Sun, Moon, type LucideIcon } from "lucide-react";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
+import { Search, Menu, X, Briefcase, Sun, Moon, type LucideIcon, ChevronRight } from "lucide-react";
 import { useDarkMode } from "../../core/contexts/DarkModeContext";
 import type { NavSection } from "../config/navigation";
 import { User } from "../../lib/api";
@@ -62,6 +62,7 @@ export function Header({
   showChatIcon = false,
 }: HeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isUserAdmin = isPlatformAdmin(user);
   const { isDark, toggle: toggleDark } = useDarkMode();
 
@@ -69,6 +70,11 @@ export function Header({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Close overlays on outside click
   useEffect(() => {
@@ -107,11 +113,102 @@ export function Header({
   return (
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+      {/* ── Mobile drawer backdrop ── */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ background: "var(--bg-overlay)" }}
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* ── Mobile slide-in drawer ── */}
+      <div
+        className="fixed top-0 left-0 z-50 h-full w-72 lg:hidden flex flex-col overflow-y-auto"
+        style={{
+          background: "var(--bg-surface)",
+          borderRight: "1px solid var(--border)",
+          transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.28s cubic-bezier(0.16,1,0.3,1)",
+          boxShadow: mobileMenuOpen ? "4px 0 40px rgba(0,0,0,0.25)" : "none",
+        }}
+      >
+        {/* Drawer header */}
+        <div
+          className="flex items-center justify-between px-5 h-16 border-b shrink-0"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <Link to="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5">
+            <img src="/favicon.png" alt="Forge" className="h-7 w-7" />
+            <span className="font-bold text-base tracking-tight" style={{ color: "var(--text-primary)" }}>Forge</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="icon-btn rounded-full"
+            aria-label="Close menu"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Nav sections */}
+        <div className="flex-1 py-3 px-3">
+          {[...pinnedSections, ...sortedDropdownSections].map((item) => {
+            const Icon = item.icon as LucideIcon;
+            const locked = item.requiresAuth && !user;
+            return (
+              <NavLink
+                key={item.to}
+                to={locked ? "/auth" : item.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 mb-0.5"
+                style={({ isActive }) => ({
+                  background: isActive ? "var(--brand-light)" : "transparent",
+                  color: isActive ? "var(--brand)" : "var(--text-secondary)",
+                })}
+              >
+                <Icon size={17} className="shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                <ChevronRight size={13} style={{ color: "var(--text-muted)" }} />
+              </NavLink>
+            );
+          })}
+        </div>
+
+        {/* Drawer footer */}
+        <div className="px-4 pb-6 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+          <button
+            type="button"
+            onClick={() => { toggleDark(); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {isDark
+              ? <Sun size={17} className="text-amber-400 shrink-0" />
+              : <Moon size={17} className="shrink-0" />}
+            <span>{isDark ? "Switch to Light" : "Switch to Dark"}</span>
+          </button>
+        </div>
+      </div>
+
       <header className="sticky top-0 z-40 border-b" style={glassStyle}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           
-          {/* Left: Logo */}
-          <div className="flex items-center gap-3 md:flex-1">
+          {/* Left: Hamburger (mobile) + Logo */}
+          <div className="flex items-center gap-2 md:flex-1">
+            {/* Hamburger button — mobile only */}
+            <button
+              type="button"
+              className="lg:hidden icon-btn rounded-full"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((v) => !v)}
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
             <LogoSection />
           </div>
 
@@ -190,13 +287,13 @@ export function Header({
               <Search size={16} />
             </button>
 
-            {/* Dark / Light mode toggle */}
+            {/* Dark / Light mode toggle — desktop only (drawer handles mobile) */}
             <button
               type="button"
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
               onClick={toggleDark}
-              className="icon-btn rounded-full transition-all duration-300"
+              className="hidden md:inline-flex icon-btn rounded-full transition-all duration-300"
             >
               {isDark
                 ? <Sun size={16} className="text-amber-400" />

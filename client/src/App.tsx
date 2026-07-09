@@ -45,7 +45,8 @@ function DarkModeProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved === "dark") return true;
     if (saved === "light") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // Default to dark — Forge is a dark-first product
+    return true;
   };
 
   const [isDark, setIsDark] = useState(getInitial);
