@@ -4,40 +4,42 @@ import { RecentApplicationsWidget } from "../components/widgets/RecentApplicatio
 import { ActiveJobsWidget } from "../components/widgets/ActiveJobsWidget";
 import { UpcomingInterviewsWidget } from "../components/widgets/UpcomingInterviewsWidget";
 import { QuickActionsWidget } from "../components/widgets/QuickActionsWidget";
-import { CareerRightPanel } from "../components/panels/CareerRightPanel";
 
+/**
+ * CareerDashboardPage
+ *
+ * Follows the same 2-pane architecture as CampusDashboardPage:
+ *   sidebar + full-width content (no separate right panel).
+ *
+ * Layout:
+ *   1. WelcomeBanner        — full width
+ *   2. MetricsSummaryWidget — 4-col stat row
+ *   3. 3-col widget grid    — RecentApplications | ActiveJobs | UpcomingInterviews
+ *   4. QuickActionsWidget   — full width (inner 4-col grid)
+ *
+ * This matches CampusDashboardPage's pattern exactly and gives every widget
+ * a correct width budget — no cramping from a competing right panel.
+ */
 export function CareerDashboardPage() {
   return (
-    <div className="flex gap-6 items-start">
-      {/* Central main dashboard layout */}
-      <div className="flex-1 min-w-0 space-y-6">
-        {/* Top welcome splash card */}
-        <WelcomeBanner />
+    <div className="flex-1 min-w-0 space-y-6">
+      {/* Welcome header */}
+      <WelcomeBanner />
 
-        {/* Metrics + feed — full width (no dossier card) */}
-        <div className="space-y-6">
-          <MetricsSummaryWidget />
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 lg:col-span-8">
-              <RecentApplicationsWidget />
-            </div>
-            <div className="col-span-12 lg:col-span-4">
-              <ActiveJobsWidget />
-            </div>
-          </div>
-        </div>
+      {/* 4-col stat row */}
+      <MetricsSummaryWidget />
 
-        {/* Mobile/Tablet fallback list for right panel widgets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:hidden">
-          <UpcomingInterviewsWidget />
-          <QuickActionsWidget />
-        </div>
+      {/* 3-col widget grid — matches Campus pattern */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+        <RecentApplicationsWidget />
+        <ActiveJobsWidget />
+        <UpcomingInterviewsWidget />
       </div>
 
-      {/* Desktop-only right panels container */}
-      <CareerRightPanel />
+      {/* Full-width quick actions bar */}
+      <QuickActionsWidget />
     </div>
   );
 }
-export default CareerDashboardPage;
 
+export default CareerDashboardPage;
