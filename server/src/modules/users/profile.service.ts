@@ -53,6 +53,7 @@ import slugify from "slugify";
 import { verifyUserSkills } from "./skill-verification.service";
 import { ensureOfficialDepartmentCommunity } from "modules/colleges/colleges.service";
 import { getOrSetCache, bustCache } from "shared/database/redisCache";
+import { USER_FULL_PROFILE_SELECT } from "shared/database/user-aggregates";
 
 export const getMyProfile = async (userId: string) => {
   const cacheKey = `profile:${userId}`;
@@ -88,13 +89,12 @@ export const getMyProfile = async (userId: string) => {
   return user;
 };
 
+// getMyFullProfile — uses focused USER_FULL_PROFILE_SELECT from user-aggregates.ts.
+// Only loads what the /me endpoint needs, not all 50+ User relations.
 export const getMyFullProfile = async (userId: string) => {
   const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-
-    select: userFullProfileSelect,
+    where:  { id: userId },
+    select: USER_FULL_PROFILE_SELECT,
   });
 
   if (!user) {

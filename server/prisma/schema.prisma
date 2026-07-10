@@ -722,6 +722,11 @@ model User {
   savedInterviewResources         SavedInterviewResource[]
   hostedRooms                     InterviewRoom[]             @relation("RoomHost")
   guestRooms                      InterviewRoom[]             @relation("RoomGuest")
+
+  // ── Compound indexes for high-traffic query patterns ─────────────────────────
+  @@index([status, lastActiveAt])             // active user queries
+  @@index([primaryRole, openToWork])          // recruiter "open to work" search
+  @@index([tier, canAccessRecruiterDirectory]) // premium feature gating
 }
 
 model UserRecommendation {
