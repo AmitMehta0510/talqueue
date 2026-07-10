@@ -723,6 +723,9 @@ model User {
   hostedRooms                     InterviewRoom[]             @relation("RoomHost")
   guestRooms                      InterviewRoom[]             @relation("RoomGuest")
 
+  // ── Preferences
+  notificationPreference NotificationPreference?
+
   // ── Compound indexes for high-traffic query patterns ─────────────────────────
   @@index([status, lastActiveAt])             // active user queries
   @@index([primaryRole, openToWork])          // recruiter "open to work" search
@@ -1425,6 +1428,34 @@ model Notification {
   // Composite indexes for production inbox queries
   @@index([userId, archived])
   @@index([userId, isRead, createdAt])
+}
+
+// ─── NotificationPreference ─────────────────────────────────────────────
+// Per-user notification channel preferences.
+// Checked by notification-dispatcher.ts before sending to any channel.
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // ── In-app (always on by default)
+  inAppEnabled Boolean @default(true)
+
+  // ── Email channel
+  emailEnabled    Boolean @default(true)
+  // INSTANT | DAILY | WEEKLY | OFF
+  emailDigestMode String  @default("INSTANT")
+
+  // ── Push notifications (mobile, future)
+  pushEnabled Boolean @default(false)
+
+  // ── Per-notification-type overrides (JSON)
+  // Shape: { "JOB_ALERT": { "email": false }, "POST_MENTION": { "push": true } }
+  // If a type is absent from this map, channel defaults above apply.
+  typeOverrides Json @default("{}")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
