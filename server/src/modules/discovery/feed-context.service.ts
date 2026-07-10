@@ -28,7 +28,7 @@ export const buildFeedContext = async (userId: string) => {
     throw new AppError("User not found", 404);
   }
 
-  const [follows, userSkills, interactions, affinities] = await Promise.all([
+  const [follows, userSkills, interactions, affinities, interestProfile] = await Promise.all([
     prisma.follow.findMany({
       where: {
         followerId: userId,
@@ -82,6 +82,20 @@ export const buildFeedContext = async (userId: string) => {
 
       take: 100,
     }),
+
+    // Fetch pre-aggregated interest profile (written by interest-aggregator.cron)
+    prisma.userInterestProfile.findUnique({
+      where: { userId },
+      select: {
+        interestedSkills:         true,
+        interestedDomains:        true,
+        preferredContentTypes:    true,
+        preferredJobTypes:        true,
+        recruiterInterestScore:   true,
+        openSourceAffinity:       true,
+        collaborationAffinity:    true,
+      },
+    }),
   ]);
 
   const followingIds = follows.map((f) => f.followingId);
@@ -130,5 +144,9 @@ export const buildFeedContext = async (userId: string) => {
     userRole: user.primaryRole,
 
     userCountry,
+
+    // Materialized interest signals from UserInterestProfile
+    // null if aggregation hasn't run yet for this user
+    interestProfile: interestProfile ?? null,
   };
 };

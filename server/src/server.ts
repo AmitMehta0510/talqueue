@@ -33,6 +33,7 @@ import redis from "shared/database/redis";
 import { ensureCoreCommunitiesExist } from "modules/community/community.service";
 import { startMailWorker } from "services/mailQueue";
 import { startEventWorker, stopEventWorker } from "services/eventWorker";
+import { startInterestAggregatorCron, stopInterestAggregatorCron } from "modules/feed/interest-aggregator.cron";
 import logger from "shared/logger";
 
 const PORT = process.env.PORT || 5000;
@@ -60,7 +61,8 @@ server.listen(PORT, async () => {
   // Start background workers
   startMailWorker();
   startEventWorker();
-  logger.info("Background workers started (mailWorker, eventWorker)");
+  startInterestAggregatorCron();
+  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron)");
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────
@@ -87,6 +89,9 @@ const gracefulShutdown = (signal: string) => {
       // 2. Stop event worker gracefully (drain in-flight jobs)
       await stopEventWorker();
       logger.info("Event worker stopped");
+
+      // 2b. Stop interest aggregator cron
+      stopInterestAggregatorCron();
 
       // 3. Release Prisma connection pool
       await prisma.$disconnect();

@@ -31,6 +31,40 @@ export const applyAiFeedRanking = async (
 
     score += interactionScore * FEED_SCORE_WEIGHTS.aiReranking.interaction;
 
+    // ── INTEREST PROFILE BOOSTS (from materialized UserInterestProfile) ───────
+    // Only applied when the daily aggregation cron has run for this user.
+    const ip = (context as any).interestProfile;
+    if (ip) {
+      // Boost jobs matching user's preferred job types (FULL_TIME, INTERNSHIP, etc.)
+      if (item.type === "JOB" && ip.preferredJobTypes?.length) {
+        const jobType = (item.data as any).type;
+        if (jobType && ip.preferredJobTypes.includes(jobType)) {
+          score += 8; // significant boost for job type match
+        }
+      }
+
+      // Boost content from preferred content types (user is more likely to engage)
+      if (ip.preferredContentTypes?.length && ip.preferredContentTypes.includes(item.type)) {
+        score += 4;
+      }
+
+      // Boost job items for users with high recruiter interest
+      if (item.type === "JOB" && ip.recruiterInterestScore > 0.5) {
+        score += ip.recruiterInterestScore * 6;
+      }
+
+      // Boost projects for users with high open-source affinity
+      if (item.type === "PROJECT" && ip.openSourceAffinity > 0.5) {
+        score += ip.openSourceAffinity * 5;
+      }
+
+      // Boost hackathons for users with high collaboration affinity
+      if (item.type === "HACKATHON" && ip.collaborationAffinity > 0.5) {
+        score += ip.collaborationAffinity * 5;
+      }
+    }
+    // ── END INTEREST PROFILE BOOSTS ──────────────────────────────────────────
+
     // SKILL VECTOR BOOST
     if (skillNameSet.size) {
       // POSTS
