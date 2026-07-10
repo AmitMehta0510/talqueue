@@ -47,6 +47,7 @@ import {
 } from "./admin.controller";
 
 import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
+import { getDlqJobs, replayDlq } from "services/mailQueue";
 import {
   getEventsHandler,
   getEventAttendeesHandler,
@@ -154,5 +155,19 @@ router.post("/company-requests/:requestId/review", reviewBusinessRequestHandler)
 router.get("/college-requests", listCollegeRequestsHandler);
 router.get("/college-requests/:requestId", getCollegeRequestHandler);
 router.post("/college-requests/:requestId/review", reviewCollegeRequestHandler);
+
+// ============================================================
+// MAIL DLQ — inspect and replay failed email jobs
+// ============================================================
+
+router.get("/mail/dlq", requireSuperAdmin, async (_req, res) => {
+  const jobs = await getDlqJobs();
+  res.json({ total: jobs.length, jobs });
+});
+
+router.post("/mail/dlq/replay", requireSuperAdmin, async (_req, res) => {
+  const result = await replayDlq();
+  res.json(result);
+});
 
 export default router;
