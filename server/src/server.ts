@@ -32,6 +32,7 @@ import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
 import { ensureCoreCommunitiesExist } from "modules/community/community.service";
 import { startMailWorker } from "services/mailQueue";
+import { startEventWorker, stopEventWorker } from "services/eventWorker";
 import logger from "shared/logger";
 
 const PORT = process.env.PORT || 5000;
@@ -56,8 +57,10 @@ server.listen(PORT, async () => {
     logger.error("Community bootstrap failed", { err })
   );
 
-  // Start background mail queue worker
+  // Start background workers
   startMailWorker();
+  startEventWorker();
+  logger.info("Background workers started (mailWorker, eventWorker)");
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────
@@ -81,11 +84,15 @@ const gracefulShutdown = (signal: string) => {
     logger.info("HTTP server closed");
 
     try {
-      // 2. Release Prisma connection pool
+      // 2. Stop event worker gracefully (drain in-flight jobs)
+      await stopEventWorker();
+      logger.info("Event worker stopped");
+
+      // 3. Release Prisma connection pool
       await prisma.$disconnect();
       logger.info("Prisma disconnected");
 
-      // 3. Release Redis socket
+      // 4. Release Redis socket
       await redis.quit();
       logger.info("Redis disconnected. Shutdown complete.");
 
