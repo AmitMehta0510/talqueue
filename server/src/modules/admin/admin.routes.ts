@@ -48,6 +48,8 @@ import {
 
 import { getAdminDashboardAnalyticsHandler } from "./admin-analytics.controller";
 import { getDlqJobs, replayDlq } from "services/mailQueue";
+import { syncUsersToElasticBulk } from "services/elasticSync";
+import prisma from "shared/database/prisma";
 import {
   getEventsHandler,
   getEventAttendeesHandler,
@@ -168,6 +170,47 @@ router.get("/mail/dlq", requireSuperAdmin, async (_req, res) => {
 router.post("/mail/dlq/replay", requireSuperAdmin, async (_req, res) => {
   const result = await replayDlq();
   res.json(result);
+});
+
+// ============================================================
+// ELASTICSEARCH BACKFILL — one-time full user index population
+// ============================================================
+
+/**
+ * POST /admin/search/backfill/users
+ *
+ * Pages through ALL users in batches of 500 and bulk-indexes them
+ * into the Elasticsearch `users` index. This endpoint is idempotent
+ * (re-running it will update/overwrite all existing documents).
+ *
+ * Estimated runtime: ~1s per 500 users. For 10K users: ~20s.
+ * Run once after deployment, then rely on event-driven syncUserToElastic().
+ */
+router.post("/search/backfill/users", requireSuperAdmin, async (_req, res) => {
+  const BATCH = 500;
+  let cursor: string | undefined;
+  let total = 0;
+
+  try {
+    while (true) {
+      const batch = await prisma.user.findMany({
+        take: BATCH,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { id: "asc" },
+        select: { id: true },
+      });
+
+      if (!batch.length) break;
+
+      await syncUsersToElasticBulk(batch.map((u) => u.id));
+      total += batch.length;
+      cursor = batch[batch.length - 1].id;
+    }
+
+    res.json({ success: true, indexed: total });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || String(err) });
+  }
 });
 
 export default router;

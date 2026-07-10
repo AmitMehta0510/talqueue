@@ -19,265 +19,224 @@ import {
 //
 // USERS
 //
-export const searchUsers =  async (
-    filters: SearchUsersFilters,
-    currentUserId?: string
-  ) => {
+//
+// USERS — Elasticsearch-first search with Prisma fallback
+//
+// Architecture:
+//  1. Build an ES bool query from all active filters
+//  2. ES returns ranked user IDs (fast, indexed, no ILIKE)
+//  3. Prisma fetches full user objects for the matched IDs
+//  4. If ES is unavailable (dev without Docker, or ES down), falls back
+//     to the original Prisma ILIKE query so nothing breaks
+//
+export const searchUsers = async (
+  filters: SearchUsersFilters,
+  _currentUserId?: string,
+) => {
+  const limit  = Math.min(filters.limit ?? 20, 50);
+  const from   = ((filters.page ?? 1) - 1) * limit;
 
-    const users =
-      await prisma.user.findMany({
+  try {
+    // ── 1. Build ES bool query ───────────────────────────────────────────────
+    const must:   unknown[] = [];
+    const filter: unknown[] = [];
+    const should: unknown[] = [];
 
-        where: {
+    // Always exclude hidden profiles
+    filter.push({ term: { searchVisibility: true } });
 
-          searchVisibility: true,
-
-          NOT: {
-            OR: [
-              { primaryRole: { in: ["SUPER_ADMIN", "PLATFORM_ADMIN"] } },
-              { primaryRole: { contains: "scraper", mode: "insensitive" } },
-              { username: { contains: "scraper", mode: "insensitive" } },
-              { email: { contains: "scraper", mode: "insensitive" } },
-              {
-                roles: {
-                  some: {
-                    role: {
-                      name: {
-                        in: ["SUPER_ADMIN", "PLATFORM_ADMIN", "SCRAPER"],
-                      },
-                    },
-                  },
-                },
-              },
-              {
-                roles: {
-                  some: {
-                    role: {
-                      name: {
-                        contains: "scraper",
-                        mode: "insensitive",
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-          },
-
-          ...(filters.query && {
-            OR: [
-
-              {
-                username: {
-                  contains:
-                    filters.query,
-                  mode:
-                    "insensitive",
-                },
-              },
-
-              {
-                profile: {
-                  fullName: {
-                    contains:
-                      filters.query,
-                    mode:
-                      "insensitive",
-                  },
-                },
-              },
-
-              {
-                skills: {
-                  some: {
-                    skill: {
-                      name: {
-                        contains:
-                          filters.query,
-                        mode:
-                          "insensitive",
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-          }),
-
-          ...(filters.collegeIds
-            ?.length && {
-
-            profile: {
-              collegeId: {
-                in:
-                  filters.collegeIds,
-              },
-            },
-          }),
-
-          ...((filters as any).collegeName && {
-            profile: {
-              college: {
-                name: {
-                  contains: (filters as any).collegeName,
-                  mode: "insensitive",
-                },
-              },
-            },
-          }),
-
-          ...(filters.departmentIds
-            ?.length && {
-
-            profile: {
-              departmentId: {
-                in:
-                  filters.departmentIds,
-              },
-            },
-          }),
-
-          ...(filters.graduationYears
-            ?.length && {
-
-            profile: {
-              graduationYear: {
-                in:
-                  filters.graduationYears,
-              },
-            },
-          }),
-
-          ...(filters.skills
-            ?.length && {
-
-            skills: {
-              some: {
-                skill: {
-                  name: {
-                    in:
-                      filters.skills,
-                  },
-                },
-              },
-            },
-          }),
-
-          ...(filters.verifiedSkillsOnly && {
-            skills: {
-              some: {
-                verified: true,
-              },
-            },
-          }),
-
-          ...(filters.trustLevels
-            ?.length && {
-
-            trustLevel: {
-              in:
-                filters.trustLevels as any,
-            },
-          }),
-
-          ...(filters.openToWork !==
-            undefined && {
-            openToWork:
-              filters.openToWork,
-          }),
-
-          ...(filters.openToInternship !==
-            undefined && {
-            openToInternship:
-              filters.openToInternship,
-          }),
-
-          ...(filters.acceptingCollaborators !== undefined && {
-            acceptingCollaborators: filters.acceptingCollaborators,
-          }),
-
-          ...(filters.acceptingReferrals !== undefined && {
-            acceptingReferrals: filters.acceptingReferrals,
-          }),
-
-          ...(filters.role && {
-            // The User model stores the primary role as `primaryRole String?`
-            // (the `roles` relation is for admin/platform roles).
-            primaryRole: filters.role,
-          }),
-
-          ...(filters.companyNames
-            ?.length && {
-
-            experiences: {
-              some: {
-                companyName: {
-                  in:
-                    filters.companyNames,
-                },
-              },
-            },
-          }),
+    // Full-text query across name, username, bio, headline
+    if (filters.query?.trim()) {
+      must.push({
+        multi_match: {
+          query:  filters.query.trim(),
+          fields: [
+            "fullName^3",
+            "fullName.autocomplete^2",
+            "username^3",
+            "username.autocomplete^2",
+            "headline^1.5",
+            "bio",
+          ],
+          type:      "best_fields",
+          fuzziness: "AUTO",
         },
-
-        include: {
-
-          profile: {
-            include: {
-              college: true,
-              department: true,
-            },
-          },
-
-          skills: {
-            include: {
-              skill: true,
-            },
-          },
-
-          experiences: true,
-
-          _count: {
-            select: {
-              followers: true,
-              projectMemberships: true,
-            },
-          },
-        },
-
-        take:
-          filters.limit || 20,
       });
+    }
 
-    const ranked =
-      users.map((user) => ({
+    // Skill filter — terms match on lowercased skill names
+    if (filters.skills?.length) {
+      filter.push({
+        terms: { skills: filters.skills.map((s) => s.toLowerCase()) },
+      });
+    }
 
-        user,
+    // College filter (by ID or name)
+    if (filters.collegeIds?.length) {
+      filter.push({ terms: { collegeId: filters.collegeIds } });
+    }
+    if ((filters as any).collegeName) {
+      filter.push({ term: { collegeName: (filters as any).collegeName } });
+    }
 
-        relevanceScore:
-          calculateUserSearchScore(
-            user,
-            {
-              skillNames:
-                filters.skills,
-              collegeId:
-                user.profile?.collegeId || undefined,
-            }
-          ),
+    // Department filter
+    if (filters.departmentIds?.length) {
+      filter.push({ terms: { departmentId: filters.departmentIds } });
+    }
 
-        matchReasons: [
-          user.trustLevel,
-          `${user.engineeringScore} engineering score`,
-        ],
-      }));
+    // Graduation year filter
+    if (filters.graduationYears?.length) {
+      filter.push({ terms: { graduationYear: filters.graduationYears } });
+    }
 
-    ranked.sort(
-      (a, b) =>
-        b.relevanceScore -
-        a.relevanceScore
+    // Trust level filter
+    if (filters.trustLevels?.length) {
+      filter.push({ terms: { trustLevel: filters.trustLevels } });
+    }
+
+    // Primary role filter
+    if (filters.role) {
+      filter.push({ term: { primaryRole: filters.role } });
+    }
+
+    // Engineering score range
+    if (filters.minEngineeringScore !== undefined || filters.maxEngineeringScore !== undefined) {
+      const rangeClause: Record<string, number> = {};
+      if (filters.minEngineeringScore !== undefined) rangeClause.gte = filters.minEngineeringScore;
+      if (filters.maxEngineeringScore !== undefined) rangeClause.lte = filters.maxEngineeringScore;
+      filter.push({ range: { engineeringScore: rangeClause } });
+    }
+
+    // Boolean availability flags
+    if (filters.openToWork !== undefined)             filter.push({ term: { openToWork: filters.openToWork } });
+    if (filters.openToInternship !== undefined)       filter.push({ term: { openToInternship: filters.openToInternship } });
+    if (filters.acceptingCollaborators !== undefined) filter.push({ term: { acceptingCollaborators: filters.acceptingCollaborators } });
+    if (filters.acceptingReferrals !== undefined)     filter.push({ term: { acceptingReferrals: filters.acceptingReferrals } });
+
+    // ── 2. Sorting ───────────────────────────────────────────────────────────
+    let sort: unknown[] = [];
+    switch (filters.sortBy) {
+      case "ENGINEERING_SCORE":
+        sort = [{ engineeringScore: "desc" }, { reputationScore: "desc" }];
+        break;
+      case "REPUTATION":
+        sort = [{ reputationScore: "desc" }, { engineeringScore: "desc" }];
+        break;
+      case "RECENT":
+        sort = [{ createdAt: "desc" }];
+        break;
+      default:
+        // RELEVANCE — let ES _score drive order; boost by engineeringScore
+        sort = ["_score", { engineeringScore: "desc" }];
+    }
+
+    // ── 3. Execute ES query ──────────────────────────────────────────────────
+    const esResponse = await elasticClient.search({
+      index: "users",
+      from,
+      size:  limit,
+      query: {
+        bool: {
+          must:   must.length   ? must   : [{ match_all: {} }],
+          filter: filter.length ? filter : undefined,
+          should: should.length ? should : undefined,
+        },
+      },
+      sort,
+      // Only return the document ID — Prisma will fetch the full record
+      _source: false,
+    });
+
+    const hits = (esResponse.hits?.hits ?? []) as Array<{ _id: string }>;
+    if (!hits.length) return [];
+
+    const orderedIds = hits.map((h) => h._id);
+
+    // ── 4. Fetch full user objects from Prisma ───────────────────────────────
+    const users = await prisma.user.findMany({
+      where: { id: { in: orderedIds } },
+      include: {
+        profile:     { include: { college: true, department: true } },
+        skills:      { include: { skill: true } },
+        experiences: true,
+        _count: { select: { followers: true, projectMemberships: true } },
+      },
+    });
+
+    // Re-order to match ES relevance order
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return orderedIds
+      .map((id) => {
+        const user = userMap.get(id);
+        if (!user) return null;
+        return {
+          user,
+          relevanceScore: 0, // ES already ranked; score implicit in order
+          matchReasons:   [user.trustLevel, `${user.engineeringScore} engineering score`],
+        };
+      })
+      .filter(Boolean);
+
+  } catch (esErr: any) {
+    // ── Prisma ILIKE fallback (ES unavailable) ───────────────────────────────
+    // Logs a warning so the team knows ES is degraded but doesn't break search.
+    console.warn(
+      "[SearchUsers] Elasticsearch unavailable — falling back to Prisma ILIKE query.",
+      esErr?.message,
     );
 
+    const users = await prisma.user.findMany({
+      where: {
+        searchVisibility: true,
+        NOT: {
+          OR: [
+            { primaryRole: { in: ["SUPER_ADMIN", "PLATFORM_ADMIN"] } },
+            { primaryRole: { contains: "scraper", mode: "insensitive" } },
+          ],
+        },
+        ...(filters.query && {
+          OR: [
+            { username: { contains: filters.query, mode: "insensitive" } },
+            { profile: { fullName: { contains: filters.query, mode: "insensitive" } } },
+            { skills: { some: { skill: { name: { contains: filters.query, mode: "insensitive" } } } } },
+          ],
+        }),
+        ...(filters.collegeIds?.length && { profile: { collegeId: { in: filters.collegeIds } } }),
+        ...(filters.skills?.length && {
+          skills: { some: { skill: { name: { in: filters.skills } } } },
+        }),
+        ...(filters.openToWork !== undefined && { openToWork: filters.openToWork }),
+        ...(filters.openToInternship !== undefined && { openToInternship: filters.openToInternship }),
+        ...(filters.acceptingCollaborators !== undefined && { acceptingCollaborators: filters.acceptingCollaborators }),
+        ...(filters.acceptingReferrals !== undefined && { acceptingReferrals: filters.acceptingReferrals }),
+        ...(filters.trustLevels?.length && { trustLevel: { in: filters.trustLevels as any } }),
+        ...(filters.role && { primaryRole: filters.role }),
+        ...(filters.graduationYears?.length && {
+          profile: { graduationYear: { in: filters.graduationYears } },
+        }),
+      },
+      include: {
+        profile:     { include: { college: true, department: true } },
+        skills:      { include: { skill: true } },
+        experiences: true,
+        _count: { select: { followers: true, projectMemberships: true } },
+      },
+      take: limit,
+    });
+
+    const ranked = users.map((user) => ({
+      user,
+      relevanceScore: calculateUserSearchScore(user, {
+        skillNames: filters.skills,
+        collegeId: user.profile?.collegeId || undefined,
+      }),
+      matchReasons: [user.trustLevel, `${user.engineeringScore} engineering score`],
+    }));
+
+    ranked.sort((a, b) => b.relevanceScore - a.relevanceScore);
     return ranked;
-  };
+  }
+};
 
 //
 // PROJECTS

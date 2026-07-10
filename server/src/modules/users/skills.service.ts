@@ -19,6 +19,7 @@ import redis from "shared/database/redis";
 import { SkillLevel } from "@prisma/client";
 import AppError from "shared/errors/AppError";
 import { syncUserToResdex } from "services/resdexSyncService";
+import { syncUserToElastic } from "services/elasticSync";
 import { addReputation } from "../reputation/reputation.service";
 import { createActivity } from "../activities/activity.service";
 import { calculateEngineeringScore } from "../reputation/engineering-score.service";
@@ -184,6 +185,7 @@ export const addSkill = async (userId: string, data: AddSkillData) => {
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+  syncUserToElastic(userId);
 
   try {
     await redis.del(`profile:${userId}`);
@@ -211,6 +213,7 @@ export const removeSkill = async (userId: string, skillId: string) => {
 
   // Sync user profile to Resdex
   syncUserToResdex(userId);
+  syncUserToElastic(userId);
 
   try {
     await redis.del(`profile:${userId}`);

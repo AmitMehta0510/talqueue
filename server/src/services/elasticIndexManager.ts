@@ -234,6 +234,90 @@ const INDICES_CONFIGS: IndexConfig[] = [
       },
     },
   },
+  {
+    name: "users",
+    settings: {
+      number_of_shards: 2,
+      number_of_replicas: 1,
+      analysis: {
+        analyzer: {
+          // Edge-ngram analyzer for real-time autocomplete on name/username
+          autocomplete_analyzer: {
+            type: "custom",
+            tokenizer: "edge_ngram_tokenizer",
+            filter: ["lowercase"],
+          },
+          // Standard search-time analyzer (no ngram expansion on query side)
+          autocomplete_search_analyzer: {
+            type: "custom",
+            tokenizer: "standard",
+            filter: ["lowercase"],
+          },
+        },
+        tokenizer: {
+          edge_ngram_tokenizer: {
+            type: "edge_ngram",
+            min_gram: 2,
+            max_gram: 15,
+            token_chars: ["letter", "digit"],
+          },
+        },
+      },
+    },
+    mappings: {
+      properties: {
+        // ── Full-text search fields ───────────────────────────────────────
+        // Dual-field: text for FTS, keyword sub-field for exact/sort
+        fullName: {
+          type: "text",
+          analyzer: "standard",
+          fields: {
+            autocomplete: { type: "text", analyzer: "autocomplete_analyzer", search_analyzer: "autocomplete_search_analyzer" },
+            keyword:      { type: "keyword" },
+          },
+        },
+        username: {
+          type: "text",
+          analyzer: "standard",
+          fields: {
+            autocomplete: { type: "text", analyzer: "autocomplete_analyzer", search_analyzer: "autocomplete_search_analyzer" },
+            keyword:      { type: "keyword" },
+          },
+        },
+        bio:      { type: "text", analyzer: "standard" },
+        headline: { type: "text", analyzer: "standard" },
+
+        // ── Keyword / filter fields ───────────────────────────────────────
+        // skills is an array of lowercase skill names ["react", "node.js"]
+        skills:        { type: "keyword" },
+        primaryRole:   { type: "keyword" },
+        trustLevel:    { type: "keyword" },
+        collegeId:     { type: "keyword" },
+        collegeName:   { type: "keyword" },
+        departmentId:  { type: "keyword" },
+        country:       { type: "keyword" },
+        location:      { type: "keyword" },
+        // graduationYear as keyword for exact matching ([2024, 2025])
+        graduationYear: { type: "integer" },
+
+        // ── Boolean availability flags ────────────────────────────────────
+        openToWork:              { type: "boolean" },
+        openToInternship:        { type: "boolean" },
+        acceptingCollaborators:  { type: "boolean" },
+        acceptingReferrals:      { type: "boolean" },
+        searchVisibility:        { type: "boolean" },
+
+        // ── Ranking / sorting scores ──────────────────────────────────────
+        engineeringScore: { type: "float" },
+        reputationScore:  { type: "float" },
+        searchScore:      { type: "float" },
+
+        // ── Timestamps ───────────────────────────────────────────────────
+        lastActiveAt: { type: "date" },
+        createdAt:    { type: "date" },
+      },
+    },
+  },
 ];
 
 /**

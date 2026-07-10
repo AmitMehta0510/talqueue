@@ -345,3 +345,127 @@ export function syncProjectToElastic(projectId: string): void {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// USER SYNC
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Builds the Elasticsearch document for a user from a Prisma user record.
+ * All skill names are lowercased so keyword filter matching is case-insensitive.
+ */
+function buildUserEsDocument(user: any): Record<string, unknown> {
+  const profile = user.profile ?? {};
+  const skills: string[] = (user.skills ?? [])
+    .map((s: any) => s.skill?.name?.toLowerCase())
+    .filter(Boolean);
+
+  return {
+    fullName:              profile.fullName ?? null,
+    username:              user.username,
+    bio:                   profile.bio ?? null,
+    headline:              profile.headline ?? null,
+
+    skills,
+    primaryRole:           user.primaryRole ?? null,
+    trustLevel:            user.trustLevel,
+    collegeId:             profile.collegeId ?? null,
+    collegeName:           profile.college?.name ?? null,
+    departmentId:          profile.departmentId ?? null,
+    country:               profile.country ?? null,
+    location:              profile.location ?? null,
+    graduationYear:        profile.graduationYear ?? null,
+
+    openToWork:            user.openToWork,
+    openToInternship:      user.openToInternship,
+    acceptingCollaborators: user.acceptingCollaborators,
+    acceptingReferrals:    user.acceptingReferrals,
+    searchVisibility:      user.searchVisibility,
+
+    engineeringScore:      user.engineeringScore,
+    reputationScore:       user.reputationScore,
+    searchScore:           user.searchScore,
+
+    lastActiveAt:          user.lastActiveAt ?? null,
+    createdAt:             user.createdAt,
+  };
+}
+
+/**
+ * Fire-and-forget single-user sync to the Elasticsearch `users` index.
+ * Called after profile update, skill change, trust level change, etc.
+ *
+ * Soft-deletes: if the user's searchVisibility is false the document is
+ * still indexed (so it can be re-shown when they toggle back), but the
+ * search query always filters `searchVisibility: true`.
+ */
+export function syncUserToElastic(userId: string): void {
+  prisma.user
+    .findUnique({
+      where: { id: userId },
+      include: {
+        profile: { include: { college: true, department: true } },
+        skills:  { include: { skill: true } },
+      },
+    })
+    .then(async (user) => {
+      if (!user) {
+        // User deleted — remove from index
+        try {
+          await elasticClient.delete({ index: "users", id: userId });
+        } catch (delErr: any) {
+          if (delErr?.meta?.statusCode !== 404) {
+            console.error(`[ES Sync] Failed to delete user '${userId}' from ES:`, delErr?.message);
+          }
+        }
+        return;
+      }
+
+      await elasticClient.index({
+        index:    "users",
+        id:       userId,
+        document: buildUserEsDocument(user),
+      });
+    })
+    .catch((err) => {
+      console.error(`[ES Sync] Failed to sync user '${userId}' to Elasticsearch:`, err?.message || err);
+    });
+}
+
+/**
+ * Bulk-syncs an array of user IDs to Elasticsearch.
+ * Used by the admin backfill endpoint and the first-time index job.
+ */
+export async function syncUsersToElasticBulk(userIds: string[]): Promise<void> {
+  if (!userIds.length) return;
+
+  const uniqueIds = Array.from(new Set(userIds));
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: uniqueIds } },
+    include: {
+      profile: { include: { college: true, department: true } },
+      skills:  { include: { skill: true } },
+    },
+  });
+
+  if (!users.length) return;
+
+  // Build Elasticsearch bulk request body
+  const operations: unknown[] = [];
+  for (const user of users) {
+    operations.push({ index: { _index: "users", _id: user.id } });
+    operations.push(buildUserEsDocument(user));
+  }
+
+  try {
+    const result = await elasticClient.bulk({ operations, refresh: false });
+    const errored = result.items.filter((item: any) => item.index?.error);
+    if (errored.length) {
+      console.error(`[ES Sync] ${errored.length}/${users.length} user bulk-index errors:`, errored[0]);
+    } else {
+      console.log(`[ES Sync] Bulk-indexed ${users.length} users successfully.`);
+    }
+  } catch (err: any) {
+    console.error("[ES Sync] User bulk-index failed:", err?.message || err);
+  }
+}
