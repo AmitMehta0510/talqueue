@@ -30,7 +30,7 @@ function getReaderPool(): Pool {
       max: 2,
       idleTimeoutMillis: 60_000,
     });
-    readerPool.on("error", (err) => logger.warn({ err }, "[AnalyticsReader] pool error"));
+    readerPool.on("error", (err: any) => logger.warn({ err }, "[AnalyticsReader] pool error"));
   }
   return readerPool;
 }
@@ -119,7 +119,7 @@ export async function getJobFunnel(windowDays = 7): Promise<FunnelRow[]> {
     [since],
   );
 
-  const counts = Object.fromEntries(rows.map((r) => [r.event_type, r.count]));
+  const counts = Object.fromEntries(rows.map((r: any) => [r.event_type, r.count]));
   const impression = counts["feed.impression"] ?? 0;
   const view       = counts["job.view"]        ?? 0;
   const apply      = counts["job.apply"]       ?? 0;

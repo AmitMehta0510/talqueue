@@ -13,6 +13,7 @@ import {
   seedJobs,
 } from "./jobs.service";
 import { createJobSchema } from "./jobs.validation";
+import { getRecruiterFunnelSummary, getJobFunnelAnalytics } from "./jobs-funnel.service";
 
 //
 // CREATE JOB (or request pending company approval)
@@ -119,3 +120,17 @@ export const getJobLocationsAutocompleteHandler = asyncHandler(
     res.json(successResponse(locations));
   },
 );
+
+//
+// RECRUITER ANALYTICS & JOB FUNNEL HANDLERS
+//
+export const getRecruiterFunnelSummaryHandler = asyncHandler(async (req: any, res: Response) => {
+  const result = await getRecruiterFunnelSummary(req.user.id);
+  res.json(successResponse(result, "Recruiter funnel summary retrieved"));
+});
+
+export const getJobFunnelAnalyticsHandler = asyncHandler(async (req: any, res: Response) => {
+  const jobId = req.params.jobId as string;
+  const result = await getJobFunnelAnalytics(jobId, req.user.id);
+  res.json(successResponse(result, "Job funnel analytics retrieved"));
+});

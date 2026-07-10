@@ -59,7 +59,7 @@ function getPool(): Pool {
       idleTimeoutMillis: 30_000,
     });
 
-    pgPool.on("error", (err) => {
+    pgPool.on("error", (err: any) => {
       logger.warn({ err }, "[AnalyticsWriter] pg pool error");
     });
   }

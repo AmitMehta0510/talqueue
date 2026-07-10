@@ -11,6 +11,8 @@ import {
   getJobSkillsAutocompleteHandler,
   getJobLocationsAutocompleteHandler,
   seedJobsHandler,
+  getRecruiterFunnelSummaryHandler,
+  getJobFunnelAnalyticsHandler,
 } from "./jobs.controller";
 
 import atsHooksRouter from "./ats-hooks.routes";
@@ -41,6 +43,18 @@ router.get(
   "/my/jobs",
   protect,
   getRecruiterJobsHandler,
+);
+
+router.get(
+  "/my/analytics",
+  protect,
+  getRecruiterFunnelSummaryHandler,
+);
+
+router.get(
+  "/:jobId/analytics",
+  protect,
+  getJobFunnelAnalyticsHandler,
 );
 
 // ─── Autocomplete endpoints (must be before /:slug to avoid shadowing) ────────

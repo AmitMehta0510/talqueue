@@ -170,7 +170,7 @@ export const USER_FULL_PROFILE_SELECT = {
       skillsUsed: true, techStack: true, teamSize: true,
       company: { select: { id: true, name: true, logoUrl: true, slug: true } },
     },
-    orderBy: [{ isCurrent: "desc" as const }, { startDate: "desc" as const }],
+    orderBy: [{ isCurrent: "desc" as const }, { startDate: "desc" as const }] as any,
     take: 20,
   },
 
@@ -183,7 +183,7 @@ export const USER_FULL_PROFILE_SELECT = {
       college: { select: { id: true, name: true, logoUrl: true } },
       department: { select: { id: true, name: true } },
     },
-    orderBy: [{ current: "desc" as const }, { endYear: "desc" as const }],
+    orderBy: [{ current: "desc" as const }, { endYear: "desc" as const }] as any,
     take: 10,
   },
 
