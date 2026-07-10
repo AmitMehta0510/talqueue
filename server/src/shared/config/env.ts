@@ -31,6 +31,14 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().default("us-east-1"),
   AWS_S3_BUCKET_NAME: z.string().optional(),
+
+  // Sentry (optional — error tracking; platform works without it)
+  // Set to the DSN from your Sentry project's Client Keys page.
+  // https://docs.sentry.io/product/sentry-basics/dsn-explainer/
+  SENTRY_DSN: z.string().optional(),
+
+  // Log level override (default: "debug" in dev, "info" in prod)
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).optional(),
 });
 
 export const env = envSchema.parse(process.env);

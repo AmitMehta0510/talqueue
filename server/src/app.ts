@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import logger from "shared/logger";
+import { Sentry } from "shared/sentry";
 
 import errorMiddleware from "shared/middleware/errorMiddleware";
 import { successResponse } from "shared/utils/apiResponse";
@@ -105,6 +106,11 @@ app.get("/", (req, res) => {
     }),
   );
 });
+
+// Sentry error handler MUST be registered before our own errorMiddleware.
+// It captures the error with full request context before we format the response.
+// This is a no-op when SENTRY_DSN is not configured.
+Sentry.setupExpressErrorHandler(app);
 
 app.use(errorMiddleware);
 

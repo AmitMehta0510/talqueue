@@ -1,3 +1,5 @@
+// Sentry MUST be imported before any other module for auto-instrumentation
+import "shared/sentry";
 import "shared/config/loadEnv";
 import app from "./app";
 import http from "http";
