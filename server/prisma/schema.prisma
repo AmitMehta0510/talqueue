@@ -778,6 +778,37 @@ model UserRole {
   @@unique([userId, roleId])
 }
 
+// ─── Location (normalized geo entity) ────────────────────────────────────────
+// Replaces free-text Profile.location and Job.location strings with a
+// structured, searchable, geo-indexable entity.
+//
+// Normalization pipeline:
+//   1. User types "Bangalore, India" in profile edit
+//   2. location.service.ts resolves → Location row { city:"Bengaluru", country:"IN", ... }
+//   3. Profile.locationId FK is set; Profile.location kept for backward compat
+//
+// Backfill: scripts/backfill-locations.ts normalizes all existing Profile + Job rows.
+model Location {
+  id          String  @id @default(uuid())
+  city        String
+  state       String?
+  country     String           // ISO 3166-1 alpha-2 e.g. "IN", "US"
+  countryName String           // "India", "United States"
+  displayText String           // "Bengaluru, Karnataka, India" — shown in UI
+  latitude    Float?
+  longitude   Float?
+  timezone    String?          // "Asia/Kolkata"
+
+  profiles Profile[]
+  jobs     Job[]    @relation("JobResolvedLocation")
+
+  createdAt DateTime @default(now())
+
+  @@unique([city, state, country])
+  @@index([country])
+  @@index([city])
+}
+
 model Profile {
   id String @id @default(uuid())
 
@@ -789,9 +820,13 @@ model Profile {
 
   headline String?
 
-  location String?
+  location String?  // deprecated: use locationId → Location.displayText instead
 
-  country String?   // ISO 3166-1 alpha-2, e.g. "IN", "US"
+  country String?   // ISO 3166-1 alpha-2, e.g. "IN", "US" (kept for quick lookups)
+
+  // ── Normalized location FK ────────────────────────────────────────────────
+  locationId String?
+  resolvedLocation Location? @relation(fields: [locationId], references: [id])
 
   resumeUrl String?
 
@@ -820,6 +855,7 @@ model Profile {
   @@index([collegeId])
   @@index([departmentId])
   @@index([country])
+  @@index([locationId])
 }
 
 model CodingProfile {
@@ -2369,7 +2405,11 @@ model Job {
 
   perks String?
 
-  location String?
+  location String?  // deprecated: use locationId → Location.displayText instead
+
+  // ── Normalized location FK ──────────────────────────────────────────────────
+  locationId       String?
+  resolvedLocation Location? @relation("JobResolvedLocation", fields: [locationId], references: [id])
 
   workMode WorkMode?
 
@@ -2476,6 +2516,7 @@ model Job {
   @@index([parserConfidence])
   @@index([experienceMinYears])
   @@index([needsLLMReview])
+  @@index([locationId])
 }
 
 // ─── JobSkill junction ────────────────────────────────────────────────────────
