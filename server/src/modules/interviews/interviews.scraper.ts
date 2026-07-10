@@ -1,14 +1,112 @@
+import axios from "axios";
+import prisma from "shared/database/prisma";
 import { InterviewResourceSeedItem } from "./interviews.service";
 
 /**
- * Curated static seed of YouTube mock interview videos.
+ * Interview Resource Seed & Validator
  *
- * Fields annotated manually; no API key required.
- * In the future, replace/augment this array with a YouTube Data API v3
- * call against curated channel/playlist IDs (YOUTUBE_API_KEY env var).
+ * This file contains:
+ *   1. INTERVIEW_SEED_DATA — curated static list of YouTube mock interview videos.
+ *      Keyed on `youtubeId` — safe to upsert repeatedly via the nightly cron.
  *
- * Keyed on `youtubeId` — safe to upsert repeatedly.
+ *   2. validateYoutubeVideos() — checks all active DB records via the YouTube
+ *      oEmbed API (no API key required). Videos that are deleted or made private
+ *      (404 / 401 response) are soft-deactivated automatically.
+ *
+ * Future: Replace/augment INTERVIEW_SEED_DATA with a YouTube Data API v3 call
+ * against curated channel/playlist IDs using YOUTUBE_API_KEY env var.
  */
+
+// ─── YouTube availability validator ──────────────────────────────────────────
+
+/**
+ * Checks a single YouTube video ID using the oEmbed endpoint.
+ * Returns true if the video is publicly accessible, false otherwise.
+ *
+ * oEmbed returns 200 for public videos, 404 for deleted/private ones.
+ * No API key required — this is a public endpoint.
+ */
+const isYoutubeVideoAvailable = async (youtubeId: string): Promise<boolean> => {
+  try {
+    const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${youtubeId}&format=json`;
+    const { status } = await axios.head(url, { timeout: 5000, validateStatus: () => true });
+    return status === 200;
+  } catch {
+    // Network error — assume available (don't deactivate on transient failures)
+    return true;
+  }
+};
+
+/**
+ * Validates all active interview resources stored in the DB.
+ * Soft-deactivates any videos that are no longer publicly available on YouTube.
+ *
+ * Runs in batches of 10 with a 500ms pause between batches to avoid
+ * overwhelming YouTube's servers and triggering rate limiting.
+ *
+ * @returns counts of validated, deactivated, and failed records
+ */
+export const validateYoutubeVideos = async (): Promise<{
+  checked: number;
+  deactivated: number;
+  errors: number;
+}> => {
+  const activeResources = await prisma.interviewResource.findMany({
+    where: { isActive: true },
+    select: { id: true, youtubeId: true, title: true },
+  });
+
+  let checked = 0;
+  let deactivated = 0;
+  let errors = 0;
+
+  const BATCH_SIZE = 10;
+  const BATCH_DELAY_MS = 500;
+
+  for (let i = 0; i < activeResources.length; i += BATCH_SIZE) {
+    const batch = activeResources.slice(i, i + BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (resource) => {
+        try {
+          const available = await isYoutubeVideoAvailable(resource.youtubeId);
+          checked++;
+
+          if (!available) {
+            await prisma.interviewResource.update({
+              where: { id: resource.id },
+              data: { isActive: false },
+            });
+            deactivated++;
+            console.warn(
+              `[InterviewValidator] Deactivated unavailable video: "${resource.title}" (${resource.youtubeId})`,
+            );
+          }
+        } catch (err) {
+          errors++;
+          console.error(
+            `[InterviewValidator] Error checking youtubeId=${resource.youtubeId}:`,
+            err,
+          );
+        }
+      }),
+    );
+
+    // Pause between batches — respect YouTube's rate limits
+    if (i + BATCH_SIZE < activeResources.length) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+    }
+  }
+
+  console.log(
+    `[InterviewValidator] Done — checked: ${checked}, deactivated: ${deactivated}, errors: ${errors}`,
+  );
+
+  return { checked, deactivated, errors };
+};
+
+// ─── Seed data ────────────────────────────────────────────────────────────────
+
 export const INTERVIEW_SEED_DATA: InterviewResourceSeedItem[] = [
   // ─── SDE-1 / Coding ──────────────────────────────────────────────────────
   {

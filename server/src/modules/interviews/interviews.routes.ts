@@ -10,6 +10,7 @@ import {
   updateInterviewHandler,
   deleteInterviewHandler,
   triggerScrapeHandler,
+  triggerValidationHandler,
 } from "./interviews.controller";
 
 const router = Router();
@@ -40,5 +41,8 @@ router.delete("/:id", protect, requirePlatformAdmin, deleteInterviewHandler);
 
 // POST /api/v1/interviews/scrape — trigger manual re-seed
 router.post("/scrape", protect, requirePlatformAdmin, triggerScrapeHandler);
+
+// POST /api/v1/interviews/validate — trigger manual YouTube availability check
+router.post("/validate", protect, requirePlatformAdmin, triggerValidationHandler);
 
 export default router;

@@ -30,6 +30,7 @@ import {
   MessageSquare,
   UserPlus,
   ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { EngineerCard } from "../components/cards/SocialCards";
 import { Avatar, EmptyState, InlineLoader } from "../components/ui";
@@ -43,6 +44,7 @@ import {
   useSuggestedEngineersQuery,
   useSuggestedCollaboratorsQuery,
   useSuggestedTeammatesQuery,
+  useComplementaryTeammatesQuery,
   useUpgradePremiumMutation,
 } from "../hooks/usePlatformQueries";
 import { User } from "../lib/api";
@@ -195,6 +197,7 @@ export function DiscoverPage() {
   const suggestedEngineers = useSuggestedEngineersQuery(12);
   const collaborators = useSuggestedCollaboratorsQuery(6);
   const teammates = useSuggestedTeammatesQuery(6);
+  const complementaryTeammates = useComplementaryTeammatesQuery(6);
 
   const doSearch = useCallback(
     (q: string, f: TalentFilters) => {
@@ -733,6 +736,84 @@ export function DiscoverPage() {
                         navigate(`/users/${(u as any).username || u.id}`)
                       }
                     />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Skill-Based Complementary Teammates (Matchmaking Engine) */}
+            {complementaryTeammates.data && (complementaryTeammates.data.matches ?? []).length > 0 && (
+              <section aria-label="Skill-based teammate matches">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                    <Zap size={14} />
+                  </div>
+                  <div>
+                    <h2
+                      className="text-sm font-bold uppercase tracking-wider"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Stack Matches
+                    </h2>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                      As a <span className="font-semibold text-amber-600 dark:text-amber-400">{complementaryTeammates.data.userCategory}</span> developer, you may work well with these engineers
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {(complementaryTeammates.data.matches).map((match) => (
+                    <div
+                      key={match.id}
+                      className="rounded-xl border p-4 flex flex-col gap-3 cursor-pointer hover:border-amber-400/60 transition-colors"
+                      style={{ background: "var(--card-bg)", borderColor: "var(--border)" }}
+                      onClick={() => navigate(`/users/${match.username || match.id}`)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                          style={{ background: "var(--accent-muted)", color: "var(--accent)" }}
+                        >
+                          {match.fullName?.[0] ?? match.username?.[0] ?? "?"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                            {match.fullName ?? match.username ?? "Engineer"}
+                          </p>
+                          <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+                            {match.headline ?? match.dominantCategory}
+                          </p>
+                        </div>
+                      </div>
+                      {match.matchedSkills.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {match.matchedSkills.slice(0, 4).map((skill) => (
+                            <span
+                              key={skill}
+                              className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: "var(--accent-muted)", color: "var(--accent)" }}
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2 mt-auto pt-1">
+                        <button
+                          className="flex-1 text-xs py-1.5 rounded-lg font-medium transition-colors"
+                          style={{ background: "var(--accent)", color: "#fff" }}
+                          onClick={(e) => { e.stopPropagation(); connectUser.mutate(match.id); }}
+                        >
+                          Connect
+                        </button>
+                        <button
+                          className="flex-1 text-xs py-1.5 rounded-lg font-medium border transition-colors"
+                          style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                          onClick={(e) => { e.stopPropagation(); followUser.mutate(match.id); }}
+                        >
+                          Follow
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </section>

@@ -58,3 +58,14 @@ export const ProfileRedirect = () => {
   const { activeWorkspace } = useWorkspace();
   return <Navigate to={activeWorkspace === "CAMPUS" ? "/campus/profile" : "/career/profile"} replace />;
 };
+
+/**
+ * Backward-compatibility redirect for the old /business-onboarding path.
+ *
+ * BusinessOnboardingPage.tsx has been deleted (it was a deprecated stub that
+ * only did `<Navigate to="/business" replace />`). This redirect is the
+ * canonical replacement and lives in the route tree alongside other legacy
+ * redirects.
+ */
+export const BusinessOnboardingRedirect = () => <Navigate to="/business" replace />;
+

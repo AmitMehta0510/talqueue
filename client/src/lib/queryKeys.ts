@@ -195,6 +195,10 @@ export const queryKeys = {
       communities: () => ["discovery", "trending", "communities"] as const,
     },
   },
+  matchmaking: {
+    complementaryTeammates: (limit: number) =>
+      ["matchmaking", "complementary-teammates", limit] as const,
+  },
   admin: {
     stats: ["admin", "stats"] as const,
     analytics: (range: number) => ["admin", "analytics", range] as const,

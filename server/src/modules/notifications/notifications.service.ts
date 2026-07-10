@@ -2,6 +2,20 @@ import { NotificationType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
 import { getIO } from "modules/chat/socket";
+import { enqueueEmail } from "services/mailQueue";
+
+/**
+ * Notification types that also trigger an email to the user.
+ * These are high-signal events where missing an in-app notification
+ * is unacceptable (e.g., job offer, placement invite, referral update).
+ */
+const EMAIL_CRITICAL_TYPES = new Set<NotificationType>([
+  "PLACEMENT_DRIVE_INVITE" as NotificationType,
+  "JOB_APPLICATION_UPDATE" as NotificationType,
+  "REFERRAL_UPDATE" as NotificationType,
+  "HACKATHON_RESULT" as NotificationType,
+  "DRIVE_ROUND_RESULT" as NotificationType,
+]);
 
 export const createNotification =  async (data: {
     userId: string;
@@ -54,6 +68,41 @@ export const createNotification =  async (data: {
       }
     } catch (err: any) {
       console.warn("[NotificationService] Redis increment failed:", err?.message || err);
+    }
+
+    // Send email for critical notification types — fire-and-forget, fail-soft.
+    // Only fetches user email when the event type warrants it.
+    if (EMAIL_CRITICAL_TYPES.has(data.type)) {
+      setImmediate(async () => {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: data.userId },
+            select: { email: true },
+          });
+          if (user?.email) {
+            const actionLink = data.actionUrl
+              ? `<p style="margin-top:12px"><a href="${process.env.CLIENT_URL}${data.actionUrl}" style="color:#6366f1;font-weight:600">View Details →</a></p>`
+              : "";
+            await enqueueEmail(
+              user.email,
+              `[Engineers Platform] ${data.title}`,
+              `<div style="font-family:sans-serif;max-width:560px;margin:auto">
+                <h2 style="color:#0f172a">${data.title}</h2>
+                <p style="color:#475569">${data.message}</p>
+                ${actionLink}
+                <hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0"/>
+                <p style="font-size:11px;color:#94a3b8">You received this because you have email notifications enabled. Manage preferences in your account settings.</p>
+              </div>`,
+            );
+          }
+        } catch (emailErr: any) {
+          // Email failure must never surface to the user or affect notification flow
+          console.warn(
+            `[NotificationService] Email send failed for type=${data.type} userId=${data.userId}:`,
+            emailErr?.message || emailErr,
+          );
+        }
+      });
     }
 
     return notification;

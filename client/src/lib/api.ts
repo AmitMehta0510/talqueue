@@ -936,6 +936,11 @@ const remainingApi = {
       `/discovery/suggested-teammates${toQuery({ limit })}`,
       options,
     ),
+  complementaryTeammates: (limit = 10, options?: EndpointOptions) =>
+    request<{ userCategory: string; matches: { id: string; username: string | null; fullName: string | null; avatar: string | null; headline: string | null; dominantCategory: string; matchedSkills: string[]; engineeringScore: number }[] }>(
+      `/matchmaking/teammates${toQuery({ limit })}`,
+      options,
+    ),
   suggestedProjects: (limit = 20, options?: EndpointOptions) =>
     request<Project[]>(
       `/discovery/suggested-projects${toQuery({ limit })}`,

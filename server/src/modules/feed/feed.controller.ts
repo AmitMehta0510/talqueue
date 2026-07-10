@@ -16,13 +16,14 @@ export const getPersonalizedFeedHandler =  asyncHandler(
     ) => {
       const query = feedQuerySchema.parse(req.query);
 
-      const feed =
-        await getPersonalizedFeedV2(
-          req.user.id
-        );
+      const result = await getPersonalizedFeedV2(
+        req.user.id,
+        query.cursor,
+        query.limit,
+      );
 
       res.json(
-        successResponse(feed.slice(0, query.limit))
+        successResponse(result)
       );
     }
   );

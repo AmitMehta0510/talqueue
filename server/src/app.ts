@@ -8,6 +8,7 @@ import { startTrendingCron } from "modules/trending/trending.cron";
 import { startProjectSyncCron } from "modules/projects/projects.cron";
 import { startSkillVerificationCron } from "modules/users/skill-verification.cron";
 import { startDailyLimitsResetCron } from "infra/crons/daily-limits-reset.cron";
+import { startAffinityCron } from "modules/affinity/affinity.cron";
 import { registerApiRoutes } from "./routes";
 
 const app = express();
@@ -40,6 +41,7 @@ startTrendingCron();
 startProjectSyncCron();
 startSkillVerificationCron();
 startDailyLimitsResetCron();
+startAffinityCron();
 
 // Heavy scraper crons — dynamically imported via setImmediate so their
 // dependency chains (axios, job-scraper, hackathon-scraper, company-discovery)

@@ -102,7 +102,13 @@ export const initializeSocket =
 
     io = new Server(server, {
       cors: {
-        origin: "*",
+        // In production restrict to CLIENT_URL; in dev/test allow all origins.
+        // Mirrors the same policy used by the Express HTTP CORS middleware in app.ts.
+        origin:
+          process.env.NODE_ENV === "production"
+            ? process.env.CLIENT_URL
+            : true,
+        credentials: true,
       },
     });
 
@@ -205,7 +211,18 @@ export const initializeSocket =
           }
         );
 
-        // Typing indicator
+        // ── Typing indicators ────────────────────────────────────────────────
+        //
+        // Client EMITS  : typing_start  { conversationId }
+        //                 typing_stop   { conversationId }
+        //
+        // Server EMITS  : user_typing       { conversationId, userId }
+        //                 user_stop_typing  { conversationId, userId }
+        //
+        // NOTE: The legacy plain-string events "typing" and "stop_typing" have
+        //       been removed — they were never used by the client. Do not
+        //       re-introduce them.
+        //
         const handleTyping = async (
           event: "user_typing" | "user_stop_typing",
           conversationId: string,
@@ -213,48 +230,20 @@ export const initializeSocket =
         ) => {
           try {
             if (!(await ensureSocketParticipant(socket, conversationId))) {
-              ack?.({
-                ok: false,
-                error: "Unauthorized",
-              });
-
+              ack?.({ ok: false, error: "Unauthorized" });
               return;
             }
 
-            socket
-              .to(conversationId)
-              .emit(
-                event,
-                {
-                  conversationId,
-                  userId: getUserId(socket),
-                }
-              );
+            socket.to(conversationId).emit(event, {
+              conversationId,
+              userId: getUserId(socket),
+            });
 
-            ack?.({
-              ok: true,
-            });
+            ack?.({ ok: true });
           } catch {
-            ack?.({
-              ok: false,
-              error: "Unable to emit typing state",
-            });
+            ack?.({ ok: false, error: "Unable to emit typing state" });
           }
         };
-
-        socket.on(
-          "typing",
-          (conversationId: string, ack?: (response: any) => void) => {
-            handleTyping("user_typing", conversationId, ack);
-          },
-        );
-
-        socket.on(
-          "stop_typing",
-          (conversationId: string, ack?: (response: any) => void) => {
-            handleTyping("user_stop_typing", conversationId, ack);
-          },
-        );
 
         socket.on(
           "typing_start",
@@ -298,14 +287,22 @@ export const initializeSocket =
         );
 
 
-        socket.on(
-          "disconnect",
-          () => {
+        socket.on("disconnect", () => {
+            console.log("Socket disconnected:", socket.id);
 
-            console.log(
-              "Socket disconnected:",
-              socket.id
-            );
+            // Clear typing indicators in all rooms this socket had joined.
+            // Without this, other participants see a stale "...is typing" banner
+            // until the 2.5 s client-side timeout fires.
+            const joined = getJoinedConversations(socket);
+            const userId = getUserId(socket);
+            if (userId && joined.size > 0) {
+              for (const conversationId of joined) {
+                socket.to(conversationId).emit("user_stop_typing", {
+                  conversationId,
+                  userId,
+                });
+              }
+            }
           }
         );
       }

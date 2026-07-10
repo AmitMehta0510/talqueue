@@ -243,3 +243,26 @@ export const useSuggestedTeammatesQuery = (limit = 20) => {
     staleTime: 60_000,
   });
 };
+
+/**
+ * Calls the skill-complementarity matchmaking endpoint.
+ * Returns { userCategory, matches } where matches are engineers whose dominant
+ * tech category COMPLEMENTS the authenticated user's stack.
+ * e.g. a FRONTEND user gets BACKEND + DEVOPS matches.
+ */
+export const useComplementaryTeammatesQuery = (limit = 8) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.matchmaking.complementaryTeammates(limit),
+    queryFn: async ({ signal }) => {
+      const result = await api.complementaryTeammates(limit, { signal });
+      return result.data ?? null;
+    },
+    enabled: Boolean(user),
+    // Cache for 5 minutes — skill-based matching is expensive but stable
+    staleTime: 5 * 60_000,
+    // Don't refetch on window focus — not time-sensitive
+    refetchOnWindowFocus: false,
+  });
+};

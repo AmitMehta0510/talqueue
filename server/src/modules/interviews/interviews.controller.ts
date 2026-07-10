@@ -16,7 +16,8 @@ import {
   deleteInterviewResource,
   seedInterviewResources,
 } from "./interviews.service";
-import { runInterviewSeed } from "./interviews.scraper";
+import { runInterviewSeed, validateYoutubeVideos } from "./interviews.scraper";
+
 
 // ─── Public: List (paginated + filterable) ────────────────────────────────────
 
@@ -78,6 +79,19 @@ export const updateInterviewHandler = asyncHandler(async (req: any, res: Respons
 export const deleteInterviewHandler = asyncHandler(async (req: any, res: Response) => {
   const result = await deleteInterviewResource(req.params.id as string);
   res.json(successResponse(result, "Interview resource deleted"));
+});
+
+// ─── Admin: Manual validation trigger ───────────────────────────────────────
+
+export const triggerValidationHandler = asyncHandler(async (_req: any, res: Response) => {
+  console.log("[InterviewValidator] Manual validation triggered by admin");
+  const result = await validateYoutubeVideos();
+  res.json(
+    successResponse(
+      result,
+      `Validation complete — checked: ${result.checked}, deactivated: ${result.deactivated}`,
+    ),
+  );
 });
 
 // ─── Admin: Manual scrape trigger ────────────────────────────────────────────

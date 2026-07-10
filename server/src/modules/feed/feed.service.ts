@@ -3,7 +3,11 @@ import { applyAiFeedRanking } from "./feed-ai-ranking.service";
 import { buildFeedContext } from "modules/discovery/feed-context.service";
 import { generateFeedCandidates } from "modules/discovery/candidate-generator.service";
 
-export const getPersonalizedFeedV2 = async (userId: string, cursor?: string, limit = 20) => {
+export const getPersonalizedFeedV2 = async (
+  userId: string,
+  cursor?: string,
+  limit = 60,
+) => {
   const context = await buildFeedContext(userId);
 
   const preFetched = {
@@ -17,7 +21,7 @@ export const getPersonalizedFeedV2 = async (userId: string, cursor?: string, lim
     userId,
     "personalized",
     preFetched,
-    { cursor, limit }
+    { cursor, limit },
   );
 
   // BUILD FEED
@@ -35,6 +39,16 @@ export const getPersonalizedFeedV2 = async (userId: string, cursor?: string, lim
 
   // FINAL SORT
   const rankedFeed = await applyAiFeedRanking(feed, context);
+  const sliced = rankedFeed.slice(0, limit);
 
-  return rankedFeed.slice(0, 60);
+  // Derive next cursor from the last POST item in the ranked result
+  // (posts are the primary feed entity and the only type paginated via cursor)
+  const lastPost = [...sliced].reverse().find((item) => item.type === "POST");
+  const nextCursor = lastPost ? lastPost.data.id : null;
+
+  return {
+    items: sliced,
+    nextCursor,
+    hasMore: nextCursor !== null && rankedFeed.length >= limit,
+  };
 };

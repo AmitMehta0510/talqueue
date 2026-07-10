@@ -8,6 +8,7 @@ import { lazy } from "react";
 import { Route } from "react-router-dom";
 
 import RouteErrorPage from "../components/error/RouteErrorPage";
+import { BusinessOnboardingRedirect } from "./redirects";
 
 // ─── Lazy page imports (shared) ───────────────────────────────────────────────
 const SharedLayout          = lazy(() => import("../layout/SharedLayout").then(m => ({ default: m.SharedLayout })));
@@ -70,6 +71,8 @@ export function sharedRoutes({ RequireAuth, PageTransitionWrapper }: GuardCompon
           </RequireAuth>
         }
       />
+      {/* Legacy: /business-onboarding → /business */}
+      <Route path="/business-onboarding" element={<BusinessOnboardingRedirect />} />
     </Route>
   );
 }

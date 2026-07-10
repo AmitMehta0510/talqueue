@@ -19,6 +19,10 @@ export const postDetailQuerySchema = z.object({
 
 export const feedQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(60).default(60),
+  cursor: z.preprocess(
+    emptyStringToUndefined,
+    z.string().uuid().optional(),
+  ),
 });
 
 export const trendingQuerySchema = z.object({

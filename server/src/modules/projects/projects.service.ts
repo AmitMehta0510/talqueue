@@ -2271,11 +2271,20 @@ export const syncOutdatedProjectsGithub = async () => {
     total: projects.length,
     success: 0,
     failed: 0,
+    rateLimited: false,
   };
 
-  const batchSize = 3;
-  for (let i = 0; i < projects.length; i += batchSize) {
-    const batch = projects.slice(i, i + batchSize);
+  // Each project makes 3 GitHub API calls (repo + languages + contributors).
+  // With a batch of 3 projects and a 1.5s pause we stay well under
+  // GitHub's 60 req/min per-IP limit (unauthenticated) and the 5,000/hr
+  // limit (authenticated).
+  const BATCH_SIZE = 3;
+  const BATCH_DELAY_MS = 1500;
+  let rateLimitHit = false;
+
+  for (let i = 0; i < projects.length; i += BATCH_SIZE) {
+    if (rateLimitHit) break;
+    const batch = projects.slice(i, i + BATCH_SIZE);
     await Promise.all(
       batch.map(async (project) => {
         if (!project.githubUrl) return;
@@ -2352,18 +2361,41 @@ export const syncOutdatedProjectsGithub = async () => {
           await Promise.all(sideEffects);
           results.success++;
         } catch (error: any) {
-          console.error(`[GitHub Sync Cron] Failed syncing project ${project.id}:`, error.message || error);
+          const status = error?.response?.status ?? error?.statusCode;
+          const isRateLimit = status === 429 || status === 403;
+
+          if (isRateLimit) {
+            rateLimitHit = true;
+            results.rateLimited = true;
+            console.warn(
+              `[GitHub Sync Cron] Rate limit hit (HTTP ${status}) — aborting remaining batches.`,
+            );
+          } else {
+            console.error(
+              `[GitHub Sync Cron] Failed syncing project ${project.id}:`,
+              error.message || error,
+            );
+          }
+
           results.failed++;
+          // Stamp lastGithubSyncAt even on failure so it's not retried immediately
           await prisma.project.update({
-            where: {
-              id: project.id,
-            },
-            data: {
-              lastGithubSyncAt: new Date(),
-            },
+            where: { id: project.id },
+            data: { lastGithubSyncAt: new Date() },
           }).catch(console.error);
         }
       })
+    );
+
+    // Pause between batches to respect GitHub's rate limits
+    if (i + BATCH_SIZE < projects.length && !rateLimitHit) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+    }
+  }
+
+  if (results.rateLimited) {
+    console.warn(
+      `[GitHub Sync Cron] Sync aborted early due to rate limiting. ${results.success} synced before abort.`,
     );
   }
 
