@@ -5,6 +5,10 @@ const envSchema = z.object({
   PORT: z.string().default("5000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string(),
+  // Direct DB URL — bypasses PgBouncer for Prisma migrations (advisory locks).
+  // In development this can be the same as DATABASE_URL.
+  // In production with PgBouncer, this must point directly to Postgres.
+  DIRECT_DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string(),
   // Short-lived access token (15 min). Pairs with a 30-day refresh token
   // stored in an HttpOnly cookie — see auth.service.ts for the full flow.

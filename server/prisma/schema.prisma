@@ -3,8 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // In production: DATABASE_URL points through PgBouncer
+  //   e.g. postgresql://user:pass@pgbouncer:5432/db?pgbouncer=true&connection_limit=1
+  // DIRECT_DATABASE_URL bypasses PgBouncer — required for `prisma migrate deploy`
+  //   because migrations use advisory locks which need session-mode connections.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum UserStatus {
