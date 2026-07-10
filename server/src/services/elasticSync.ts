@@ -303,7 +303,11 @@ function buildJobDocument(job: any, isPromoted: boolean, hasActiveAd: boolean): 
     hasActiveAd,
 
     // ── Pipeline v2 skill fields ─────────────────────────────────────────────
-    requiredSkills:   job.skillsRequired || [],    // v2 alias in ES mapping
+    // Use normalized JobSkill junction names if available, fall back to String[]
+    // After the backfill-job-skills.ts script runs, jobSkillNames will be authoritative.
+    requiredSkills:   job.jobSkills?.length
+      ? job.jobSkills.map((js: any) => js.skill?.name).filter(Boolean)
+      : (job.skillsRequired || []),
     preferredSkills:  job.preferredSkills || [],
     techStack:        techStack,
 

@@ -935,6 +935,7 @@ model Skill {
   searchScore Float       @default(0)
   verified    Boolean     @default(false)
   users       UserSkill[]
+  jobSkills   JobSkill[]  // normalized job-skill associations
   createdAt   DateTime    @default(now())
 }
 
@@ -2402,6 +2403,7 @@ model Job {
 
   applications         JobApplication[]
   externalApplications ExternalJobApplication[]
+  jobSkills            JobSkill[]
 
   applicationsCount Int @default(0)
 
@@ -2469,6 +2471,22 @@ model Job {
   @@index([parserConfidence])
   @@index([experienceMinYears])
   @@index([needsLLMReview])
+}
+
+// ─── JobSkill junction ────────────────────────────────────────────────────────
+// Normalized replacement for Job.skillsRequired String[].
+// Source: 'scraper' (auto-extracted), 'manual' (recruiter), 'verified' (admin-approved)
+model JobSkill {
+  jobId   String
+  skillId String
+  source  String  @default("scraper") // 'scraper' | 'manual' | 'verified'
+
+  job   Job   @relation(fields: [jobId],   references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@index([skillId])       // fast: "find all jobs requiring React"
+  @@index([jobId])         // fast: "find all skills for a job"
 }
 
 enum CompanyRequestStatus {
