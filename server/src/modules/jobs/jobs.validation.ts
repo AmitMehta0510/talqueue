@@ -38,6 +38,14 @@ export const createJobSchema = z.object({
 
   salaryMax: z.number().optional(),
 
+  // Human-readable salary display (e.g. "₹12–18 LPA")
+  salaryDisplayText: z.string().max(100).optional(),
+
+  // Whether salary is negotiable
+  negotiable: z.boolean().optional(),
+
+  currency: z.string().max(10).optional(),
+
   openings: z.number().optional(),
 
   skillsRequired: z.array(z.string()).default([]),

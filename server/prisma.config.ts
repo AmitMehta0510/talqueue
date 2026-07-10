@@ -27,12 +27,18 @@ if (!databaseUrl) {
   );
 }
 
+// DIRECT_DATABASE_URL bypasses PgBouncer — required for migrations (advisory locks).
+// In dev this can be the same as DATABASE_URL.
+const directUrl = process.env["DIRECT_DATABASE_URL"] || databaseUrl;
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: databaseUrl, // type is now string (not string | undefined) — TS error resolved
+    url: databaseUrl,
+    // directUrl is used by `prisma migrate deploy` to bypass PgBouncer
+    ...(directUrl !== databaseUrl ? { directUrl } : {}),
   },
 });

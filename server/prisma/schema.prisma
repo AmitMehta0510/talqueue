@@ -3,13 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  // In production: DATABASE_URL points through PgBouncer
-  //   e.g. postgresql://user:pass@pgbouncer:5432/db?pgbouncer=true&connection_limit=1
-  // DIRECT_DATABASE_URL bypasses PgBouncer — required for `prisma migrate deploy`
-  //   because migrations use advisory locks which need session-mode connections.
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserStatus {
@@ -2443,7 +2438,12 @@ model Job {
   experienceMaxYears Int?
 
   // Salary enrichment (columns exist but were never populated by scraper)
-  salaryPeriod      String?   @default("annual")  // 'annual' | 'monthly' | 'hourly'
+  salaryPeriod       String?   @default("annual")  // 'annual' | 'monthly' | 'hourly'
+  // Human-readable salary display text set by recruiter (overrides min/max display)
+  // e.g. "₹12–18 LPA", "$120K–$150K/yr", "Competitive"
+  salaryDisplayText  String?
+  // Whether the salary is negotiable (shown as badge on job card)
+  negotiable         Boolean   @default(false)
 
   // Structured location decomposition
   locationCity        String?
