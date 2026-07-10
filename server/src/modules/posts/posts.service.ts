@@ -3,6 +3,7 @@ import prisma from "shared/database/prisma";
 import AppError from "shared/errors/AppError";
 import { addReputation } from "modules/reputation/reputation.service";
 import { queuePostForSync } from "services/forumSyncService";
+import { invalidateFeedCache, invalidateFeedCacheForUsers } from "modules/feed/feed-invalidation";
 
 import { createActivity } from "modules/activities/activity.service";
 
@@ -278,6 +279,22 @@ export const createPost = async (userId: string, data: any) => {
 
   // Hook for Elasticsearch forum posts synchronization
   queuePostForSync(post.id, "INDEX");
+
+  // Invalidate feed cache:
+  //  1. Author's own feed (they may pin their post at top)
+  //  2. All followers' feeds (new post should appear for them)
+  invalidateFeedCache(userId).catch(() => {});
+  setImmediate(async () => {
+    try {
+      const followers = await prisma.follow.findMany({
+        where: { followingId: userId },
+        select: { followerId: true },
+      });
+      if (followers.length) {
+        await invalidateFeedCacheForUsers(followers.map((f) => f.followerId));
+      }
+    } catch { /* non-critical — swallow */ }
+  });
 
   return post;
 };

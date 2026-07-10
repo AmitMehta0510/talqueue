@@ -43,6 +43,7 @@ import { Prisma } from "@prisma/client";
 import AppError from "shared/errors/AppError";
 import { syncUserToResdex } from "services/resdexSyncService";
 import { syncUserToElastic } from "services/elasticSync";
+import { invalidateFeedCache } from "modules/feed/feed-invalidation";
 import { addReputation } from "../reputation/reputation.service";
 import { createActivity } from "../activities/activity.service";
 import { calculateEngineeringScore } from "../reputation/engineering-score.service";
@@ -394,6 +395,7 @@ export const updateProfile = async (
   // Sync user profile to Resdex
   syncUserToResdex(userId);
   syncUserToElastic(userId);
+  invalidateFeedCache(userId);
 
   try {
     await redis.del(`profile:${userId}`);
