@@ -5,6 +5,8 @@ import { JobStatus, Prisma } from "@prisma/client";
 import { createNotification } from "modules/notifications/notifications.service";
 import slugify from "slugify";
 import { syncJobToElastic, syncHackathonToElastic, syncProjectToElastic } from "services/elasticSync";
+import { requirePermission, RBACUser } from "shared/rbac/enforce";
+import { Permission } from "shared/rbac/permissions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL HELPERS
@@ -557,11 +559,18 @@ export const getUserDetail = async (userId: string) => {
 };
 
 export const updateUserStatus = async (
+  actorUser: RBACUser,
   userId: string,
   status: "ACTIVE" | "INACTIVE" | "BANNED",
-  actorId: string
 ) => {
-  if (actorId === userId) {
+  // Service-layer RBAC guard — defense-in-depth beyond route middleware
+  if (status === "BANNED") {
+    requirePermission(actorUser, Permission.BAN_USER);
+  } else {
+    requirePermission(actorUser, Permission.VIEW_ANY_USER);
+  }
+
+  if (actorUser.id === userId) {
     throw new AppError("Self-banning or deactivation is not allowed", 403);
   }
 
@@ -654,7 +663,9 @@ export const adminListPosts = async (params: { q?: string; limit?: number; curso
   return { posts: page, nextCursor: hasNextPage ? page[page.length - 1].id : null, hasNextPage };
 };
 
-export const adminDeletePost = async (postId: string) => {
+export const adminDeletePost = async (actorUser: RBACUser, postId: string) => {
+  requirePermission(actorUser, Permission.DELETE_ANY_POST);
+
   const post = await prisma.post.findUnique({ where: { id: postId } });
   if (!post) throw new AppError("Post not found", 404);
   await prisma.post.update({

@@ -168,9 +168,8 @@ export const updateUserStatusHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params as { userId: string };
     const { status } = updateUserStatusSchema.parse(req.body);
-
-    const result = await updateUserStatus(userId, status, req.user!.id);
-
+    // Pass req.user as actorUser — RBAC check happens inside updateUserStatus
+    const result = await updateUserStatus(req.user!, userId, status);
     res.json(successResponse(result, `User status updated to ${status}`));
   },
 );
@@ -215,7 +214,8 @@ export const adminListPostsHandler = asyncHandler(
 export const adminDeletePostHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const { postId } = req.params as { postId: string };
-    const result = await adminDeletePost(postId);
+    // Pass req.user as actorUser — RBAC check inside adminDeletePost
+    const result = await adminDeletePost(req.user!, postId);
     res.json(successResponse(result, result.message));
   },
 );
