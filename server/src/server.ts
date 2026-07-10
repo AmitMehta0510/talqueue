@@ -34,6 +34,7 @@ import { ensureCoreCommunitiesExist } from "modules/community/community.service"
 import { startMailWorker } from "services/mailQueue";
 import { startEventWorker, stopEventWorker } from "services/eventWorker";
 import { startInterestAggregatorCron, stopInterestAggregatorCron } from "modules/feed/interest-aggregator.cron";
+import { startAnalyticsWriter, stopAnalyticsWriter } from "services/analytics/analyticsWriter";
 import logger from "shared/logger";
 
 const PORT = process.env.PORT || 5000;
@@ -62,7 +63,8 @@ server.listen(PORT, async () => {
   startMailWorker();
   startEventWorker();
   startInterestAggregatorCron();
-  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron)");
+  startAnalyticsWriter();
+  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron, analyticsWriter)");
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────
@@ -92,6 +94,9 @@ const gracefulShutdown = (signal: string) => {
 
       // 2b. Stop interest aggregator cron
       stopInterestAggregatorCron();
+
+      // 2c. Flush remaining analytics events
+      await stopAnalyticsWriter();
 
       // 3. Release Prisma connection pool
       await prisma.$disconnect();
