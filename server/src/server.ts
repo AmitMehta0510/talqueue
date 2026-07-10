@@ -34,6 +34,7 @@ import { ensureCoreCommunitiesExist } from "modules/community/community.service"
 import { startMailWorker } from "services/mailQueue";
 import { startEventWorker, stopEventWorker } from "services/eventWorker";
 import { startInterestAggregatorCron, stopInterestAggregatorCron } from "modules/feed/interest-aggregator.cron";
+import { startFeedInteractionArchiver, stopFeedInteractionArchiver } from "modules/feed/feed-interaction-archiver.cron";
 import { startAnalyticsWriter, stopAnalyticsWriter } from "services/analytics/analyticsWriter";
 import logger from "shared/logger";
 
@@ -63,8 +64,9 @@ server.listen(PORT, async () => {
   startMailWorker();
   startEventWorker();
   startInterestAggregatorCron();
+  startFeedInteractionArchiver();
   startAnalyticsWriter();
-  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron, analyticsWriter)");
+  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron, feedArchiver, analyticsWriter)");
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────
@@ -94,6 +96,7 @@ const gracefulShutdown = (signal: string) => {
 
       // 2b. Stop interest aggregator cron
       stopInterestAggregatorCron();
+      stopFeedInteractionArchiver();
 
       // 2c. Flush remaining analytics events
       await stopAnalyticsWriter();

@@ -2788,6 +2788,28 @@ model FeedInteraction {
   @@index([createdAt])
 }
 
+// ─── FeedInteractionArchive ────────────────────────────────────────────────────
+// Cold-storage mirror of FeedInteraction for rows older than 90 days.
+// Moved here by: modules/feed/feed-interaction-archiver.cron.ts
+// No User FK (archived data survives user deletion for analytics purposes).
+// Queried only for historical analysis — never in hot read paths.
+model FeedInteractionArchive {
+  id              String   @id  // mirrors original FeedInteraction.id
+  userId          String
+  targetId        String
+  targetType      String       // stored as string (not enum) for future-proofing
+  interactionType String
+  duration        Int?
+  metadata        Json?
+  createdAt       DateTime     // original interaction timestamp
+  archivedAt      DateTime     @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([archivedAt])
+  @@index([targetType, targetId])
+}
+
 model UserAffinity {
   id String @id @default(uuid())
 
