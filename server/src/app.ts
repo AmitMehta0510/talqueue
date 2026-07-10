@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import pinoHttp from "pino-http";
+import logger from "shared/logger";
 
 import errorMiddleware from "shared/middleware/errorMiddleware";
 import { successResponse } from "shared/utils/apiResponse";
@@ -12,6 +14,28 @@ import { startAffinityCron } from "modules/affinity/affinity.cron";
 import { registerApiRoutes } from "./routes";
 
 const app = express();
+
+// HTTP access logging — first middleware so it captures every request.
+// Health check endpoint is excluded to avoid log noise in uptime monitors.
+app.use(
+  pinoHttp({
+    logger,
+    // Skip health check + root ping from access logs
+    autoLogging: {
+      ignore: (req) =>
+        req.url === "/" || req.url === "/api/v1/health",
+    },
+    // Attach a unique request ID to every log line for tracing
+    genReqId: (req) =>
+      (req.headers["x-request-id"] as string) ||
+      `req-${Date.now().toString(36)}`,
+    customLogLevel: (_req, res) => {
+      if (res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "info";
+    },
+  }),
+);
 
 // Trust exactly one proxy hop (Nginx in production).
 // Without this, req.ip resolves to the Nginx container's private IP and
