@@ -131,7 +131,7 @@ export const searchUsers = async (
     }
 
     // ── 3. Execute ES query ──────────────────────────────────────────────────
-    const esResponse = await elasticClient.search({
+    const esResponse = await (elasticClient.search as any)({
       index: "users",
       from,
       size:  limit,
@@ -757,7 +757,9 @@ export const globalSearch = async (query: string, omniMode = false) => {
   }
 
   const topResults = [
-    ...users.map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),
+    ...users
+      .filter((u): u is NonNullable<typeof u> => u !== null && u !== undefined)
+      .map((u) => ({ type: "USER", score: u.relevanceScore, data: u.user })),
     ...projects.map((p) => ({ type: "PROJECT", score: p.relevanceScore, data: p.project })),
     ...hackathons.map((h) => ({ type: "HACKATHON", score: h.relevanceScore, data: h.hackathon })),
     ...jobs.jobs.map((j) => ({ type: "JOB", score: j.featured ? 200 : 100, data: j })),

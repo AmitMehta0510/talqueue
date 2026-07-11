@@ -1,6 +1,7 @@
 import { NotificationType } from "@prisma/client";
 import prisma from "shared/database/prisma";
 import redis from "shared/database/redis";
+import { getIO } from "modules/chat/socket";
 import { dispatchNotification } from "./notification-dispatcher";
 
 export const createNotification = async (data: {

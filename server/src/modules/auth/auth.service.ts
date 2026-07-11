@@ -130,7 +130,7 @@ export const isTokenRevoked = async (token: string): Promise<boolean> => {
     const val = await redis.get(buildRevokedKey(tokenHash));
     return val === "1";
   } catch (err: any) {
-    logger.warn("Auth: Redis revocation check failed — treating token as valid", { err: err?.message });
+    logger.warn({ err: err?.message }, "Auth: Redis revocation check failed \u2014 treating token as valid");
     return false;
   }
 };
@@ -263,7 +263,7 @@ export const logoutUser = async (accessToken: string, rawRefreshToken?: string) 
     try {
       await redis.setex(buildRevokedKey(tokenHash), ttlSeconds, "1");
     } catch (err: any) {
-      logger.warn("Auth: Redis revocation write failed", { err: err?.message });
+      logger.warn({ err: err?.message }, "Auth: Redis revocation write failed");
     }
   }
 
@@ -273,7 +273,7 @@ export const logoutUser = async (accessToken: string, rawRefreshToken?: string) 
     try {
       await redis.del(buildRefreshKey(rtHash));
     } catch (err: any) {
-      logger.warn("Auth: refresh token revocation failed", { err: err?.message });
+      logger.warn({ err: err?.message }, "Auth: refresh token revocation failed");
     }
   }
 
@@ -294,7 +294,7 @@ export const triggerEmailVerificationOTP = async (email: string) => {
 
   await redis.setex(redisKey, 600, otpCode);
 
-  logger.debug("EmailVerification: OTP generated", { email });
+  logger.debug({ email }, "EmailVerification: OTP generated");
 
   return {
     success: true,
@@ -353,7 +353,7 @@ export const initiateForgotPasswordFlow = async (email: string) => {
     const token = randomBytes(16).toString("hex");
     const redisKey = `password:reset:${email}`;
     await redis.setex(redisKey, 900, token);
-    logger.debug("ForgotPassword: reset token generated", { email });
+    logger.debug({ email }, "ForgotPassword: reset token generated");
   }
 
   // User-enumeration protection: return success regardless of user existence
