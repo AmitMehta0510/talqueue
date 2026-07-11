@@ -10,7 +10,7 @@ const errorMiddleware = (
   next: NextFunction
 ) => {
   // Always log the error for audit / debugging purposes
-  logger.error("Unhandled request error", { err });
+  logger.error({ err }, "Unhandled request error");
 
   if (err instanceof ZodError) {
     return res.status(400).json({

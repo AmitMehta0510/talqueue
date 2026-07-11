@@ -68,7 +68,7 @@ export function createRateLimiter(tier: string, limit: number, windowSeconds: nu
       next();
     } catch (err: any) {
       // Fail-soft: log warning and proceed so rate limiter issues don't block access
-      logger.warn("Rate limiter Redis failure — passing request through", { key, err: err?.message });
+      logger.warn({ key, err: err?.message }, "Rate limiter Redis failure — passing request through");
       next();
     }
   };

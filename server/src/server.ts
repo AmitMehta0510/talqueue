@@ -46,7 +46,7 @@ const server =
 initializeSocket(server);
 
 server.listen(PORT, async () => {
-  logger.info(`Server listening on port ${PORT}`, { port: PORT, env: process.env.NODE_ENV });
+  logger.info({ port: PORT, env: process.env.NODE_ENV }, `Server listening on port ${PORT}`);
 
   const isHealthy = await checkElasticsearchHealth();
   if (isHealthy) {
@@ -57,7 +57,7 @@ server.listen(PORT, async () => {
 
   // Ensure core communities (general, sde-prep, etc.) exist — idempotent
   await ensureCoreCommunitiesExist().catch((err) =>
-    logger.error("Community bootstrap failed", { err })
+    logger.error({ err }, "Community bootstrap failed")
   );
 
   // Start background workers
@@ -74,7 +74,7 @@ server.listen(PORT, async () => {
 // Sequence: stop HTTP intake → disconnect Prisma pool → quit Redis socket.
 // Forced exit after 10 s in case graceful drain hangs (e.g. stuck keep-alive).
 const gracefulShutdown = (signal: string) => {
-  logger.info(`Graceful shutdown initiated`, { signal });
+  logger.info({ signal }, "Graceful shutdown initiated");
 
   // Force-exit fallback — prevents infinite hang
   const forceExitTimer = setTimeout(() => {
@@ -111,7 +111,7 @@ const gracefulShutdown = (signal: string) => {
 
       process.exit(0);
     } catch (err) {
-      logger.error("Error during shutdown cleanup", { err });
+      logger.error({ err }, "Error during shutdown cleanup");
       process.exit(1);
     }
   });
@@ -121,11 +121,11 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
 
 process.on("uncaughtException", (err) => {
-  logger.error("UNCAUGHT EXCEPTION — shutting down", { err });
+  logger.error({ err }, "UNCAUGHT EXCEPTION — shutting down");
   gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
 process.on("unhandledRejection", (reason) => {
-  logger.error("UNHANDLED REJECTION — shutting down", { reason });
+  logger.error({ reason }, "UNHANDLED REJECTION — shutting down");
   gracefulShutdown("UNHANDLED_REJECTION");
 });
