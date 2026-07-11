@@ -71,7 +71,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
  * All event producers call `emit()` — they never touch this queue directly.
  * Only `eventWorker.ts` and `eventBus.ts` should import the queue instance.
  */
-export const platformQueue = new Queue("platform:events", {
+export const platformQueue = new Queue("platform-events", {
   connection: { url: REDIS_URL },
   defaultJobOptions: {
     // Retry up to 3 times with exponential backoff

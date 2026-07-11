@@ -1,7 +1,7 @@
 /**
  * @file services/eventWorker.ts
  *
- * BullMQ worker that processes platform events from the "platform:events" queue.
+ * BullMQ worker that processes platform events from the "platform-events" queue.
  *
  * Each job handler is isolated — a failure in ES sync does NOT cancel the
  * activity log or notification dispatch. Each side-effect is wrapped
@@ -152,7 +152,7 @@ export function startEventWorker(): void {
   const concurrency = parseInt(process.env.EVENT_WORKER_CONCURRENCY ?? "5", 10);
 
   workerInstance = new Worker(
-    "platform:events",
+    "platform-events",
     async (job: Job) => {
       switch (job.name) {
         case "job.created":
