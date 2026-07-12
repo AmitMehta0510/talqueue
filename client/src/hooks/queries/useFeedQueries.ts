@@ -28,8 +28,9 @@ export const useFeedQuery = (limit = 16) => {
     queryKey: queryKeys.feed.list(viewer, limit),
     queryFn: async ({ signal }) => {
       if (user) {
+        // Server returns { items: FeedItem[], nextCursor, hasMore } — extract items array
         const result = await api.personalizedFeed(limit, { signal });
-        return result.data;
+        return result.data?.items ?? [];
       }
 
       const result = await api.publicPosts(limit, { signal });

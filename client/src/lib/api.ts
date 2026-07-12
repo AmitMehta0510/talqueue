@@ -540,7 +540,7 @@ const remainingApi = {
   publicPosts: (limit = 12, options?: EndpointOptions) =>
     request<FeedPage>(`/posts/feed${toQuery({ limit })}`, options),
   personalizedFeed: (limit = 12, options?: EndpointOptions) =>
-    request<FeedItem[]>(`/feed${toQuery({ limit })}`, options),
+    request<{ items: FeedItem[]; nextCursor: string | null; hasMore: boolean }>(`/feed${toQuery({ limit })}`, options),
   createPost: (body: {
     content: string;
     type: string;

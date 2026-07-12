@@ -104,7 +104,15 @@ export const useConversationsQuery = () => {
       return result.data || [];
     },
     enabled: Boolean(user),
+    // Step 3 & 4: staleTime prevents duplicate fetches on StrictMode double-mount.
+    // The ChatIconButton (rendered on every page) shares this cached result.
+    staleTime: 60_000,
     refetchInterval: user ? 45_000 : false,
+    // Step 3: Don't retry aborted requests (caused by StrictMode unmount/remount).
+    retry: false,
+    // Step 5: Aborted fetches (DOMException name=AbortError) must NOT bubble to
+    // the global AppErrorBoundary, otherwise the feed shows "Something went wrong".
+    throwOnError: (error: Error) => error.name !== "AbortError" && error.name !== "CanceledError",
   });
 };
 

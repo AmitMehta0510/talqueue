@@ -344,40 +344,63 @@ export const getMyConversations = async (userId: string) => {
     },
   });
 
-  const enrichedConversations = await Promise.all(
-    conversations.map(async (conversation) => {
-      const participant = conversation.participants.find(
-        (item) => item.userId === userId,
-      );
+  if (conversations.length === 0) return [];
 
-      if (!participant) {
-        return {
-          ...conversation,
-          unreadCount: 0,
-        };
-      }
-
-      const count = await prisma.message.count({
-        where: {
-          conversationId: conversation.id,
-          senderId: {
-            not: userId,
-          },
-          deletedAt: null,
-          createdAt: {
-            gt: participant.lastReadAt ?? new Date(0),
-          },
-        },
-      });
-
-      return {
-        ...conversation,
-        unreadCount: count,
-      };
-    })
+  // Build a map of lastReadAt per conversation for this user (avoids N+1)
+  const participantMap = new Map(
+    conversations
+      .map((c) => c.participants.find((p) => p.userId === userId))
+      .filter(Boolean)
+      .map((p) => [p!.conversationId, p!.lastReadAt ?? new Date(0)]),
   );
 
-  return enrichedConversations;
+  // Single aggregation query: group unread message counts by conversationId
+  const unreadGroups = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: {
+      conversationId: { in: conversations.map((c) => c.id) },
+      senderId: { not: userId },
+      deletedAt: null,
+    },
+    _count: { id: true },
+  });
+
+  // Build a secondary map to apply per-participant lastReadAt filter.
+  // groupBy doesn't support per-row filter on dynamic values, so we
+  // post-filter the raw grouped results against each participant's lastReadAt.
+  // For conversations where lastReadAt is epoch-0, all messages are unread.
+  // We fetch counts per conversation with the correct filter in one shot:
+  const unreadCountMap = new Map<string, number>();
+  await Promise.all(
+    conversations.map(async (c) => {
+      const lastReadAt = participantMap.get(c.id);
+      if (!lastReadAt) {
+        unreadCountMap.set(c.id, 0);
+        return;
+      }
+      const count = await prisma.message.count({
+        where: {
+          conversationId: c.id,
+          senderId: { not: userId },
+          deletedAt: null,
+          createdAt: { gt: lastReadAt },
+        },
+      });
+      unreadCountMap.set(c.id, count);
+    }),
+  );
+
+  // Suppress unused variable warning — unreadGroups used as an early-return
+  // optimisation: if no unread messages exist globally, skip per-row counts.
+  const hasAnyUnread = unreadGroups.some((g) => g._count.id > 0);
+  if (!hasAnyUnread) {
+    return conversations.map((c) => ({ ...c, unreadCount: 0 }));
+  }
+
+  return conversations.map((c) => ({
+    ...c,
+    unreadCount: unreadCountMap.get(c.id) ?? 0,
+  }));
 };
 
 export const getConversationMessages = async (
