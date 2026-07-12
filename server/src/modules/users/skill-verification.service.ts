@@ -37,8 +37,58 @@ const SYNONYM_MAP: Record<string, string> = {
   "dockerfile": "docker",
 };
 
-// Minimum bytes in GitHub repo to verify a language skill
-const MIN_GITHUB_BYTES = 5000;
+type SkillLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
+
+interface SkillThresholds {
+  leetcode: Record<SkillLevel, number>;
+  githubBytes: Record<SkillLevel, number>;
+}
+
+// Default thresholds for General Programming Languages
+const GENERAL_THRESHOLDS: SkillThresholds = {
+  leetcode: {
+    BEGINNER: 30,
+    INTERMEDIATE: 70,
+    ADVANCED: 150,
+    EXPERT: 200,
+  },
+  githubBytes: {
+    BEGINNER: 10000,       // 10 KB
+    INTERMEDIATE: 50000,   // 50 KB
+    ADVANCED: 200000,      // 200 KB
+    EXPERT: 500000,        // 500 KB
+  },
+};
+
+// Thresholds for SQL / Database skills
+const DATABASE_THRESHOLDS: SkillThresholds = {
+  leetcode: {
+    BEGINNER: 10,
+    INTERMEDIATE: 25,
+    ADVANCED: 50,
+    EXPERT: 80,
+  },
+  githubBytes: {
+    BEGINNER: 2000,        // 2 KB
+    INTERMEDIATE: 10000,   // 10 KB
+    ADVANCED: 30000,       // 30 KB
+    EXPERT: 80000,         // 80 KB
+  },
+};
+
+// Thresholds for Frameworks & Tools (measured in number of repos used)
+interface FrameworkThresholds {
+  reposCount: Record<SkillLevel, number>;
+}
+
+const FRAMEWORK_THRESHOLDS: FrameworkThresholds = {
+  reposCount: {
+    BEGINNER: 1,
+    INTERMEDIATE: 2,
+    ADVANCED: 4,
+    EXPERT: 6,
+  },
+};
 
 // Helper to fetch file content from GitHub repository
 export const fetchRepoFileContent = async (
@@ -220,7 +270,13 @@ export const verifyUserSkills = async (userId: string) => {
     throw new AppError("You must fill your GitHub URL on your profile.", 400);
   }
 
-  const detectedSkills: Record<string, { verified: boolean; source: string; proof: any }> = {};
+  interface DetectedStats {
+    sources: Set<string>;
+    githubBytes: number;
+    githubRepos: Array<{ name: string; bytes: number }>;
+    leetcodeSolved?: number;
+  }
+  const detectedStats: Record<string, DetectedStats> = {};
 
   // Get user with experiences and educations to fetch work/college emails for anti-cheat verification
   const user = await prisma.user.findUnique({
@@ -340,18 +396,14 @@ export const verifyUserSkills = async (userId: string) => {
             }
           }
 
-          // Filter by minimum threshold (5,000 bytes)
+          // Populate detectedStats for github languages
           for (const [lang, data] of Object.entries(langBytes)) {
-            if (data.totalBytes >= MIN_GITHUB_BYTES) {
-              detectedSkills[lang] = {
-                verified: true,
-                source: "GITHUB",
-                proof: {
-                  totalBytes: data.totalBytes,
-                  repositories: data.repos.slice(0, 3), // store top 3 repo proofs
-                },
-              };
+            if (!detectedStats[lang]) {
+              detectedStats[lang] = { sources: new Set(), githubBytes: 0, githubRepos: [] };
             }
+            detectedStats[lang].sources.add("GITHUB");
+            detectedStats[lang].githubBytes = data.totalBytes;
+            detectedStats[lang].githubRepos = data.repos;
           }
 
           // 2. Framework/Tools parsing with Commit Verification (Anti-Cheat) - Chunked & Rate-Limit Safeguarded
@@ -442,21 +494,13 @@ export const verifyUserSkills = async (userId: string) => {
                 const normalizedSkill = skill.toLowerCase();
                 const standardName = SYNONYM_MAP[normalizedSkill] || normalizedSkill;
 
-                // Let's store or update detected skills (accumulating the proof)
-                const existing = detectedSkills[standardName] || detectedSkills[normalizedSkill];
-                const matchedName = existing ? (SYNONYM_MAP[standardName] || standardName) : skill;
-
-                detectedSkills[matchedName.toLowerCase()] = {
-                  verified: true,
-                  source: existing ? `${existing.source}, GITHUB_REPOS` : "GITHUB_REPOS",
-                  proof: {
-                    ...existing?.proof,
-                    githubRepo: {
-                      repoName: item.repoName,
-                      reason: "Extracted from verified framework/config files",
-                    },
-                  },
-                };
+                if (!detectedStats[standardName]) {
+                  detectedStats[standardName] = { sources: new Set(), githubBytes: 0, githubRepos: [] };
+                }
+                detectedStats[standardName].sources.add("GITHUB_REPOS");
+                if (!detectedStats[standardName].githubRepos.some((r) => r.name === item.repoName)) {
+                  detectedStats[standardName].githubRepos.push({ name: item.repoName, bytes: 0 });
+                }
               }
             }
           }
@@ -510,21 +554,11 @@ export const verifyUserSkills = async (userId: string) => {
             const standardName = SYNONYM_MAP[normalizedName] || normalizedName;
             const solved = stat.problemsSolved;
 
-            // Verify if user solved at least 3 problems in this language
-            if (solved >= 3) {
-              const existing = detectedSkills[standardName];
-              detectedSkills[standardName] = {
-                verified: true,
-                source: existing ? `${existing.source}, LEETCODE` : "LEETCODE",
-                proof: {
-                  ...existing?.proof,
-                  leetcode: {
-                    problemsSolved: solved,
-                    username,
-                  },
-                },
-              };
+            if (!detectedStats[standardName]) {
+              detectedStats[standardName] = { sources: new Set(), githubBytes: 0, githubRepos: [] };
             }
+            detectedStats[standardName].sources.add("LEETCODE");
+            detectedStats[standardName].leetcodeSolved = solved;
           }
         }
       }
@@ -540,40 +574,110 @@ export const verifyUserSkills = async (userId: string) => {
       const username = cpProfile.username || "user";
       const typicalLanguages = ["java", "python", "c++"];
       for (const lang of typicalLanguages) {
-        const existing = detectedSkills[lang];
-        detectedSkills[lang] = {
-          verified: true,
-          source: existing ? `${existing.source}, ${cpProfile.platform.toUpperCase()}` : cpProfile.platform.toUpperCase(),
-          proof: {
-            ...existing?.proof,
-            [platform]: {
-              username,
-              status: "Linked Profile verified",
-            },
-          },
-        };
+        if (!detectedStats[lang]) {
+          detectedStats[lang] = { sources: new Set(), githubBytes: 0, githubRepos: [] };
+        }
+        detectedStats[lang].sources.add(cpProfile.platform.toUpperCase());
       }
     }
   }
 
-  // 4. SYNC WITH DATABASE
+  // 4. SYNC WITH DATABASE WITH DYNAMIC LEVEL THRESHOLDS
   let updatedCount = 0;
   for (const userSkill of userSkills) {
     const skillNameNormalized = userSkill.skill.name.toLowerCase();
     const standardName = SYNONYM_MAP[skillNameNormalized] || skillNameNormalized;
 
-    const match = detectedSkills[standardName] || detectedSkills[skillNameNormalized];
+    const stats = detectedStats[standardName] || detectedStats[skillNameNormalized];
+    const rawLevel = userSkill.level || "BEGINNER";
+    const level = (["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"].includes(rawLevel)
+      ? rawLevel
+      : "BEGINNER") as SkillLevel;
 
-    if (match) {
-      await prisma.userSkill.update({
-        where: { id: userSkill.id },
-        data: {
-          verified: true,
-          verificationSource: match.source,
-          verificationProof: match.proof || {},
-        },
-      });
-      updatedCount++;
+    if (stats) {
+      let isVerified = false;
+      const sources: string[] = [];
+      const proof: any = {};
+
+      const isDatabase = ["mysql", "postgresql", "sql", "mongodb", "mongoose", "sqlite", "cassandra", "redis", "neo4j", "mariadb", "oracle"].includes(standardName);
+      const isFramework = ["express.js", "express", "nestjs", "node.js", "node", "react", "next.js", "vue.js", "nuxt.js", "angular", "svelte", "prisma", "sequelize", "typeorm", "drizzle orm", "fastify", "hono", "docker", "spring boot", "hibernate", "junit", "kubernetes", "jenkins", "git", "aws", "nginx"].includes(standardName);
+
+      if (isFramework) {
+        const threshold = FRAMEWORK_THRESHOLDS.reposCount[level] ?? 1;
+        const uniqueRepos = stats.githubRepos ? stats.githubRepos.length : 0;
+        if (uniqueRepos >= threshold) {
+          isVerified = true;
+          sources.push("GITHUB_REPOS");
+          proof.githubRepo = {
+            repoName: stats.githubRepos[0]?.name || "unknown",
+            reason: "Extracted from verified framework/config files",
+          };
+          proof.githubReposCount = uniqueRepos;
+          proof.repositories = stats.githubRepos.map(r => r.name);
+        }
+      } else {
+        const thresholds = isDatabase ? DATABASE_THRESHOLDS : GENERAL_THRESHOLDS;
+
+        // Check LeetCode solved count
+        if (stats.leetcodeSolved && stats.leetcodeSolved >= thresholds.leetcode[level]) {
+          isVerified = true;
+          sources.push("LEETCODE");
+          proof.leetcode = {
+            problemsSolved: stats.leetcodeSolved,
+            required: thresholds.leetcode[level],
+            username: leetcodeProfile?.username || "user",
+          };
+        }
+
+        // Check GitHub bytes count
+        if (stats.githubBytes && stats.githubBytes >= thresholds.githubBytes[level]) {
+          isVerified = true;
+          sources.push("GITHUB");
+          proof.github = {
+            totalBytes: stats.githubBytes,
+            required: thresholds.githubBytes[level],
+            repositories: stats.githubRepos ? stats.githubRepos.slice(0, 3) : [],
+          };
+        }
+
+        // Check mock coding platforms linked (allow easy pass for mock platforms)
+        if (stats.sources.has("HACKERRANK")) {
+          isVerified = true;
+          sources.push("HACKERRANK");
+          proof.hackerrank = { status: "Linked Profile verified" };
+        }
+        if (stats.sources.has("GEEKSFORGEEKS")) {
+          isVerified = true;
+          sources.push("GEEKSFORGEEKS");
+          proof.geeksforgeeks = { status: "Linked Profile verified" };
+        }
+        if (stats.sources.has("CODINGNINJAS")) {
+          isVerified = true;
+          sources.push("CODINGNINJAS");
+          proof.codingninjas = { status: "Linked Profile verified" };
+        }
+      }
+
+      if (isVerified) {
+        await prisma.userSkill.update({
+          where: { id: userSkill.id },
+          data: {
+            verified: true,
+            verificationSource: sources.join(", "),
+            verificationProof: proof,
+          },
+        });
+        updatedCount++;
+      } else {
+        await prisma.userSkill.update({
+          where: { id: userSkill.id },
+          data: {
+            verified: false,
+            verificationSource: null,
+            verificationProof: Prisma.JsonNull,
+          },
+        });
+      }
     } else {
       await prisma.userSkill.update({
         where: { id: userSkill.id },
