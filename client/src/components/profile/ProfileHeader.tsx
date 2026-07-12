@@ -127,10 +127,10 @@ export function ProfileHeader({
 
       {/* ── Avatar + Identity ─────────────────────────────────────── */}
       <div className="px-6 pb-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="-mt-12 flex items-end gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
             {/* Avatar with glowing ring */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 -mt-16 sm:-mt-12">
               <div
                 className="rounded-2xl p-0.5 shadow-xl"
                 style={{

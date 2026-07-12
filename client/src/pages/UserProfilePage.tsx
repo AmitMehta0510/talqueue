@@ -173,31 +173,41 @@ export function UserProfilePage() {
         </div>
 
         <div className="px-6 pb-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             {/* Avatar + name */}
-            <div className="-mt-10 flex items-end gap-4">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+              <div className="relative shrink-0 -mt-16 sm:-mt-10">
                 <div
-                className="rounded-2xl p-0.5 shadow-xl"
-                style={{ background: "linear-gradient(135deg, var(--brand), #6366f1, #818cf8)", boxShadow: "0 0 0 3px var(--bg-surface), 0 0 20px rgba(99,102,241,0.3)" }}
-              >
-                <div className="rounded-[13px] overflow-hidden" style={{ background: "var(--bg-surface)" }}>
-                  <Avatar user={profile} size="lg" />
+                  className="rounded-2xl p-0.5 shadow-xl"
+                  style={{ background: "linear-gradient(135deg, var(--brand), #6366f1, #818cf8)", boxShadow: "0 0 0 3px var(--bg-surface), 0 0 20px rgba(99,102,241,0.3)" }}
+                >
+                  <div className="rounded-[13px] overflow-hidden" style={{ background: "var(--bg-surface)" }}>
+                    <Avatar user={profile} size="lg" />
+                  </div>
                 </div>
-              </div>
                 {profile.verifiedEngineer && (
                   <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-800">
                     <ShieldCheck size={13} className="text-white" />
                   </div>
                 )}
               </div>
-              <div className="mb-1">
+              <div className="mb-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>{userName(profile)}</h1>
+                  {isAvailable && (
+                    <span
+                      className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border"
+                      style={{ background: "rgba(16,185,129,0.10)", borderColor: "rgba(16,185,129,0.3)", color: "#10b981" }}
+                      title="Available for opportunities"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Available
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs font-mono mt-0.5" style={{ color: "var(--brand)" }}>@{profile.username}</p>
                 {userHeadline(profile) && (
-                  <p className="text-sm mt-1 max-w-sm" style={{ color: "var(--text-secondary)" }}>{userHeadline(profile)}</p>
+                  <p className="text-sm mt-1 max-w-sm line-clamp-2" style={{ color: "var(--text-secondary)" }}>{userHeadline(profile)}</p>
                 )}
                 {profile.profile?.location && (
                   <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
