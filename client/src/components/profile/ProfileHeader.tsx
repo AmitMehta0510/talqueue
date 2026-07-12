@@ -52,6 +52,15 @@ export function ProfileHeader({
     { icon: FileText, label: "Resume",    href: profile.profile?.resumeUrl },
   ].filter((l) => l.href);
 
+  // Structured availability signals with per-signal styling
+  const availabilitySignals = [
+    profile.openToWork             && { label: "Open to Work",        color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",  dot: "bg-emerald-500" },
+    profile.openToInternship       && { label: "Internships",          color: "bg-sky-500/10 text-sky-400 border-sky-500/30",             dot: "bg-sky-500" },
+    profile.acceptingReferrals     && { label: "Accepting Referrals",  color: "bg-amber-500/10 text-amber-400 border-amber-500/30",       dot: "bg-amber-500" },
+    profile.acceptingCollaborators && { label: "Collaborators",         color: "bg-violet-500/10 text-violet-400 border-violet-500/30",    dot: "bg-violet-500" },
+    profile.acceptingMentorship    && { label: "Mentoring",             color: "bg-rose-500/10 text-rose-400 border-rose-500/30",          dot: "bg-rose-500" },
+  ].filter(Boolean) as { label: string; color: string; dot: string }[];
+
   const isAvailable = availabilitySignals.length > 0;
 
   const availabilityStatusText = (() => {
