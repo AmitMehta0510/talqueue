@@ -582,31 +582,24 @@ export const verifyUserSkills = async (userId: string) => {
     }
   }
 
-  // 4. SYNC WITH DATABASE WITH DYNAMIC LEVEL THRESHOLDS
-  let updatedCount = 0;
-  for (const userSkill of userSkills) {
-    const skillNameNormalized = userSkill.skill.name.toLowerCase();
-    const standardName = SYNONYM_MAP[skillNameNormalized] || skillNameNormalized;
+  const getHighestVerifiableLevel = (
+    stats: DetectedStats,
+    standardName: string
+  ): { level: SkillLevel; sources: string[]; proof: any } | null => {
+    const levels: SkillLevel[] = ["EXPERT", "ADVANCED", "INTERMEDIATE", "BEGINNER"];
+    const isDatabase = ["mysql", "postgresql", "sql", "mongodb", "mongoose", "sqlite", "cassandra", "redis", "neo4j", "mariadb", "oracle"].includes(standardName);
+    const isFramework = ["express.js", "express", "nestjs", "node.js", "node", "react", "next.js", "vue.js", "nuxt.js", "angular", "svelte", "prisma", "sequelize", "typeorm", "drizzle orm", "fastify", "hono", "docker", "spring boot", "hibernate", "junit", "kubernetes", "jenkins", "git", "aws", "nginx"].includes(standardName);
 
-    const stats = detectedStats[standardName] || detectedStats[skillNameNormalized];
-    const rawLevel = userSkill.level || "BEGINNER";
-    const level = (["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"].includes(rawLevel)
-      ? rawLevel
-      : "BEGINNER") as SkillLevel;
-
-    if (stats) {
-      let isVerified = false;
+    for (const lvl of levels) {
       const sources: string[] = [];
       const proof: any = {};
-
-      const isDatabase = ["mysql", "postgresql", "sql", "mongodb", "mongoose", "sqlite", "cassandra", "redis", "neo4j", "mariadb", "oracle"].includes(standardName);
-      const isFramework = ["express.js", "express", "nestjs", "node.js", "node", "react", "next.js", "vue.js", "nuxt.js", "angular", "svelte", "prisma", "sequelize", "typeorm", "drizzle orm", "fastify", "hono", "docker", "spring boot", "hibernate", "junit", "kubernetes", "jenkins", "git", "aws", "nginx"].includes(standardName);
+      let matched = false;
 
       if (isFramework) {
-        const threshold = FRAMEWORK_THRESHOLDS.reposCount[level] ?? 1;
+        const threshold = FRAMEWORK_THRESHOLDS.reposCount[lvl] ?? 1;
         const uniqueRepos = stats.githubRepos ? stats.githubRepos.length : 0;
         if (uniqueRepos >= threshold) {
-          isVerified = true;
+          matched = true;
           sources.push("GITHUB_REPOS");
           proof.githubRepo = {
             repoName: stats.githubRepos[0]?.name || "unknown",
@@ -619,56 +612,77 @@ export const verifyUserSkills = async (userId: string) => {
         const thresholds = isDatabase ? DATABASE_THRESHOLDS : GENERAL_THRESHOLDS;
 
         // Check LeetCode solved count
-        if (stats.leetcodeSolved && stats.leetcodeSolved >= thresholds.leetcode[level]) {
-          isVerified = true;
+        if (stats.leetcodeSolved && stats.leetcodeSolved >= thresholds.leetcode[lvl]) {
+          matched = true;
           sources.push("LEETCODE");
           proof.leetcode = {
             problemsSolved: stats.leetcodeSolved,
-            required: thresholds.leetcode[level],
+            required: thresholds.leetcode[lvl],
             username: leetcodeProfile?.username || "user",
           };
         }
 
         // Check GitHub bytes count
-        if (stats.githubBytes && stats.githubBytes >= thresholds.githubBytes[level]) {
-          isVerified = true;
+        if (stats.githubBytes && stats.githubBytes >= thresholds.githubBytes[lvl]) {
+          matched = true;
           sources.push("GITHUB");
           proof.github = {
             totalBytes: stats.githubBytes,
-            required: thresholds.githubBytes[level],
+            required: thresholds.githubBytes[lvl],
             repositories: stats.githubRepos ? stats.githubRepos.slice(0, 3) : [],
           };
         }
 
-        // Check mock coding platforms linked (allow easy pass for mock platforms)
+        // Check mock coding platforms linked
         if (stats.sources.has("HACKERRANK")) {
-          isVerified = true;
+          matched = true;
           sources.push("HACKERRANK");
           proof.hackerrank = { status: "Linked Profile verified" };
         }
         if (stats.sources.has("GEEKSFORGEEKS")) {
-          isVerified = true;
+          matched = true;
           sources.push("GEEKSFORGEEKS");
           proof.geeksforgeeks = { status: "Linked Profile verified" };
         }
         if (stats.sources.has("CODINGNINJAS")) {
-          isVerified = true;
+          matched = true;
           sources.push("CODINGNINJAS");
           proof.codingninjas = { status: "Linked Profile verified" };
         }
       }
 
-      if (isVerified) {
+      if (matched) {
+        return { level: lvl, sources, proof };
+      }
+    }
+
+    return null;
+  };
+
+  // 4. SYNC WITH DATABASE WITH AUTO-ADJUST LEVELS
+  let updatedCount = 0;
+  for (const userSkill of userSkills) {
+    const skillNameNormalized = userSkill.skill.name.toLowerCase();
+    const standardName = SYNONYM_MAP[skillNameNormalized] || skillNameNormalized;
+
+    const stats = detectedStats[standardName] || detectedStats[skillNameNormalized];
+
+    if (stats) {
+      const matchedVerification = getHighestVerifiableLevel(stats, standardName);
+
+      if (matchedVerification) {
         await prisma.userSkill.update({
           where: { id: userSkill.id },
           data: {
             verified: true,
-            verificationSource: sources.join(", "),
-            verificationProof: proof,
+            level: matchedVerification.level, // AUTO-ADJUST claimed level to actual verified level
+            verificationSource: matchedVerification.sources.join(", "),
+            verificationProof: matchedVerification.proof,
           },
         });
         updatedCount++;
       } else {
+        // If not verifiable at any level, unverify but keep level
         await prisma.userSkill.update({
           where: { id: userSkill.id },
           data: {
