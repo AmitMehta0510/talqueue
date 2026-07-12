@@ -180,7 +180,7 @@ export function UserProfilePage() {
                 style={{ background: "linear-gradient(135deg, var(--brand), #6366f1, #818cf8)", boxShadow: "0 0 0 3px var(--bg-surface), 0 0 20px rgba(99,102,241,0.3)" }}
               >
                 <div className="rounded-[13px] overflow-hidden" style={{ background: "var(--bg-surface)" }}>
-                  <Avatar user={profile} size="lg" className="!rounded-[13px]" />
+                  <Avatar user={profile} size="lg" />
                 </div>
               </div>
                 {profile.verifiedEngineer && (

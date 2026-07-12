@@ -136,7 +136,7 @@ export function ProfileHeader({
                 }}
               >
                 <div className="rounded-[13px] overflow-hidden" style={{ background: "var(--bg-surface)" }}>
-                  <Avatar user={profile} size="lg" className="!rounded-[13px]" />
+                  <Avatar user={profile} size="lg" />
                 </div>
               </div>
               {profile.verifiedEngineer && (
