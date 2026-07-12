@@ -43,6 +43,8 @@ export interface UpdateProfileData {
   acceptingReferrals?: boolean;
   openToWork?: boolean;
   openToInternship?: boolean;
+  acceptingCollaborators?: boolean;
+  acceptingMentorship?: boolean;
   availabilityStatus?: string;
 }
 

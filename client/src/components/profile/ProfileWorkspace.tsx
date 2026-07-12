@@ -253,6 +253,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
 
         {resolvedTab === "settings" && (
           <ProfileSettings
+            profile={profile}
             profileForm={profileForm}
             onProfileFormChange={setProfileForm}
             onSave={saveProfile}

@@ -188,6 +188,8 @@ export function useProfileWorkspace(fallbackUser: UserType) {
       acceptingReferrals: profile.acceptingReferrals || false,
       openToWork: profile.openToWork || false,
       openToInternship: profile.openToInternship || false,
+      acceptingCollaborators: profile.acceptingCollaborators || false,
+      acceptingMentorship: profile.acceptingMentorship || false,
       availabilityStatus: profile.availabilityStatus || "NOT_AVAILABLE",
     });
   }, [profile, profileQuery.data]);

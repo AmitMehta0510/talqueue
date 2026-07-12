@@ -169,6 +169,8 @@ export const updateProfile = async (
     acceptingReferrals,
     openToWork,
     openToInternship,
+    acceptingCollaborators,
+    acceptingMentorship,
     availabilityStatus,
     leetcodeUrl,
     hackerrankUrl,
@@ -230,6 +232,8 @@ export const updateProfile = async (
       acceptingReferrals !== undefined ||
       openToWork !== undefined ||
       openToInternship !== undefined ||
+      acceptingCollaborators !== undefined ||
+      acceptingMentorship !== undefined ||
       availabilityStatus !== undefined
     ) {
       await tx.user.update({
@@ -240,6 +244,8 @@ export const updateProfile = async (
           ...(acceptingReferrals !== undefined && { acceptingReferrals }),
           ...(openToWork !== undefined && { openToWork }),
           ...(openToInternship !== undefined && { openToInternship }),
+          ...(acceptingCollaborators !== undefined && { acceptingCollaborators }),
+          ...(acceptingMentorship !== undefined && { acceptingMentorship }),
           ...(availabilityStatus !== undefined && { availabilityStatus }),
         },
       });

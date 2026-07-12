@@ -145,6 +145,11 @@ const remainingApi = {
     collegeId?: string;
     departmentId?: string;
     acceptingReferrals?: boolean;
+    openToWork?: boolean;
+    openToInternship?: boolean;
+    acceptingCollaborators?: boolean;
+    acceptingMentorship?: boolean;
+    availabilityStatus?: string;
   }) => request<User>("/users/me", { method: "PUT", body }),
   addExperience: (body: {
     companyName: string;

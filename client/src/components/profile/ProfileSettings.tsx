@@ -24,7 +24,10 @@ import {
 import { useToast } from "../../core/contexts/ToastContext";
 import { useFileUpload } from "../../features/storage/hooks/useFileUpload";
 
+import { User as UserType } from "../../lib/api";
+
 export interface ProfileSettingsProps {
+  profile: UserType;
   profileForm: Record<string, any>;
   onProfileFormChange: (form: any) => void;
   onSave: (e: FormEvent) => void;
@@ -114,6 +117,7 @@ const CODING_PLATFORMS = [
 ] as const;
 
 export function ProfileSettings({
+  profile,
   profileForm,
   onProfileFormChange,
   onSave,
@@ -123,12 +127,37 @@ export function ProfileSettings({
   const avatarUpload = useFileUpload();
   const bannerUpload = useFileUpload();
   const resumeUpload = useFileUpload();
-  const [isDirty, setIsDirty] = useState(false);
   const availabilityTextLen = (profileForm.availabilityText || "").length;
 
-  // Wrap onChange to track dirty state
+  const lc = profile.codingProfiles?.find((p) => p.platform.toLowerCase() === "leetcode")?.url || "";
+  const hr = profile.codingProfiles?.find((p) => p.platform.toLowerCase() === "hackerrank")?.url || "";
+  const gfg = profile.codingProfiles?.find((p) => p.platform.toLowerCase() === "geeksforgeeks")?.url || "";
+
+  const isDirty =
+    (profileForm.fullName || "") !== (profile.profile?.fullName || "") ||
+    (profileForm.username || "") !== (profile.username || "") ||
+    (profileForm.headline || "") !== (profile.profile?.headline || "") ||
+    (profileForm.bio || "") !== (profile.profile?.bio || "") ||
+    (profileForm.location || "") !== (profile.profile?.location || "") ||
+    (profileForm.availabilityText || "") !== (profile.profile?.availabilityText || "") ||
+    (profileForm.avatarUrl || "") !== (profile.profile?.avatarUrl || "") ||
+    (profileForm.bannerUrl || "") !== (profile.profile?.bannerUrl || "") ||
+    (profileForm.resumeUrl || "") !== (profile.profile?.resumeUrl || "") ||
+    (profileForm.githubUrl || "") !== (profile.profile?.githubUrl || "") ||
+    (profileForm.portfolioUrl || "") !== (profile.profile?.portfolioUrl || "") ||
+    (profileForm.leetcodeUrl || "") !== lc ||
+    (profileForm.hackerrankUrl || "") !== hr ||
+    (profileForm.gfgUrl || "") !== gfg ||
+    (profileForm.graduationYear || "") !== (profile.profile?.graduationYear?.toString() || "") ||
+    Boolean(profileForm.acceptingReferrals) !== Boolean(profile.acceptingReferrals) ||
+    Boolean(profileForm.openToWork) !== Boolean(profile.openToWork) ||
+    Boolean(profileForm.openToInternship) !== Boolean(profile.openToInternship) ||
+    Boolean(profileForm.acceptingCollaborators) !== Boolean(profile.acceptingCollaborators) ||
+    Boolean(profileForm.acceptingMentorship) !== Boolean(profile.acceptingMentorship) ||
+    (profileForm.availabilityStatus || "NOT_AVAILABLE") !== (profile.availabilityStatus || "NOT_AVAILABLE");
+
+  // Wrap onChange
   const change = (updates: Record<string, any>) => {
-    setIsDirty(true);
     onProfileFormChange({ ...profileForm, ...updates });
   };
 
@@ -138,7 +167,6 @@ export function ProfileSettings({
 
   const handleSave = (e: FormEvent) => {
     onSave(e);
-    setTimeout(() => setIsDirty(false), 800);
   };
 
   // ── File upload handlers ───────────────────────────────────────────────────
