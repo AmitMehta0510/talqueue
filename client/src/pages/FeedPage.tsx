@@ -2,27 +2,30 @@ import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react
 import { Link, useNavigate } from "react-router-dom";
 import { EngineerCard } from "../components/cards/SocialCards";
 import {
-  Compass,
   Loader2,
   RefreshCcw,
   Trophy,
   Star,
   Award,
-  ArrowUpRight,
   ArrowUp,
   Sparkles,
   Rocket,
   Briefcase,
-  User as UserIcon,
   X,
   Send,
   Users,
-  History,
-  CalendarDays,
+  Flame,
+  MessageSquare,
+  Hash,
+  Zap,
+  ChevronRight,
   AlertTriangle,
+  CalendarDays,
+  TrendingUp,
+  Compass,
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
-import { EmptyState, Avatar, FeedCardSkeleton, SidebarItemSkeleton } from "../components/ui";
+import { Avatar, FeedCardSkeleton, SidebarItemSkeleton } from "../components/ui";
 import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreatePostMutation,
@@ -41,7 +44,7 @@ import {
   useCreateDirectConversationMutation,
   useRecommendedProjectsQuery,
 } from "../hooks/usePlatformQueries";
-import { titleCase, userName, formatCount, userHeadline, formatDate } from "../core/utils/format";
+import { titleCase, userName, formatCount, formatDate } from "../core/utils/format";
 
 // Lazy-load the compose modal — it carries react-hook-form + zod and is only
 // needed when the user actively opens it. Falls back to a spinner until ready.
@@ -53,6 +56,36 @@ const ComposePost = lazy(() =>
 
 type FeedCategory = "all" | "recommended" | "discussions" | "projects" | "jobs";
 
+// Rotating composer placeholder hints — engineering-specific, not generic
+const COMPOSER_HINTS = [
+  "Shipped something? Share it with the community…",
+  "Building in public — post your latest progress…",
+  "Won a hackathon? Tell the community…",
+  "What engineering challenge did you solve today?…",
+  "Share a project update or open-source contribution…",
+];
+
+// Trending tags — static for now, can be fetched from backend later
+const TRENDING_TAGS = [
+  { label: "#ReactJS",      color: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
+  { label: "#OpenSource",   color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  { label: "#Hackathon",    color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  { label: "#SystemDesign", color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  { label: "#TypeScript",   color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  { label: "#DevOps",       color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+  { label: "#ML",           color: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20" },
+  { label: "#WebDev",       color: "bg-teal-500/10 text-teal-400 border-teal-500/20" },
+];
+
+// Feed tab definitions
+const FEED_TABS = [
+  { id: "all" as FeedCategory,           label: "All Feed",      icon: <Flame size={12} /> },
+  { id: "recommended" as FeedCategory,   label: "For You",       icon: <Sparkles size={12} /> },
+  { id: "discussions" as FeedCategory,   label: "Discussions",   icon: <MessageSquare size={12} /> },
+  { id: "projects" as FeedCategory,      label: "Projects",      icon: <Rocket size={12} /> },
+  { id: "jobs" as FeedCategory,          label: "Opportunities",  icon: <Briefcase size={12} /> },
+] as const;
+
 // ---------------------------------------------------------------------------
 // FeedPage
 // ---------------------------------------------------------------------------
@@ -62,10 +95,15 @@ export function FeedPage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<FeedCategory>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [composerHintIndex, setComposerHintIndex] = useState(0);
 
   // Compose modal states
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [composePostType, setComposePostType] = useState("GENERAL");
+
+  // Floating refresh toast state
+  const [showRefreshToast, setShowRefreshToast] = useState(false);
+  const [toastDismissed, setToastDismissed] = useState(false);
 
   // API Queries & Mutations
   const feedQuery        = useFeedQuery(30);
@@ -85,6 +123,7 @@ export function FeedPage() {
   const commentOnPost = useCommentOnPostMutation();
   const repost        = useRepostMutation();
 
+
   // Derived data (memoized — no expensive computation, just null-safety)
   const feed              = useMemo(() => feedQuery.data ?? [], [feedQuery.data]);
   const projects          = useMemo(() => {
@@ -93,7 +132,9 @@ export function FeedPage() {
     }
     return projectsQuery.data || [];
   }, [user, recommendedProjectsQuery.data, projectsQuery.data]);
+  // jobs derived here for future use (e.g. Opportunities tab count)
   const jobs              = useMemo(() => jobsQuery.data?.jobs ?? [], [jobsQuery.data]);
+  void jobs; // suppress unused-variable warning until used in feed cards
   const leaders           = useMemo(() => leaderboardQuery.data ?? [], [leaderboardQuery.data]);
   const featuredHackathons= useMemo(() => hackathonsQuery.data ?? [], [hackathonsQuery.data]);
   const suggestedUsers    = useMemo(() => {
@@ -110,10 +151,34 @@ export function FeedPage() {
     myReputationQuery.isFetching||
     hackathonsQuery.isFetching;
 
+  // Rotate composer placeholder hint every 4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setComposerHintIndex((i) => (i + 1) % COMPOSER_HINTS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Clock tick for greeting
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  // Show floating toast when feed refreshes in background (not on initial load)
+  useEffect(() => {
+    if (feedQuery.isFetching && !feedQuery.isLoading && !toastDismissed) {
+      setShowRefreshToast(true);
+    }
+    if (!feedQuery.isFetching) {
+      // Auto-dismiss after data is fresh
+      const t = setTimeout(() => {
+        setShowRefreshToast(false);
+        setToastDismissed(false);
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [feedQuery.isFetching, feedQuery.isLoading, toastDismissed]);
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -131,6 +196,15 @@ export function FeedPage() {
       return true;
     });
   }, [feed, activeCategory]);
+
+  // Per-tab post counts for badge indicators
+  const tabCounts = useMemo(() => ({
+    all:           feed.length,
+    recommended:   feed.filter((i) => Boolean(i.reason)).length,
+    discussions:   feed.filter((i) => i.type === "POST").length,
+    projects:      feed.filter((i) => i.type === "PROJECT").length,
+    jobs:          feed.filter((i) => i.type === "JOB" || i.type === "HACKATHON").length,
+  }), [feed]);
 
   const handleRefreshAll = useCallback(() => {
     feedQuery.refetch();
@@ -192,10 +266,6 @@ export function FeedPage() {
     [createPost.isPending],
   );
 
-  const displayReputation  = myReputationQuery.data?.reputationScore ?? user?.reputationScore ?? 0;
-  const displayEngineering = myReputationQuery.data?.engineeringScore ?? user?.engineeringScore ?? 0;
-  const displayBadgeCount  = myReputationQuery.data?.badges?.length ?? user?.skills?.length ?? 0;
-
   // Whether any interaction mutation is in-flight (used to disable FeedCard CTAs)
   const interacting = postReaction.isPending || commentOnPost.isPending || repost.isPending;
 
@@ -209,6 +279,18 @@ export function FeedPage() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Live context line stats for greeting banner
+  const todayPostCount = feed.filter((i) => {
+    if (!("createdAt" in i.data)) return false;
+    const d = new Date((i.data as any).createdAt);
+    return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
+  }).length;
+  const liveHackathonCount = featuredHackathons.length;
+
+  const maxRepScore = leaders.length > 0
+    ? Math.max(...leaders.map((l) => l.reputationScore || 0), 1)
+    : 1;
 
   return (
     <div className="space-y-5">
@@ -226,8 +308,23 @@ export function FeedPage() {
             </span>
             !
           </h2>
-          <p className="text-xxs mt-0.5" style={{ color: "var(--text-muted)" }}>
-            Welcome to your collaborative dev feed workspace.
+          {/* Live context line */}
+          <p className="text-xxs mt-1 flex items-center gap-3 flex-wrap" style={{ color: "var(--text-muted)" }}>
+            {todayPostCount > 0 && (
+              <span className="flex items-center gap-1">
+                <TrendingUp size={10} style={{ color: "var(--brand)" }} />
+                <span>{todayPostCount} engineer{todayPostCount !== 1 ? "s" : ""} posted today</span>
+              </span>
+            )}
+            {liveHackathonCount > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{liveHackathonCount} active hackathon{liveHackathonCount !== 1 ? "s" : ""} live</span>
+              </span>
+            )}
+            {todayPostCount === 0 && liveHackathonCount === 0 && (
+              <span>Welcome to your collaborative dev feed workspace.</span>
+            )}
           </p>
         </div>
         <button
@@ -245,230 +342,11 @@ export function FeedPage() {
         </button>
       </div>
 
-      {/* ── THREE-COLUMN RESPONSIVE LAYOUT ───────────────────────────── */}
+      {/* ── TWO-COLUMN RESPONSIVE LAYOUT ──────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-start">
 
-        {/* ── LEFT COLUMN — USER CARD & QUICK LINKS ──────────────────── */}
-        <aside className="lg:col-span-3 space-y-5">
-          {/* User Profile Snapshot Card */}
-          {user ? (
-            <div className="panel overflow-hidden">
-              {/* Cover gradient */}
-              <div className="h-16 w-full" style={{ background: "linear-gradient(135deg, var(--brand), rgba(99,102,241,0.7))" }} />
-              <div className="p-4 relative">
-                {/* Avatar overlapping cover */}
-                <div
-                  className="absolute -top-9 left-4 rounded-full border-[3px] shadow-card"
-                  style={{ borderColor: "var(--bg-surface)" }}
-                >
-                  <Avatar user={user} size="md" />
-                </div>
-
-                <div className="pt-7">
-                  <Link to="/profile" className="block group">
-                    <h2
-                      className="text-sm font-bold group-hover:underline transition line-clamp-1"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {userName(user)}
-                    </h2>
-                  </Link>
-                  <p className="text-[10px] font-bold mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    @{user.username}
-                  </p>
-                  <p className="mt-2 text-xs line-clamp-2 leading-relaxed font-medium" style={{ color: "var(--text-secondary)" }}>
-                    {userHeadline(user) || "Professional Software Developer"}
-                  </p>
-
-                  {/* Stats row */}
-                  <div
-                    className="mt-4 border-t pt-3 grid grid-cols-3 gap-1.5 text-center text-xs"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    {[
-                      { value: formatCount(displayReputation),      label: "Rep" },
-                      { value: Math.round(displayEngineering),      label: "Score" },
-                      { value: displayBadgeCount,                   label: "Badges" },
-                    ].map((stat) => (
-                      <div key={stat.label}>
-                        <span className="block font-bold text-xxs" style={{ color: "var(--text-primary)" }}>
-                          {stat.value}
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase tracking-wider block"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          {stat.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Link
-                    to="/profile"
-                    className="mt-4 btn-secondary w-full text-xxs font-bold py-1.5"
-                  >
-                    <span>View full profile</span>
-                    <ArrowUpRight size={12} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="panel p-5 text-center">
-              <div
-                className="mx-auto mb-3 h-12 w-12 rounded-xl flex items-center justify-center"
-                style={{ background: "var(--brand-light)", color: "var(--brand)" }}
-              >
-                <UserIcon size={22} />
-              </div>
-              <h2 className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
-                Developer Profile Snapshot
-              </h2>
-              <p className="mt-1.5 text-xxs leading-normal" style={{ color: "var(--text-muted)" }}>
-                Sign in to view and publish updates, check your engineering standing, and track open referral cards.
-              </p>
-              <Link to="/auth" className="mt-4 btn-primary text-xxs py-1.5 px-3 block">
-                Sign In
-              </Link>
-            </div>
-          )}
-
-          {/* Quick Shortcuts Panel */}
-          {user && (
-            <div className="panel p-4 space-y-3.5">
-              <h3
-                className="text-[10px] font-bold uppercase tracking-wider border-b pb-2"
-                style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
-              >
-                Developer Shortcuts
-              </h3>
-              <div className="space-y-2.5 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
-                {[
-                  { to: "/teams",      icon: <Users size={14} />,   label: "My Teams" },
-                  { to: "/jobs",       icon: <Briefcase size={14} />, label: "Saved Opportunity Cards" },
-                  { to: "/referrals",  icon: <Send size={14} />,    label: "Referrals Console" },
-                  { to: "/reputation", icon: <History size={14} />, label: "Points & Badges Log" },
-                ].map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="flex items-center gap-2 transition-colors duration-150 hover:underline"
-                    style={{ color: "inherit" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
-                  >
-                    <span style={{ color: "var(--text-muted)" }}>{link.icon}</span>
-                    <span>{link.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* ── MIDDLE COLUMN — POST TRIGGER, TABS & FEED LIST ─────────── */}
-        <section className="lg:col-span-6 space-y-5 min-w-0">
-
-          {/* Start a Post Card */}
-          {user && (
-            <div className="panel p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Avatar user={user} size="sm" />
-                <button
-                  onClick={() => openCompose("GENERAL")}
-                  disabled={createPost.isPending}
-                  className="flex-1 text-left rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 border outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{
-                    background: "var(--bg-surface-2)",
-                    borderColor: "var(--border)",
-                    color: "var(--text-muted)",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-3)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)"; }}
-                >
-                  Start an engineering update...
-                </button>
-              </div>
-              <div
-                className="flex items-center justify-around border-t pt-3 text-xxs font-bold"
-                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-              >
-                {[
-                  { type: "PROJECT_UPDATE", icon: <Rocket size={15} className="text-indigo-500" />,  label: "Project Update" },
-                  { type: "HACKATHON",      icon: <Award size={15} className="text-amber-500" />,    label: "Hackathon" },
-                  { type: "ACHIEVEMENT",    icon: <Sparkles size={15} style={{ color: "var(--brand)" }} />, label: "Achievement" },
-                ].map((btn) => (
-                  <button
-                    key={btn.type}
-                    onClick={() => openCompose(btn.type)}
-                    disabled={createPost.isPending}
-                    className="flex items-center gap-2 p-2 rounded-lg transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    {btn.icon}
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Category tabs */}
-          <div className="panel p-1 overflow-x-auto no-scrollbar">
-            <nav className="flex space-x-1" aria-label="Feed category tabs">
-              {(
-                [
-                  { id: "all",           label: "All Feed" },
-                  { id: "recommended",   label: "For You" },
-                  { id: "discussions",   label: "Discussions" },
-                  { id: "projects",      label: "Projects" },
-                  { id: "jobs",          label: "Opportunities" },
-                ] as const
-              ).map((cat) => {
-                const isActive = activeCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id)}
-                    className="relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-150 shrink-0"
-                    style={
-                      isActive
-                        ? { background: "var(--text-primary)", color: "var(--text-inverse)" }
-                        : { color: "var(--text-muted)", background: "transparent" }
-                    }
-                    onMouseEnter={(e) => {
-                      if (!isActive) (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent";
-                    }}
-                  >
-                    {cat.label}
-                    {cat.id === "recommended" && feed.some((item) => item.reason) && (
-                      <span
-                        className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-indigo-500"
-                        style={{ border: "2px solid var(--bg-surface)" }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Background-refresh indicator */}
-          {feedQuery.isFetching && !feedQuery.isLoading && (
-            <div
-              className="flex items-center gap-2 text-xs rounded-xl border px-4 py-2.5"
-              style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}
-            >
-              <Loader2 className="animate-spin flex-shrink-0" size={15} style={{ color: "var(--brand)" }} />
-              <span>Updating platform stream feeds...</span>
-            </div>
-          )}
+        {/* ── CENTER COLUMN — POST COMPOSER, TABS & FEED LIST ──────────── */}
+        <section className="lg:col-span-8 space-y-4 min-w-0">
 
           {/* Error Banner */}
           {feedQuery.isError && (
@@ -490,7 +368,144 @@ export function FeedPage() {
             </div>
           )}
 
-          {/* Feed List */}
+          {/* ── POST COMPOSER ─────────────────────────────────────────── */}
+          {user && (
+            <div
+              className="rounded-xl border p-4 flex flex-col gap-3 transition-all duration-200"
+              style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
+            >
+              <div className="flex items-start gap-3">
+                <Avatar user={user} size="sm" className="mt-0.5 shrink-0" />
+                <button
+                  onClick={() => openCompose("GENERAL")}
+                  disabled={createPost.isPending}
+                  className="flex-1 text-left rounded-xl px-4 py-3 text-xs font-medium transition-all duration-200 border outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    background: "var(--bg-surface-2)",
+                    borderColor: "var(--border)",
+                    color: "var(--text-muted)",
+                    minHeight: "44px",
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.borderColor = "var(--brand)";
+                    el.style.boxShadow = "0 0 0 3px var(--brand-light)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.borderColor = "var(--border)";
+                    el.style.boxShadow = "none";
+                  }}
+                >
+                  <span className="transition-all duration-500 block">
+                    {COMPOSER_HINTS[composerHintIndex]}
+                  </span>
+                </button>
+              </div>
+
+              {/* Action type chips */}
+              <div
+                className="flex items-center gap-2 flex-wrap border-t pt-3"
+                style={{ borderColor: "var(--border)" }}
+              >
+                {[
+                  {
+                    type: "PROJECT_UPDATE",
+                    icon: <Rocket size={13} />,
+                    label: "Project Update",
+                    style: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20",
+                  },
+                  {
+                    type: "HACKATHON",
+                    icon: <Award size={13} />,
+                    label: "Hackathon",
+                    style: "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20",
+                  },
+                  {
+                    type: "ACHIEVEMENT",
+                    icon: <Sparkles size={13} />,
+                    label: "Achievement",
+                    style: "bg-violet-500/10 text-violet-400 border-violet-500/20 hover:bg-violet-500/20",
+                  },
+                  {
+                    type: "GENERAL",
+                    icon: <Send size={13} />,
+                    label: "General",
+                    style: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20",
+                  },
+                ].map((btn) => (
+                  <button
+                    key={btn.type}
+                    onClick={() => openCompose(btn.type)}
+                    disabled={createPost.isPending}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xxs font-bold border transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed ${btn.style}`}
+                  >
+                    {btn.icon}
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── FEED TABS with icons + count badges ─────────────────── */}
+          <div
+            className="rounded-xl border p-1 overflow-x-auto no-scrollbar"
+            style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
+          >
+            <nav className="flex space-x-1" aria-label="Feed category tabs">
+              {FEED_TABS.map((cat) => {
+                const isActive = activeCategory === cat.id;
+                const count = tabCounts[cat.id];
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategory(cat.id)}
+                    className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 shrink-0"
+                    style={
+                      isActive
+                        ? {
+                            background: "linear-gradient(135deg, var(--brand), #6366f1)",
+                            color: "#fff",
+                            boxShadow: "0 2px 8px rgba(99,102,241,0.35)",
+                          }
+                        : { color: "var(--text-muted)", background: "transparent" }
+                    }
+                    onMouseEnter={(e) => {
+                      if (!isActive) (e.currentTarget as HTMLElement).style.background = "var(--bg-surface-2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent";
+                    }}
+                  >
+                    <span style={{ opacity: isActive ? 1 : 0.7 }}>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                    {count > 0 && (
+                      <span
+                        className="ml-0.5 rounded-full px-1.5 py-0 text-[9px] font-black leading-4 min-w-[16px] text-center"
+                        style={
+                          isActive
+                            ? { background: "rgba(255,255,255,0.25)", color: "#fff" }
+                            : { background: "var(--bg-surface-2)", color: "var(--text-muted)" }
+                        }
+                      >
+                        {count}
+                      </span>
+                    )}
+                    {cat.id === "recommended" && feed.some((item) => item.reason) && !isActive && (
+                      <span
+                        className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-indigo-500"
+                        style={{ border: "2px solid var(--bg-surface)" }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* ── FEED LIST ────────────────────────────────────────────── */}
           <div className="space-y-4">
             {feedQuery.isLoading ? (
               Array.from({ length: 4 }).map((_, i) => <FeedCardSkeleton key={i} />)
@@ -509,32 +524,94 @@ export function FeedPage() {
                 />
               ))
             ) : (
-              <EmptyState
-                icon={Compass}
-                title={activeCategory === "recommended" ? "No recommendations yet" : "Workspace feed empty"}
-                text={
-                  activeCategory === "recommended"
-                    ? "Add detailed skills and experiences to your developer profile to enable the matching engine recommendation signals."
-                    : "No posts found in this feed category at the moment. Try reloading the feed."
-                }
-              />
+              /* ── IMPROVED EMPTY STATE ──────────────────────────────── */
+              <div
+                className="rounded-xl border py-14 px-6 text-center relative overflow-hidden"
+                style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
+              >
+                {/* Decorative background circles */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: "radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.06) 0%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="mx-auto mb-5 h-16 w-16 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: "linear-gradient(135deg, var(--brand-light), rgba(99,102,241,0.15))",
+                    boxShadow: "0 0 0 1px var(--brand-light)",
+                  }}
+                >
+                  <Compass size={28} style={{ color: "var(--brand)" }} />
+                </div>
+                <h3 className="text-sm font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                  {activeCategory === "recommended"
+                    ? "No recommendations yet"
+                    : "Your engineering feed is warming up 🚀"}
+                </h3>
+                <p className="text-xs leading-relaxed max-w-xs mx-auto mb-6" style={{ color: "var(--text-muted)" }}>
+                  {activeCategory === "recommended"
+                    ? "Add detailed skills and experiences to your profile to power the recommendation engine."
+                    : "Follow engineers or join projects to populate your feed with relevant content."}
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <Link
+                    to="/campus/projects"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all duration-150 hover:opacity-90"
+                    style={{ background: "linear-gradient(135deg, var(--brand), #6366f1)" }}
+                  >
+                    <Rocket size={13} />
+                    Explore Projects
+                  </Link>
+                  <Link
+                    to="/discover"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border transition-all duration-150"
+                    style={{
+                      borderColor: "var(--brand)",
+                      color: "var(--brand)",
+                      background: "var(--brand-light)",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.15)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--brand-light)";
+                    }}
+                  >
+                    <Users size={13} />
+                    Follow Engineers
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         </section>
 
-        {/* ── RIGHT COLUMN — LEADERBOARD, PROJECTS, HACKATHONS, MONITOR ─ */}
-        <aside className="hidden lg:col-span-3 space-y-5 lg:block">
+        {/* ── RIGHT COLUMN — LEADERBOARD, TAGS, PROJECTS, HACKATHONS ── */}
+        <aside className="hidden lg:col-span-4 space-y-4 lg:block">
 
           {/* Top Engineers Leaderboard */}
-          <div className="panel p-4">
+          <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div
-              className="flex items-center gap-2 pb-3 mb-3 border-b"
+              className="flex items-center justify-between pb-3 mb-3 border-b"
               style={{ borderColor: "var(--border)" }}
             >
-              <Trophy size={16} className="text-amber-500" />
-              <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
-                Top Engineers
-              </h3>
+              <div className="flex items-center gap-2">
+                <Trophy size={15} className="text-amber-500" />
+                <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
+                  Top Engineers
+                </h3>
+              </div>
+              <Link
+                to="/career/reputation"
+                className="text-[9px] font-bold flex items-center gap-0.5 transition-colors duration-150"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+              >
+                Full Board <ChevronRight size={10} />
+              </Link>
             </div>
 
             {leaderboardQuery.isLoading ? (
@@ -542,47 +619,69 @@ export function FeedPage() {
                 {Array.from({ length: 3 }).map((_, i) => <SidebarItemSkeleton key={i} />)}
               </div>
             ) : leaders.length > 0 ? (
-              <div className="space-y-3">
-                {leaders.slice(0, 3).map((lead, idx) => {
+              <div className="space-y-4">
+                {leaders.slice(0, 5).map((lead, idx) => {
                   const medalColors = ["text-amber-500", "text-slate-400", "text-amber-700"];
-                  const rankIcons   = [<Trophy size={14} key="t" />, <Star size={14} key="s" />, <Award size={14} key="a" />];
+                  const rankIcons   = [<Trophy size={13} key="t" />, <Star size={13} key="s" />, <Award size={13} key="a" />];
+                  const repPct = Math.round(((lead.reputationScore || 0) / maxRepScore) * 100);
                   return (
-                    <div key={lead.userId || idx} className="flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`shrink-0 font-bold ${medalColors[idx] || "text-slate-400"}`}>
-                          {idx < 3 ? rankIcons[idx] : `#${idx + 1}`}
-                        </span>
-                        {lead.user ? (
-                          <Avatar user={lead.user} size="sm" />
-                        ) : (
-                          <div
-                            className="h-6 w-6 rounded-full flex items-center justify-center font-bold text-[10px]"
-                            style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
-                          >
-                            {(lead.username || "U").substring(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
+                    <div key={lead.userId || idx} className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`shrink-0 font-bold text-xs ${medalColors[idx] || "text-slate-400"}`}>
+                            {idx < 3 ? rankIcons[idx] : <span className="text-[10px]">#{idx + 1}</span>}
+                          </span>
                           {lead.user ? (
-                            <Link
-                              to={`/users/${lead.user?.username || lead.userId}`}
-                              className="font-semibold truncate block transition-colors duration-150 hover:underline"
-                              style={{ color: "var(--text-primary)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
-                            >
-                              {userName(lead.user)}
-                            </Link>
+                            <Avatar user={lead.user} size="sm" />
                           ) : (
-                            <span className="font-semibold truncate block" style={{ color: "var(--text-primary)" }}>
-                              @{lead.username}
-                            </span>
+                            <div
+                              className="h-6 w-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
+                              style={{ background: "var(--bg-surface-2)", color: "var(--text-muted)" }}
+                            >
+                              {(lead.username || "U").substring(0, 1).toUpperCase()}
+                            </div>
                           )}
+                          <div className="min-w-0 flex-1">
+                            {lead.user ? (
+                              <Link
+                                to={`/users/${lead.user?.username || lead.userId}`}
+                                className="font-semibold truncate block text-xs transition-colors duration-150 hover:underline"
+                                style={{ color: "var(--text-primary)" }}
+                                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
+                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                              >
+                                {userName(lead.user)}
+                              </Link>
+                            ) : (
+                              <span className="font-semibold truncate block text-xs" style={{ color: "var(--text-primary)" }}>
+                                @{lead.username}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--brand)" }}>
+                          {formatCount(lead.reputationScore || 0)}
+                        </span>
                       </div>
-                      <span className="chip text-[10px] font-bold py-0.5 px-2 text-indigo-700 dark:text-indigo-400" style={{ background: "var(--brand-light)", borderColor: "transparent" }}>
-                        {lead.reputationScore} rep
-                      </span>
+                      {/* Rep progress bar */}
+                      <div
+                        className="h-1 rounded-full overflow-hidden ml-10"
+                        style={{ background: "var(--bg-surface-2)" }}
+                      >
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${repPct}%`,
+                            background: idx === 0
+                              ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
+                              : idx === 1
+                              ? "linear-gradient(90deg, #94a3b8, #cbd5e1)"
+                              : idx === 2
+                              ? "linear-gradient(90deg, #b45309, #d97706)"
+                              : "var(--brand)",
+                          }}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -594,14 +693,34 @@ export function FeedPage() {
             )}
           </div>
 
+          {/* Trending Tags */}
+          <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-2 pb-3 mb-3 border-b" style={{ borderColor: "var(--border)" }}>
+              <Hash size={14} style={{ color: "var(--brand)" }} />
+              <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
+                Trending Topics
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {TRENDING_TAGS.map((tag) => (
+                <span
+                  key={tag.label}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer transition-all duration-150 hover:scale-105 ${tag.color}`}
+                >
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
           {/* Suggested Connections Widget */}
           {user && suggestedUsers.length > 0 && (
-            <div className="panel p-4">
+            <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
               <div
                 className="flex items-center gap-2 pb-3 mb-3 border-b"
                 style={{ borderColor: "var(--border)" }}
               >
-                <Users size={16} className="text-indigo-500" />
+                <Users size={14} className="text-indigo-500" />
                 <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
                   Suggested Connections
                 </h3>
@@ -625,15 +744,26 @@ export function FeedPage() {
           )}
 
           {/* Featured Projects */}
-          <div className="panel p-4">
+          <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div
-              className="flex items-center gap-2 pb-3 mb-3 border-b"
+              className="flex items-center justify-between pb-3 mb-3 border-b"
               style={{ borderColor: "var(--border)" }}
             >
-              <Rocket size={16} className="text-indigo-500" />
-              <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
-                Featured Repositories
-              </h3>
+              <div className="flex items-center gap-2">
+                <Rocket size={14} className="text-indigo-500" />
+                <h3 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
+                  Featured Projects
+                </h3>
+              </div>
+              <Link
+                to="/campus/projects"
+                className="text-[9px] font-bold flex items-center gap-0.5 transition-colors duration-150"
+                style={{ color: "var(--text-muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+              >
+                See all <ChevronRight size={10} />
+              </Link>
             </div>
 
             {projectsQuery.isLoading || (user && recommendedProjectsQuery.isLoading) ? (
@@ -643,7 +773,7 @@ export function FeedPage() {
             ) : projects.length > 0 ? (
               <div className="space-y-3.5">
                 {projects.slice(0, 3).map((project) => (
-                  <div key={project.id}>
+                  <div key={project.id} className="group/proj">
                     <Link
                       to={`/projects/${project.slug || project.id}`}
                       className="block text-xs font-bold transition-colors duration-150 truncate hover:underline"
@@ -653,12 +783,12 @@ export function FeedPage() {
                     >
                       {project.title}
                     </Link>
-                    <p className="text-[10px] mt-1 line-clamp-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[10px] mt-0.5 line-clamp-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>
                       {project.shortDescription || project.description || "Active collaboration project"}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {Array.isArray(project.techStack) ? (
-                        project.techStack.slice(0, 2).map((stack) => (
+                        project.techStack.slice(0, 3).map((stack) => (
                           <span key={String(stack)} className="chip text-[9px] py-0 px-1.5">
                             {String(stack)}
                           </span>
@@ -673,26 +803,32 @@ export function FeedPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
-                No customized projects matching your skills.
+              <div className="text-xs text-center py-3" style={{ color: "var(--text-muted)" }}>
+                No projects matching your skills yet.
               </div>
             )}
           </div>
 
           {/* Featured Hackathons */}
-          <div className="panel p-4">
+          <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div
-              className="flex items-center gap-2 pb-3 mb-3 border-b"
+              className="flex items-center justify-between pb-3 mb-3 border-b"
               style={{ borderColor: "var(--border)" }}
             >
-              <div
-                className="flex items-center justify-center p-1 rounded-lg bg-[var(--bg-surface-warning)] text-[var(--text-warning)]"
-              >
-                <Trophy size={14} className="stroke-[2.5]" />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center p-1 rounded-lg bg-[var(--bg-surface-warning)] text-[var(--text-warning)]">
+                  <Trophy size={13} className="stroke-[2.5]" />
+                </div>
+                <h3 className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
+                  Live Hackathons
+                </h3>
               </div>
-              <h3 className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: "var(--text-primary)" }}>
-                Featured Hackathons
-              </h3>
+              {featuredHackathons.length > 0 && (
+                <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {featuredHackathons.length} active
+                </span>
+              )}
             </div>
 
             {hackathonsQuery.isLoading ? (
@@ -719,19 +855,23 @@ export function FeedPage() {
                       el.style.paddingLeft = "10px";
                     }}
                   >
-                    <Link
-                      to={`/hackathons/${hackathon.slug || hackathon.id}`}
-                      className="block text-xs font-bold transition-colors duration-150 truncate hover:underline"
-                      style={{ color: "var(--text-primary)" }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
-                    >
-                      {hackathon.title}
-                    </Link>
-                    <p className="text-[10px] mt-1 line-clamp-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                      {hackathon.shortDescription || hackathon.description || "Active collaboration hackathon"}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-start justify-between gap-1">
+                      <Link
+                        to={`/hackathons/${hackathon.slug || hackathon.id}`}
+                        className="block text-xs font-bold transition-colors duration-150 truncate hover:underline flex-1"
+                        style={{ color: "var(--text-primary)" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                      >
+                        {hackathon.title}
+                      </Link>
+                      {/* LIVE pulse dot */}
+                      <span className="flex items-center gap-1 shrink-0 mt-0.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[8px] font-black text-emerald-500 uppercase">Live</span>
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex flex-wrap gap-1">
                         {hackathon.sourcePlatform ? (
                           <span
@@ -758,7 +898,7 @@ export function FeedPage() {
                       {hackathon.startDate && (
                         <span className="text-[9px] font-medium flex items-center gap-0.5" style={{ color: "var(--text-muted)" }}>
                           <CalendarDays size={10} />
-                          Starts {formatDate(hackathon.startDate)}
+                          {formatDate(hackathon.startDate)}
                         </span>
                       )}
                     </div>
@@ -766,8 +906,9 @@ export function FeedPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-center py-4" style={{ color: "var(--text-muted)" }}>
-                No active hackathons available.
+              <div className="text-xs text-center py-3 flex flex-col items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                <Zap size={18} style={{ color: "var(--text-muted)", opacity: 0.4 }} />
+                No active hackathons right now.
               </div>
             )}
           </div>
@@ -822,6 +963,50 @@ export function FeedPage() {
           </div>
         </div>
       )}
+
+      {/* ── FLOATING BACKGROUND REFRESH TOAST ───────────────────────── */}
+      {showRefreshToast && (
+        <div
+          className="fixed top-20 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-lg transition-all duration-300"
+          style={{
+            background: "var(--bg-surface)",
+            borderColor: "var(--border)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+          }}
+        >
+          {feedQuery.isFetching ? (
+            <Loader2 className="animate-spin shrink-0" size={14} style={{ color: "var(--brand)" }} />
+          ) : (
+            <ArrowUp size={14} style={{ color: "var(--brand)" }} />
+          )}
+          <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+            {feedQuery.isFetching ? "Updating feed…" : "Feed updated · ↑ New posts"}
+          </span>
+          {!feedQuery.isFetching && (
+            <button
+              type="button"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setShowRefreshToast(false);
+                setToastDismissed(true);
+              }}
+              className="text-[10px] font-bold ml-1 underline underline-offset-2"
+              style={{ color: "var(--brand)" }}
+            >
+              View
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { setShowRefreshToast(false); setToastDismissed(true); }}
+            className="icon-btn ml-1 p-0.5"
+            title="Dismiss"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       {/* ── SCROLL TO TOP BUTTON ────────────────────────────────────── */}
       <button
         type="button"
