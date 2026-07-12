@@ -259,23 +259,6 @@ export function ProfileSettings({
               maxLength={1000}
             />
           </Field>
-          <Field label="Public availability message" className="md:col-span-2">
-            <div className="relative">
-              <input
-                className="field pr-14"
-                value={profileForm.availabilityText || ""}
-                onChange={set("availabilityText")}
-                placeholder="Open to internships, referrals, mentoring…"
-                maxLength={240}
-              />
-              <span
-                className="absolute right-3 top-2.5 text-[10px] font-semibold"
-                style={{ color: availabilityTextLen > 200 ? "#f59e0b" : "var(--text-muted)" }}
-              >
-                {availabilityTextLen}/240
-              </span>
-            </div>
-          </Field>
         </div>
       </SettingsSection>
 
@@ -336,6 +319,26 @@ export function ProfileSettings({
               </div>
             );
           })}
+
+          <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+            <Field label="Add a custom note (optional)">
+              <div className="relative">
+                <input
+                  className="field pr-14"
+                  value={profileForm.availabilityText || ""}
+                  onChange={set("availabilityText")}
+                  placeholder="e.g. Open to React roles in Bangalore, available from August 2026…"
+                  maxLength={240}
+                />
+                <span
+                  className="absolute right-3 top-2.5 text-[10px] font-semibold"
+                  style={{ color: availabilityTextLen > 200 ? "#f59e0b" : "var(--text-muted)" }}
+                >
+                  {availabilityTextLen}/240
+                </span>
+              </div>
+            </Field>
+          </div>
         </div>
       </SettingsSection>
 
