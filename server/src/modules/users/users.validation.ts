@@ -25,8 +25,8 @@ export const UpdateProfileSchema = z.object({
   hackerrankUrl: z.string().url().max(2048).optional().or(z.literal("")),
   gfgUrl: z.string().url().max(2048).optional().or(z.literal("")),
   graduationYear: z.number().int().min(1990).max(2040).optional(),
-  collegeId: z.string().cuid().optional(),
-  departmentId: z.string().cuid().optional(),
+  collegeId: z.string().uuid().optional(),
+  departmentId: z.string().uuid().optional(),
   departmentName: z.string().trim().max(120).optional(),
   acceptingReferrals: z.boolean().optional(),
   openToWork: z.boolean().optional(),
@@ -37,7 +37,7 @@ export const UpdateProfileSchema = z.object({
 
 // ── Skills ────────────────────────────────────────────────────────────────────
 export const AddSkillSchema = z.object({
-  skillId: z.string().cuid(),
+  skillId: z.string().uuid(),
   level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]),
 });
 
@@ -71,7 +71,7 @@ export const AddExperienceSchema = z.object({
   managerName: z.string().trim().max(100).optional(),
   managerEmail: z.string().email().optional().or(z.literal("")),
   managerLinkedinUrl: z.string().url().max(2048).optional().or(z.literal("")),
-  skillsUsed: z.array(z.string().cuid()).max(20).optional(),
+  skillsUsed: z.array(z.string().uuid()).max(20).optional(),
   techStack: z.array(z.string().trim().max(50)).max(20).optional(),
   teamSize: z.number().int().min(1).max(100000).optional(),
 });
@@ -80,9 +80,9 @@ export const UpdateExperienceSchema = AddExperienceSchema.partial();
 
 // ── Education ─────────────────────────────────────────────────────────────────
 export const AddEducationSchema = z.object({
-  collegeId: z.string().cuid().optional(),
+  collegeId: z.string().uuid().optional(),
   customCollegeName: z.string().trim().max(120).optional(),
-  departmentId: z.string().cuid().optional(),
+  departmentId: z.string().uuid().optional(),
   departmentName: z.string().trim().max(120).optional(),
   degree: z.string().trim().max(100).optional(),
   fieldOfStudy: z.string().trim().max(100).optional(),
