@@ -206,7 +206,7 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* ── Role badge + Trust + Availability signals ──────────── */}
+        {/* ── Role badge + Trust ──────────────────────────────────── */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {/* Colored role badge */}
           <span
@@ -224,17 +224,6 @@ export function ProfileHeader({
             <ShieldCheck size={11} className="text-indigo-500" />
             {titleCase(profile.trustLevel || "BEGINNER")}
           </span>
-
-          {/* Color-coded availability signal chips */}
-          {availabilitySignals.map((sig) => (
-            <span
-              key={sig.label}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${sig.color}`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
-              {sig.label}
-            </span>
-          ))}
         </div>
 
         {/* ── External links ──────────────────────────────────────── */}

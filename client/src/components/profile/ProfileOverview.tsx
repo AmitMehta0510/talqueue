@@ -39,13 +39,13 @@ export function ProfileOverview({
 
   const skills = (profile.skills || []).slice(0, 12);
   const pinnedProject = (profile.ownedProjects || [])[0];
-  const availability = [
-    profile.openToWork              && "Open to Work",
-    profile.openToInternship        && "Internships",
-    profile.acceptingCollaborators  && "Collaborators",
-    profile.acceptingReferrals      && "Referrals",
-    profile.acceptingMentorship     && "Mentorship",
-  ].filter(Boolean) as string[];
+  const activeSignals = [
+    profile.openToWork             && { label: "Open to Work (Full-Time)", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",  dot: "bg-emerald-500" },
+    profile.openToInternship       && { label: "Open to Internships",        color: "bg-sky-500/10 text-sky-400 border-sky-500/30",             dot: "bg-sky-500" },
+    profile.acceptingReferrals     && { label: "Accepting Referrals",        color: "bg-amber-500/10 text-amber-400 border-amber-500/30",       dot: "bg-amber-500" },
+    profile.acceptingCollaborators && { label: "Collaborators / Teamwork",   color: "bg-violet-500/10 text-violet-400 border-violet-500/30",    dot: "bg-violet-500" },
+    profile.acceptingMentorship    && { label: "Offering Mentorship",         color: "bg-rose-500/10 text-rose-400 border-rose-500/30",          dot: "bg-rose-500" },
+  ].filter(Boolean) as { label: string; color: string; dot: string }[];
 
   const statsGrid = [
     { icon: <Code2 size={15} className="text-indigo-400" />,   label: "Skills",      value: profile._count?.skills ?? 0 },
@@ -108,27 +108,36 @@ export function ProfileOverview({
             </p>
           )}
 
-          {/* Availability signals */}
-          {availability.length > 0 && (
-            <div className="mt-4 pt-4 border-t flex flex-wrap gap-2" style={{ borderColor: "var(--border)" }}>
-              {availability.map((a) => (
-                <span
-                  key={a}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border"
-                  style={{ background: "rgba(16,185,129,0.08)", borderColor: "rgba(16,185,129,0.25)", color: "#10b981" }}
-                >
-                  <Zap size={10} />
-                  {a}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Opportunities & Availability Card */}
+          {activeSignals.length > 0 && (
+            <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+              <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                    Opportunities &amp; Availability
+                  </h4>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {activeSignals.map((sig) => (
+                    <span
+                      key={sig.label}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${sig.color}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
+                      {sig.label}
+                    </span>
+                  ))}
+                </div>
 
-          {/* Availability note */}
-          {profile.profile?.availabilityText && (
-            <p className="mt-3 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              {profile.profile.availabilityText}
-            </p>
+                {profile.profile?.availabilityText && (
+                  <p className="text-xs italic leading-relaxed pl-3 border-l-2 mt-2" style={{ color: "var(--text-muted)", borderColor: "var(--brand)" }}>
+                    &ldquo;{profile.profile.availabilityText}&rdquo;
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
 

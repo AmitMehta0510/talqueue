@@ -286,7 +286,7 @@ export function UserProfilePage() {
             </div>
           </div>
 
-          {/* Role badge + Trust badge + Availability */}
+          {/* Role badge + Trust badge */}
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {/* Colored role badge */}
             {(() => {
@@ -313,15 +313,6 @@ export function UserProfilePage() {
               <ShieldCheck size={12} className="text-indigo-500" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
-            {availabilitySignals.map((sig) => (
-              <span
-                key={sig.label}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${sig.color}`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
-                {sig.label}
-              </span>
-            ))}
           </div>
 
           {/* Glowing stat cards */}
@@ -418,15 +409,39 @@ export function UserProfilePage() {
                 ) : (
                   <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>No bio added.</p>
                 )}
-              </InfoPanel>
 
-              {profile.profile?.availabilityText && (
-                <InfoPanel title="Availability" icon={Zap}>
-                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {profile.profile.availabilityText}
-                  </p>
-                </InfoPanel>
-              )}
+                {/* Opportunities & Availability Card */}
+                {availabilitySignals.length > 0 && (
+                  <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+                    <div className="rounded-xl border p-4" style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>
+                          Opportunities &amp; Availability
+                        </h4>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {availabilitySignals.map((sig) => (
+                          <span
+                            key={sig.label}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${sig.color}`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
+                            {sig.label}
+                          </span>
+                        ))}
+                      </div>
+
+                      {profile.profile?.availabilityText && (
+                        <p className="text-xs italic leading-relaxed pl-3 border-l-2 mt-2" style={{ color: "var(--text-muted)", borderColor: "var(--brand)" }}>
+                          &ldquo;{profile.profile.availabilityText}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </InfoPanel>
             </div>
 
             {/* Sidebar */}
