@@ -126,13 +126,15 @@ export function UserProfilePage() {
     { icon: LinkIcon, label: "Resume", href: profile.profile?.resumeUrl },
   ].filter((l) => l.href);
 
-  const availability = [
-    profile.openToWork && "Open to work",
-    profile.openToInternship && "Internships",
-    profile.acceptingCollaborators && "Collaborators",
-    profile.acceptingReferrals && "Referrals",
-    profile.acceptingMentorship && "Mentorship",
-  ].filter(Boolean) as string[];
+  const availabilitySignals = [
+    profile.openToWork             && { label: "Open to Work",       color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-500" },
+    profile.openToInternship       && { label: "Internships",         color: "bg-sky-500/10 text-sky-400 border-sky-500/30",            dot: "bg-sky-500" },
+    profile.acceptingReferrals     && { label: "Accepting Referrals", color: "bg-amber-500/10 text-amber-400 border-amber-500/30",      dot: "bg-amber-500" },
+    profile.acceptingCollaborators && { label: "Collaborators",        color: "bg-violet-500/10 text-violet-400 border-violet-500/30",   dot: "bg-violet-500" },
+    profile.acceptingMentorship    && { label: "Mentoring",            color: "bg-rose-500/10 text-rose-400 border-rose-500/30",         dot: "bg-rose-500" },
+  ].filter(Boolean) as { label: string; color: string; dot: string }[];
+
+  const isAvailable = availabilitySignals.length > 0;
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
     { id: "about",       label: "Overview",        icon: User },
@@ -289,14 +291,13 @@ export function UserProfilePage() {
               <ShieldCheck size={12} className="text-indigo-500" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
-            {availability.map((a) => (
+            {availabilitySignals.map((sig) => (
               <span
-                key={a}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border"
-                style={{ background: "rgba(16,185,129,0.08)", borderColor: "rgba(16,185,129,0.25)", color: "#10b981" }}
+                key={sig.label}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${sig.color}`}
               >
-                <Zap size={11} />
-                {a}
+                <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
+                {sig.label}
               </span>
             ))}
           </div>

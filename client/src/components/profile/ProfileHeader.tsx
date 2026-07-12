@@ -52,13 +52,16 @@ export function ProfileHeader({
     { icon: FileText, label: "Resume",    href: profile.profile?.resumeUrl },
   ].filter((l) => l.href);
 
-  const availability = [
-    profile.openToWork              && "Open to Work",
-    profile.openToInternship        && "Internships",
-    profile.acceptingCollaborators  && "Collaborators",
-    profile.acceptingReferrals      && "Referrals",
-    profile.acceptingMentorship     && "Mentorship",
-  ].filter(Boolean) as string[];
+  // Structured availability signals with per-signal styling
+  const availabilitySignals = [
+    profile.openToWork             && { label: "Open to Work",        color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",  dot: "bg-emerald-500" },
+    profile.openToInternship       && { label: "Internships",          color: "bg-sky-500/10 text-sky-400 border-sky-500/30",             dot: "bg-sky-500" },
+    profile.acceptingReferrals     && { label: "Accepting Referrals",  color: "bg-amber-500/10 text-amber-400 border-amber-500/30",       dot: "bg-amber-500" },
+    profile.acceptingCollaborators && { label: "Collaborators",         color: "bg-violet-500/10 text-violet-400 border-violet-500/30",    dot: "bg-violet-500" },
+    profile.acceptingMentorship    && { label: "Mentoring",             color: "bg-rose-500/10 text-rose-400 border-rose-500/30",          dot: "bg-rose-500" },
+  ].filter(Boolean) as { label: string; color: string; dot: string }[];
+
+  const isAvailable = availabilitySignals.length > 0;
 
   const roleBadge = ROLE_BADGE[profile.primaryRole || "STUDENT"] ?? ROLE_BADGE["STUDENT"];
 
@@ -158,6 +161,17 @@ export function ProfileHeader({
                 >
                   {userName(profile)}
                 </h1>
+                {/* Green available dot */}
+                {isAvailable && (
+                  <span
+                    className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border"
+                    style={{ background: "rgba(16,185,129,0.10)", borderColor: "rgba(16,185,129,0.3)", color: "#10b981" }}
+                    title="Available for opportunities"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Available
+                  </span>
+                )}
                 {loading && (
                   <Loader2 className="animate-spin shrink-0" size={14} style={{ color: "var(--text-muted)" }} />
                 )}
@@ -180,7 +194,7 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* ── Role badge + Trust + Availability ──────────────────── */}
+        {/* ── Role badge + Trust + Availability signals ──────────── */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {/* Colored role badge */}
           <span
@@ -199,15 +213,14 @@ export function ProfileHeader({
             {titleCase(profile.trustLevel || "BEGINNER")}
           </span>
 
-          {/* Availability signals */}
-          {availability.map((a) => (
+          {/* Color-coded availability signal chips */}
+          {availabilitySignals.map((sig) => (
             <span
-              key={a}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border"
-              style={{ background: "rgba(16,185,129,0.08)", borderColor: "rgba(16,185,129,0.25)", color: "#10b981" }}
+              key={sig.label}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${sig.color}`}
             >
-              <Zap size={10} />
-              {a}
+              <span className={`h-1.5 w-1.5 rounded-full ${sig.dot} shrink-0`} />
+              {sig.label}
             </span>
           ))}
         </div>
