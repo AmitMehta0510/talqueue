@@ -1,11 +1,11 @@
+import React from "react";
 import {
   Briefcase,
   Code2,
   FolderKanban,
   GraduationCap,
-  MessageSquare,
+  LayoutDashboard,
   Settings,
-  User,
 } from "lucide-react";
 import { User as UserType } from "../../lib/api";
 import { titleCase, compactPayload } from "../../core/utils/format";
@@ -19,19 +19,17 @@ import { ProfileExperience } from "./ProfileExperience";
 import { ProfileEducation } from "./ProfileEducation";
 import { ProfileProjects } from "./ProfileProjects";
 import { ProfileSettings } from "./ProfileSettings";
-import { PostsTab } from "./PostsTab";
 import { useProfileWorkspace } from "../../hooks/useProfileWorkspace";
 
-type Tab = "about" | "posts" | "experience" | "skills" | "education" | "projects" | "settings";
+type Tab = "overview" | "experience" | "skills" | "education" | "projects" | "settings";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-  { id: "about", label: "About", icon: User },
-  { id: "posts", label: "Posts & Reposts", icon: MessageSquare },
-  { id: "experience", label: "Experience", icon: Briefcase },
-  { id: "skills", label: "Skills", icon: Code2 },
-  { id: "education", label: "Education", icon: GraduationCap },
-  { id: "projects", label: "Projects", icon: FolderKanban },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "overview",   label: "Overview",   icon: LayoutDashboard },
+  { id: "experience", label: "Experience",  icon: Briefcase },
+  { id: "skills",     label: "Skills",      icon: Code2 },
+  { id: "education",  label: "Education",   icon: GraduationCap },
+  { id: "projects",   label: "Projects",    icon: FolderKanban },
+  { id: "settings",   label: "Settings",    icon: Settings },
 ];
 
 interface ProfileWorkspaceProps {
@@ -97,6 +95,9 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
     handleVerifyWorkEmail,
   } = useProfileWorkspace(fallbackUser);
 
+  // Cast to the wider type so the hook's stored "about" value still works
+  const resolvedTab = (activeTab === "about" ? "overview" : activeTab) as Tab;
+
   return (
     <div className="mx-auto max-w-5xl space-y-0">
       <ProfileHeader
@@ -106,33 +107,53 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
         totalTasks={profileTasks.length}
       />
 
-      {/* Tab Navigation */}
-      <div className="sticky top-0 z-20 -mx-0 mt-0 border-b backdrop-blur-sm shadow-sm border-base bg-surface/90">
-        <div className="flex overflow-x-auto">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              id={`profile-tab-${id}`}
-              className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
-                ${activeTab === id
-                  ? "text-brand"
-                  : "text-muted-fg hover:text-primary"
-                }`}
-              onClick={() => setActiveTab(id)}
-            >
-              <Icon size={16} />
-              {label}
-              {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
-              )}
-            </button>
-          ))}
+      {/* ── Tab Navigation ─────────────────────────────────────── */}
+      <div
+        className="sticky top-0 z-20 mt-0 border-b backdrop-blur-sm shadow-sm"
+        style={{
+          borderColor: "var(--border)",
+          background: "color-mix(in srgb, var(--bg-surface) 95%, transparent)",
+        }}
+      >
+        <div className="flex overflow-x-auto no-scrollbar">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const isActive = resolvedTab === id;
+            return (
+              <button
+                key={id}
+                id={`profile-tab-${id}`}
+                type="button"
+                className="relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200"
+                style={
+                  isActive
+                    ? { color: "var(--brand)" }
+                    : { color: "var(--text-muted)" }
+                }
+                onClick={() => setActiveTab(id as any)}
+                onMouseEnter={(e) => {
+                  if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                }}
+              >
+                <Icon size={15} />
+                {label}
+                {isActive && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                    style={{ background: "linear-gradient(90deg, var(--brand), #6366f1)" }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* ── Tab Content ────────────────────────────────────────── */}
       <div className="mt-6">
-        {activeTab === "about" && (
+        {resolvedTab === "overview" && (
           <ProfileOverview
             profile={profile}
             completedTasks={completedTasks}
@@ -140,11 +161,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
           />
         )}
 
-        {activeTab === "posts" && profile.id && (
-          <PostsTab userId={profile.id} />
-        )}
-
-        {activeTab === "experience" && (
+        {resolvedTab === "experience" && (
           <ProfileExperience
             experiences={experiences}
             isFetching={experiencesQuery.isFetching}
@@ -167,7 +184,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
           />
         )}
 
-        {activeTab === "skills" && (
+        {resolvedTab === "skills" && (
           <ProfileSkills
             skills={skills}
             isFetching={skillsQuery.isFetching}
@@ -182,7 +199,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
           />
         )}
 
-        {activeTab === "education" && (
+        {resolvedTab === "education" && (
           <ProfileEducation
             educations={educations}
             isFetching={educationsQuery.isFetching}
@@ -226,7 +243,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
           />
         )}
 
-        {activeTab === "projects" && (
+        {resolvedTab === "projects" && (
           <ProfileProjects
             projects={projectsQuery.data || []}
             isFetching={projectsQuery.isFetching}
@@ -234,7 +251,7 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
           />
         )}
 
-        {activeTab === "settings" && (
+        {resolvedTab === "settings" && (
           <ProfileSettings
             profileForm={profileForm}
             onProfileFormChange={setProfileForm}

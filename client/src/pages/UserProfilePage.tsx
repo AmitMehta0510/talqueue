@@ -135,8 +135,8 @@ export function UserProfilePage() {
   ].filter(Boolean) as string[];
 
   const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about",       label: "About",           icon: User },
-    { id: "posts",       label: "Posts & Reposts", icon: MessageSquare },
+    { id: "about",       label: "Overview",        icon: User },
+    { id: "posts",       label: "Posts",           icon: MessageSquare },
     { id: "projects",   label: "Projects",        icon: FolderKanban },
     { id: "experience", label: "Experience",      icon: Briefcase },
     { id: "skills",     label: "Skills",          icon: Code2 },
@@ -153,10 +153,20 @@ export function UserProfilePage() {
           className="relative h-40 bg-cover bg-center"
           style={
             profile.profile?.bannerUrl
-              ? { backgroundImage: `url(${profile.profile.bannerUrl})` }
-              : { background: "linear-gradient(135deg, var(--brand-light) 0%, var(--brand-glow) 50%, rgba(99,102,241,0.25) 100%)" }
+              ? { backgroundImage: `url(${profile.profile.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+              : { background: "linear-gradient(135deg, #0f0f1a 0%, #1a1040 40%, #0d1b3e 70%, #0f0f1a 100%)" }
           }
         >
+          {/* Decorative code symbols on default banner */}
+          {!profile.profile?.bannerUrl && (
+            <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden>
+              {(["< />", "{ }", "=>", "&&", "//"] as const).map((sym, i) => (
+                <span key={i} className="absolute font-mono font-black text-4xl" style={{ color: "#ffffff", opacity: 0.06,
+                  top: `${[12,55,20,65,30][i]}%`, left: `${[6,20,50,60,80][i]}%` }}>{sym}</span>
+              ))}
+              <div className="absolute top-1/2 left-1/4 -translate-y-1/2 h-40 w-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.4) 0%, transparent 70%)" }} />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         </div>
 
@@ -165,9 +175,14 @@ export function UserProfilePage() {
             {/* Avatar + name */}
             <div className="-mt-10 flex items-end gap-4">
               <div className="relative">
-                <div className="rounded-full p-1 ring-4 ring-white dark:ring-slate-800 shadow-lg" style={{ background: "var(--bg-surface)" }}>
-                  <Avatar user={profile} size="lg" />
+                <div
+                className="rounded-2xl p-0.5 shadow-xl"
+                style={{ background: "linear-gradient(135deg, var(--brand), #6366f1, #818cf8)", boxShadow: "0 0 0 3px var(--bg-surface), 0 0 20px rgba(99,102,241,0.3)" }}
+              >
+                <div className="rounded-[13px] overflow-hidden" style={{ background: "var(--bg-surface)" }}>
+                  <Avatar user={profile} size="lg" className="!rounded-[13px]" />
                 </div>
+              </div>
                 {profile.verifiedEngineer && (
                   <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-800">
                     <ShieldCheck size={13} className="text-white" />
@@ -175,12 +190,15 @@ export function UserProfilePage() {
                 )}
               </div>
               <div className="mb-1">
-                <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{userName(profile)}</h1>
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  {userHeadline(profile) || `@${profile.username}`}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>{userName(profile)}</h1>
+                </div>
+                <p className="text-xs font-mono mt-0.5" style={{ color: "var(--brand)" }}>@{profile.username}</p>
+                {userHeadline(profile) && (
+                  <p className="text-sm mt-1 max-w-sm" style={{ color: "var(--text-secondary)" }}>{userHeadline(profile)}</p>
+                )}
                 {profile.profile?.location && (
-                  <p className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
                     <MapPin size={11} />
                     {profile.profile.location}
                   </p>
@@ -188,11 +206,12 @@ export function UserProfilePage() {
               </div>
             </div>
 
-            {/* Action buttons */}
+            {/* CTAs — prominent gradient Message + outlined Follow */}
             <div className="flex flex-wrap items-center gap-2">
               <button
                 id="user-profile-message-btn"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50 shadow-lg"
+                style={{ background: "linear-gradient(135deg, var(--brand), #6366f1)", boxShadow: "0 4px 12px rgba(99,102,241,0.35)" }}
                 disabled={createDirectConversation.isPending}
                 onClick={startConversation}
               >
@@ -207,7 +226,7 @@ export function UserProfilePage() {
                 profile.acceptingReferrals === true && (
                 <button
                   id="user-profile-referral-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm font-semibold text-amber-800 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-400 transition-all duration-150 hover:bg-amber-500/20"
                   onClick={() => setShowReferralModal(true)}
                 >
                   <Gift size={15} />
@@ -217,7 +236,8 @@ export function UserProfilePage() {
               {isFollowing ? (
                 <button
                   id="user-profile-following-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300"
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-150"
+                  style={{ borderColor: "rgba(99,102,241,0.4)", background: "rgba(99,102,241,0.08)", color: "var(--brand)" }}
                   disabled
                 >
                   <ShieldCheck size={15} />
@@ -226,8 +246,8 @@ export function UserProfilePage() {
               ) : (
                 <button
                   id="user-profile-follow-btn"
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold transition hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50"
-                  style={{ borderColor: "var(--border)", background: "var(--bg-surface)", color: "var(--text-secondary)" }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-indigo-400 disabled:opacity-50"
+                  style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
                   disabled={followUser.isPending}
                   onClick={() => followUser.mutate(profile.id)}
                 >
@@ -242,16 +262,38 @@ export function UserProfilePage() {
             </div>
           </div>
 
-          {/* Trust badge */}
-          <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}>
-              <ShieldCheck size={12} className="text-indigo-600" />
+          {/* Role badge + Trust badge + Availability */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {/* Colored role badge */}
+            {(() => {
+              const ROLE_BADGE: Record<string, { label: string; className: string }> = {
+                STUDENT:              { label: "Student",              className: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
+                PROFESSIONAL:         { label: "Professional",         className: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
+                WORKING_PROFESSIONAL: { label: "Working Professional", className: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
+                RECRUITER:            { label: "Recruiter",            className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+                TPO:                  { label: "TPO Officer",          className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+                MENTOR:               { label: "Mentor",               className: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
+              };
+              const badge = ROLE_BADGE[profile.primaryRole || "STUDENT"] ?? ROLE_BADGE["STUDENT"];
+              return (
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${badge.className}`}>
+                  <Code2 size={11} />
+                  {badge.label}
+                </span>
+              );
+            })()}
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold"
+              style={{ borderColor: "var(--border)", background: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
+            >
+              <ShieldCheck size={12} className="text-indigo-500" />
               {titleCase(profile.trustLevel || "BEGINNER")}
             </span>
             {availability.map((a) => (
               <span
                 key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-700"
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium border"
+                style={{ background: "rgba(16,185,129,0.08)", borderColor: "rgba(16,185,129,0.25)", color: "#10b981" }}
               >
                 <Zap size={11} />
                 {a}
@@ -259,13 +301,34 @@ export function UserProfilePage() {
             ))}
           </div>
 
-          {/* Quick stats */}
-          <div className="mt-5 flex flex-wrap gap-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-            <QStat label="Reputation" value={formatCount(profile.reputationScore)} accent />
-            <QStat label="Engineering" value={Math.round(profile.engineeringScore || 0)} />
-            <QStat label="Followers" value={formatCount(profile.followersCount)} />
-            <QStat label="Connections" value={formatCount(profile.connectionCount)} />
-            <QStat label="Posts" value={formatCount(profile.postCount)} />
+          {/* Glowing stat cards */}
+          <div
+            className="mt-5 border-t pt-5 grid grid-cols-2 sm:grid-cols-5 gap-3"
+            style={{ borderColor: "var(--border)" }}
+          >
+            {[
+              { label: "Reputation",   value: formatCount(profile.reputationScore),          accent: true },
+              { label: "Eng. Score",   value: Math.round(profile.engineeringScore || 0),     accent: false },
+              { label: "Followers",    value: formatCount(profile.followersCount),            accent: false },
+              { label: "Connections",  value: formatCount(profile.connectionCount),           accent: false },
+              { label: "Posts",        value: formatCount(profile.postCount),                 accent: false },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3 px-2 text-center shadow-sm"
+                style={{ background: "var(--bg-surface-2)", borderColor: "var(--border)" }}
+              >
+                <span
+                  className="text-lg font-bold"
+                  style={{ color: s.accent ? "var(--brand)" : "var(--text-primary)" }}
+                >
+                  {s.value}
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
           </div>
 
           {/* External links */}
@@ -292,26 +355,31 @@ export function UserProfilePage() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 border-b backdrop-blur-sm shadow-sm" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--bg-surface) 95%, transparent)" }}>
-        <div className="flex overflow-x-auto">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              id={`user-profile-tab-${id}`}
-              className={`relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-medium transition
-                ${activeTab === id
-                  ? "text-indigo-600 dark:text-indigo-400"
-                  : "hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              style={activeTab !== id ? { color: "var(--text-muted)" } : {}}
-              onClick={() => setActiveTab(id)}
-            >
-              <Icon size={15} />
-              {label}
-              {activeTab === id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
-              )}
-            </button>
-          ))}
+        <div className="flex overflow-x-auto no-scrollbar">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                id={`user-profile-tab-${id}`}
+                type="button"
+                className="relative flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-200"
+                style={isActive ? { color: "var(--brand)" } : { color: "var(--text-muted)" }}
+                onClick={() => setActiveTab(id)}
+                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
+                onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+              >
+                <Icon size={15} />
+                {label}
+                {isActive && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                    style={{ background: "linear-gradient(90deg, var(--brand), #6366f1)" }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
