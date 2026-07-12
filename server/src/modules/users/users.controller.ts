@@ -170,8 +170,60 @@ export const createCustomSkillHandler = asyncHandler(
 
 export const updateMe = asyncHandler(
   async (req: any, res: Response) => {
-    const { bio, headline, location, openToWork, openToInternship } = req.body;
-    const whitelistedData = { bio, headline, location, openToWork, openToInternship };
+    const {
+      fullName,
+      username,
+      bio,
+      headline,
+      location,
+      avatarUrl,
+      bannerUrl,
+      resumeUrl,
+      availabilityText,
+      githubUrl,
+      portfolioUrl,
+      leetcodeUrl,
+      hackerrankUrl,
+      gfgUrl,
+      graduationYear,
+      collegeId,
+      departmentId,
+      departmentName,
+      acceptingReferrals,
+      openToWork,
+      openToInternship,
+      acceptingCollaborators,
+      acceptingMentorship,
+      availabilityStatus,
+    } = req.body;
+
+    const whitelistedData = {
+      fullName,
+      username,
+      bio,
+      headline,
+      location,
+      avatarUrl,
+      bannerUrl,
+      resumeUrl,
+      availabilityText,
+      githubUrl,
+      portfolioUrl,
+      leetcodeUrl,
+      hackerrankUrl,
+      gfgUrl,
+      graduationYear,
+      collegeId,
+      departmentId,
+      departmentName,
+      acceptingReferrals,
+      openToWork,
+      openToInternship,
+      acceptingCollaborators,
+      acceptingMentorship,
+      availabilityStatus,
+    };
+
     const validatedData =
       updateProfileSchema.parse(whitelistedData);
 
