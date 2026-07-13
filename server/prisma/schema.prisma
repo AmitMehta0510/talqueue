@@ -727,6 +727,7 @@ model User {
   notificationPreference NotificationPreference?
 
   resumeReviews        ResumeReview[]
+  hackathonSoloSeekers HackathonSoloSeeker[]
 
   // ── Compound indexes for high-traffic query patterns ─────────────────────────
   @@index([status, lastActiveAt])             // active user queries
@@ -1845,6 +1846,7 @@ model Hackathon {
   deletedAt     DateTime?
   posts         Post[]
   conversations Conversation[]
+  soloSeekers   HackathonSoloSeeker[]
 
   @@unique([sourceId, sourcePlatform])
   @@index([trendingScore])
@@ -3661,4 +3663,21 @@ model ResumeReview {
 
   @@index([userId])
 }
+
+model HackathonSoloSeeker {
+  id          String   @id @default(uuid())
+  hackathonId String
+  userId      String
+  role        String?  // Frontend, Backend, DevOps, ML/AI, Mobile, Data, Security
+  message     String?  // Custom message e.g. "Looking to build a Web3 SaaS project!"
+  createdAt   DateTime @default(now())
+
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hackathonId, userId])
+  @@index([hackathonId])
+  @@index([userId])
+}
+
 

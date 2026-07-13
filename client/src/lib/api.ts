@@ -1342,6 +1342,24 @@ const remainingApi = {
 
   evaluateInterviewRoom: (roomId: string, body: { transcript: string; answers?: any }, options?: EndpointOptions) =>
     request<any>(`/interviews/rooms/${roomId}/evaluate`, { method: "POST", body, ...options }),
+
+  // Hackathon Matchmaking
+  registerHackathonSeeker: (hackathonId: string, body: { role?: string; message?: string }, options?: EndpointOptions) =>
+    request<any>(`/hackathons/${hackathonId}/seekers`, { method: "POST", body, ...options }),
+
+  removeHackathonSeeker: (hackathonId: string, options?: EndpointOptions) =>
+    request<any>(`/hackathons/${hackathonId}/seekers`, { method: "DELETE", ...options }),
+
+  getHackathonMatches: (hackathonId: string, params?: { role?: string; search?: string }, options?: EndpointOptions) => {
+    const qParts: string[] = [];
+    if (params?.role) qParts.push(`role=${encodeURIComponent(params.role)}`);
+    if (params?.search) qParts.push(`search=${encodeURIComponent(params.search)}`);
+    const qStr = qParts.length ? `?${qParts.join("&")}` : "";
+    return request<any>(`/hackathons/${hackathonId}/matchmaking${qStr}`, { method: "GET", ...options });
+  },
+
+  getSoloSeekerStatus: (hackathonId: string, options?: EndpointOptions) =>
+    request<any>(`/hackathons/${hackathonId}/seekers/status`, { method: "GET", ...options }),
 };
 
 export const api = {

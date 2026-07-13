@@ -15,6 +15,10 @@ import {
   evaluateSubmissionHandler,
   declareHackathonWinnersHandler,
   getHackathonLeaderboardHandler,
+  registerHackathonSeekerHandler,
+  removeHackathonSeekerHandler,
+  getHackathonMatchesHandler,
+  getSoloSeekerStatusHandler,
 } from "./hackathons.controller";
 import prisma from "shared/database/prisma";
 
@@ -125,6 +129,30 @@ router.delete(
   deleteHackathonHandler
 );
 
+// ─── Hackathon Matchmaking Seekers Routes ─────────────────────────────────────
 
+router.post(
+  "/:hackathonId/seekers",
+  protect,
+  registerHackathonSeekerHandler
+);
+
+router.delete(
+  "/:hackathonId/seekers",
+  protect,
+  removeHackathonSeekerHandler
+);
+
+router.get(
+  "/:hackathonId/matchmaking",
+  protect,
+  getHackathonMatchesHandler
+);
+
+router.get(
+  "/:hackathonId/seekers/status",
+  protect,
+  getSoloSeekerStatusHandler
+);
 
 export default router;

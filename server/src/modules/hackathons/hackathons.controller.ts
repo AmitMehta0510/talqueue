@@ -184,3 +184,61 @@ export const deleteHackathonHandler = asyncHandler(
     res.json(successResponse(hackathon, "Hackathon deleted"));
   },
 );
+
+// ─── Hackathon Matchmaking Seekers Handlers ─────────────────────────────────────
+
+import {
+  registerHackathonSoloSeeker,
+  removeHackathonSoloSeeker,
+  findHackathonTeammates,
+  getSoloSeekerStatus,
+} from "./hackathon-matchmaking.service";
+
+export const registerHackathonSeekerHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { role, message } = req.body;
+    const seeker = await registerHackathonSoloSeeker(
+      req.user.id,
+      req.params.hackathonId as string,
+      role,
+      message,
+    );
+    res.status(201).json(successResponse(seeker, "Registered as solo teammate seeker successfully."));
+  },
+);
+
+export const removeHackathonSeekerHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    await removeHackathonSoloSeeker(
+      req.user.id,
+      req.params.hackathonId as string,
+    );
+    res.json(successResponse(null, "Removed from solo teammate seeker pool."));
+  },
+);
+
+export const getHackathonMatchesHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { role, search } = req.query;
+    const matches = await findHackathonTeammates(
+      req.user.id,
+      req.params.hackathonId as string,
+      {
+        role: role ? String(role) : undefined,
+        search: search ? String(search) : undefined,
+      },
+    );
+    res.json(successResponse(matches));
+  },
+);
+
+export const getSoloSeekerStatusHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const status = await getSoloSeekerStatus(
+      req.user.id,
+      req.params.hackathonId as string,
+    );
+    res.json(successResponse(status));
+  },
+);
+

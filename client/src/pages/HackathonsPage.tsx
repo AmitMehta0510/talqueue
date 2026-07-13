@@ -20,6 +20,7 @@ import { Link, useParams } from "react-router-dom";
 import { useUrlState } from "../core/utils/useUrlState";
 import { HackathonCard } from "../components/cards/HackathonCard";
 import { Avatar, EmptyState, Metric } from "../components/ui";
+import { TeammateMatchmakerWidget } from "../components/hackathons/TeammateMatchmakerWidget";
 import { useAuth } from "../core/contexts/AuthContext";
 import { useFileUpload } from "../features/storage/hooks/useFileUpload";
 import {
@@ -549,6 +550,10 @@ function RegistrationPanel({ hackathon }: { hackathon: Hackathon }) {
       </form>
 
       {!teams.length && <TeamCreateForm />}
+
+      <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--border)" }}>
+        <TeammateMatchmakerWidget hackathonId={hackathon.id} />
+      </div>
     </div>
   );
 }
