@@ -1322,6 +1322,26 @@ const remainingApi = {
         currentCount: number;
       };
     }>("/resdex/search", { method: "POST", body, ...options }),
+
+  // AI Resume Reviews
+  getResumeReviews: (options?: EndpointOptions) =>
+    request<any[]>("/resume/reviews", { method: "GET", ...options }),
+
+  triggerResumeReview: (options?: EndpointOptions) =>
+    request<any>("/resume/review", { method: "POST", ...options }),
+
+  // AI Mock Interviews
+  scheduleInterviewRoom: (body: { resourceId?: string }, options?: EndpointOptions) =>
+    request<any>("/interviews/rooms", { method: "POST", body, ...options }),
+
+  getInterviewRooms: (options?: EndpointOptions) =>
+    request<any[]>("/interviews/rooms", { method: "GET", ...options }),
+
+  getInterviewRoomDetail: (roomId: string, options?: EndpointOptions) =>
+    request<any>(`/interviews/rooms/${roomId}`, { method: "GET", ...options }),
+
+  evaluateInterviewRoom: (roomId: string, body: { transcript: string; answers?: any }, options?: EndpointOptions) =>
+    request<any>(`/interviews/rooms/${roomId}/evaluate`, { method: "POST", body, ...options }),
 };
 
 export const api = {

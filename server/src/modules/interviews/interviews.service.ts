@@ -232,3 +232,145 @@ export const seedInterviewResources = async (
   await invalidateInterviewCache();
   return { created, updated };
 };
+
+// ─── Live Mock Interview Rooms & AI Evaluation ──────────────────────────────────
+
+import { InterviewRoomStatus } from "@prisma/client";
+
+async function callGeminiForInterview(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new AppError("GEMINI_API_KEY environment variable is not configured.", 500);
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1024,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new AppError(`AI API Request failed: ${errorText}`, 502);
+  }
+
+  const body: any = await response.json();
+  const rawText = body?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  return rawText;
+}
+
+export const createInterviewRoom = async (userId: string, resourceId?: string) => {
+  const room = await prisma.interviewRoom.create({
+    data: {
+      status: "SCHEDULED",
+      hostId: userId,
+      resourceId: resourceId || null,
+      scheduledAt: new Date(),
+    },
+    include: {
+      resource: true,
+    },
+  });
+
+  return room;
+};
+
+export const getInterviewRooms = async (userId: string) => {
+  return prisma.interviewRoom.findMany({
+    where: {
+      OR: [{ hostId: userId }, { guestId: userId }],
+    },
+    include: {
+      resource: true,
+      host: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+      guest: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getInterviewRoomDetail = async (roomId: string, userId: string) => {
+  const room = await prisma.interviewRoom.findUnique({
+    where: { id: roomId },
+    include: {
+      resource: true,
+      host: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+      guest: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } },
+    },
+  });
+
+  if (!room) {
+    throw new AppError("Interview room not found.", 404);
+  }
+
+  if (room.hostId !== userId && room.guestId !== userId) {
+    throw new AppError("Access denied. You are not a participant in this room.", 403);
+  }
+
+  return room;
+};
+
+export const evaluateInterviewRoom = async (
+  roomId: string,
+  userId: string,
+  transcript: string,
+  answers?: any,
+) => {
+  const room = await getInterviewRoomDetail(roomId, userId);
+
+  const resourceTitle = room.resource?.title || "General Technical Interview";
+  const resourceRole = room.resource?.roleTag || "SDE";
+
+  const prompt = `You are an expert AI interviewer auditing a mock technical interview.
+The interview topic/resource is: ${resourceTitle} (${resourceRole}).
+Here is the raw text transcript/user answers of the session:
+${transcript}
+${answers ? `Additional questions/answers details:\n${JSON.stringify(answers, null, 2)}` : ""}
+
+Review this session and grade the user. Your output must be a valid JSON object only. Do not wrap in markdown code blocks or add any other text outside the JSON.
+
+Required JSON format:
+{
+  "score": 78,
+  "technicalScore": 80,
+  "communicationScore": 75,
+  "feedback": "Detailed general summary of the candidate's performance...",
+  "strengths": ["Excellent usage of standard parameters", "Clear algorithm setup"],
+  "improvements": ["Needs to optimize space complexity", "Better structure in explanations"]
+}
+`;
+
+  const rawResult = await callGeminiForInterview(prompt);
+  // Clean markdown JSON wrapper if present
+  const cleanedText = rawResult.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+
+  try {
+    const feedback = JSON.parse(cleanedText);
+
+    // Save evaluation to database and mark room as completed
+    const updatedRoom = await prisma.interviewRoom.update({
+      where: { id: roomId },
+      data: {
+        status: "COMPLETED",
+        endedAt: new Date(),
+        aiFeedback: feedback,
+      },
+      include: {
+        resource: true,
+      },
+    });
+
+    return updatedRoom;
+  } catch (error) {
+    console.error("Failed to parse Gemini interview response:", cleanedText);
+    throw new AppError("Failed to parse AI evaluation feedback. Please try again.", 500);
+  }
+};
+

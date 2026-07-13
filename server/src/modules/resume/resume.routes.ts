@@ -2,6 +2,8 @@ import { Router, Response } from "express";
 import { protect } from "modules/auth/auth.middleware";
 import { buildResumePdf } from "controllers/resumeController";
 import asyncHandler from "shared/utils/asyncHandler";
+import { successResponse } from "shared/utils/apiResponse";
+import { generateResumeReview, getResumeReviews } from "./resume-ai.service";
 
 const router = Router();
 
@@ -37,4 +39,27 @@ router.get(
   }),
 );
 
+// POST /api/v1/resume/review
+// Generates an AI review of the authenticated user's profile and resume.
+router.post(
+  "/review",
+  protect,
+  asyncHandler(async (req: any, res: Response) => {
+    const review = await generateResumeReview(req.user.id);
+    res.json(successResponse(review, "AI profile review generated successfully"));
+  }),
+);
+
+// GET /api/v1/resume/reviews
+// Retrieves the authenticated user's historical AI reviews.
+router.get(
+  "/reviews",
+  protect,
+  asyncHandler(async (req: any, res: Response) => {
+    const reviews = await getResumeReviews(req.user.id);
+    res.json(successResponse(reviews));
+  }),
+);
+
 export default router;
+

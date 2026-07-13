@@ -726,6 +726,8 @@ model User {
   // ── Preferences
   notificationPreference NotificationPreference?
 
+  resumeReviews        ResumeReview[]
+
   // ── Compound indexes for high-traffic query patterns ─────────────────────────
   @@index([status, lastActiveAt])             // active user queries
   @@index([primaryRole, openToWork])          // recruiter "open to work" search
@@ -3648,3 +3650,15 @@ model InterviewRoom {
   @@index([guestId])
   @@index([resourceId])
 }
+
+model ResumeReview {
+  id        String   @id @default(uuid())
+  userId    String
+  score     Int
+  feedback  Json     // { suggestions: string[], atsScore: number, keywordGaps: string[], strengths: string[] }
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+

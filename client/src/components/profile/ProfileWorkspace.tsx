@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Briefcase,
   Code2,
@@ -6,6 +5,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { User as UserType } from "../../lib/api";
 import { titleCase, compactPayload } from "../../core/utils/format";
@@ -19,9 +19,10 @@ import { ProfileExperience } from "./ProfileExperience";
 import { ProfileEducation } from "./ProfileEducation";
 import { ProfileProjects } from "./ProfileProjects";
 import { ProfileSettings } from "./ProfileSettings";
+import { ProfileAIReview } from "./ProfileAIReview";
 import { useProfileWorkspace } from "../../hooks/useProfileWorkspace";
 
-type Tab = "overview" | "experience" | "skills" | "education" | "projects" | "settings";
+type Tab = "overview" | "experience" | "skills" | "education" | "projects" | "settings" | "ai-review";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
   { id: "overview",   label: "Overview",   icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
   { id: "skills",     label: "Skills",      icon: Code2 },
   { id: "education",  label: "Education",   icon: GraduationCap },
   { id: "projects",   label: "Projects",    icon: FolderKanban },
+  { id: "ai-review",  label: "AI Review",   icon: Sparkles },
   { id: "settings",   label: "Settings",    icon: Settings },
 ];
 
@@ -259,6 +261,10 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
             onSave={saveProfile}
             isSavePending={updateProfile.isPending}
           />
+        )}
+
+        {resolvedTab === "ai-review" && (
+          <ProfileAIReview />
         )}
       </div>
 

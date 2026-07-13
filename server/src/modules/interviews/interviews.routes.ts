@@ -11,9 +11,27 @@ import {
   deleteInterviewHandler,
   triggerScrapeHandler,
   triggerValidationHandler,
+  createInterviewRoomHandler,
+  listInterviewRoomsHandler,
+  getInterviewRoomDetailHandler,
+  evaluateInterviewRoomHandler,
 } from "./interviews.controller";
 
 const router = Router();
+
+// ─── Live Mock Rooms (Authenticated) ──────────────────────────────────────────
+
+// POST /api/v1/interviews/rooms — schedule/create a mock interview room
+router.post("/rooms", protect, createInterviewRoomHandler);
+
+// GET /api/v1/interviews/rooms — list rooms where the authenticated user is host/guest
+router.get("/rooms", protect, listInterviewRoomsHandler);
+
+// GET /api/v1/interviews/rooms/:roomId — single room details
+router.get("/rooms/:roomId", protect, getInterviewRoomDetailHandler);
+
+// POST /api/v1/interviews/rooms/:roomId/evaluate — run AI evaluation of the transcript
+router.post("/rooms/:roomId/evaluate", protect, evaluateInterviewRoomHandler);
 
 // ─── Public routes (no auth required) ────────────────────────────────────────
 
@@ -46,3 +64,4 @@ router.post("/scrape", protect, requirePlatformAdmin, triggerScrapeHandler);
 router.post("/validate", protect, requirePlatformAdmin, triggerValidationHandler);
 
 export default router;
+

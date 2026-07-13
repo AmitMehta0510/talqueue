@@ -15,6 +15,10 @@ import {
   updateInterviewResource,
   deleteInterviewResource,
   seedInterviewResources,
+  createInterviewRoom,
+  getInterviewRooms,
+  getInterviewRoomDetail,
+  evaluateInterviewRoom,
 } from "./interviews.service";
 import { runInterviewSeed, validateYoutubeVideos } from "./interviews.scraper";
 
@@ -106,3 +110,37 @@ export const triggerScrapeHandler = asyncHandler(async (_req: any, res: Response
     ),
   );
 });
+
+// ─── Live Mock Interview Rooms Handlers ────────────────────────────────────────
+
+export const createInterviewRoomHandler = asyncHandler(async (req: any, res: Response) => {
+  const { resourceId } = req.body;
+  const room = await createInterviewRoom(req.user.id, resourceId);
+  res.status(201).json(successResponse(room, "Interview room scheduled successfully"));
+});
+
+export const listInterviewRoomsHandler = asyncHandler(async (req: any, res: Response) => {
+  const rooms = await getInterviewRooms(req.user.id);
+  res.json(successResponse(rooms));
+});
+
+export const getInterviewRoomDetailHandler = asyncHandler(async (req: any, res: Response) => {
+  const room = await getInterviewRoomDetail(req.params.roomId as string, req.user.id);
+  res.json(successResponse(room));
+});
+
+export const evaluateInterviewRoomHandler = asyncHandler(async (req: any, res: Response) => {
+  const { transcript, answers } = req.body;
+  if (!transcript?.trim()) {
+    return res.status(400).json({ error: "Transcript content is required for evaluation." });
+  }
+
+  const room = await evaluateInterviewRoom(
+    req.params.roomId as string,
+    req.user.id,
+    transcript,
+    answers,
+  );
+  res.json(successResponse(room, "Interview evaluated successfully"));
+});
+
