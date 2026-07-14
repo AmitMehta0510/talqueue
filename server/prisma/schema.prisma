@@ -728,6 +728,8 @@ model User {
 
   resumeReviews        ResumeReview[]
   hackathonSoloSeekers HackathonSoloSeeker[]
+  alumniSlots          AlumniAvailabilitySlot[] @relation("AlumniSlots")
+  studentBookings      AlumniSlotBooking[]      @relation("StudentBookings")
 
   // ── Compound indexes for high-traffic query patterns ─────────────────────────
   @@index([status, lastActiveAt])             // active user queries
@@ -3679,5 +3681,50 @@ model HackathonSoloSeeker {
   @@index([hackathonId])
   @@index([userId])
 }
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+}
+
+enum BookingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model AlumniAvailabilitySlot {
+  id        String     @id @default(uuid())
+  alumniId  String
+  startTime DateTime
+  endTime   DateTime
+  status    SlotStatus @default(AVAILABLE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  alumni    User       @relation("AlumniSlots", fields: [alumniId], references: [id], onDelete: Cascade)
+  booking   AlumniSlotBooking?
+
+  @@index([alumniId])
+  @@index([startTime])
+}
+
+model AlumniSlotBooking {
+  id         String        @id @default(uuid())
+  slotId     String        @unique
+  studentId  String
+  topic      String
+  notes      String?
+  meetingUrl String?
+  status     BookingStatus @default(SCHEDULED)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  slot       AlumniAvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  student    User                   @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
 
 

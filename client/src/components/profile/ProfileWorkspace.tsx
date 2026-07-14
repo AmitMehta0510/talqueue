@@ -1,5 +1,6 @@
 import {
   Briefcase,
+  Calendar,
   Code2,
   FolderKanban,
   GraduationCap,
@@ -20,9 +21,11 @@ import { ProfileEducation } from "./ProfileEducation";
 import { ProfileProjects } from "./ProfileProjects";
 import { ProfileSettings } from "./ProfileSettings";
 import { ProfileAIReview } from "./ProfileAIReview";
+import { AlumniAvailabilityManager } from "./AlumniAvailabilityManager";
+import { MentorshipBookingsList } from "./MentorshipBookingsList";
 import { useProfileWorkspace } from "../../hooks/useProfileWorkspace";
 
-type Tab = "overview" | "experience" | "skills" | "education" | "projects" | "settings" | "ai-review";
+type Tab = "overview" | "experience" | "skills" | "education" | "projects" | "settings" | "ai-review" | "mentorship";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
   { id: "overview",   label: "Overview",   icon: LayoutDashboard },
@@ -31,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
   { id: "education",  label: "Education",   icon: GraduationCap },
   { id: "projects",   label: "Projects",    icon: FolderKanban },
   { id: "ai-review",  label: "AI Review",   icon: Sparkles },
+  { id: "mentorship", label: "Mentorship",  icon: Calendar },
   { id: "settings",   label: "Settings",    icon: Settings },
 ];
 
@@ -265,6 +269,27 @@ export function ProfileWorkspace({ fallbackUser }: ProfileWorkspaceProps) {
 
         {resolvedTab === "ai-review" && (
           <ProfileAIReview />
+        )}
+
+        {resolvedTab === "mentorship" && (
+          <div className="space-y-6">
+            {/* Show scheduler if user is verified alumni */}
+            {(educations || []).some((edu: any) => edu.isAlumni && edu.alumniVerified) ? (
+              <AlumniAvailabilityManager />
+            ) : (
+              <div className="p-5 border border-border rounded-xl bg-card text-center" style={{ background: "var(--bg-surface)" }}>
+                <p className="text-xs text-muted-fg leading-relaxed">
+                  You are not registered as a verified alumni of any college.
+                  Only Training and Placement Officer (TPO) verified alumni can publish mentorship availability slots.
+                </p>
+              </div>
+            )}
+            
+            {/* Always show student's outgoing booked sessions list */}
+            <div className="border-t border-border pt-6">
+              <MentorshipBookingsList />
+            </div>
+          </div>
         )}
       </div>
 

@@ -54,8 +54,9 @@ import {
   userName,
 } from "../core/utils/format";
 import { RequestReferralModal } from "../components/forms/RequestReferralModal";
+import { AlumniBookingWidget } from "../components/profile/AlumniBookingWidget";
 
-type Tab = "about" | "posts" | "projects" | "experience" | "skills" | "education" | "connections";
+type Tab = "about" | "posts" | "projects" | "experience" | "skills" | "education" | "connections" | "mentorship";
 
 const flattenFollowing = <T, K extends string>(pages: Array<Record<K, T[]>>, key: K) =>
   pages.flatMap((page) => page[key] || []);
@@ -148,15 +149,25 @@ export function UserProfilePage() {
     return "Available";
   })();
 
-  const TABS: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: "about",       label: "Overview",        icon: User },
-    { id: "posts",       label: "Posts",           icon: MessageSquare },
-    { id: "projects",   label: "Projects",        icon: FolderKanban },
-    { id: "experience", label: "Experience",      icon: Briefcase },
-    { id: "skills",     label: "Skills",          icon: Code2 },
-    { id: "education",  label: "Education",       icon: GraduationCap },
-    { id: "connections",label: "Mutual",          icon: Users },
-  ];
+  const isAlumniUser = useMemo(() => {
+    return (profile?.educations || []).some((edu: any) => edu.isAlumni && edu.alumniVerified);
+  }, [profile?.educations]);
+
+  const TABS = useMemo(() => {
+    const list: { id: Tab; label: string; icon: React.FC<{ size?: number }> }[] = [
+      { id: "about",       label: "Overview",        icon: User },
+      { id: "posts",       label: "Posts",           icon: MessageSquare },
+      { id: "projects",   label: "Projects",        icon: FolderKanban },
+      { id: "experience", label: "Experience",      icon: Briefcase },
+      { id: "skills",     label: "Skills",          icon: Code2 },
+      { id: "education",  label: "Education",       icon: GraduationCap },
+      { id: "connections",label: "Mutual",          icon: Users },
+    ];
+    if (isAlumniUser) {
+      list.push({ id: "mentorship", label: "Mentorship", icon: Calendar });
+    }
+    return list;
+  }, [isAlumniUser]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-0">
@@ -693,6 +704,10 @@ export function UserProfilePage() {
             </div>
           );
         })()}
+
+        {activeTab === "mentorship" && profile?.id && (
+          <AlumniBookingWidget alumniId={profile.id} />
+        )}
       </div>
 
       {/* Referral modal */}

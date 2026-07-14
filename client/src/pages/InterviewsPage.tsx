@@ -325,7 +325,7 @@ export function InterviewsPage() {
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-fg">Practice Sessions</h3>
                 <button
-                  onClick={() => scheduleRoomMutation.mutate()}
+                  onClick={() => scheduleRoomMutation.mutate(undefined)}
                   disabled={scheduleRoomMutation.isPending}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white px-3 py-1.5 text-xs font-semibold transition"
                 >

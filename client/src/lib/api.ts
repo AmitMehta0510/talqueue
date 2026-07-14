@@ -1360,6 +1360,28 @@ const remainingApi = {
 
   getSoloSeekerStatus: (hackathonId: string, options?: EndpointOptions) =>
     request<any>(`/hackathons/${hackathonId}/seekers/status`, { method: "GET", ...options }),
+
+  // Alumni Mentorship Slot Booking
+  checkAlumniStatus: (options?: EndpointOptions) =>
+    request<{ isAlumni: boolean }>("/alumni/status", { method: "GET", ...options }),
+
+  createAlumniSlots: (body: { slots: Array<{ startTime: string | Date; endTime: string | Date }> }, options?: EndpointOptions) =>
+    request<any>("/alumni/slots", { method: "POST", body, ...options }),
+
+  getAlumniSlots: (alumniId: string, options?: EndpointOptions) =>
+    request<any[]>(`/alumni/${alumniId}/slots`, { method: "GET", ...options }),
+
+  bookAlumniSlot: (slotId: string, body: { topic: string; notes?: string; meetingUrl?: string }, options?: EndpointOptions) =>
+    request<any>(`/alumni/slots/${slotId}/book`, { method: "POST", body, ...options }),
+
+  getAlumniIncomingBookings: (options?: EndpointOptions) =>
+    request<any[]>("/alumni/bookings/incoming", { method: "GET", ...options }),
+
+  getStudentOutgoingBookings: (options?: EndpointOptions) =>
+    request<any[]>("/alumni/bookings/outgoing", { method: "GET", ...options }),
+
+  cancelAlumniBooking: (bookingId: string, options?: EndpointOptions) =>
+    request<any>(`/alumni/bookings/${bookingId}/cancel`, { method: "PATCH", ...options }),
 };
 
 export const api = {

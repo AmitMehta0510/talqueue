@@ -40,9 +40,11 @@ export function Metric({
 export function Avatar({
   user,
   size = "md",
+  className = "",
 }: {
   user?: User | null;
   size?: "sm" | "md" | "lg";
+  className?: string;
 }) {
   const sizeClass =
     size === "sm" ? "h-8 w-8 text-xs"
@@ -52,7 +54,7 @@ export function Avatar({
   if (user?.profile?.avatarUrl) {
     return (
       <img
-        className={`${sizeClass} rounded-full object-cover ring-2 ring-[color:var(--border)] flex-shrink-0`}
+        className={`${sizeClass} rounded-full object-cover ring-2 ring-[color:var(--border)] flex-shrink-0 ${className}`}
         src={user.profile.avatarUrl}
         alt={userName(user)}
       />
@@ -61,7 +63,7 @@ export function Avatar({
 
   return (
     <div
-      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full font-bold bg-brand-light text-brand border border-brand-light/30`}
+      className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-full font-bold bg-brand-light text-brand border border-brand-light/30 ${className}`}
     >
       {initials(userName(user))}
     </div>

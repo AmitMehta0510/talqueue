@@ -42,6 +42,7 @@ import tpoRoutes from "modules/companies/tpo.routes";
 import tpoDashboardRoutes from "modules/tpo/tpo-dashboard.routes";
 import interviewRoutes from "modules/interviews/interviews.routes";
 import matchmakingRoutes from "modules/matchmaking/matchmaking.routes";
+import alumniBookingsRoutes from "modules/alumni/alumni-bookings.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 import docsRouter from "shared/openapi/docs.routes";
@@ -105,6 +106,8 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "interviews", path: "/interviews", router: interviewRoutes },
   // Matchmaking — complementary skill-based teammate discovery
   { key: "matchmaking", path: "/matchmaking", router: matchmakingRoutes },
+  // Alumni Mentorship slot booking
+  { key: "alumni", path: "/alumni", router: alumniBookingsRoutes },
 ];
 
 export const apiRouteMap = Object.fromEntries(
