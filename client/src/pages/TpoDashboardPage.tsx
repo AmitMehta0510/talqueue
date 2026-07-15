@@ -63,33 +63,6 @@ export function TpoDashboardPage() {
   );
   const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
 
-  // CDCR Members Query (lazy — fetched only when tab is active)
-  const [cdcrMembers, setCdcrMembers] = useState<any[] | undefined>(undefined);
-  const [cdcrLoading, setCdcrLoading] = useState(false);
-  const [cdcrError, setCdcrError] = useState(false);
-
-  const fetchCdcr = async () => {
-    if (!collegeId) return;
-    setCdcrLoading(true);
-    setCdcrError(false);
-    try {
-      const resp = await fetch("/api/v1/tpo/dashboard/cdcr", { credentials: "include" });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error();
-      setCdcrMembers(json.data);
-    } catch {
-      setCdcrError(true);
-    } finally {
-      setCdcrLoading(false);
-    }
-  };
-
-  // Trigger CDCR fetch when tab becomes active
-  const handleTabChange = (tab: Tab) => {
-    setActiveTab(tab);
-    if (tab === "cdcr" && cdcrMembers === undefined) fetchCdcr();
-  };
-
   // Recruiter Invitation States & Handlers
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmailsText, setInviteEmailsText] = useState("");
@@ -225,7 +198,7 @@ export function TpoDashboardPage() {
           (tab) => (
             <button
               key={tab}
-              onClick={() => handleTabChange(tab)}
+              onClick={() => setActiveTab(tab)}
               className={`pb-4 px-1 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all duration-200 ${
                 activeTab === tab
                   ? "border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400"
@@ -344,14 +317,8 @@ export function TpoDashboardPage() {
           />
         )}
 
-        {activeTab === "cdcr" && (
-          <TpoCdcrTab
-            members={cdcrMembers}
-            isLoading={cdcrLoading}
-            isError={cdcrError}
-            onRetry={fetchCdcr}
-            onRefresh={fetchCdcr}
-          />
+        {activeTab === "cdcr" && collegeId && (
+          <TpoCdcrTab collegeId={collegeId} />
         )}
       </div>
 

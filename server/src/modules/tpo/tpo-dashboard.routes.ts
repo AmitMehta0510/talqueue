@@ -15,10 +15,6 @@ import {
   // Feature 4: Placement reports
   getPlacementReport,
   getTpoPlacementStats,
-  // Feature 5: CDCR management
-  listCdcrMembers,
-  addCdcrMember,
-  removeCdcrMember,
 } from "./tpo-dashboard.controller";
 
 const router = Router();
@@ -95,17 +91,9 @@ router.get("/dashboard/company-claims", getTpoCompanyClaims);
 /** GET /api/v1/tpo/dashboard/recruiters */
 router.get("/dashboard/recruiters", getTpoRecruiterInteractions);
 
-// ──────────────────────────────────────────────────────────────────────────────
-// CDCR MANAGEMENT (Feature 5)
-// ──────────────────────────────────────────────────────────────────────────────
-
-/** GET /api/v1/tpo/dashboard/cdcr — list all CDCR members */
-router.get("/dashboard/cdcr", listCdcrMembers);
-
-/** POST /api/v1/tpo/dashboard/cdcr — add CDCR member. Body: { userId?, email? } */
-router.post("/dashboard/cdcr", addCdcrMember);
-
-/** DELETE /api/v1/tpo/dashboard/cdcr/:memberId — remove CDCR member */
-router.delete("/dashboard/cdcr/:memberId", removeCdcrMember);
+// NOTE: CDCR management is handled by the existing colleges module:
+//   GET    /api/v1/colleges/:collegeId/tpo/cdcr
+//   POST   /api/v1/colleges/:collegeId/tpo/cdcr         body: { userId }
+//   DELETE /api/v1/colleges/:collegeId/tpo/cdcr/:userId
 
 export default router;
