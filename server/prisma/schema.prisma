@@ -310,6 +310,7 @@ enum PlacementDriveType {
 
 enum PlacementDriveInviteStatus {
   PENDING
+  NEGOTIATING
   ACCEPTED
   REJECTED
   WITHDRAWN
@@ -731,10 +732,21 @@ model User {
   alumniSlots          AlumniAvailabilitySlot[] @relation("AlumniSlots")
   studentBookings      AlumniSlotBooking[]      @relation("StudentBookings")
 
+  // ── RESDEX / Campus Outreach opt-in ──────────────────────────────────────
+  // When true, premium recruiters can see the student's contact details in RESDEX.
+  openToCampusOutreach Boolean @default(false)
+
+  // Back-relations for TPO data verification
+  tpoVerifiedEducations Education[] @relation("TpoVerifiedEducations")
+
+  // Back-relations for drive invite counter-proposals
+  inviteCounterProposals PlacementDriveInvite[] @relation("InviteCounterProposer")
+
   // ── Compound indexes for high-traffic query patterns ─────────────────────────
   @@index([status, lastActiveAt])             // active user queries
   @@index([primaryRole, openToWork])          // recruiter "open to work" search
   @@index([tier, canAccessRecruiterDirectory]) // premium feature gating
+  @@index([openToCampusOutreach])              // RESDEX campus outreach filter
 }
 
 model UserRecommendation {
@@ -1115,6 +1127,13 @@ model Education {
   backlogs    Int?  @default(0) // Number of active backlogs/arrears
   currentYear Int?            // e.g. 1=First Year, 2=Second, 3=Third, 4=Final
 
+  // ── TPO-Authoritative Academic Data ───────────────────────────────────────
+  rollNumber       String?   // College roll number / enrollment number
+  tpoVerified      Boolean   @default(false)  // TPO has bulk-uploaded and verified this record
+  tpoVerifiedAt    DateTime?                   // When the TPO last uploaded/verified
+  tpoVerifiedById  String?                     // UserId of the TPO who verified
+  tpoVerifiedBy    User?     @relation("TpoVerifiedEducations", fields: [tpoVerifiedById], references: [id], onDelete: SetNull)
+
   // Alumni tracking
   isAlumni         Boolean   @default(false)  // Student has claimed alumni status
   alumniVerified   Boolean   @default(false)  // TPO has verified the alumni claim
@@ -1134,6 +1153,7 @@ model Education {
   @@index([collegeId])
   @@index([departmentId])
   @@index([userId, collegeId, departmentId])
+  @@index([tpoVerified, collegeId])
 }
 
 enum CollegeRequestStatus {
@@ -3254,14 +3274,21 @@ model CollegeTpo {
   @@index([collegeId])
 }
 
+enum RecruiterTier {
+  BASIC    // Can post jobs, view applicants, limited RESDEX (no contact info)
+  PREMIUM  // Full RESDEX with contact details for opted-in students
+}
+
 model CompanyAdmin {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   userId      String
   companyId   String
   // null = admin for entire company; set to city for office-scoped admin
   officeCity  String?
   grantedById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
+  // Recruiter access tier — upgraded by platform admin or via subscription
+  tier        RecruiterTier @default(BASIC)
 
   user      User    @relation("CompanyAdminUser", fields: [userId], references: [id], onDelete: Cascade)
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -3454,6 +3481,14 @@ model PlacementDriveInvite {
   message    String?
   status     PlacementDriveInviteStatus @default(PENDING)
   reviewedAt DateTime?
+
+  // ── TPO Negotiation / Counter-Proposal ────────────────────────────────────
+  // When a TPO wants to modify eligibility terms before accepting, they submit
+  // a counter-proposal. The recruiter can accept it or re-negotiate.
+  tpoCounterProposal  Json?     // { minCgpa?, maxBacklogs?, eligibleBranches?, eligibleYears?, message? }
+  counterProposedAt   DateTime?
+  counterProposedById String?   // TPO userId who sent the counter
+  counterProposedBy   User?     @relation("InviteCounterProposer", fields: [counterProposedById], references: [id], onDelete: SetNull)
 
   createdById      String
   placementDriveId String? @unique

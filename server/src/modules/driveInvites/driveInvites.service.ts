@@ -463,3 +463,179 @@ export const withdrawInvite = async (actorId: string, inviteId: string) => {
     data: { status: "WITHDRAWN" },
   });
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEGOTIATION: TPO sends a counter-proposal
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CounterProposalData {
+  minCgpa?: number;
+  maxBacklogs?: number;
+  eligibleBranches?: string[];
+  eligibleYears?: number[];
+  message?: string;
+}
+
+/**
+ * TPO counter-proposes modified eligibility terms for a PENDING or NEGOTIATING invite.
+ * Sets status → NEGOTIATING. Recruiter must then accept-counter or re-negotiate.
+ */
+export const sendCounterProposal = async (
+  actorId: string,
+  inviteId: string,
+  proposal: CounterProposalData,
+): Promise<typeof updatedInvite> => {
+  const invite = await prisma.placementDriveInvite.findUnique({
+    where: { id: inviteId },
+    select: {
+      id: true,
+      collegeId: true,
+      companyId: true,
+      status: true,
+      driveTitle: true,
+      createdById: true,
+      initiatedBy: true,
+    },
+  });
+
+  if (!invite) throw new AppError("Invite not found", 404);
+
+  if (!["PENDING", "NEGOTIATING"].includes(invite.status)) {
+    throw new AppError(`Cannot counter-propose on an invite with status: ${invite.status}`, 400);
+  }
+
+  // Only TPO/CDCR of the target college can send counter-proposals
+  const isTpoOrCdcr = await isCollegeAdminOrCdcr(actorId, invite.collegeId);
+  if (!isTpoOrCdcr) throw new AppError("Only the college TPO/CDCR can send a counter-proposal.", 403);
+
+  const updatedInvite = await prisma.placementDriveInvite.update({
+    where: { id: inviteId },
+    data: {
+      status: "NEGOTIATING",
+      tpoCounterProposal: proposal as any,
+      counterProposedAt: new Date(),
+      counterProposedById: actorId,
+    },
+    include: {
+      company: { select: { id: true, name: true, logoUrl: true } },
+      college: { select: { id: true, name: true } },
+      counterProposedBy: { select: { id: true, username: true, profile: { select: { fullName: true } } } },
+    },
+  });
+
+  // Notify the original recruiter who created the invite
+  setImmediate(async () => {
+    try {
+      await createNotification({
+        userId: invite.createdById,
+        actorId,
+        type: "PLACEMENT_DRIVE_INVITE",
+        title: "TPO Counter-Proposal Received",
+        message: `The TPO of ${updatedInvite.college.name} has sent a counter-proposal for "${invite.driveTitle}". Review the modified eligibility terms in your Campus tab.`,
+        actionUrl: "/recruiter",
+      });
+    } catch (err) {
+      console.error("[DriveInvites] Failed to notify recruiter of counter-proposal:", err);
+    }
+  });
+
+  return updatedInvite;
+};
+
+/**
+ * Recruiter accepts the TPO's counter-proposal.
+ * The counter-proposal terms are applied to the invite fields, then a drive is auto-created.
+ */
+export const acceptCounterProposal = async (
+  actorId: string,
+  inviteId: string,
+): Promise<typeof result> => {
+  const invite = await prisma.placementDriveInvite.findUnique({
+    where: { id: inviteId },
+    include: {
+      company: { select: { id: true, name: true } },
+      college: { select: { id: true, name: true, normalizedKey: true } },
+    },
+  });
+
+  if (!invite) throw new AppError("Invite not found", 404);
+  if (invite.status !== "NEGOTIATING") {
+    throw new AppError("This invite does not have a pending counter-proposal to accept.", 400);
+  }
+
+  // Recruiter must have company access
+  const adminRow = await prisma.companyAdmin.findFirst({
+    where: { userId: actorId, companyId: invite.companyId },
+    select: { id: true },
+  });
+  const expRow = await prisma.experience.findFirst({
+    where: { userId: actorId, companyId: invite.companyId },
+    select: { id: true },
+  });
+  if (!adminRow && !expRow) throw new AppError("Unauthorized to accept this counter-proposal.", 403);
+
+  // Merge counter-proposal into the invite's fields
+  const counter = (invite.tpoCounterProposal ?? {}) as CounterProposalData;
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Create the placement drive with merged eligibility terms
+    const drive = await tx.placementDrive.create({
+      data: {
+        driveTitle: invite.driveTitle,
+        companyId: invite.companyId,
+        targetCollegeId: invite.collegeId,
+        postedById: actorId,
+        driveDate: invite.driveDate,
+        applyDeadline: invite.applyDeadline,
+        roles: invite.roles,
+        stipendMin: invite.stipendMin,
+        stipendMax: invite.stipendMax,
+        salaryMin: invite.salaryMin,
+        salaryMax: invite.salaryMax,
+        currency: invite.currency,
+        // Apply counter-proposal overrides
+        minCgpa: counter.minCgpa ?? invite.minCgpa,
+        maxBacklogs: counter.maxBacklogs ?? undefined,
+        eligibleBranches: counter.eligibleBranches ?? invite.eligibleBranches,
+        eligibleYears: counter.eligibleYears ?? invite.eligibleYears,
+        description: invite.description,
+        status: "UPCOMING",
+      },
+    });
+
+    return tx.placementDriveInvite.update({
+      where: { id: inviteId },
+      data: {
+        status: "ACCEPTED",
+        reviewedAt: new Date(),
+        placementDriveId: drive.id,
+      },
+      include: {
+        company: { select: { id: true, name: true, logoUrl: true } },
+        college: { select: { id: true, name: true, normalizedKey: true } },
+        placementDrive: { select: { id: true, status: true, driveTitle: true } },
+      },
+    });
+  });
+
+  // Notify TPO that their counter was accepted and drive is live
+  if (invite.counterProposedById) {
+    setImmediate(async () => {
+      try {
+        await createNotification({
+          userId: invite.counterProposedById!,
+          actorId,
+          type: "PLACEMENT_DRIVE_INVITE",
+          title: "Counter-Proposal Accepted — Drive Live!",
+          message: `${invite.company.name} accepted your counter-proposal for "${invite.driveTitle}". The drive is now live for students to apply.`,
+          actionUrl: `/tpo`,
+        });
+      } catch (err) {
+        console.error("[DriveInvites] Failed to notify TPO of counter-acceptance:", err);
+      }
+    });
+  }
+
+  return result;
+};
+
