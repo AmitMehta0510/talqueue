@@ -10,6 +10,15 @@ import {
   rejectAlumniVerification,
   getTpoCompanyClaims,
   getTpoRecruiterInteractions,
+  // Feature 2: Bulk student upload
+  bulkUploadStudents,
+  // Feature 4: Placement reports
+  getPlacementReport,
+  getTpoPlacementStats,
+  // Feature 5: CDCR management
+  listCdcrMembers,
+  addCdcrMember,
+  removeCdcrMember,
 } from "./tpo-dashboard.controller";
 
 const router = Router();
@@ -17,53 +26,86 @@ const router = Router();
 // All TPO routes require authentication + TPO role on at least one college
 router.use(protect, requireTpoRole);
 
-/**
- * GET /api/v1/tpo/dashboard/stats
- * Overview stat counts for the TPO's college(s).
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// OVERVIEW
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/stats — overview stat counts */
 router.get("/dashboard/stats", getTpoDashboardStats);
 
-/**
- * GET /api/v1/tpo/dashboard/students
- * Paginated, filterable student list.
- * Query: page, limit, graduationYear, departmentId, currentYear, search
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// STUDENTS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/students — paginated student list */
 router.get("/dashboard/students", getTpoStudents);
 
 /**
- * GET /api/v1/tpo/dashboard/placements
- * Active placement drives for the TPO's college.
+ * POST /api/v1/tpo/dashboard/students/bulk-upload
+ * Body: raw CSV (text/plain) OR JSON { csv: "..." }
+ * Columns: email, rollNumber, cgpa, backlogs, currentYear, branchName
  */
+router.post("/dashboard/students/bulk-upload", bulkUploadStudents);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PLACEMENTS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/placements — active placement drives */
 router.get("/dashboard/placements", getTpoPlacements);
 
 /**
- * GET /api/v1/tpo/dashboard/alumni
- * Pending alumni verification requests (isAlumni=true, alumniVerified=false).
+ * GET /api/v1/tpo/dashboard/stats/placements
+ * Full analytics stats (branch-wise, company-wise, summary).
+ * Query: academicYear (e.g. 2024)
  */
+router.get("/dashboard/stats/placements", getTpoPlacementStats);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PLACEMENT REPORTS (Feature 4)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/tpo/dashboard/reports/placement
+ * Generates and streams placement data report.
+ * Query: academicYear (e.g. 2024), format ("csv" | "pdf")
+ */
+router.get("/dashboard/reports/placement", getPlacementReport);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ALUMNI
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/alumni — pending alumni verification requests */
 router.get("/dashboard/alumni", getTpoAlumniVerifications);
 
-/**
- * PATCH /api/v1/tpo/dashboard/alumni/:educationId/approve
- * Approve an alumni claim — sets alumniVerified=true, sends student notification.
- */
+/** PATCH /api/v1/tpo/dashboard/alumni/:educationId/approve */
 router.patch("/dashboard/alumni/:educationId/approve", approveAlumniVerification);
 
-/**
- * PATCH /api/v1/tpo/dashboard/alumni/:educationId/reject
- * Reject an alumni claim — resets isAlumni=false, sends student notification.
- */
+/** PATCH /api/v1/tpo/dashboard/alumni/:educationId/reject */
 router.patch("/dashboard/alumni/:educationId/reject", rejectAlumniVerification);
 
-/**
- * GET /api/v1/tpo/dashboard/company-claims
- * Company claim requests linked to the TPO's college drives.
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// COMPANY CLAIMS & RECRUITERS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/company-claims */
 router.get("/dashboard/company-claims", getTpoCompanyClaims);
 
-/**
- * GET /api/v1/tpo/dashboard/recruiters
- * Recruiters (CompanyAdmin users) from companies that have interacted with the TPO's colleges.
- */
+/** GET /api/v1/tpo/dashboard/recruiters */
 router.get("/dashboard/recruiters", getTpoRecruiterInteractions);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CDCR MANAGEMENT (Feature 5)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** GET /api/v1/tpo/dashboard/cdcr — list all CDCR members */
+router.get("/dashboard/cdcr", listCdcrMembers);
+
+/** POST /api/v1/tpo/dashboard/cdcr — add CDCR member. Body: { userId?, email? } */
+router.post("/dashboard/cdcr", addCdcrMember);
+
+/** DELETE /api/v1/tpo/dashboard/cdcr/:memberId — remove CDCR member */
+router.delete("/dashboard/cdcr/:memberId", removeCdcrMember);
 
 export default router;

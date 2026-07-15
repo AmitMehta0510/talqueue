@@ -14,4 +14,12 @@ router.get("/company/:companyId/received", ctrl.listInvitesReceivedByCompany);
 router.patch("/:inviteId/respond", ctrl.respondToInvite);
 router.patch("/:inviteId/withdraw", ctrl.withdrawInvite);
 
+// Negotiation workflow
+/** PATCH /drive-invites/:inviteId/counter — TPO sends counter-proposal */
+router.patch("/:inviteId/counter", ctrl.sendCounterProposal);
+
+/** POST /drive-invites/:inviteId/accept-counter — Recruiter accepts counter-proposal */
+router.post("/:inviteId/accept-counter", ctrl.acceptCounterProposal);
+
 export default router;
+

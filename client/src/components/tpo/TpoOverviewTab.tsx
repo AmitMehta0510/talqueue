@@ -1,5 +1,8 @@
-import { Users, Briefcase, UserCheck, Building2, BarChart3 } from "lucide-react";
+import { Users, Briefcase, UserCheck, Building2, BarChart3, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { InlineLoader, ErrorState } from "../ui";
+import { useState } from "react";
+import { api } from "../../lib/api";
+import { useToast } from "../../core/contexts/ToastContext";
 
 interface TpoOverviewTabProps {
   stats: {
@@ -21,6 +24,33 @@ export function TpoOverviewTab({
   onRetryStats,
   collegeName,
 }: TpoOverviewTabProps) {
+  const { showToast } = useToast();
+  const [exportYear, setExportYear] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format: "csv" | "pdf") => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ format });
+      if (exportYear) params.set("academicYear", exportYear);
+      const url = `/api/v1/tpo/dashboard/reports/placement?${params}`;
+      const resp = await fetch(url, { credentials: "include" });
+      if (!resp.ok) throw new Error("Failed to generate report");
+      const blob = await resp.blob();
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = `placement-report-${exportYear || "all"}.${format}`;
+      a.click();
+      URL.revokeObjectURL(dlUrl);
+      showToast("success", `Placement report (${format.toUpperCase()}) downloaded`);
+    } catch {
+      showToast("error", "Failed to generate report. Try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (isLoading) {
     return <InlineLoader label="Loading statistics..." />;
   }
@@ -85,6 +115,49 @@ export function TpoOverviewTab({
         </div>
       </div>
 
+      {/* Export Reports Section */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Download className="h-4 w-4 text-indigo-500" />
+              Export Placement Report
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Download branch-wise & company-wise stats for NAAC/NIRF reporting.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={exportYear}
+              onChange={(e) => setExportYear(e.target.value)}
+              className="text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-300"
+            >
+              <option value="">All Years</option>
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <option key={y} value={y}>{y}–{y + 1}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-60"
+            >
+              <FileSpreadsheet size={13} />
+              {exporting ? "Generating..." : "Export CSV"}
+            </button>
+            <button
+              onClick={() => handleExport("pdf")}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition disabled:opacity-60"
+            >
+              <FileText size={13} />
+              {exporting ? "Generating..." : "Export PDF"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-blue-655 dark:text-blue-455" />
@@ -102,6 +175,10 @@ export function TpoOverviewTab({
           <li className="flex items-start gap-2">
             <span className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
             <span>Placement drives lists active and upcoming recruitment cycles targeted specifically at {collegeName || "your college"} students.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+            <span>Use <strong>Bulk Upload</strong> in the Students tab to seed authoritative CGPA &amp; backlog data from your ERP/Excel.</span>
           </li>
         </ul>
       </div>

@@ -25,9 +25,10 @@ import { TpoAlumniTab } from "../components/tpo/TpoAlumniTab";
 import { TpoInvitesTab } from "../components/tpo/TpoInvitesTab";
 import { TpoRecruitersTab } from "../components/tpo/TpoRecruitersTab";
 import { TpoActivityTab } from "../components/tpo/TpoActivityTab";
+import { TpoCdcrTab } from "../components/tpo/TpoCdcrTab";
 import { TpoInviteRecruitersModal } from "../components/tpo/TpoInviteRecruitersModal";
 
-type Tab = "overview" | "students" | "placements" | "invites" | "alumni" | "recruiters" | "activity";
+type Tab = "overview" | "students" | "placements" | "invites" | "alumni" | "recruiters" | "activity" | "cdcr";
 
 export function TpoDashboardPage() {
   const { user } = useAuth();
@@ -61,6 +62,33 @@ export function TpoDashboardPage() {
     activeTab === "invites" && collegeId ? collegeId : null
   );
   const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
+
+  // CDCR Members Query (lazy — fetched only when tab is active)
+  const [cdcrMembers, setCdcrMembers] = useState<any[] | undefined>(undefined);
+  const [cdcrLoading, setCdcrLoading] = useState(false);
+  const [cdcrError, setCdcrError] = useState(false);
+
+  const fetchCdcr = async () => {
+    if (!collegeId) return;
+    setCdcrLoading(true);
+    setCdcrError(false);
+    try {
+      const resp = await fetch("/api/v1/tpo/dashboard/cdcr", { credentials: "include" });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error();
+      setCdcrMembers(json.data);
+    } catch {
+      setCdcrError(true);
+    } finally {
+      setCdcrLoading(false);
+    }
+  };
+
+  // Trigger CDCR fetch when tab becomes active
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === "cdcr" && cdcrMembers === undefined) fetchCdcr();
+  };
 
   // Recruiter Invitation States & Handlers
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -193,11 +221,11 @@ export function TpoDashboardPage() {
 
       {/* Tabs Nav */}
       <div className="flex border-b border-gray-250 dark:border-gray-800 overflow-x-auto space-x-8 scrollbar-hide">
-        {(["overview", "students", "placements", "invites", "alumni", "recruiters", "activity"] as Tab[]).map(
+        {(["overview", "students", "placements", "invites", "alumni", "recruiters", "activity", "cdcr"] as Tab[]).map(
           (tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`pb-4 px-1 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all duration-200 ${
                 activeTab === tab
                   ? "border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400"
@@ -214,6 +242,8 @@ export function TpoDashboardPage() {
                 ? "Recruiter Outreach"
                 : tab === "activity"
                 ? "Company Activity"
+                : tab === "cdcr"
+                ? "CDCR"
                 : tab}
             </button>
           )
@@ -311,6 +341,16 @@ export function TpoDashboardPage() {
             claims={claimsQuery.data}
             isClaimsLoading={claimsQuery.isLoading}
             isClaimsError={claimsQuery.isError}
+          />
+        )}
+
+        {activeTab === "cdcr" && (
+          <TpoCdcrTab
+            members={cdcrMembers}
+            isLoading={cdcrLoading}
+            isError={cdcrError}
+            onRetry={fetchCdcr}
+            onRefresh={fetchCdcr}
           />
         )}
       </div>

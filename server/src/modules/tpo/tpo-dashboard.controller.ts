@@ -29,6 +29,10 @@ import { successResponse } from "shared/utils/apiResponse";
 import { createNotification } from "modules/notifications/notifications.service";
 import { NotificationType } from "@prisma/client";
 
+import { parseCsv, bulkUpsertStudentData } from "./tpo-bulk-upload.service";
+import { generatePlacementCsv, generatePlacementPdf, validateAcademicYear } from "./tpo-reports.service";
+import { getCollegePlacementStats } from "modules/placementDrives/driveAnalytics.service";
+
 // ---------------------------------------------------------------------------
 // LOGGER
 // ---------------------------------------------------------------------------
@@ -566,3 +570,239 @@ export const getTpoRecruiterInteractions = asyncHandler(
     );
   }
 );
+
+// ---------------------------------------------------------------------------
+// HANDLER: POST /tpo/dashboard/students/bulk-upload
+// ---------------------------------------------------------------------------
+
+/**
+ * Accepts a CSV body (text/plain or multipart field "csv") containing:
+ *   email, rollNumber, cgpa, backlogs, currentYear, branchName
+ *
+ * Updates Education records with TPO-authoritative data and sets tpoVerified=true.
+ * Returns a summary of updated / skipped / not-found rows.
+ */
+export const bulkUploadStudents = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+
+    // Accept CSV as raw text/plain body OR as a "csv" field in JSON
+    let csvText: string | undefined;
+
+    if (typeof req.body === "string" && req.body.trim().length > 0) {
+      csvText = req.body;
+    } else if (req.body?.csv && typeof req.body.csv === "string") {
+      csvText = req.body.csv;
+    }
+
+    if (!csvText || !csvText.trim()) {
+      throw new AppError(
+        "Request body must contain CSV data as plain text or in a 'csv' JSON field.",
+        400,
+      );
+    }
+
+    const rows = parseCsv(csvText);
+    const result = await bulkUpsertStudentData(req.user.id, collegeIds, rows);
+
+    logger.info(
+      `TPO bulk upload: collegeIds=[${collegeIds}], total=${result.total}, updated=${result.updated}, skipped=${result.skipped}, notFound=${result.notFound.length}`,
+    );
+
+    return res.json(
+      successResponse(result, `Bulk upload complete: ${result.updated} records updated`),
+    );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// HANDLER: GET /tpo/dashboard/reports/placement
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates and streams a placement report for the TPO's college.
+ *
+ * Query params:
+ *  - academicYear (optional) — e.g. 2024 → Aug 2024 – Jul 2025
+ *  - format       (optional) — "csv" (default) | "pdf"
+ */
+export const getPlacementReport = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+    const collegeId = collegeIds[0]; // primary college
+
+    if (!collegeId) {
+      throw new AppError("No college associated with this TPO account.", 403);
+    }
+
+    const format = (req.query.format as string | undefined)?.toLowerCase() ?? "csv";
+    const academicYear = validateAcademicYear(req.query.academicYear as string | undefined);
+
+    if (format === "pdf") {
+      // Get college name for the report header
+      const college = await prisma.college.findUnique({
+        where: { id: collegeId },
+        select: { name: true },
+      });
+      const { pdf, filename } = await generatePlacementPdf(
+        collegeId,
+        college?.name ?? "Institution",
+        academicYear,
+      );
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(pdf);
+    }
+
+    // Default: CSV
+    const { csv, filename } = await generatePlacementCsv(collegeId, academicYear);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(csv);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// HANDLER: GET /tpo/dashboard/stats/placements  (public-safe stats subset)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns verified placement statistics for the TPO's primary college.
+ * Used internally by the TPO dashboard overview — matches the format
+ * expected by the public placement stats page.
+ */
+export const getTpoPlacementStats = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+    const collegeId = collegeIds[0];
+
+    if (!collegeId) throw new AppError("No college associated with this TPO account.", 403);
+
+    const academicYear = req.query.academicYear
+      ? parseInt(req.query.academicYear as string, 10)
+      : undefined;
+
+    const stats = await getCollegePlacementStats(collegeId, academicYear);
+    return res.json(successResponse(stats, "College placement statistics"));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// HANDLER: GET/POST/DELETE /tpo/dashboard/cdcr
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /tpo/dashboard/cdcr — list all CDCR members for the TPO's college
+ */
+export const listCdcrMembers = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+
+    const members = await prisma.cdcrMember.findMany({
+      where: { collegeId: { in: collegeIds } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { fullName: true, avatarUrl: true, headline: true } },
+          },
+        },
+        college: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.json(successResponse(members, "CDCR members"));
+  },
+);
+
+/**
+ * POST /tpo/dashboard/cdcr — add a CDCR member by userId or email
+ * Body: { userId?: string, email?: string }
+ */
+export const addCdcrMember = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+    const collegeId = collegeIds[0];
+    if (!collegeId) throw new AppError("No college associated with this TPO account.", 403);
+
+    const { userId, email } = req.body as { userId?: string; email?: string };
+
+    let targetUserId = userId;
+
+    if (!targetUserId && email) {
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: { id: true },
+      });
+      if (!user) throw new AppError(`No user found with email: ${email}`, 404);
+      targetUserId = user.id;
+    }
+
+    if (!targetUserId) {
+      throw new AppError("Provide either userId or email to add a CDCR member.", 400);
+    }
+
+    // Prevent duplicates
+    const existing = await prisma.cdcrMember.findFirst({
+      where: { userId: targetUserId, collegeId },
+    });
+    if (existing) throw new AppError("This user is already a CDCR member for this college.", 409);
+
+    const member = await prisma.cdcrMember.create({
+      data: {
+        userId: targetUserId,
+        collegeId,
+        assignedById: req.user.id,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            profile: { select: { fullName: true, avatarUrl: true } },
+          },
+        },
+      },
+    });
+
+    // Notify the new CDCR member
+    setImmediate(() => {
+      createNotification({
+        userId: targetUserId!,
+        actorId: req.user.id,
+        type: NotificationType.SYSTEM,
+        title: "CDCR Role Assigned",
+        message: "You have been assigned as a Career Development Cell Representative (CDCR) for your college. You can now access placement coordination features.",
+        actionUrl: "/tpo",
+      }).catch(() => {});
+    });
+
+    logger.info(`CDCR member added: userId=${targetUserId}, collegeId=${collegeId}`);
+    return res.status(201).json(successResponse(member, "CDCR member added successfully"));
+  },
+);
+
+/**
+ * DELETE /tpo/dashboard/cdcr/:memberId — remove a CDCR member
+ */
+export const removeCdcrMember = asyncHandler(
+  async (req: any, res: Response) => {
+    const collegeIds = getCollegeIds(req);
+    const { memberId } = req.params as { memberId: string };
+
+    const member = await prisma.cdcrMember.findFirst({
+      where: { id: memberId, collegeId: { in: collegeIds } },
+      select: { id: true, userId: true },
+    });
+
+    if (!member) throw new AppError("CDCR member not found or not in your college.", 404);
+
+    await prisma.cdcrMember.delete({ where: { id: memberId } });
+
+    logger.info(`CDCR member removed: memberId=${memberId}`);
+    return res.json(successResponse({ memberId }, "CDCR member removed"));
+  },
+);
+

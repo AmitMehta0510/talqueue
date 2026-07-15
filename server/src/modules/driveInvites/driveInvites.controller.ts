@@ -92,3 +92,42 @@ export const withdrawInvite = async (req: Request, res: Response, next: NextFunc
     next(err);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEGOTIATION HANDLERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * PATCH /drive-invites/:inviteId/counter
+ * TPO sends a counter-proposal with modified eligibility terms.
+ * Body: { minCgpa?, maxBacklogs?, eligibleBranches?, eligibleYears?, message? }
+ */
+export const sendCounterProposal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.sendCounterProposal(
+      req.user!.id,
+      req.params.inviteId as string,
+      req.body,
+    );
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /drive-invites/:inviteId/accept-counter
+ * Recruiter accepts the TPO's counter-proposal — creates a drive with merged terms.
+ */
+export const acceptCounterProposal = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await service.acceptCounterProposal(
+      req.user!.id,
+      req.params.inviteId as string,
+    );
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+

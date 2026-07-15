@@ -122,6 +122,29 @@ export const resdexSearchHandler = asyncHandler(
 
     const result = await searchResdexCandidates(filters);
 
+    // ── Premium Tier Gating: contact details ────────────────────────────────
+    // Check if this recruiter is PREMIUM tier (can see contact info for opted-in students)
+    let isPremiumRecruiter = isPlatformAdmin || isTpo || isCollegeAdmin;
+    if (!isPremiumRecruiter && isRecruiter) {
+      const companyAdminRow = await prisma.companyAdmin.findFirst({
+        where: { userId: user.id },
+        select: { tier: true },
+      });
+      isPremiumRecruiter = companyAdminRow?.tier === "PREMIUM";
+    }
+
+    // For non-premium recruiters, mask contact info on candidates who haven't opted in
+    // (contact info is in the Elasticsearch _source; we null it out here)
+    // For opted-in students who are found, contact details remain visible to PREMIUM
+    const candidatesWithTierInfo = result.candidates.map((candidate: any) => ({
+      ...candidate,
+      // contactVisible: true means premium recruiter + student opted in
+      contactVisible: isPremiumRecruiter && !!(candidate.openToCampusOutreach),
+      // Mask email and phone for non-premium or non-opted-in
+      email:   isPremiumRecruiter && candidate.openToCampusOutreach ? candidate.email   : undefined,
+      phone:   isPremiumRecruiter && candidate.openToCampusOutreach ? candidate.phone   : undefined,
+    }));
+
     if (isSubjectToLimit && isFreeTier) {
       currentSearchCount++;
       await redis.set(limitKey, currentSearchCount, "EX", 86400); // 24 hours TTL
@@ -130,7 +153,9 @@ export const resdexSearchHandler = asyncHandler(
     res.json(
       successResponse(
         {
-          ...result,
+          candidates: candidatesWithTierInfo,
+          total: result.total,
+          isPremiumRecruiter,
           searchLimitInfo: {
             isLimited: isSubjectToLimit && isFreeTier,
             dailyLimit,
@@ -176,6 +201,38 @@ export const nlSearchHandler = asyncHandler(
       successResponse(
         { candidates: result.candidates, total: result.total, parsedFilters },
         `Found ${result.total} candidate(s) for: "${rawQuery}"`
+      )
+    );
+  }
+);
+
+/**
+ * PATCH /api/v1/resdex/campus-outreach-preference
+ *
+ * Students toggle their `openToCampusOutreach` flag.
+ * When true, premium recruiters can see their contact details in RESDEX.
+ */
+export const updateCampusOutreachHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication required.", 401);
+
+    const { openToCampusOutreach } = req.body as { openToCampusOutreach?: boolean };
+    if (typeof openToCampusOutreach !== "boolean") {
+      throw new AppError("openToCampusOutreach must be a boolean.", 400);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { openToCampusOutreach },
+    });
+
+    return res.json(
+      successResponse(
+        { openToCampusOutreach },
+        openToCampusOutreach
+          ? "You are now visible to premium campus recruiters. They can see your contact details."
+          : "Campus outreach opt-in removed. Recruiters can no longer see your contact details."
       )
     );
   }
