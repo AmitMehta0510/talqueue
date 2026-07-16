@@ -554,6 +554,39 @@ enum InterviewRoomStatus {
   COMPLETED
 }
 
+// ── Payment System Enums ─────────────────────────────────────────────────────
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  PAUSED
+}
+
+enum PaymentOrderStatus {
+  CREATED
+  ATTEMPTED
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+enum TransactionStatus {
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
 model User {
   id       String     @id @default(uuid())
   email    String     @unique
@@ -747,6 +780,13 @@ model User {
   @@index([primaryRole, openToWork])          // recruiter "open to work" search
   @@index([tier, canAccessRecruiterDirectory]) // premium feature gating
   @@index([openToCampusOutreach])              // RESDEX campus outreach filter
+
+  // ── Payment back-relations ────────────────────────────────────────────────
+  subscriptions       Subscription[]
+  paymentOrders       PaymentOrder[]
+  paymentTransactions PaymentTransaction[]
+  invoices            Invoice[]
+  creditLedger        CreditLedger[]
 }
 
 model UserRecommendation {
@@ -3761,5 +3801,191 @@ model AlumniSlotBooking {
   @@index([studentId])
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// PAYMENT SYSTEM
+// ═════════════════════════════════════════════════════════════════════════════
 
+/// Defines a purchasable plan (RESDEX Premium, Job Credits Pack, College Institutional, etc.)
+model Plan {
+  id              String          @id @default(uuid())
+  name            String          // Human-readable: "RESDEX Premium"
+  slug            String          @unique // URL-safe key: "resdex-premium"
+  description     String?
+  targetRole      String          // "RECRUITER" | "COLLEGE" | "STUDENT" | "ANY"
+  billingInterval BillingInterval
+  priceInPaise    Int             // Always paise. ₹299 = 29900. Never rupees.
+  trialDays       Int             @default(0)
+  // Feature flags: { resdexSearches: -1, contactUnlocks: -1, jobPosts: 10 }
+  // -1 means unlimited
+  features        Json
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
+  subscriptions Subscription[]
+  paymentOrders PaymentOrder[]
+
+  @@index([slug])
+  @@index([targetRole, isActive])
+}
+
+/// A user's current plan subscription — the central access control record
+model Subscription {
+  id                    String             @id @default(uuid())
+  userId                String
+  planId                String
+  status                SubscriptionStatus @default(TRIALING)
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  trialEndsAt           DateTime?
+  // LinkedIn-style: user cancels but keeps access until period end
+  cancelAtPeriodEnd     Boolean            @default(false)
+  cancelledAt           DateTime?
+  // Razorpay subscription ID (null for ONE_TIME plans)
+  gatewaySubscriptionId String?            @unique
+  // Razorpay customer ID — enables saved payment methods
+  gatewayCustomerId     String?
+  metadata              Json?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          Plan           @relation(fields: [planId], references: [id])
+  paymentOrders PaymentOrder[]
+  invoices      Invoice[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([currentPeriodEnd]) // for expired subscription cron
+}
+
+/// Created BEFORE payment — tracks user's payment intent and prevents double-charging
+model PaymentOrder {
+  id             String             @id @default(uuid())
+  userId         String
+  planId         String
+  subscriptionId String?
+  amountInPaise  Int
+  currency       String             @default("INR")
+  status         PaymentOrderStatus @default(CREATED)
+  // Idempotency key = hash(userId+planId+timestamp) — prevents duplicate orders
+  idempotencyKey String             @unique
+  // Razorpay order_id returned from orders API
+  gatewayOrderId String?            @unique
+  notes          Json?
+  expiresAt      DateTime
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         Plan               @relation(fields: [planId], references: [id])
+  subscription Subscription?      @relation(fields: [subscriptionId], references: [id])
+  transaction  PaymentTransaction?
+
+  @@index([userId])
+  @@index([gatewayOrderId])
+  @@index([idempotencyKey])
+  @@index([status, expiresAt])
+}
+
+/// Immutable record of every payment attempt. NEVER update or delete rows.
+model PaymentTransaction {
+  id                    String            @id @default(uuid())
+  paymentOrderId        String            @unique
+  userId                String
+  amountInPaise         Int
+  currency              String            @default("INR")
+  status                TransactionStatus
+  // Razorpay payment_id — globally unique
+  gatewayPaymentId      String            @unique
+  // HMAC signature from Razorpay (stored for audit)
+  gatewaySignature      String?
+  method                String?           // "upi" | "card" | "netbanking" | "wallet" | "emi"
+  bankCode              String?
+  cardNetwork           String?           // "VISA" | "MASTERCARD" | "RUPAY"
+  refundedAmountInPaise Int               @default(0)
+  errorCode             String?
+  errorDescription      String?
+  capturedAt            DateTime?
+  createdAt             DateTime          @default(now())
+
+  paymentOrder PaymentOrder @relation(fields: [paymentOrderId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice      Invoice?
+
+  @@index([userId])
+  @@index([gatewayPaymentId])
+  @@index([status])
+}
+
+/// Tax-compliant invoice generated after each successful payment
+model Invoice {
+  id               String   @id @default(uuid())
+  // Sequential: INV-2025-000001
+  invoiceNumber    String   @unique
+  userId           String
+  subscriptionId   String?
+  transactionId    String   @unique
+  // [{ description, quantity, unitPriceInPaise, totalInPaise }]
+  lineItems        Json
+  subtotalInPaise  Int
+  gstRatePercent   Int      @default(18)
+  gstAmountInPaise Int
+  totalInPaise     Int
+  billingName      String?
+  billingAddress   Json?    // { line1, city, state, pincode, country }
+  gstin            String?  // Buyer GSTIN for B2B invoicing
+  pdfUrl           String?  // URL to generated PDF
+  issuedAt         DateTime @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription?      @relation(fields: [subscriptionId], references: [id])
+  transaction  PaymentTransaction @relation(fields: [transactionId], references: [id])
+
+  @@index([userId])
+  @@index([invoiceNumber])
+  @@index([issuedAt])
+}
+
+/// Stores every incoming webhook for idempotency and replay.
+/// If processed=true and the same eventId arrives again → skip processing, return 200.
+model WebhookEvent {
+  id          String    @id @default(uuid())
+  gateway     String    // "RAZORPAY"
+  // Unique per Razorpay event — deduplicate on this field
+  eventId     String    @unique
+  eventType   String    // "payment.captured" | "subscription.activated" | etc.
+  // Raw webhook body stored as-is — never lose incoming data
+  payload     Json
+  processed   Boolean   @default(false)
+  processedAt DateTime?
+  attempts    Int       @default(0)
+  error       String?   // Last error message if processing failed
+  createdAt   DateTime  @default(now())
+
+  @@index([eventId])
+  @@index([processed, createdAt]) // for failed-event retry cron
+  @@index([eventType])
+}
+
+/// Append-only credit ledger. Never update/delete rows.
+/// Debit: negative delta (consuming a job post credit)
+/// Credit: positive delta (buying a credit pack)
+model CreditLedger {
+  id             String   @id @default(uuid())
+  userId         String
+  creditType     String   // "JOB_POST" | "RESDEX_UNLOCK" | "INVITE_SEND"
+  delta          Int      // Positive = credit, Negative = debit
+  runningBalance Int      // Snapshot at time of entry (always recalculate from SUM(delta) for reconciliation)
+  reason         String   // Human-readable audit note
+  transactionId  String?  // Linked PaymentTransaction (null for manual admin grants)
+  referenceId    String?  // Entity consumed (jobId, profileId, etc.)
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, creditType])
+  @@index([transactionId])
+  @@index([createdAt])
+}

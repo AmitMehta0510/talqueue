@@ -43,6 +43,28 @@ const envSchema = z.object({
 
   // Log level override (default: "debug" in dev, "info" in prod)
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).optional(),
+
+  // ── Payment System (Razorpay) ────────────────────────────────────────────────
+  // Use TEST keys in development. Swap to LIVE keys at monetization milestone.
+  // Get keys from: https://dashboard.razorpay.com/app/keys
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
+  // Feature flag: false = all free, true = enforce subscription checks.
+  // Flip to "true" ONLY after: 2k+ users, 10+ colleges, 5+ recruiters, 5+ companies.
+  PAYMENT_ENFORCEMENT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
+  // Invoice / GST branding (fill when GST registered)
+  INVOICE_COMPANY_NAME: z.string().default("Engineers Platform"),
+  INVOICE_COMPANY_GSTIN: z.string().optional(),
+  INVOICE_COMPANY_ADDRESS: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
+
+/** Convenience: true when subscription enforcement is active */
+export const isPaymentEnforced = () => env.PAYMENT_ENFORCEMENT_ENABLED;

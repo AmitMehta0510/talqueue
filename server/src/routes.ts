@@ -43,6 +43,7 @@ import tpoDashboardRoutes from "modules/tpo/tpo-dashboard.routes";
 import interviewRoutes from "modules/interviews/interviews.routes";
 import matchmakingRoutes from "modules/matchmaking/matchmaking.routes";
 import alumniBookingsRoutes from "modules/alumni/alumni-bookings.routes";
+import { paymentsRouter, webhookRouter } from "modules/payments/payments.routes";
 import { successResponse } from "shared/utils/apiResponse";
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 import docsRouter from "shared/openapi/docs.routes";
@@ -108,6 +109,8 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "matchmaking", path: "/matchmaking", router: matchmakingRoutes },
   // Alumni Mentorship slot booking
   { key: "alumni", path: "/alumni", router: alumniBookingsRoutes },
+  // Payment System — plans, orders, subscription management, invoices, credits
+  { key: "payments", path: "/payments", router: paymentsRouter },
 ];
 
 export const apiRouteMap = Object.fromEntries(
@@ -135,6 +138,10 @@ export const registerApiRoutes = (app: Express) => {
 
   // OpenAPI Swagger UI — rate-limiter exempt (static doc serving)
   app.use(`${API_PREFIX}`, docsRouter);
+
+  // Razorpay webhook — raw body required for HMAC verification
+  // Mounted BEFORE the rate-limited loop to bypass apiRateLimiter
+  app.use(`${API_PREFIX}/webhooks`, webhookRouter);
 
   for (const { key, path, router } of apiRouteEntries) {
     let rateLimiter;
