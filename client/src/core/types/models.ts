@@ -1795,3 +1795,68 @@ export type TrendingFeedItem = FeedItem & {
   entityId?: string;
   entityType?: FeedItemType;
 };
+
+// ── Payment System Types ─────────────────────────────────────────────────────
+
+export type BillingInterval = "MONTHLY" | "YEARLY" | "ONE_TIME";
+export type SubscriptionStatus = "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED" | "PAUSED";
+
+export interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  targetRole: string;
+  billingInterval: BillingInterval;
+  priceInPaise: number;
+  trialDays: number;
+  features: Record<string, unknown>;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  trialEndsAt?: string | null;
+  cancelAtPeriodEnd: boolean;
+  cancelledAt?: string | null;
+  gatewaySubscriptionId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  plan?: Pick<Plan, "id" | "name" | "slug" | "billingInterval" | "priceInPaise" | "features" | "targetRole">;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  userId: string;
+  subscriptionId?: string | null;
+  transactionId: string;
+  lineItems: Array<{
+    description: string;
+    quantity: number;
+    unitPriceInPaise: number;
+    totalInPaise: number;
+  }>;
+  subtotalInPaise: number;
+  gstRatePercent: number;
+  gstAmountInPaise: number;
+  totalInPaise: number;
+  billingName?: string | null;
+  gstin?: string | null;
+  pdfUrl?: string | null;
+  issuedAt: string;
+  transaction?: {
+    method?: string | null;
+    gatewayPaymentId: string;
+    capturedAt?: string | null;
+    cardNetwork?: string | null;
+    bankCode?: string | null;
+  };
+}

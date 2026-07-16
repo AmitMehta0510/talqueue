@@ -1389,6 +1389,59 @@ export const api = {
   ...jobsApi,
   ...storageApi,
   ...remainingApi,
+
+  // ── Payment System ──────────────────────────────────────────────────────────
+  payments: {
+    /** List all active plans. Optional targetRole filter: "RECRUITER" | "COLLEGE" | "STUDENT" */
+    listPlans: (targetRole?: string, options?: EndpointOptions) =>
+      request<Plan[]>(`/payments/plans${targetRole ? `?targetRole=${targetRole}` : ""}`, options),
+
+    getPlan: (slug: string, options?: EndpointOptions) =>
+      request<Plan>(`/payments/plans/${slug}`, options),
+
+    /**
+     * Create a Razorpay order before checkout.
+     * Returns { orderId, localOrderId, amount, currency, keyId }
+     */
+    createOrder: (body: { planSlug: string; subscriptionId?: string }, options?: EndpointOptions) =>
+      request<{ orderId: string; localOrderId: string; amount: number; currency: string; keyId: string }>(
+        "/payments/orders",
+        { method: "POST", body: JSON.stringify(body), ...options },
+      ),
+
+    /**
+     * Verify Razorpay payment signature after checkout success.
+     * UX confirmation only — subscription is activated by webhook.
+     */
+    verifyPayment: (
+      body: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string },
+      options?: EndpointOptions,
+    ) =>
+      request<{ verified: boolean; paymentId: string }>(
+        "/payments/verify",
+        { method: "POST", body: JSON.stringify(body), ...options },
+      ),
+
+    /** Get current user's active subscription + history */
+    getSubscription: (options?: EndpointOptions) =>
+      request<{ active: Subscription | null; history: Subscription[] }>("/payments/subscription", options),
+
+    /** Cancel subscription (LinkedIn-style: access continues until period end) */
+    cancelSubscription: (options?: EndpointOptions) =>
+      request<Subscription>("/payments/subscription", { method: "DELETE", ...options }),
+
+    /** Get invoice history */
+    listInvoices: (options?: EndpointOptions) =>
+      request<Invoice[]>("/payments/invoices", options),
+
+    /** Get single invoice */
+    getInvoice: (id: string, options?: EndpointOptions) =>
+      request<Invoice>(`/payments/invoices/${id}`, options),
+
+    /** Get credit balances */
+    getCredits: (options?: EndpointOptions) =>
+      request<Record<string, number>>("/payments/credits", options),
+  },
 };
 
 // Re-export specific interfaces/types defined locally or at the bottom

@@ -18,6 +18,7 @@ const DiscoverPage          = lazy(() => import("../pages/DiscoverPage").then(m 
 const NotificationsPage     = lazy(() => import("../pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const UserProfilePage       = lazy(() => import("../pages/UserProfilePage").then(m => ({ default: m.UserProfilePage })));
 const OrganizationSelectorPage = lazy(() => import("../pages/OrganizationSelectorPage").then(m => ({ default: m.OrganizationSelectorPage })));
+const PricingPage               = lazy(() => import("../pages/PricingPage").then(m => ({ default: m.PricingPage })));
 // ─────────────────────────────────────────────────────────────────────────────
 
 type GuardComponents = {
@@ -73,6 +74,8 @@ export function sharedRoutes({ RequireAuth, PageTransitionWrapper }: GuardCompon
       />
       {/* Legacy: /business-onboarding → /business */}
       <Route path="/business-onboarding" element={<BusinessOnboardingRedirect />} />
+      {/* Pricing — publicly accessible, no auth required */}
+      <Route path="/pricing" element={<PageTransitionWrapper><PricingPage /></PageTransitionWrapper>} />
     </Route>
   );
 }

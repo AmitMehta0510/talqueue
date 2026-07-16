@@ -41,7 +41,7 @@ export const listPlansHandler = asyncHandler(
 
 export const getPlanBySlugHandler = asyncHandler(
   async (req: Request, res: Response) => {
-    const { slug } = req.params;
+    const slug = req.params.slug as string;
     const plan = await getPlanBySlug(slug);
     res.json(successResponse(plan));
   },
