@@ -1,18 +1,14 @@
 /**
  * usePaymentQueries.ts
  *
- * React Query hooks for the payment system:
- *  - usePlansQuery           → list all active plans
- *  - useMySubscriptionQuery  → current user's subscription + history
- *  - useMyInvoicesQuery      → invoice history
- *  - useMyCreditsQuery       → credit balances
- *  - useCreateOrderMutation  → create Razorpay order before checkout
- *  - useVerifyPaymentMutation → verify payment signature after checkout
- *  - useCancelSubscriptionMutation → cancel subscription
+ * React Query hooks for the payment system.
+ * All hooks unwrap ApiEnvelope<T>.data following the project's request() pattern.
+ * showToast signature: showToast(type, message) — type-first.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import type { Plan, Subscription, Invoice } from "../../core/types/models";
 import { useToast } from "../../core/contexts/ToastContext";
 import { getErrorMessage } from "../../core/utils/format";
 
@@ -21,12 +17,12 @@ import { getErrorMessage } from "../../core/utils/format";
 // ---------------------------------------------------------------------------
 
 export const paymentQueryKeys = {
-  plans: ["payments", "plans"] as const,
-  plan: (slug: string) => ["payments", "plans", slug] as const,
+  plans: (targetRole?: string) =>
+    targetRole ? (["payments", "plans", targetRole] as const) : (["payments", "plans"] as const),
   subscription: ["payments", "subscription"] as const,
   invoices: ["payments", "invoices"] as const,
   credits: ["payments", "credits"] as const,
-};
+} as const;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -34,29 +30,41 @@ export const paymentQueryKeys = {
 
 export const usePlansQuery = (targetRole?: string) =>
   useQuery({
-    queryKey: [...paymentQueryKeys.plans, targetRole],
-    queryFn: () => api.payments.listPlans(targetRole),
+    queryKey: paymentQueryKeys.plans(targetRole),
+    queryFn: async () => {
+      const res = await api.payments.listPlans(targetRole);
+      return res.data as Plan[];
+    },
     staleTime: 10 * 60 * 1000, // plans change rarely
   });
 
 export const useMySubscriptionQuery = () =>
   useQuery({
     queryKey: paymentQueryKeys.subscription,
-    queryFn: () => api.payments.getSubscription(),
-    staleTime: 60 * 1000, // 1 min
+    queryFn: async () => {
+      const res = await api.payments.getSubscription();
+      return res.data as { active: Subscription | null; history: Subscription[] };
+    },
+    staleTime: 60 * 1000,
   });
 
 export const useMyInvoicesQuery = () =>
   useQuery({
     queryKey: paymentQueryKeys.invoices,
-    queryFn: () => api.payments.listInvoices(),
+    queryFn: async () => {
+      const res = await api.payments.listInvoices();
+      return res.data as Invoice[];
+    },
     staleTime: 5 * 60 * 1000,
   });
 
 export const useMyCreditsQuery = () =>
   useQuery({
     queryKey: paymentQueryKeys.credits,
-    queryFn: () => api.payments.getCredits(),
+    queryFn: async () => {
+      const res = await api.payments.getCredits();
+      return res.data as Record<string, number>;
+    },
     staleTime: 60 * 1000,
   });
 
@@ -68,10 +76,18 @@ export const useCreateOrderMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (body: { planSlug: string; subscriptionId?: string }) =>
-      api.payments.createOrder(body),
+    mutationFn: async (body: { planSlug: string; subscriptionId?: string }) => {
+      const res = await api.payments.createOrder(body);
+      return res.data as {
+        orderId: string;
+        localOrderId: string;
+        amount: number;
+        currency: string;
+        keyId: string;
+      };
+    },
     onError: (err) => {
-      showToast(getErrorMessage(err), "error");
+      showToast("error", getErrorMessage(err));
     },
   });
 };
@@ -81,24 +97,27 @@ export const useVerifyPaymentMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: (body: {
+    mutationFn: async (body: {
       razorpayOrderId: string;
       razorpayPaymentId: string;
       razorpaySignature: string;
-    }) => api.payments.verifyPayment(body),
+    }) => {
+      const res = await api.payments.verifyPayment(body);
+      return res.data as { verified: boolean; paymentId: string };
+    },
     onSuccess: () => {
       showToast(
-        "Payment successful! Your subscription is being activated.",
         "success",
+        "Payment successful! Your subscription is being activated.",
       );
-      // Invalidate subscription — it will refresh after webhook activates it
+      // Delay invalidation to allow webhook to process before refetch
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: paymentQueryKeys.subscription });
         queryClient.invalidateQueries({ queryKey: paymentQueryKeys.invoices });
-      }, 3000); // Small delay to allow webhook processing
+      }, 3000);
     },
     onError: (err) => {
-      showToast(getErrorMessage(err), "error");
+      showToast("error", getErrorMessage(err));
     },
   });
 };
@@ -108,16 +127,19 @@ export const useCancelSubscriptionMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: () => api.payments.cancelSubscription(),
+    mutationFn: async () => {
+      const res = await api.payments.cancelSubscription();
+      return res.data as Subscription;
+    },
     onSuccess: () => {
       showToast(
-        "Subscription cancelled. You'll retain access until the end of your current period.",
         "success",
+        "Subscription cancelled. You'll retain access until the end of your current period.",
       );
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.subscription });
     },
     onError: (err) => {
-      showToast(getErrorMessage(err), "error");
+      showToast("error", getErrorMessage(err));
     },
   });
 };

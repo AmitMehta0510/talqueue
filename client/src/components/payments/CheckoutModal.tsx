@@ -73,7 +73,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
     // 1. Load Razorpay script
     const loaded = await loadRazorpayScript();
     if (!loaded) {
-      showToast("Failed to load payment gateway. Please try again.", "error");
+      showToast("error", "Failed to load payment gateway. Please try again.");
       setStep("error");
       return;
     }
