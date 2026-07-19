@@ -14,6 +14,7 @@ import {
   useDriveInvitesForCollegeQuery,
   useRespondToDriveInviteMutation,
   useBulkInviteRecruitersMutation,
+  useSendCounterProposalMutation,
 } from "../hooks/usePlatformQueries";
 import { ErrorState } from "../components/ui";
 
@@ -62,6 +63,7 @@ export function TpoDashboardPage() {
     activeTab === "invites" && collegeId ? collegeId : null
   );
   const respondToInviteMutation = useRespondToDriveInviteMutation(collegeId);
+  const sendCounterProposalMutation = useSendCounterProposalMutation(collegeId);
 
   // Recruiter Invitation States & Handlers
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -285,6 +287,8 @@ export function TpoDashboardPage() {
             onRetry={() => driveInvitesQuery.refetch()}
             onRespondToInvite={handleRespondToInvite}
             isRespondPending={respondToInviteMutation.isPending}
+            onSendCounterProposal={(payload) => sendCounterProposalMutation.mutate(payload)}
+            isCounterPending={sendCounterProposalMutation.isPending}
           />
         )}
 

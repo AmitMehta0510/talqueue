@@ -242,6 +242,33 @@ export const jobsApi = {
   withdrawDriveInvite: (inviteId: string) =>
     request<{ success: boolean }>(`/drive-invites/${inviteId}/withdraw`, { method: "PATCH", body: {} }),
 
+  /**
+   * PATCH /drive-invites/:inviteId/counter
+   * TPO sends counter-proposal with modified eligibility terms.
+   * Sets invite status → NEGOTIATING.
+   */
+  sendCounterProposal: (
+    inviteId: string,
+    proposal: {
+      minCgpa?: number;
+      maxBacklogs?: number;
+      eligibleBranches?: string[];
+      eligibleYears?: number[];
+      message?: string;
+    },
+  ) =>
+    request<PlacementDriveInvite>(`/drive-invites/${inviteId}/counter`, {
+      method: "PATCH",
+      body: proposal,
+    }),
+
+  /**
+   * POST /drive-invites/:inviteId/accept-counter
+   * Recruiter accepts the TPO counter-proposal — creates a placement drive with merged terms.
+   */
+  acceptCounterProposal: (inviteId: string) =>
+    request<PlacementDriveInvite>(`/drive-invites/${inviteId}/accept-counter`, { method: "POST" }),
+
   createDriveRound: (driveId: string, body: Partial<PlacementDriveRound> & { roundType: string }) =>
     request<PlacementDriveRound>(`/placement-drives/${driveId}/rounds`, { method: "POST", body }),
 

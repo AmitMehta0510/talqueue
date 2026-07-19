@@ -23,6 +23,13 @@ interface SentInvite {
   status: string;
   driveTitle?: string | null;
   college?: College | null;
+  tpoCounterProposal?: {
+    minCgpa?: number;
+    maxBacklogs?: number;
+    eligibleBranches?: string[];
+    eligibleYears?: number[];
+    message?: string;
+  } | null;
 }
 
 interface ActiveDrive {
@@ -57,6 +64,9 @@ interface RecruiterCampusTabProps {
 
   totalStudentsEngaged: number;
   conversionRatio: string;
+
+  onAcceptCounter: (inviteId: string) => void;
+  isAcceptCounterPending: boolean;
 }
 
 export function RecruiterCampusTab({
@@ -75,9 +85,12 @@ export function RecruiterCampusTab({
   onNavigateToDrive,
   totalStudentsEngaged,
   conversionRatio,
+  onAcceptCounter,
+  isAcceptCounterPending,
 }: RecruiterCampusTabProps) {
   const statusColors: Record<string, string> = {
     PENDING: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    NEGOTIATING: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/20",
     ACCEPTED: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     REJECTED: "bg-rose-500/15 text-rose-500 border-rose-500/20",
     WITHDRAWN: "bg-slate-500/15 text-slate-500 border-slate-500/20",
@@ -272,7 +285,7 @@ export function RecruiterCampusTab({
             {sentInvites.map((invite) => (
               <div
                 key={invite.id}
-                className="panel p-4 flex flex-col gap-2 hover:shadow-md transition"
+                className="panel p-4 flex flex-col gap-3 hover:shadow-md transition"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -295,11 +308,44 @@ export function RecruiterCampusTab({
                 </div>
 
                 {invite.driveTitle && (
-                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    Drive: <span className="font-semibold">{invite.driveTitle}</span>
+                  <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                    Drive: <span className="font-bold">{invite.driveTitle}</span>
                   </p>
                 )}
 
+                {/* Show Negotiating Terms & Message */}
+                {invite.status === "NEGOTIATING" && invite.tpoCounterProposal && (
+                  <div className="space-y-1.5 bg-purple-500/5 border border-purple-500/20 rounded-xl p-3 text-xs mt-1">
+                    <span className="font-bold text-[10px] uppercase text-purple-400 tracking-wider">Proposed Changes from TPO</span>
+                    {invite.tpoCounterProposal.minCgpa !== undefined && (
+                      <p style={{ color: "var(--text-secondary)" }}>
+                        <strong>Min CGPA:</strong> {invite.tpoCounterProposal.minCgpa.toFixed(2)}
+                      </p>
+                    )}
+                    {invite.tpoCounterProposal.maxBacklogs !== undefined && (
+                      <p style={{ color: "var(--text-secondary)" }}>
+                        <strong>Max Backlogs:</strong> {invite.tpoCounterProposal.maxBacklogs}
+                      </p>
+                    )}
+                    {invite.tpoCounterProposal.eligibleBranches && (
+                      <p style={{ color: "var(--text-secondary)" }}>
+                        <strong>Branches:</strong> {invite.tpoCounterProposal.eligibleBranches.join(", ")}
+                      </p>
+                    )}
+                    {invite.tpoCounterProposal.eligibleYears && (
+                      <p style={{ color: "var(--text-secondary)" }}>
+                        <strong>Years:</strong> {invite.tpoCounterProposal.eligibleYears.join(", ")}
+                      </p>
+                    )}
+                    {invite.tpoCounterProposal.message && (
+                      <p className="italic text-xs border-t border-purple-500/10 pt-1.5 mt-1.5" style={{ color: "var(--text-muted)" }}>
+                        "{invite.tpoCounterProposal.message}"
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
                 {invite.status === "PENDING" && (
                   <button
                     className="self-start flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-400 transition"
@@ -309,6 +355,31 @@ export function RecruiterCampusTab({
                     {isWithdrawInvitePending ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
                     Withdraw Invite
                   </button>
+                )}
+
+                {invite.status === "NEGOTIATING" && (
+                  <div className="flex gap-2 border-t border-gray-150 dark:border-gray-850 pt-3 mt-2">
+                    <button
+                      className="flex-1 text-xs font-bold py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                      onClick={() => onAcceptCounter(invite.id)}
+                      disabled={isAcceptCounterPending}
+                    >
+                      {isAcceptCounterPending ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={11} />
+                      )}
+                      Accept Changes & Create Drive
+                    </button>
+                    <button
+                      className="px-3 text-xs font-semibold py-1.5 rounded-lg border text-rose-500 hover:bg-rose-500/10 transition flex items-center justify-center gap-1 disabled:opacity-60"
+                      style={{ borderColor: "rgba(244,63,94,0.3)" }}
+                      onClick={() => onWithdrawInvite(invite.id)}
+                      disabled={isWithdrawInvitePending}
+                    >
+                      Withdraw
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

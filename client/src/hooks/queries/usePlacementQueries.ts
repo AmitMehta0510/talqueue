@@ -315,6 +315,53 @@ export const useWithdrawDriveInviteMutation = (companyId?: string | null) => {
   });
 };
 
+export const useSendCounterProposalMutation = (collegeId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      inviteId,
+      proposal,
+    }: {
+      inviteId: string;
+      proposal: {
+        minCgpa?: number;
+        maxBacklogs?: number;
+        eligibleBranches?: string[];
+        eligibleYears?: number[];
+        message?: string;
+      };
+    }) => api.sendCounterProposal(inviteId, proposal),
+    onSuccess: () => {
+      showToast("success", "Counter proposal sent successfully!");
+      queryClient.invalidateQueries({ queryKey: ["driveInvites"] });
+      if (collegeId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "college", collegeId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
+export const useAcceptCounterProposalMutation = (companyId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (inviteId: string) => api.acceptCounterProposal(inviteId),
+    onSuccess: () => {
+      showToast("success", "Counter proposal accepted and placement drive created!");
+      queryClient.invalidateQueries({ queryKey: ["driveInvites"] });
+      queryClient.invalidateQueries({ queryKey: ["placementDrives"] });
+      if (companyId) {
+        queryClient.invalidateQueries({ queryKey: ["driveInvites", "company", companyId] });
+      }
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};
+
 // ─── DRIVE ELIGIBILITY PRE-CHECK ─────────────────────────────────────────────
 
 

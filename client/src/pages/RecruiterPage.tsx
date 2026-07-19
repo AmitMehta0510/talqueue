@@ -14,6 +14,7 @@ import {
   useRecruiterClaimJobApplicationsQuery,
   useUpdateApplicationStatusMutation,
   useResdexSearchQuery,
+  useAcceptCounterProposalMutation,
 } from "../hooks/usePlatformQueries";
 
 import { useAuth } from "../core/contexts/AuthContext";
@@ -81,6 +82,7 @@ export function RecruiterPage() {
   const inboundInvites = inboundInvitesQuery.data || [];
   const withdrawInviteMutation = useWithdrawDriveInviteMutation(companyId);
   const respondToInviteMutation = useRespondToDriveInviteMutation(null);
+  const acceptCounterProposalMutation = useAcceptCounterProposalMutation(companyId);
   const myPostedDrivesQuery = useMyPostedDrivesQuery();
   const postedDrives = useMemo(() => myPostedDrivesQuery.data || [], [myPostedDrivesQuery.data]);
 
@@ -127,6 +129,10 @@ export function RecruiterPage() {
 
   const handleWithdrawInvite = async (inviteId: string) => {
     await withdrawInviteMutation.mutateAsync(inviteId);
+  };
+
+  const handleAcceptCounter = async (inviteId: string) => {
+    await acceptCounterProposalMutation.mutateAsync(inviteId);
   };
 
   const loading = dashboardQuery.isLoading || insightsQuery.isLoading || jobsQuery.isLoading || myPostedDrivesQuery.isLoading;
@@ -291,6 +297,8 @@ export function RecruiterPage() {
           onNavigateToDrive={(driveId) => navigate(`/recruiter/drive/${driveId}`)}
           totalStudentsEngaged={totalStudentsEngaged}
           conversionRatio={conversionRatio}
+          onAcceptCounter={handleAcceptCounter}
+          isAcceptCounterPending={acceptCounterProposalMutation.isPending}
         />
       )}
 
