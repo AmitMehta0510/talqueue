@@ -463,3 +463,31 @@ async function handleRefundCreated(payload: any): Promise<void> {
     "refund.created processed",
   );
 }
+
+/**
+ * Retries a failed webhook event, bypassing signature check since payload was already stored.
+ */
+export async function retryWebhookEvent(eventId: string): Promise<void> {
+  const event = await prisma.webhookEvent.findUnique({ where: { eventId } });
+  if (!event || event.processed) return;
+
+  await prisma.webhookEvent.update({
+    where: { eventId },
+    data: { attempts: { increment: 1 } },
+  });
+
+  try {
+    await routeWebhookEvent(event.eventType, event.payload);
+    await prisma.webhookEvent.update({
+      where: { eventId },
+      data: { processed: true, processedAt: new Date(), error: null },
+    });
+    logger.info({ eventId }, "Webhook retried and processed successfully");
+  } catch (err: any) {
+    await prisma.webhookEvent.update({
+      where: { eventId },
+      data: { error: String(err?.message ?? err) },
+    });
+    logger.error({ eventId, err }, "Webhook retry failed again");
+  }
+}

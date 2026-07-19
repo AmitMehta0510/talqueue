@@ -36,6 +36,7 @@ import { startEventWorker, stopEventWorker } from "services/eventWorker";
 import { startInterestAggregatorCron, stopInterestAggregatorCron } from "modules/feed/interest-aggregator.cron";
 import { startFeedInteractionArchiver, stopFeedInteractionArchiver } from "modules/feed/feed-interaction-archiver.cron";
 import { startAnalyticsWriter, stopAnalyticsWriter } from "services/analytics/analyticsWriter";
+import { startPaymentsCron, stopPaymentsCron } from "modules/payments/payments.cron";
 import logger from "shared/logger";
 
 const PORT = process.env.PORT || 5000;
@@ -66,7 +67,8 @@ server.listen(PORT, async () => {
   startInterestAggregatorCron();
   startFeedInteractionArchiver();
   startAnalyticsWriter();
-  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron, feedArchiver, analyticsWriter)");
+  startPaymentsCron();
+  logger.info("Background workers started (mailWorker, eventWorker, interestAggregatorCron, feedArchiver, analyticsWriter, paymentsCron)");
 });
 
 // ─── Graceful Shutdown ─────────────────────────────────────────────────────────
@@ -97,6 +99,7 @@ const gracefulShutdown = (signal: string) => {
       // 2b. Stop interest aggregator cron
       stopInterestAggregatorCron();
       stopFeedInteractionArchiver();
+      stopPaymentsCron();
 
       // 2c. Flush remaining analytics events
       await stopAnalyticsWriter();
