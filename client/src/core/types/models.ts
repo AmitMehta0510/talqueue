@@ -119,6 +119,7 @@ export type User = {
   acceptingCollaborators?: boolean;
   acceptingReferrals?: boolean;
   acceptingMentorship?: boolean;
+  openToCampusOutreach?: boolean;
   mutualConnectionCount?: number;
   _count?: {
     skills?: number;

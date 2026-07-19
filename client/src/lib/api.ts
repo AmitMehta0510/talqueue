@@ -1326,6 +1326,16 @@ const remainingApi = {
       };
     }>("/resdex/search", { method: "POST", body, ...options }),
 
+  updateCampusOutreachPreference: (
+    body: { openToCampusOutreach: boolean },
+    options?: EndpointOptions
+  ) =>
+    request<{ openToCampusOutreach: boolean }>("/resdex/campus-outreach-preference", {
+      method: "PATCH",
+      body,
+      ...options,
+    }),
+
   // AI Resume Reviews
   getResumeReviews: (options?: EndpointOptions) =>
     request<any[]>("/resume/reviews", { method: "GET", ...options }),

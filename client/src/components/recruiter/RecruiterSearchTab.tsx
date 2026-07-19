@@ -31,6 +31,10 @@ interface Candidate {
     collegeName?: string | null;
     endYear?: number | null;
   }>;
+  contactVisible?: boolean;
+  email?: string;
+  phone?: string;
+  openToCampusOutreach?: boolean;
 }
 
 interface RecruiterSearchTabProps {
@@ -362,6 +366,29 @@ export function RecruiterSearchTab({
                           )}
                         </div>
                       )}
+
+                      {/* Contact Details (gated / masked) */}
+                      <div className="space-y-1 text-[11px] bg-gray-50/50 dark:bg-gray-950/20 p-2.5 rounded-xl border border-gray-150 dark:border-gray-850">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Contact details</span>
+                          {candidate.contactVisible ? (
+                            <span className="text-[9px] text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">Unlocked</span>
+                          ) : (
+                            <span className="text-[9px] text-amber-500 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 inline-flex items-center gap-0.5">
+                              <Lock size={8} /> Locked
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-1 space-y-0.5">
+                          <p className="truncate text-gray-600 dark:text-gray-400">
+                            <strong>Email:</strong> {candidate.contactVisible ? candidate.email : "••••••••@••••.•••"}
+                          </p>
+                          <p className="truncate text-gray-600 dark:text-gray-400">
+                            <strong>Phone:</strong> {candidate.contactVisible ? candidate.phone : "+91 ••••• •••••"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="border-t border-gray-150 dark:border-gray-85 pt-3 mt-4 flex justify-between items-center text-[11px]">

@@ -496,3 +496,24 @@ export const useGetPresignedUrlMutation = () => {
     onError: (error) => showToast("error", getErrorMessage(error)),
   });
 };
+
+export const useUpdateCampusOutreachPreferenceMutation = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: (body: { openToCampusOutreach: boolean }) =>
+      api.updateCampusOutreachPreference(body),
+    onSuccess: (result) => {
+      showToast(
+        "success",
+        result.data?.openToCampusOutreach
+          ? "You are now visible to premium recruiters!"
+          : "Campus outreach preference updated."
+      );
+      invalidateUserProfile(queryClient, user);
+    },
+    onError: (error) => showToast("error", getErrorMessage(error)),
+  });
+};

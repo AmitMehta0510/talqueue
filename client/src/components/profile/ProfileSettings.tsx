@@ -20,9 +20,11 @@ import {
   Code2,
   Trophy,
   Flame,
+  Zap,
 } from "lucide-react";
 import { useToast } from "../../core/contexts/ToastContext";
 import { useFileUpload } from "../../features/storage/hooks/useFileUpload";
+import { useUpdateCampusOutreachPreferenceMutation } from "../../hooks/queries/useProfileQueries";
 
 import { User as UserType } from "../../lib/api";
 
@@ -125,6 +127,8 @@ export function ProfileSettings({
 }: ProfileSettingsProps) {
   const { showToast } = useToast();
   const avatarUpload = useFileUpload();
+  const updateOutreachPreference = useUpdateCampusOutreachPreferenceMutation();
+  const openToCampusOutreach = Boolean(profile.openToCampusOutreach);
   const bannerUpload = useFileUpload();
   const resumeUpload = useFileUpload();
   const availabilityTextLen = (profileForm.availabilityText || "").length;
@@ -366,6 +370,64 @@ export function ProfileSettings({
                 </span>
               </div>
             </Field>
+          </div>
+
+          {/* Premium Recruiter Outreach Toggle */}
+          <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+            <div
+              className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-all duration-200 cursor-pointer select-none ${
+                openToCampusOutreach
+                  ? "border-indigo-500/40 bg-indigo-500/5 dark:bg-indigo-950/15"
+                  : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/5"
+              }`}
+              onClick={() => updateOutreachPreference.mutate({ openToCampusOutreach: !openToCampusOutreach })}
+              role="switch"
+              aria-checked={openToCampusOutreach}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  updateOutreachPreference.mutate({ openToCampusOutreach: !openToCampusOutreach });
+                }
+              }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`shrink-0 flex items-center justify-center h-9 w-9 rounded-xl border transition-all duration-200 ${
+                    openToCampusOutreach
+                      ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400"
+                      : "border-transparent text-gray-400"
+                  }`}
+                  style={{ background: openToCampusOutreach ? undefined : "var(--bg-surface-2)" }}
+                >
+                  {updateOutreachPreference.isPending ? (
+                    <Loader2 size={16} className="animate-spin text-indigo-500" />
+                  ) : (
+                    <Zap size={16} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    Premium Recruiter Visibility (RESDEX)
+                  </p>
+                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    Allow verified campus hiring partners on the platform to view your contact information (email & phone) directly in search results.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle switch */}
+              <div
+                className={`relative shrink-0 h-6 w-10 rounded-full transition-all duration-300 ${
+                  openToCampusOutreach ? "bg-indigo-600" : "bg-gray-200 dark:bg-gray-850 border border-gray-300 dark:border-gray-700"
+                }`}
+              >
+                <div
+                  className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300"
+                  style={{ left: openToCampusOutreach ? "calc(100% - 22px)" : "2px" }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </SettingsSection>
