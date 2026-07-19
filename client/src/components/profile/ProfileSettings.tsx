@@ -21,10 +21,12 @@ import {
   Trophy,
   Flame,
   Zap,
+  CreditCard,
 } from "lucide-react";
 import { useToast } from "../../core/contexts/ToastContext";
 import { useFileUpload } from "../../features/storage/hooks/useFileUpload";
 import { useUpdateCampusOutreachPreferenceMutation } from "../../hooks/queries/useProfileQueries";
+import { BillingSettingsTab } from "../payments/BillingSettingsTab";
 
 import { User as UserType } from "../../lib/api";
 
@@ -125,6 +127,7 @@ export function ProfileSettings({
   onSave,
   isSavePending,
 }: ProfileSettingsProps) {
+  const [settingsTab, setSettingsTab] = useState<"profile" | "billing">("profile");
   const { showToast } = useToast();
   const avatarUpload = useFileUpload();
   const updateOutreachPreference = useUpdateCampusOutreachPreferenceMutation();
@@ -211,7 +214,39 @@ export function ProfileSettings({
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-5">
+    <div className="space-y-6">
+      {/* Settings Sub-Tab Navigation */}
+      <div className="flex border-b border-gray-200 dark:border-gray-800 space-x-6 pb-1">
+        <button
+          type="button"
+          onClick={() => setSettingsTab("profile")}
+          className={`pb-2 px-1 text-sm font-semibold flex items-center gap-1.5 border-b-2 transition-all duration-200 ${
+            settingsTab === "profile"
+              ? "border-indigo-650 dark:border-indigo-400 text-indigo-650 dark:text-indigo-400"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-350"
+          }`}
+        >
+          <User size={14} />
+          Profile Details
+        </button>
+        <button
+          type="button"
+          onClick={() => setSettingsTab("billing")}
+          className={`pb-2 px-1 text-sm font-semibold flex items-center gap-1.5 border-b-2 transition-all duration-200 ${
+            settingsTab === "billing"
+              ? "border-indigo-650 dark:border-indigo-400 text-indigo-650 dark:text-indigo-400"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-350"
+          }`}
+        >
+          <CreditCard size={14} />
+          Billing & Subscription
+        </button>
+      </div>
+
+      {settingsTab === "billing" ? (
+        <BillingSettingsTab />
+      ) : (
+        <form onSubmit={handleSave} className="space-y-5">
 
       {/* ── Unsaved changes banner ─────────────────────────────────────── */}
       {isDirty && (
@@ -647,6 +682,8 @@ export function ProfileSettings({
         </button>
       </div>
     </form>
+    )}
+    </div>
   );
 }
 

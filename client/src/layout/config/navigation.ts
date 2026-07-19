@@ -15,6 +15,7 @@ import {
   Gavel,
   UserRound,
   MessageSquare,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import { User } from "../../lib/api";
@@ -45,6 +46,7 @@ export const campusDropdownSections: NavSection[] = [
   { to: "/campus/tpo-dashboard", label: "TPO Portal",     icon: BriefcaseBusiness, requiresAuth: true },
   { to: "/campus/admin",       label: "Admin Panel",      icon: Gavel,             requiresAuth: true },
   { to: "/campus/profile",     label: "Profile",          icon: UserRound,         requiresAuth: true },
+  { to: "/pricing",            label: "Plans & Pricing",  icon: CreditCard },
 ];
 
 export const campusBottomTabs: NavSection[] = [
@@ -69,6 +71,7 @@ export const careerDropdownSections: NavSection[] = [
   { to: "/career/interviews",  label: "Interviews", icon: MonitorPlay },
   { to: "/career/recruiter",   label: "Recruiting", icon: BriefcaseBusiness, requiresAuth: true },
   { to: "/career/profile",     label: "Profile",    icon: UserRound,         requiresAuth: true },
+  { to: "/pricing",            label: "Plans & Pricing",  icon: CreditCard },
 ];
 
 export const careerBottomTabs: NavSection[] = [
