@@ -2,17 +2,7 @@
  * CheckoutModal.tsx
  *
  * Opens Razorpay checkout for a given plan.
- *
- * Flow:
- *  1. User clicks "Get Started" on a PlanCard
- *  2. POST /payments/orders → get orderId + keyId from backend
- *  3. Load Razorpay checkout.js (lazy, once)
- *  4. Open Razorpay modal with order details
- *  5. On success → POST /payments/verify → show success toast
- *  6. On dismiss/failure → show appropriate message
- *
- * Note: Subscription activation happens via Razorpay webhook, NOT here.
- * This modal is purely UX — it confirms payment and shows a success state.
+ * Uses dynamic theme variables (var(--bg-surface), var(--text-primary), etc.) for Light & Dark mode cohesion.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -95,7 +85,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
       name: "Engineers Platform",
       description: plan.name,
       order_id: orderData.orderId,
-      theme: { color: "#6366f1" },
+      theme: { color: "#4f46e5" },
       modal: {
         ondismiss: () => {
           setStep("confirm");
@@ -128,7 +118,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.7)",
+        background: "var(--bg-overlay)",
         backdropFilter: "blur(6px)",
         display: "flex",
         alignItems: "center",
@@ -142,8 +132,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
     >
       <div
         style={{
-          background: "#0f172a",
-          border: "1px solid rgba(99,102,241,0.3)",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-strong)",
           borderRadius: "20px",
           padding: "36px",
           maxWidth: "440px",
@@ -151,6 +141,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
           display: "flex",
           flexDirection: "column",
           gap: "24px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          color: "var(--text-primary)",
         }}
       >
         {/* Success State */}
@@ -158,10 +150,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
           <>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: "48px", marginBottom: "12px" }}>🎉</div>
-              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "#f1f5f9" }}>
+              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>
                 Payment Successful!
               </h2>
-              <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: "14px" }}>
+              <p style={{ margin: "8px 0 0", color: "var(--text-secondary)", fontSize: "14px" }}>
                 Your subscription is being activated. This may take a few seconds.
               </p>
             </div>
@@ -171,11 +163,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                 padding: "12px",
                 borderRadius: "10px",
                 border: "none",
-                background: "linear-gradient(135deg, #6366f1, #818cf8)",
-                color: "#fff",
+                background: "var(--brand)",
+                color: "var(--text-inverse)",
                 fontWeight: 600,
                 fontSize: "15px",
                 cursor: "pointer",
+                boxShadow: "0 4px 14px var(--brand-glow)",
               }}
             >
               Continue
@@ -188,10 +181,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
           <>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: "48px", marginBottom: "12px" }}>⚠️</div>
-              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "#f1f5f9" }}>
+              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>
                 Something went wrong
               </h2>
-              <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: "14px" }}>
+              <p style={{ margin: "8px 0 0", color: "var(--text-secondary)", fontSize: "14px" }}>
                 Your payment could not be processed. Please try again.
               </p>
             </div>
@@ -202,9 +195,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   flex: 1,
                   padding: "12px",
                   borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "transparent",
-                  color: "#94a3b8",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-surface-2)",
+                  color: "var(--text-primary)",
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -217,9 +210,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   flex: 1,
                   padding: "12px",
                   borderRadius: "10px",
-                  border: "none",
-                  background: "rgba(99,102,241,0.15)",
-                  color: "#818cf8",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-muted)",
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -234,10 +227,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
         {(step === "confirm" || step === "processing") && (
           <>
             <div>
-              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "#f1f5f9" }}>
+              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>
                 Confirm Purchase
               </h2>
-              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
+              <p style={{ margin: "6px 0 0", color: "var(--text-secondary)", fontSize: "13px" }}>
                 You will be redirected to a secure payment page.
               </p>
             </div>
@@ -245,8 +238,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
             {/* Plan summary */}
             <div
               style={{
-                background: "rgba(99,102,241,0.08)",
-                border: "1px solid rgba(99,102,241,0.2)",
+                background: "var(--bg-surface-2)",
+                border: "1px solid var(--border-strong)",
                 borderRadius: "12px",
                 padding: "20px",
                 display: "flex",
@@ -255,29 +248,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
               }}
             >
               <div>
-                <div style={{ fontWeight: 700, color: "#f1f5f9", fontSize: "16px" }}>
+                <div style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "16px" }}>
                   {plan.name}
                 </div>
-                <div style={{ color: "#64748b", fontSize: "13px", marginTop: "2px" }}>
+                <div style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px" }}>
                   {interval}
                   {plan.trialDays > 0 && (
-                    <span style={{ color: "#34d399", marginLeft: "8px" }}>
+                    <span style={{ color: "var(--text-success)", marginLeft: "8px", fontWeight: 600 }}>
                       · {plan.trialDays}-day trial
                     </span>
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: "22px", fontWeight: 800, color: "#f1f5f9" }}>
+              <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--text-primary)" }}>
                 ₹{priceRupees}
               </div>
             </div>
 
             {/* Payment methods */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ height: "1px", flex: 1, background: "rgba(255,255,255,0.06)" }} />
-              <span style={{ color: "#475569", fontSize: "12px" }}>Secure payment via</span>
-              <div style={{ height: "1px", flex: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div style={{ height: "1px", flex: 1, background: "var(--border)" }} />
+              <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>Secure payment via</span>
+              <div style={{ height: "1px", flex: 1, background: "var(--border)" }} />
             </div>
+
             <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
               {["UPI", "Cards", "NetBanking", "Wallets", "EMI"].map((method) => (
                 <span
@@ -285,9 +279,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   style={{
                     padding: "4px 10px",
                     borderRadius: "6px",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-surface-2)",
                     fontSize: "12px",
-                    color: "#64748b",
+                    color: "var(--text-secondary)",
+                    fontWeight: 500,
                   }}
                 >
                   {method}
@@ -304,9 +300,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   flex: 1,
                   padding: "13px",
                   borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "transparent",
-                  color: "#64748b",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-surface-2)",
+                  color: "var(--text-secondary)",
                   fontWeight: 600,
                   cursor: step === "processing" ? "not-allowed" : "pointer",
                 }}
@@ -321,8 +317,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   padding: "13px",
                   borderRadius: "10px",
                   border: "none",
-                  background: "linear-gradient(135deg, #6366f1, #818cf8)",
-                  color: "#fff",
+                  background: "var(--brand)",
+                  color: "var(--text-inverse)",
                   fontWeight: 700,
                   fontSize: "15px",
                   cursor: step === "processing" ? "not-allowed" : "pointer",
@@ -331,6 +327,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "8px",
+                  boxShadow: "0 4px 14px var(--brand-glow)",
                 }}
               >
                 {step === "processing" ? (
@@ -340,7 +337,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
                         width: "16px",
                         height: "16px",
                         border: "2px solid rgba(255,255,255,0.3)",
-                        borderTopColor: "#fff",
+                        borderTopColor: "var(--text-inverse)",
                         borderRadius: "50%",
                         animation: "spin 0.8s linear infinite",
                         display: "inline-block",
@@ -354,7 +351,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ plan, onClose }) =
               </button>
             </div>
 
-            <p style={{ margin: 0, fontSize: "12px", color: "#475569", textAlign: "center" }}>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
               🔒 256-bit SSL encrypted · Powered by Razorpay
             </p>
           </>

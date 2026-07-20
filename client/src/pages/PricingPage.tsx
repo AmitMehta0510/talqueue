@@ -2,9 +2,7 @@
  * PricingPage.tsx
  *
  * Public pricing page showing all active plans.
- * CTA behavior depends on PAYMENT_ENFORCEMENT_ENABLED env flag:
- *  - false (current): "Get Started" button opens CheckoutModal (test mode)
- *  - true (after milestone): fully enforced with real Razorpay live keys
+ * Dynamic theme compliant: uses design system CSS tokens (var(--bg-base), var(--text-primary), etc.)
  *
  * Accessible at: /pricing
  */
@@ -40,10 +38,11 @@ export const PricingPage: React.FC = () => {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #020617 0%, #0f172a 50%, #0a0f1e 100%)",
-        color: "#f1f5f9",
+        background: "var(--bg-base)",
+        color: "var(--text-primary)",
         fontFamily: "'Inter', 'Outfit', sans-serif",
         padding: "60px 24px 80px",
+        transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
       {/* Hero */}
@@ -53,16 +52,16 @@ export const PricingPage: React.FC = () => {
             display: "inline-block",
             padding: "6px 16px",
             borderRadius: "20px",
-            background: "rgba(99,102,241,0.12)",
-            border: "1px solid rgba(99,102,241,0.3)",
+            background: "var(--brand-light)",
+            border: "1px solid var(--border-strong)",
             fontSize: "13px",
-            color: "#818cf8",
+            color: "var(--brand)",
             fontWeight: 600,
             letterSpacing: "0.05em",
             marginBottom: "20px",
           }}
         >
-          SIMPLE PRICING
+          SIMPLE & TRANSPARENT PRICING
         </div>
 
         <h1
@@ -71,15 +70,13 @@ export const PricingPage: React.FC = () => {
             fontWeight: 800,
             margin: "0 0 16px",
             lineHeight: 1.15,
-            background: "linear-gradient(135deg, #f1f5f9, #94a3b8)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            color: "var(--text-primary)",
           }}
         >
           Unlock Your Hiring Potential
         </h1>
 
-        <p style={{ fontSize: "17px", color: "#64748b", margin: 0, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "17px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
           Start for free. Upgrade when you're ready to scale.
           No hidden fees, cancel anytime.
         </p>
@@ -90,7 +87,7 @@ export const PricingPage: React.FC = () => {
         style={{
           display: "flex",
           justifyContent: "center",
-          gap: "4px",
+          gap: "8px",
           marginBottom: "48px",
         }}
       >
@@ -100,26 +97,29 @@ export const PricingPage: React.FC = () => {
             { key: "COLLEGE", label: "For Colleges" },
             { key: "CREDITS", label: "Credit Packs" },
           ] as const
-        ).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            style={{
-              padding: "10px 20px",
-              borderRadius: "10px",
-              border: "none",
-              background: activeTab === key ? "rgba(99,102,241,0.2)" : "transparent",
-              color: activeTab === key ? "#818cf8" : "#475569",
-              fontWeight: activeTab === key ? 700 : 500,
-              fontSize: "14px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              outline: activeTab === key ? "1px solid rgba(99,102,241,0.3)" : "none",
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        ).map(({ key, label }) => {
+          const isSelected = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                padding: "10px 22px",
+                borderRadius: "12px",
+                border: isSelected ? "1px solid var(--border-focus)" : "1px solid var(--border)",
+                background: isSelected ? "var(--brand)" : "var(--bg-surface)",
+                color: isSelected ? "var(--text-inverse)" : "var(--text-secondary)",
+                fontWeight: isSelected ? 700 : 500,
+                fontSize: "14px",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: isSelected ? "0 4px 12px var(--brand-glow)" : "none",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Plan cards */}
@@ -130,28 +130,28 @@ export const PricingPage: React.FC = () => {
         }}
       >
         {isLoading ? (
-          <div style={{ textAlign: "center", color: "#475569", padding: "60px" }}>
+          <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "60px" }}>
             Loading plans…
           </div>
         ) : displayedPlans.length === 0 ? (
           <div
             style={{
               textAlign: "center",
-              color: "#475569",
+              color: "var(--text-muted)",
               padding: "60px",
-              background: "rgba(255,255,255,0.02)",
+              background: "var(--bg-surface)",
               borderRadius: "16px",
-              border: "1px dashed rgba(255,255,255,0.06)",
+              border: "1px dashed var(--border-strong)",
             }}
           >
             Plans coming soon. Stay tuned!
           </div>
         ) : (
           <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${Math.min(displayedPlans.length, 3)}, 1fr)`,
-              gap: "24px",
+              maxWidth: "1000px",
+              margin: "0 auto",
             }}
           >
             {displayedPlans.map((plan, i) => (
@@ -179,7 +179,7 @@ export const PricingPage: React.FC = () => {
           maxWidth: "680px",
           margin: "72px auto 0",
           textAlign: "center",
-          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderTop: "1px solid var(--border)",
           paddingTop: "48px",
         }}
       >
@@ -189,8 +189,9 @@ export const PricingPage: React.FC = () => {
             justifyContent: "center",
             gap: "32px",
             flexWrap: "wrap",
-            color: "#475569",
+            color: "var(--text-muted)",
             fontSize: "13px",
+            fontWeight: 500,
           }}
         >
           {[

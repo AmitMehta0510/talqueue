@@ -2,11 +2,7 @@
  * BillingSettingsTab.tsx
  *
  * Billing section inside user settings page.
- * Shows:
- *  - Current active subscription (plan name, renewal date, status)
- *  - Cancel button (LinkedIn-style: access until period end)
- *  - Invoice history with download links
- *  - Credit balances
+ * Uses dynamic design system tokens (var(--bg-surface), var(--text-primary), etc.) for Light & Dark mode cohesion.
  */
 
 import React, { useState } from "react";
@@ -35,12 +31,12 @@ function formatRupees(paise: number): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "#34d399",
-  TRIALING: "#60a5fa",
+  ACTIVE: "#10b981",
+  TRIALING: "#3b82f6",
   PAST_DUE: "#f59e0b",
-  CANCELLED: "#f87171",
+  CANCELLED: "#ef4444",
   EXPIRED: "#6b7280",
-  PAUSED: "#a78bfa",
+  PAUSED: "#8b5cf6",
 };
 
 const CREDIT_LABELS: Record<string, string> = {
@@ -63,8 +59,8 @@ const SubscriptionCard: React.FC<{
   return (
     <div
       style={{
-        background: "rgba(99,102,241,0.06)",
-        border: "1px solid rgba(99,102,241,0.2)",
+        background: "var(--bg-surface-2)",
+        border: "1px solid var(--border-strong)",
         borderRadius: "14px",
         padding: "24px",
         display: "flex",
@@ -76,7 +72,7 @@ const SubscriptionCard: React.FC<{
     >
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#f1f5f9" }}>
+          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>
             {sub.plan?.name ?? "Premium Plan"}
           </h3>
           <span
@@ -96,12 +92,12 @@ const SubscriptionCard: React.FC<{
         </div>
 
         {sub.status === "TRIALING" && sub.trialEndsAt && (
-          <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#60a5fa" }}>
+          <p style={{ margin: "0 0 4px", fontSize: "13px", color: "var(--brand)" }}>
             Free trial ends {formatDate(sub.trialEndsAt)}
           </p>
         )}
 
-        <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
+        <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)" }}>
           {sub.cancelAtPeriodEnd
             ? `Access until ${formatDate(sub.currentPeriodEnd)} · Cancellation scheduled`
             : `Renews on ${formatDate(sub.currentPeriodEnd)}`}
@@ -115,9 +111,9 @@ const SubscriptionCard: React.FC<{
           style={{
             padding: "9px 18px",
             borderRadius: "8px",
-            border: "1px solid rgba(248,113,113,0.3)",
-            background: "rgba(248,113,113,0.06)",
-            color: "#f87171",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            background: "rgba(239, 68, 68, 0.08)",
+            color: "#ef4444",
             fontSize: "13px",
             fontWeight: 600,
             cursor: cancelling ? "not-allowed" : "pointer",
@@ -139,15 +135,15 @@ const InvoiceRow: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
       justifyContent: "space-between",
       alignItems: "center",
       padding: "14px 0",
-      borderBottom: "1px solid rgba(255,255,255,0.04)",
+      borderBottom: "1px solid var(--border)",
       gap: "16px",
     }}
   >
     <div>
-      <div style={{ fontSize: "14px", fontWeight: 600, color: "#e2e8f0" }}>
+      <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
         {invoice.invoiceNumber}
       </div>
-      <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
+      <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
         {formatDate(invoice.issuedAt)}
         {invoice.transaction?.method && (
           <span style={{ marginLeft: "8px", textTransform: "capitalize" }}>
@@ -157,7 +153,7 @@ const InvoiceRow: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
       </div>
     </div>
     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-      <span style={{ fontSize: "15px", fontWeight: 700, color: "#f1f5f9" }}>
+      <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>
         {formatRupees(invoice.totalInPaise)}
       </span>
       {invoice.pdfUrl ? (
@@ -167,7 +163,7 @@ const InvoiceRow: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
           rel="noopener noreferrer"
           style={{
             fontSize: "12px",
-            color: "#6366f1",
+            color: "var(--brand)",
             textDecoration: "none",
             fontWeight: 600,
           }}
@@ -175,7 +171,7 @@ const InvoiceRow: React.FC<{ invoice: Invoice }> = ({ invoice }) => (
           Download PDF
         </a>
       ) : (
-        <span style={{ fontSize: "12px", color: "#334155" }}>PDF soon</span>
+        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>PDF soon</span>
       )}
     </div>
   </div>
@@ -205,12 +201,12 @@ export const BillingSettingsTab: React.FC = () => {
 
       {/* Current Subscription */}
       <section>
-        <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700, color: "#f1f5f9" }}>
+        <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
           Current Plan
         </h2>
 
         {loadingSub ? (
-          <div style={{ color: "#475569", fontSize: "14px" }}>Loading…</div>
+          <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>Loading…</div>
         ) : activeSub ? (
           <>
             <SubscriptionCard
@@ -224,8 +220,8 @@ export const BillingSettingsTab: React.FC = () => {
               <div
                 style={{
                   marginTop: "12px",
-                  background: "rgba(248,113,113,0.06)",
-                  border: "1px solid rgba(248,113,113,0.2)",
+                  background: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
                   borderRadius: "10px",
                   padding: "16px 20px",
                   display: "flex",
@@ -235,7 +231,7 @@ export const BillingSettingsTab: React.FC = () => {
                   flexWrap: "wrap",
                 }}
               >
-                <p style={{ margin: 0, fontSize: "13px", color: "#fca5a5" }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#ef4444" }}>
                   You'll keep access until{" "}
                   <strong>{formatDate(activeSub.currentPeriodEnd)}</strong>.
                   Are you sure?
@@ -246,9 +242,9 @@ export const BillingSettingsTab: React.FC = () => {
                     style={{
                       padding: "8px 16px",
                       borderRadius: "8px",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: "transparent",
-                      color: "#94a3b8",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-surface)",
+                      color: "var(--text-secondary)",
                       fontSize: "13px",
                       cursor: "pointer",
                     }}
@@ -262,8 +258,8 @@ export const BillingSettingsTab: React.FC = () => {
                       padding: "8px 16px",
                       borderRadius: "8px",
                       border: "none",
-                      background: "#f87171",
-                      color: "#fff",
+                      background: "#ef4444",
+                      color: "#ffffff",
                       fontSize: "13px",
                       fontWeight: 600,
                       cursor: "pointer",
@@ -278,14 +274,14 @@ export const BillingSettingsTab: React.FC = () => {
         ) : (
           <div
             style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.06)",
+              background: "var(--bg-surface-2)",
+              border: "1px dashed var(--border-strong)",
               borderRadius: "14px",
               padding: "32px",
               textAlign: "center",
             }}
           >
-            <p style={{ margin: "0 0 12px", color: "#475569", fontSize: "14px" }}>
+            <p style={{ margin: "0 0 12px", color: "var(--text-secondary)", fontSize: "14px" }}>
               You're on the Free plan.
             </p>
             <a
@@ -294,11 +290,12 @@ export const BillingSettingsTab: React.FC = () => {
                 display: "inline-block",
                 padding: "10px 20px",
                 borderRadius: "8px",
-                background: "linear-gradient(135deg, #6366f1, #818cf8)",
-                color: "#fff",
+                background: "var(--brand)",
+                color: "var(--text-inverse)",
                 textDecoration: "none",
                 fontSize: "14px",
                 fontWeight: 600,
+                boxShadow: "0 4px 12px var(--brand-glow)",
               }}
             >
               View Plans →
@@ -310,7 +307,7 @@ export const BillingSettingsTab: React.FC = () => {
       {/* Credit Balances */}
       {!loadingCredits && credits && Object.values(credits).some((v) => v > 0) && (
         <section>
-          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700, color: "#f1f5f9" }}>
+          <h2 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
             Credit Balances
           </h2>
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
@@ -321,15 +318,15 @@ export const BillingSettingsTab: React.FC = () => {
                   style={{
                     padding: "16px 20px",
                     borderRadius: "12px",
-                    background: "rgba(99,102,241,0.06)",
-                    border: "1px solid rgba(99,102,241,0.15)",
+                    background: "var(--bg-surface-2)",
+                    border: "1px solid var(--border)",
                     minWidth: "140px",
                   }}
                 >
-                  <div style={{ fontSize: "26px", fontWeight: 800, color: "#818cf8" }}>
+                  <div style={{ fontSize: "26px", fontWeight: 800, color: "var(--brand)" }}>
                     {balance}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#475569", marginTop: "4px" }}>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
                     {CREDIT_LABELS[type] ?? type}
                   </div>
                 </div>
@@ -341,17 +338,17 @@ export const BillingSettingsTab: React.FC = () => {
 
       {/* Invoice History */}
       <section>
-        <h2 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "#f1f5f9" }}>
+        <h2 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
           Billing History
         </h2>
-        <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#475569" }}>
+        <p style={{ margin: "0 0 16px", fontSize: "13px", color: "var(--text-secondary)" }}>
           GST-compliant invoices for all your payments.
         </p>
 
         {loadingInvoices ? (
-          <div style={{ color: "#475569", fontSize: "14px" }}>Loading…</div>
+          <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>Loading…</div>
         ) : invoices.length === 0 ? (
-          <div style={{ color: "#334155", fontSize: "14px", padding: "20px 0" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: "14px", padding: "20px 0" }}>
             No invoices yet.
           </div>
         ) : (
