@@ -15,6 +15,7 @@ import AppError from "shared/errors/AppError";
 import { env } from "shared/config/env";
 import logger from "shared/logger";
 import { PaymentOrderStatus } from "@prisma/client";
+import { validateCoupon, recordCouponUsage } from "./coupon.service";
 
 // ---------------------------------------------------------------------------
 // Razorpay singleton — lazy-initialised so the server starts even without keys
@@ -67,13 +68,29 @@ export const getPlanBySlug = async (slug: string) => {
  *
  * Idempotency: if the user already has an unexpired CREATED order for the same
  * plan, we reuse it instead of creating a duplicate Razorpay order.
+ *
+ * Coupon: if couponCode is provided, validates and applies the discount before
+ * creating the Razorpay order with the discounted amount.
  */
 export const createPaymentOrder = async (
   userId: string,
   planSlug: string,
   subscriptionId?: string,
+  couponCode?: string,
 ) => {
   const plan = await getPlanBySlug(planSlug);
+
+  // ── Coupon validation (before idempotency check so reused orders stay clean) ──
+  let discountInPaise = 0;
+  let finalAmountInPaise = plan.priceInPaise;
+  let appliedCouponId: string | undefined;
+
+  if (couponCode) {
+    const couponResult = await validateCoupon(couponCode, planSlug, userId, plan.priceInPaise);
+    discountInPaise = couponResult.discountInPaise;
+    finalAmountInPaise = couponResult.finalAmountInPaise;
+    appliedCouponId = couponResult.couponId;
+  }
 
   // Idempotency check — reuse existing pending order (expires in 15 min)
   const existingOrder = await prisma.paymentOrder.findFirst({
@@ -96,6 +113,8 @@ export const createPaymentOrder = async (
       amount: existingOrder.amountInPaise,
       currency: existingOrder.currency,
       keyId: env.RAZORPAY_KEY_ID,
+      discountInPaise: existingOrder.discountInPaise,
+      originalAmountInPaise: plan.priceInPaise,
     };
   }
 
@@ -105,18 +124,20 @@ export const createPaymentOrder = async (
     .update(`${userId}:${plan.id}:${Date.now()}`)
     .digest("hex");
 
-  // Create Razorpay order
+  // Create Razorpay order with discounted amount
   const razorpay = getRazorpay();
   let gatewayOrder: any;
   try {
     gatewayOrder = await razorpay.orders.create({
-      amount: plan.priceInPaise,
+      amount: finalAmountInPaise,
       currency: "INR",
       receipt: idempotencyKey.slice(0, 40), // Razorpay: max 40 chars
       notes: {
         userId,
         planSlug: plan.slug,
         planName: plan.name,
+        couponCode: couponCode ?? "",
+        discountInPaise: String(discountInPaise),
       },
     });
   } catch (err: any) {
@@ -124,33 +145,42 @@ export const createPaymentOrder = async (
     throw new AppError("Payment gateway error. Please try again.", 502);
   }
 
-  // Persist local record
+  // Persist local record with coupon info
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
   const localOrder = await prisma.paymentOrder.create({
     data: {
       userId,
       planId: plan.id,
       subscriptionId: subscriptionId ?? null,
-      amountInPaise: plan.priceInPaise,
+      amountInPaise: finalAmountInPaise,
       currency: "INR",
       status: PaymentOrderStatus.CREATED,
       idempotencyKey,
       gatewayOrderId: gatewayOrder.id,
-      notes: { planName: plan.name },
+      notes: { planName: plan.name, couponCode },
       expiresAt,
+      couponId: appliedCouponId ?? null,
+      discountInPaise,
     },
   });
 
+  // Record coupon usage atomically
+  if (appliedCouponId) {
+    await recordCouponUsage(appliedCouponId, userId, localOrder.id, discountInPaise);
+  }
+
   logger.info(
-    `PaymentOrder created: localId=${localOrder.id} gatewayOrderId=${gatewayOrder.id}`,
+    `PaymentOrder created: localId=${localOrder.id} gatewayOrderId=${gatewayOrder.id} discount=${discountInPaise}`,
   );
 
   return {
     orderId: gatewayOrder.id,
     localOrderId: localOrder.id,
-    amount: plan.priceInPaise,
+    amount: finalAmountInPaise,
     currency: "INR",
     keyId: env.RAZORPAY_KEY_ID,
+    discountInPaise,
+    originalAmountInPaise: plan.priceInPaise,
   };
 };
 

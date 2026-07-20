@@ -24,7 +24,16 @@ import {
   getInvoiceHandler,
   getMyCreditsHandler,
   razorpayWebhookHandler,
+  validateCouponHandler,
+  adminListCouponsHandler,
+  adminGetCouponHandler,
+  adminCreateCouponHandler,
+  adminUpdateCouponHandler,
+  adminToggleCouponHandler,
+  adminDeleteCouponHandler,
 } from "./payments.controller";
+
+
 
 const router = Router();
 
@@ -72,7 +81,37 @@ router.get("/invoices/:id", getInvoiceHandler);
 /** GET /api/v1/payments/credits — credit balances per type */
 router.get("/credits", getMyCreditsHandler);
 
+/**
+ * POST /api/v1/payments/coupons/validate
+ * Body: { code: string, planSlug: string }
+ * Returns: { valid, discountType, discountValue, discountInPaise, finalAmountInPaise, savingsLabel }
+ */
+router.post("/coupons/validate", validateCouponHandler);
+
+// ── Admin — Coupon management (Platform Admin only) ────────────────────────
+// Note: requirePlatformAdmin is imported from the admin module middleware
+import { requirePlatformAdmin } from "shared/middleware/requirePlatformAdmin";
+
+/** GET /api/v1/payments/admin/coupons — list all coupons (paginated) */
+router.get("/admin/coupons", requirePlatformAdmin, adminListCouponsHandler);
+
+/** GET /api/v1/payments/admin/coupons/:id — single coupon + usage history */
+router.get("/admin/coupons/:id", requirePlatformAdmin, adminGetCouponHandler);
+
+/** POST /api/v1/payments/admin/coupons — create new coupon */
+router.post("/admin/coupons", requirePlatformAdmin, adminCreateCouponHandler);
+
+/** PATCH /api/v1/payments/admin/coupons/:id — update coupon fields */
+router.patch("/admin/coupons/:id", requirePlatformAdmin, adminUpdateCouponHandler);
+
+/** PATCH /api/v1/payments/admin/coupons/:id/toggle — activate/deactivate */
+router.patch("/admin/coupons/:id/toggle", requirePlatformAdmin, adminToggleCouponHandler);
+
+/** DELETE /api/v1/payments/admin/coupons/:id — delete (only if unused) */
+router.delete("/admin/coupons/:id", requirePlatformAdmin, adminDeleteCouponHandler);
+
 export { router as paymentsRouter };
+
 
 // ── Webhook (separate export — needs raw body parsing) ─────────────────────
 

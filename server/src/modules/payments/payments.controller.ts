@@ -24,6 +24,16 @@ import {
 import { getUserInvoices, getInvoiceById } from "./invoice.service";
 import { getAllBalances } from "./credit.service";
 import { processWebhookEvent } from "./webhook.handler";
+import { validateCoupon } from "./coupon.service";
+import {
+  adminListCoupons,
+  adminGetCoupon,
+  adminCreateCoupon,
+  adminUpdateCoupon,
+  adminToggleCoupon,
+  adminDeleteCoupon,
+} from "./coupon.admin.service";
+
 
 // ---------------------------------------------------------------------------
 // Plans
@@ -53,19 +63,55 @@ export const getPlanBySlugHandler = asyncHandler(
 
 export const createOrderHandler = asyncHandler(
   async (req: any, res: Response) => {
-    const { planSlug, subscriptionId } = req.body as {
+    const { planSlug, subscriptionId, couponCode } = req.body as {
       planSlug: string;
       subscriptionId?: string;
+      couponCode?: string;
     };
 
     const result = await createPaymentOrder(
       req.user.id,
       planSlug,
       subscriptionId,
+      couponCode,
     );
 
     res.status(201).json(
       successResponse(result, "Payment order created"),
+    );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Coupon Validation
+// ---------------------------------------------------------------------------
+
+export const validateCouponHandler = asyncHandler(
+  async (req: any, res: Response) => {
+    const { code, planSlug } = req.body as { code: string; planSlug: string };
+
+    if (!code || !planSlug) {
+      throw new AppError("code and planSlug are required.", 400);
+    }
+
+    // Get plan to determine original amount
+    const plan = await getPlanBySlug(planSlug);
+
+    const result = await validateCoupon(code, planSlug, req.user.id, plan.priceInPaise);
+
+    res.json(
+      successResponse(
+        {
+          valid: true,
+          discountType: result.discountType,
+          discountValue: result.discountValue,
+          discountInPaise: result.discountInPaise,
+          finalAmountInPaise: result.finalAmountInPaise,
+          originalAmountInPaise: plan.priceInPaise,
+          savingsLabel: result.savingsLabel,
+        },
+        "Coupon is valid",
+      ),
     );
   },
 );
@@ -185,3 +231,56 @@ export const razorpayWebhookHandler = asyncHandler(
     res.status(200).json({ status: "ok" });
   },
 );
+
+// ---------------------------------------------------------------------------
+// Admin — Coupon CRUD (Platform Admin only — guarded at route level)
+// ---------------------------------------------------------------------------
+
+export const adminListCouponsHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const data = await adminListCoupons(page, limit);
+    res.json(successResponse(data));
+  },
+);
+
+export const adminGetCouponHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const coupon = await adminGetCoupon(req.params.id as string);
+    res.json(successResponse(coupon));
+  },
+);
+
+
+export const adminCreateCouponHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const coupon = await adminCreateCoupon(req.body);
+    res.status(201).json(successResponse(coupon, "Coupon created"));
+  },
+);
+
+export const adminUpdateCouponHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const coupon = await adminUpdateCoupon(req.params.id as string, req.body);
+    res.json(successResponse(coupon, "Coupon updated"));
+  },
+);
+
+
+export const adminToggleCouponHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { isActive } = req.body as { isActive: boolean };
+    const coupon = await adminToggleCoupon(req.params.id as string, isActive);
+    res.json(successResponse(coupon, `Coupon ${isActive ? "activated" : "deactivated"}`));
+  },
+);
+
+
+export const adminDeleteCouponHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    await adminDeleteCoupon(req.params.id as string);
+    res.json(successResponse(null, "Coupon deleted"));
+  },
+);
+

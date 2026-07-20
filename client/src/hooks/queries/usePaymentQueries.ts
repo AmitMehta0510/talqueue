@@ -22,7 +22,9 @@ export const paymentQueryKeys = {
   subscription: ["payments", "subscription"] as const,
   invoices: ["payments", "invoices"] as const,
   credits: ["payments", "credits"] as const,
+  adminCoupons: (page?: number) => ["payments", "admin", "coupons", page] as const,
 } as const;
+
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -76,7 +78,7 @@ export const useCreateOrderMutation = () => {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (body: { planSlug: string; subscriptionId?: string }) => {
+    mutationFn: async (body: { planSlug: string; subscriptionId?: string; couponCode?: string }) => {
       const res = await api.payments.createOrder(body);
       return res.data as {
         orderId: string;
@@ -84,6 +86,31 @@ export const useCreateOrderMutation = () => {
         amount: number;
         currency: string;
         keyId: string;
+        discountInPaise: number;
+        originalAmountInPaise: number;
+      };
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+/** Validate a coupon code without consuming it. Safe to call multiple times. */
+export const useValidateCouponMutation = () => {
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (body: { code: string; planSlug: string }) => {
+      const res = await api.payments.validateCoupon(body);
+      return res.data as {
+        valid: boolean;
+        discountType: "PERCENTAGE" | "FLAT" | "FREE_TRIAL";
+        discountValue: number;
+        discountInPaise: number;
+        finalAmountInPaise: number;
+        originalAmountInPaise: number;
+        savingsLabel: string;
       };
     },
     onError: (err) => {
@@ -137,6 +164,76 @@ export const useCancelSubscriptionMutation = () => {
         "Subscription cancelled. You'll retain access until the end of your current period.",
       );
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.subscription });
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Admin Coupon Queries
+// ---------------------------------------------------------------------------
+
+export const useAdminCouponsQuery = (page = 1) =>
+  useQuery({
+    queryKey: paymentQueryKeys.adminCoupons(page),
+    queryFn: async () => {
+      const res = await api.payments.admin.listCoupons(page);
+      return res.data;
+    },
+    staleTime: 30 * 1000,
+  });
+
+export const useAdminCreateCouponMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (body: object) => {
+      const res = await api.payments.admin.createCoupon(body);
+      return res.data;
+    },
+    onSuccess: () => {
+      showToast("success", "Coupon created successfully!");
+      queryClient.invalidateQueries({ queryKey: ["payments", "admin", "coupons"] });
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+export const useAdminToggleCouponMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const res = await api.payments.admin.toggleCoupon(id, isActive);
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      showToast("success", `Coupon ${vars.isActive ? "activated" : "deactivated"}`);
+      queryClient.invalidateQueries({ queryKey: ["payments", "admin", "coupons"] });
+    },
+    onError: (err) => {
+      showToast("error", getErrorMessage(err));
+    },
+  });
+};
+
+export const useAdminDeleteCouponMutation = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.payments.admin.deleteCoupon(id);
+    },
+    onSuccess: () => {
+      showToast("success", "Coupon deleted");
+      queryClient.invalidateQueries({ queryKey: ["payments", "admin", "coupons"] });
     },
     onError: (err) => {
       showToast("error", getErrorMessage(err));

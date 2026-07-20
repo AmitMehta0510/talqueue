@@ -2,8 +2,9 @@ import { useState, lazy, Suspense } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
-  Calendar, Globe, UserCheck, Video,
+  Calendar, Globe, UserCheck, Video, Tag,
 } from "lucide-react";
+
 import { useAuth } from "../core/contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { PageLoader } from "../components/ui";
@@ -34,8 +35,11 @@ const JobsPanel = lazy(() => import("./AdminPages/JobsPanel").then(m => ({ defau
 const EventsPanel = lazy(() => import("./AdminPages/EventsPanel").then(m => ({ default: m.EventsPanel })));
 const DiscoveredCompaniesPanel = lazy(() => import("./AdminPages/DiscoveredCompaniesPanel").then(m => ({ default: m.DiscoveredCompaniesPanel })));
 const InterviewPanel = lazy(() => import("./AdminPages/InterviewPanel").then(m => ({ default: m.InterviewPanel })));
+const CouponsPanel = lazy(() => import("./AdminPages/CouponsPanel").then(m => ({ default: m.CouponsPanel })));
 
-type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews";
+
+type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews" | "coupons";
+
 
 const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -52,7 +56,9 @@ const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "events",           label: "Events",         icon: Calendar },
   { id: "discovered_companies", label: "Discovered",  icon: Globe },
   { id: "interviews",       label: "Interviews",     icon: Video },
+  { id: "coupons",          label: "Coupons",         icon: Tag },
 ];
+
 
 export function AdminPage() {
   const { user: currentUser } = useAuth();
@@ -237,7 +243,9 @@ export function AdminPage() {
               {activeTab === "events" && <EventsPanel />}
               {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
               {activeTab === "interviews" && <InterviewPanel />}
+              {activeTab === "coupons" && <CouponsPanel />}
             </Suspense>
+
           </div>
         </div>
       </div>

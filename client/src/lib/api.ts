@@ -1414,10 +1414,10 @@ export const api = {
 
     /**
      * Create a Razorpay order before checkout.
-     * Returns { orderId, localOrderId, amount, currency, keyId }
+     * Returns { orderId, localOrderId, amount, currency, keyId, discountInPaise, originalAmountInPaise }
      */
-    createOrder: (body: { planSlug: string; subscriptionId?: string }, options?: EndpointOptions) =>
-      request<{ orderId: string; localOrderId: string; amount: number; currency: string; keyId: string }>(
+    createOrder: (body: { planSlug: string; subscriptionId?: string; couponCode?: string }, options?: EndpointOptions) =>
+      request<{ orderId: string; localOrderId: string; amount: number; currency: string; keyId: string; discountInPaise: number; originalAmountInPaise: number }>(
         "/payments/orders",
         { method: "POST", body: JSON.stringify(body), ...options },
       ),
@@ -1454,6 +1454,42 @@ export const api = {
     /** Get credit balances */
     getCredits: (options?: EndpointOptions) =>
       request<Record<string, number>>("/payments/credits", options),
+
+    /**
+     * Validate a coupon code for a given plan.
+     * Returns discount details and final amount if valid; throws on invalid.
+     */
+    validateCoupon: (body: { code: string; planSlug: string }, options?: EndpointOptions) =>
+      request<{
+        valid: boolean;
+        discountType: "PERCENTAGE" | "FLAT" | "FREE_TRIAL";
+        discountValue: number;
+        discountInPaise: number;
+        finalAmountInPaise: number;
+        originalAmountInPaise: number;
+        savingsLabel: string;
+      }>("/payments/coupons/validate", { method: "POST", body: JSON.stringify(body), ...options }),
+
+    // ── Admin Coupon Management ───────────────────────────────────────────────
+    admin: {
+      listCoupons: (page = 1, options?: EndpointOptions) =>
+        request<any>(`/payments/admin/coupons?page=${page}`, options),
+
+      getCoupon: (id: string, options?: EndpointOptions) =>
+        request<any>(`/payments/admin/coupons/${id}`, options),
+
+      createCoupon: (body: object, options?: EndpointOptions) =>
+        request<any>("/payments/admin/coupons", { method: "POST", body: JSON.stringify(body), ...options }),
+
+      updateCoupon: (id: string, body: object, options?: EndpointOptions) =>
+        request<any>(`/payments/admin/coupons/${id}`, { method: "PATCH", body: JSON.stringify(body), ...options }),
+
+      toggleCoupon: (id: string, isActive: boolean, options?: EndpointOptions) =>
+        request<any>(`/payments/admin/coupons/${id}/toggle`, { method: "PATCH", body: JSON.stringify({ isActive }), ...options }),
+
+      deleteCoupon: (id: string, options?: EndpointOptions) =>
+        request<any>(`/payments/admin/coupons/${id}`, { method: "DELETE", ...options }),
+    },
   },
 };
 

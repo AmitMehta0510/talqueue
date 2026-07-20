@@ -587,6 +587,12 @@ enum TransactionStatus {
   PARTIALLY_REFUNDED
 }
 
+enum DiscountType {
+  PERCENTAGE  // discountValue = 20 means 20%
+  FLAT        // discountValue = 50000 means ₹500 (in paise)
+  FREE_TRIAL  // discountValue = 30 means 30 extra trial days, amount becomes 0
+}
+
 model User {
   id       String     @id @default(uuid())
   email    String     @unique
@@ -787,6 +793,7 @@ model User {
   paymentTransactions PaymentTransaction[]
   invoices            Invoice[]
   creditLedger        CreditLedger[]
+  couponUsages        CouponUsage[]
 }
 
 model UserRecommendation {
@@ -3862,25 +3869,29 @@ model Subscription {
 
 /// Created BEFORE payment — tracks user's payment intent and prevents double-charging
 model PaymentOrder {
-  id             String             @id @default(uuid())
-  userId         String
-  planId         String
-  subscriptionId String?
-  amountInPaise  Int
-  currency       String             @default("INR")
-  status         PaymentOrderStatus @default(CREATED)
+  id              String             @id @default(uuid())
+  userId          String
+  planId          String
+  subscriptionId  String?
+  amountInPaise   Int
+  currency        String             @default("INR")
+  status          PaymentOrderStatus @default(CREATED)
+  // Coupon applied to this order
+  couponId        String?
+  discountInPaise Int                @default(0)
   // Idempotency key = hash(userId+planId+timestamp) — prevents duplicate orders
-  idempotencyKey String             @unique
+  idempotencyKey  String             @unique
   // Razorpay order_id returned from orders API
-  gatewayOrderId String?            @unique
-  notes          Json?
-  expiresAt      DateTime
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  gatewayOrderId  String?            @unique
+  notes           Json?
+  expiresAt       DateTime
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan         Plan               @relation(fields: [planId], references: [id])
   subscription Subscription?      @relation(fields: [subscriptionId], references: [id])
+  coupon       CouponCode?        @relation(fields: [couponId], references: [id])
   transaction  PaymentTransaction?
 
   @@index([userId])
@@ -3988,4 +3999,48 @@ model CreditLedger {
   @@index([userId, creditType])
   @@index([transactionId])
   @@index([createdAt])
+}
+
+/// Coupon / promo code — grants percentage, flat, or free-trial discounts
+model CouponCode {
+  id              String       @id @default(uuid())
+  code            String       @unique  // "LAUNCH50", "COLLEGE2025"
+  description     String?      // "50% launch discount"
+  discountType    DiscountType
+  discountValue   Int          // PERCENTAGE: 20 = 20%, FLAT: 50000 = ₹500 (paise), FREE_TRIAL: 30 days
+  maxUsages       Int?         // null = unlimited
+  usedCount       Int          @default(0)
+  // null = all plans eligible; otherwise list plan slugs
+  applicablePlans String[]     // e.g. ["resdex-premium"]
+  // null = any user; otherwise list of specific user IDs (for targeted invite codes)
+  applicableUsers String[]
+  minOrderInPaise Int?         // Minimum order value to apply coupon
+  isActive        Boolean      @default(true)
+  validFrom       DateTime     @default(now())
+  validUntil      DateTime?    // null = no expiry
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  usages        CouponUsage[]
+  paymentOrders PaymentOrder[]
+
+  @@index([code])
+  @@index([isActive, validUntil])
+}
+
+/// Immutable record of each coupon use — prevents abuse and enables audit
+model CouponUsage {
+  id              String   @id @default(uuid())
+  couponId        String
+  userId          String
+  orderId         String?  // PaymentOrder.id (null if FREE_TRIAL with no payment)
+  discountApplied Int      // Actual discount amount in paise
+  appliedAt       DateTime @default(now())
+
+  coupon CouponCode @relation(fields: [couponId], references: [id])
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId])  // 1 use per user per coupon
+  @@index([userId])
+  @@index([couponId])
 }
