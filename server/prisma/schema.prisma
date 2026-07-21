@@ -593,6 +593,30 @@ enum DiscountType {
   FREE_TRIAL  // discountValue = 30 means 30 extra trial days, amount becomes 0
 }
 
+enum AdStatus {
+  DRAFT      // Created by advertiser, not yet submitted
+  PENDING    // Submitted, awaiting admin review
+  ACTIVE     // Approved and serving
+  PAUSED     // Advertiser or admin paused
+  COMPLETED  // Budget exhausted or end date passed
+  REJECTED   // Admin rejected
+}
+
+enum AdType {
+  BANNER           // Image banner (horizontal or box)
+  CARD             // Native card in feed
+  SPONSORED_JOB    // Job listing with Sponsored badge
+  SPONSORED_COMPANY // Company card with Sponsored badge
+  TEXT_LINK        // Inline text link ad
+}
+
+enum BillingModel {
+  CPM   // Cost per 1000 impressions
+  CPC   // Cost per click
+  FLAT  // Fixed price for a time slot
+  FREE  // No charge (early-stage / sponsored)
+}
+
 model User {
   id       String     @id @default(uuid())
   email    String     @unique
@@ -794,7 +818,9 @@ model User {
   invoices            Invoice[]
   creditLedger        CreditLedger[]
   couponUsages        CouponUsage[]
+  adCampaigns         AdCampaign[]
 }
+
 
 model UserRecommendation {
   id String @id @default(uuid())
@@ -4044,3 +4070,78 @@ model CouponUsage {
   @@index([userId])
   @@index([couponId])
 }
+
+/// Advertising campaign — groups ads under one budget and schedule
+model AdCampaign {
+  id              String       @id @default(uuid())
+  advertiserId    String       // User who owns this campaign
+  name            String
+  status          AdStatus     @default(DRAFT)
+  billingModel    BillingModel @default(FREE)
+  budgetInPaise   Int          @default(0) // 0 = unlimited / free
+  spentInPaise    Int          @default(0)
+  dailyCapInPaise Int?         // Optional daily spend ceiling
+  startDate       DateTime
+  endDate         DateTime?
+  // Targeting (empty array = no restriction = show to all)
+  targetRoles     String[]     // e.g. ["STUDENT", "RECRUITER"]
+  targetColleges  String[]     // college IDs
+  targetSkills    String[]     // e.g. ["React", "Python"]
+  targetGradYears Int[]        // e.g. [2025, 2026]
+  // Admin notes
+  adminNote       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  advertiser User @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  ads        Ad[]
+
+  @@index([status])
+  @@index([advertiserId])
+  @@index([startDate, endDate])
+}
+
+/// Individual ad creative within a campaign
+model Ad {
+  id             String   @id @default(uuid())
+  campaignId     String
+  type           AdType
+  // Placement zone: "feed_inline" | "jobs_top" | "feed_sidebar" | "discover_sidebar" | "profile_sidebar" | "hackathon_banner"
+  zone           String
+  headline       String?  // Title for CARD / TEXT_LINK
+  bodyText       String?  // Short description for CARD
+  imageUrl       String?  // For BANNER / CARD
+  ctaText        String   @default("Learn More") // Button label
+  destinationUrl String   // Where the click leads
+  impressions    Int      @default(0)
+  clicks         Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaign AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events   AdEvent[]
+
+  @@index([campaignId])
+  @@index([zone, isActive]) // hot path: serve ad by zone
+}
+
+/// Immutable event log — NEVER update or delete rows
+model AdEvent {
+  id          String   @id @default(uuid())
+  adId        String
+  userId      String?  // null = anonymous / not logged in
+  eventType   String   // "IMPRESSION" | "CLICK"
+  zone        String
+  costInPaise Int      @default(0)
+  sessionId   String?  // browser session token for dedup
+  createdAt   DateTime @default(now())
+
+  ad Ad @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([eventType, createdAt]) // for analytics queries
+}
+

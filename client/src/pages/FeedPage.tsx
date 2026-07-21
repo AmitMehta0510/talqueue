@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { FeedCard } from "../components/cards/FeedCard";
 import { Avatar, FeedCardSkeleton, SidebarItemSkeleton } from "../components/ui";
+import { AdSlot } from "../components/ads/AdSlot";
+
 import { useAuth } from "../core/contexts/AuthContext";
 import {
   useCreatePostMutation,
@@ -511,18 +513,25 @@ export function FeedPage() {
               Array.from({ length: 4 }).map((_, i) => <FeedCardSkeleton key={i} />)
             ) : filteredFeed.length > 0 ? (
               filteredFeed.map((item, index) => (
-                <FeedCard
-                  key={`${item.type}-${"id" in item.data ? item.data.id : index}`}
-                  item={item}
-                  position={index}
-                  trackImpression={Boolean(user)}
-                  canInteract={Boolean(user) && !interacting}
-                  onLike={handleLike}
-                  onSave={handleSave}
-                  onComment={handleComment}
-                  onRepost={handleRepost}
-                />
+                <>
+                  <FeedCard
+                    key={`${item.type}-${"id" in item.data ? item.data.id : index}`}
+                    item={item}
+                    position={index}
+                    trackImpression={Boolean(user)}
+                    canInteract={Boolean(user) && !interacting}
+                    onLike={handleLike}
+                    onSave={handleSave}
+                    onComment={handleComment}
+                    onRepost={handleRepost}
+                  />
+                  {/* Inject ad after every 5th post */}
+                  {(index + 1) % 5 === 0 && (
+                    <AdSlot zone="feed_inline" style={{ margin: "4px 0" }} />
+                  )}
+                </>
               ))
+
             ) : (
               /* ── IMPROVED EMPTY STATE ──────────────────────────────── */
               <div

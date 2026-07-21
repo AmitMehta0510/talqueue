@@ -1491,7 +1491,85 @@ export const api = {
         request<any>(`/payments/admin/coupons/${id}`, { method: "DELETE", ...options }),
     },
   },
+
+  // ── Advertising System ────────────────────────────────────────────────────────
+  ads: {
+    /**
+     * GET /ads/serve?zone=...
+     * Returns the best matching ad for the current user and zone.
+     * Returns { ad: null } if no eligible ad found.
+     */
+    serve: (zone: string, options?: EndpointOptions) =>
+      request<{ ad: any | null }>(`/ads/serve?zone=${zone}`, options),
+
+    /**
+     * POST /ads/impression — record ad becoming visible in viewport
+     */
+    impression: (adId: string, zone: string, sessionId?: string, options?: EndpointOptions) =>
+      request<null>("/ads/impression", {
+        method: "POST",
+        body: JSON.stringify({ adId, zone }),
+        headers: { ...(sessionId ? { "x-session-id": sessionId } : {}) },
+        ...options,
+      }),
+
+    /**
+     * POST /ads/click — record click and get destination URL
+     */
+    click: (adId: string, zone: string, sessionId?: string, options?: EndpointOptions) =>
+      request<{ destinationUrl: string }>("/ads/click", {
+        method: "POST",
+        body: JSON.stringify({ adId, zone }),
+        headers: { ...(sessionId ? { "x-session-id": sessionId } : {}) },
+        ...options,
+      }),
+
+    /**
+     * GET /ads/campaigns/:id/analytics — campaign performance stats
+     */
+    getCampaignAnalytics: (campaignId: string, options?: EndpointOptions) =>
+      request<any>(`/ads/campaigns/${campaignId}/analytics`, options),
+
+    // ── Admin ──────────────────────────────────────────────────────────────────
+    admin: {
+      getStats: (options?: EndpointOptions) =>
+        request<any>("/ads/admin/stats", options),
+
+      listCampaigns: (status?: string, page = 1, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/campaigns?page=${page}${status ? `&status=${status}` : ""}`, options),
+
+      getCampaign: (id: string, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/campaigns/${id}`, options),
+
+      createCampaign: (body: object, options?: EndpointOptions) =>
+        request<any>("/ads/admin/campaigns", { method: "POST", body: JSON.stringify(body), ...options }),
+
+      updateCampaignStatus: (id: string, status: string, adminNote?: string, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/campaigns/${id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status, adminNote }),
+          ...options,
+        }),
+
+      deleteCampaign: (id: string, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/campaigns/${id}`, { method: "DELETE", ...options }),
+
+      createAd: (body: object, options?: EndpointOptions) =>
+        request<any>("/ads/admin/ads", { method: "POST", body: JSON.stringify(body), ...options }),
+
+      toggleAd: (id: string, isActive: boolean, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/ads/${id}/toggle`, {
+          method: "PATCH",
+          body: JSON.stringify({ isActive }),
+          ...options,
+        }),
+
+      deleteAd: (id: string, options?: EndpointOptions) =>
+        request<any>(`/ads/admin/ads/${id}`, { method: "DELETE", ...options }),
+    },
+  },
 };
+
 
 // Re-export specific interfaces/types defined locally or at the bottom
 export interface TpoDashboardStats {

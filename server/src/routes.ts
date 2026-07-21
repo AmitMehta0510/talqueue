@@ -44,7 +44,9 @@ import interviewRoutes from "modules/interviews/interviews.routes";
 import matchmakingRoutes from "modules/matchmaking/matchmaking.routes";
 import alumniBookingsRoutes from "modules/alumni/alumni-bookings.routes";
 import { paymentsRouter, webhookRouter } from "modules/payments/payments.routes";
+import { adsRouter } from "modules/ads/ads.routes";
 import { successResponse } from "shared/utils/apiResponse";
+
 import { authRateLimiter, searchRateLimiter, apiRateLimiter } from "shared/middleware/rateLimiter";
 import docsRouter from "shared/openapi/docs.routes";
 
@@ -111,7 +113,10 @@ export const apiRouteEntries: ApiRouteEntry[] = [
   { key: "alumni", path: "/alumni", router: alumniBookingsRoutes },
   // Payment System — plans, orders, subscription management, invoices, credits
   { key: "payments", path: "/payments", router: paymentsRouter },
+  // Advertising System — ad serving, impression/click tracking, admin campaign management
+  { key: "ads", path: "/ads", router: adsRouter },
 ];
+
 
 export const apiRouteMap = Object.fromEntries(
   apiRouteEntries.map(({ key, path }) => [key, `${API_PREFIX}${path}`]),

@@ -2,8 +2,9 @@ import { useState, lazy, Suspense } from "react";
 import {
   LayoutDashboard, Users, Shield, Trophy, GraduationCap, Building2,
   Hash, GitBranch, Briefcase, ShieldCheck, RefreshCw, ClipboardList,
-  Calendar, Globe, UserCheck, Video, Tag,
+  Calendar, Globe, UserCheck, Video, Tag, BarChart2,
 } from "lucide-react";
+
 
 import { useAuth } from "../core/contexts/AuthContext";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -36,9 +37,11 @@ const EventsPanel = lazy(() => import("./AdminPages/EventsPanel").then(m => ({ d
 const DiscoveredCompaniesPanel = lazy(() => import("./AdminPages/DiscoveredCompaniesPanel").then(m => ({ default: m.DiscoveredCompaniesPanel })));
 const InterviewPanel = lazy(() => import("./AdminPages/InterviewPanel").then(m => ({ default: m.InterviewPanel })));
 const CouponsPanel = lazy(() => import("./AdminPages/CouponsPanel").then(m => ({ default: m.CouponsPanel })));
+const AdsPanel = lazy(() => import("./AdminPages/AdsPanel").then(m => ({ default: m.AdsPanel })));
 
 
-type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews" | "coupons";
+type Tab = "overview" | "users" | "moderation" | "hackathons" | "colleges" | "companies" | "communities" | "referrals" | "company_requests" | "onboarding" | "jobs" | "events" | "discovered_companies" | "interviews" | "coupons" | "ads";
+
 
 
 const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
@@ -57,7 +60,9 @@ const NAV_ITEMS: { id: Tab; label: string; icon: any; badge?: string }[] = [
   { id: "discovered_companies", label: "Discovered",  icon: Globe },
   { id: "interviews",       label: "Interviews",     icon: Video },
   { id: "coupons",          label: "Coupons",         icon: Tag },
+  { id: "ads",              label: "Ads",             icon: BarChart2 },
 ];
+
 
 
 export function AdminPage() {
@@ -244,7 +249,9 @@ export function AdminPage() {
               {activeTab === "discovered_companies" && <DiscoveredCompaniesPanel />}
               {activeTab === "interviews" && <InterviewPanel />}
               {activeTab === "coupons" && <CouponsPanel />}
+              {activeTab === "ads" && <AdsPanel />}
             </Suspense>
+
 
           </div>
         </div>
